@@ -41,8 +41,6 @@
 
 namespace fl {
 
-namespace {
-
 // ---------------------------------------------------------------------------
 // Pin-to-FlexPWM mapping table
 // ---------------------------------------------------------------------------
@@ -67,6 +65,8 @@ struct FlexPwmPinInfo {
     volatile u32 *select_register;     // IOMUXC select input register (or nullptr)
     u32 select_value;                  // Select input value
 };
+
+namespace {
 
 // Pin mapping derived from i.MXRT1062 reference manual and Teensy 4.x
 // schematic. Pins listed for Teensy 4.0 + 4.1 unless noted.
