@@ -27,7 +27,7 @@ from ci.meson.compiler import (
 )
 from ci.meson.io_utils import atomic_write_text, write_if_different
 from ci.meson.output import print_banner, print_warning
-from ci.meson.test_discovery import get_source_files_hash
+from ci.meson.test_discovery import get_source_files_hash, get_split_source_hashes
 from ci.util.global_interrupt_handler import handle_keyboard_interrupt_properly
 from ci.util.output_formatter import TimestampFormatter
 from ci.util.timestamp_print import ts_print as _ts_print
@@ -106,6 +106,10 @@ def _write_configuration_markers(
     source_files_marker: Path,
     current_source_hash: str,
     current_source_files: list[str],
+    src_files_marker: Path,
+    current_src_hash: str,
+    test_files_marker: Path,
+    current_test_hash: str,
     compiler_version_marker: Path,
     current_compiler_version: str,
     only_missing: bool = False,
@@ -143,7 +147,7 @@ def _write_configuration_markers(
         except (OSError, IOError) as e:
             _ts_print(f"[MESON] Warning: Could not write {marker_path.name}: {e}")
 
-    # Source files marker has special handling (conditional on hash being non-empty)
+    # Source files markers: write combined hash (backward compat) and split hashes
     if current_source_hash:
         if not only_missing or not source_files_marker.exists():
             try:
@@ -153,6 +157,19 @@ def _write_configuration_markers(
                 )
             except (OSError, IOError) as e:
                 _ts_print(f"[MESON] Warning: Could not write source files marker: {e}")
+    # Write split markers for granular change detection
+    if current_src_hash:
+        if not only_missing or not src_files_marker.exists():
+            try:
+                atomic_write_text(src_files_marker, current_src_hash)
+            except (OSError, IOError):
+                pass
+    if current_test_hash:
+        if not only_missing or not test_files_marker.exists():
+            try:
+                atomic_write_text(test_files_marker, current_test_hash)
+            except (OSError, IOError):
+                pass
 
 
 def inject_ar_optimization_patches(build_dir: Path, source_dir: Path) -> bool:
@@ -525,6 +542,8 @@ def setup_meson_build(
     # ============================================================================
     thin_archive_marker = build_dir / ".thin_archive_config"
     source_files_marker = build_dir / ".source_files_hash"
+    src_files_marker = build_dir / ".src_files_hash"
+    test_files_marker = build_dir / ".test_files_hash"
     debug_marker = build_dir / ".debug_config"
     check_marker = build_dir / ".check_config"
     build_mode_marker = build_dir / ".build_mode_config"
@@ -538,31 +557,66 @@ def setup_meson_build(
     # By computing once here and reusing below, we save ~50ms per incremental build.
     _max_tests_dir_mtime: float = get_max_dir_mtime(source_dir / "tests")
 
-    # Get current source file hash (used for change detection and saving after setup).
+    # Get current source file hashes (split: src/ and tests/ independently).
     #
-    # Fast path: if source_files_marker is newer than every directory under src/
-    # and tests/, no files have been added or removed → use the cached hash without
+    # Fast path: if markers are newer than every directory under their respective
+    # trees, no files have been added or removed → use cached hashes without
     # performing an expensive rglob walk (~200-500ms on large trees).
     #
     # Rationale: adding/removing a file always updates the PARENT directory's mtime
     # on NTFS, ext4, and APFS.  So checking directory mtimes is an O(#dirs) proxy
     # for the O(#files) rglob.  On a cache hit the walk is skipped entirely; on a
     # miss we fall back to the full rglob as before.
-    current_source_hash: str = ""
+    #
+    # Split hashes allow the reconfigure message to report exactly which directory
+    # changed (src/ vs tests/) instead of a generic "source/test files changed".
+    current_src_hash: str = ""
+    current_test_hash: str = ""
+    current_source_hash: str = ""  # combined, for backward-compat marker
     current_source_files: list[str] = []
+
+    # Try fast-path for src/ hash
+    _max_src_dir_mtime = get_max_dir_mtime(source_dir / "src")
+    if src_files_marker.exists():
+        try:
+            _marker_mtime = src_files_marker.stat().st_mtime
+            if _max_src_dir_mtime <= _marker_mtime:
+                _cached = src_files_marker.read_text(encoding="utf-8").strip()
+                if _cached:
+                    current_src_hash = _cached
+        except OSError:
+            pass
+
+    # Try fast-path for tests/ hash
+    if test_files_marker.exists():
+        try:
+            _marker_mtime = test_files_marker.stat().st_mtime
+            if _max_tests_dir_mtime <= _marker_mtime:
+                _cached = test_files_marker.read_text(encoding="utf-8").strip()
+                if _cached:
+                    current_test_hash = _cached
+        except OSError:
+            pass
+
+    # Fall back to combined hash for backward-compat marker (.source_files_hash)
+    # Also populates split hashes if fast-path missed either one
+    if not current_src_hash or not current_test_hash:
+        _src_h, _test_h, _src_files, _test_files = get_split_source_hashes(source_dir)
+        if not current_src_hash:
+            current_src_hash = _src_h
+        if not current_test_hash:
+            current_test_hash = _test_h
+        current_source_files = sorted(_src_files + _test_files)
+
+    # Compute combined hash for the legacy .source_files_hash marker
     if source_files_marker.exists():
         try:
             _marker_mtime = source_files_marker.stat().st_mtime
-            _max_src_mtime = max(
-                get_max_dir_mtime(source_dir / "src"),
-                _max_tests_dir_mtime,  # reuse precomputed value (avoids 2nd tests/ walk)
-            )
-            if _max_src_mtime <= _marker_mtime:
-                # No directory was modified after the marker → cached hash is valid.
-                _cached_hash = source_files_marker.read_text(encoding="utf-8").strip()
-                if _cached_hash:
-                    current_source_hash = _cached_hash
-                    # current_source_files stays [] - only used in log messages
+            _max_combined = max(_max_src_dir_mtime, _max_tests_dir_mtime)
+            if _max_combined <= _marker_mtime:
+                _cached = source_files_marker.read_text(encoding="utf-8").strip()
+                if _cached:
+                    current_source_hash = _cached
         except OSError:
             pass
     if not current_source_hash:
@@ -645,16 +699,47 @@ def setup_meson_build(
         # Check if source/test files have changed since last configure
         # This detects when files are added or removed, which requires reconfigure
         # CRITICAL: Test file tracking ensures organize_tests.py runs with current file list
-        if current_source_hash:  # Only check if we successfully got the hash
+        # Split check: report exactly which directory changed (src/ vs tests/)
+        _src_changed = False
+        _test_changed = False
+        if current_src_hash:
+            if src_files_marker.exists():
+                try:
+                    if src_files_marker.read_text().strip() != current_src_hash:
+                        _src_changed = True
+                except (OSError, IOError):
+                    _src_changed = True
+            else:
+                _src_changed = True
+        if current_test_hash:
+            if test_files_marker.exists():
+                try:
+                    if test_files_marker.read_text().strip() != current_test_hash:
+                        _test_changed = True
+                except (OSError, IOError):
+                    _test_changed = True
+            else:
+                _test_changed = True
+        # Fall back to combined hash if split markers don't exist yet
+        if not _src_changed and not _test_changed and current_source_hash:
             if source_files_marker.exists():
                 try:
                     last_hash = source_files_marker.read_text().strip()
                     if last_hash != current_source_hash:
-                        reconfigure_reasons.append("source/test files changed")
+                        _src_changed = True  # can't tell which, assume both
+                        _test_changed = True
                 except (OSError, IOError):
-                    reconfigure_reasons.append("source files marker unreadable")
+                    _src_changed = True
+                    _test_changed = True
             else:
-                reconfigure_reasons.append("source files marker missing")
+                _src_changed = True
+                _test_changed = True
+        if _src_changed and _test_changed:
+            reconfigure_reasons.append("source and test files changed")
+        elif _src_changed:
+            reconfigure_reasons.append("source files changed (src/)")
+        elif _test_changed:
+            reconfigure_reasons.append("test files changed (tests/)")
 
         # Check if debug mode setting has changed since last configure
         # This is critical because debug mode changes compiler flags (sanitizers, optimization)
@@ -1347,6 +1432,10 @@ endian = 'little'
             source_files_marker=source_files_marker,
             current_source_hash=current_source_hash,
             current_source_files=current_source_files,
+            src_files_marker=src_files_marker,
+            current_src_hash=current_src_hash,
+            test_files_marker=test_files_marker,
+            current_test_hash=current_test_hash,
             compiler_version_marker=compiler_version_marker,
             current_compiler_version=current_compiler_version,
             only_missing=True,
@@ -1439,6 +1528,10 @@ endian = 'little'
             source_files_marker=source_files_marker,
             current_source_hash=current_source_hash,
             current_source_files=current_source_files,
+            src_files_marker=src_files_marker,
+            current_src_hash=current_src_hash,
+            test_files_marker=test_files_marker,
+            current_test_hash=current_test_hash,
             compiler_version_marker=compiler_version_marker,
             current_compiler_version=current_compiler_version,
             only_missing=False,

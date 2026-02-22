@@ -200,54 +200,73 @@ def get_fuzzy_test_candidates(build_dir: Path, test_name: str) -> list[str]:
 _SOURCE_EXTENSIONS = {".cpp", ".h", ".hpp"}
 
 
+def _hash_file_list(file_list: list[str]) -> str:
+    """Hash a sorted list of file paths into a hex digest."""
+    hasher = hashlib.sha256()
+    for file_path in file_list:
+        hasher.update(file_path.encode("utf-8"))
+        hasher.update(b"\n")
+    return hasher.hexdigest()
+
+
+def _discover_files_in_dir(source_dir: Path, subdir: str) -> list[str]:
+    """Discover .cpp/.h/.hpp files under source_dir/subdir, return sorted relative paths."""
+    dir_path = source_dir / subdir
+    if not dir_path.exists():
+        return []
+    files = sorted(
+        str(p.relative_to(source_dir))
+        for p in dir_path.rglob("*")
+        if p.suffix in _SOURCE_EXTENSIONS and p.is_file()
+    )
+    return files
+
+
 def get_source_files_hash(source_dir: Path) -> tuple[str, list[str]]:
     """
-    Get hash of all .cpp/.h/.hpp source and test files in src/ and tests/ directories.
+    Get combined hash of all .cpp/.h/.hpp files in src/ and tests/ directories.
 
-    This detects when source or test files are added, removed, or renamed (including
-    .h -> .hpp renames), which requires Meson reconfiguration to update the build graph.
-
-    Optimization: uses a single rglob("*") per directory and filters by suffix in
-    Python, reducing filesystem traversal from 6 passes to 2 passes (~3x faster).
-
-    Args:
-        source_dir: Project root directory
+    Kept for backward compatibility. The combined hash is used as the marker
+    value stored in .source_files_hash.
 
     Returns:
         Tuple of (hash_string, sorted_file_list)
     """
     try:
-        source_files: list[str] = []
-
-        # Single-pass traversal per directory: one rglob("*") + Python suffix filter.
-        # Previously: 3 separate rglob("*.cpp/h/hpp") calls per directory = 6 total.
-        # Now: 1 rglob("*") per directory = 2 total, with suffix filtering in Python.
-        # NOTE: .hpp is included to detect .h -> .hpp renames that require reconfiguration.
-        for dir_path in (source_dir / "src", source_dir / "tests"):
-            if dir_path.exists():
-                source_files.extend(
-                    str(p.relative_to(source_dir))
-                    for p in dir_path.rglob("*")
-                    if p.suffix in _SOURCE_EXTENSIONS and p.is_file()
-                )
-
-        # Sort for consistent ordering and deterministic hashing
-        source_files = sorted(source_files)
-
-        # Hash the list of file paths (not contents - just detect add/remove)
-        hasher = hashlib.sha256()
-        for file_path in source_files:
-            hasher.update(file_path.encode("utf-8"))
-            hasher.update(b"\n")  # Separator
-
-        return (hasher.hexdigest(), source_files)
-
+        src_files = _discover_files_in_dir(source_dir, "src")
+        test_files = _discover_files_in_dir(source_dir, "tests")
+        all_files = sorted(src_files + test_files)
+        return (_hash_file_list(all_files), all_files)
     except KeyboardInterrupt:
         handle_keyboard_interrupt_properly()
         raise
     except Exception as e:
         _ts_print(f"[MESON] Warning: Failed to get source file hash: {e}")
         return ("", [])
+
+
+def get_split_source_hashes(source_dir: Path) -> tuple[str, str, list[str], list[str]]:
+    """
+    Get separate hashes for src/ and tests/ directories.
+
+    Returns:
+        Tuple of (src_hash, tests_hash, src_files, test_files)
+    """
+    try:
+        src_files = _discover_files_in_dir(source_dir, "src")
+        test_files = _discover_files_in_dir(source_dir, "tests")
+        return (
+            _hash_file_list(src_files),
+            _hash_file_list(test_files),
+            src_files,
+            test_files,
+        )
+    except KeyboardInterrupt:
+        handle_keyboard_interrupt_properly()
+        raise
+    except Exception as e:
+        _ts_print(f"[MESON] Warning: Failed to get source file hashes: {e}")
+        return ("", "", [], [])
 
 
 def list_all_tests(
