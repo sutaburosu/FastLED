@@ -143,6 +143,9 @@ all_test_runners = []
 test_env = environment()
 test_env.prepend('PATH', fastled_lib_dir)
 
+# Find python once for test wrapper (avoid 245 find_program calls inside loop)
+python_exe = find_program('python')
+
 # Build each test as a DLL with shared PCH
 foreach test_name : test_names
   # Get test file path from dynamic map (for subdirectories) or default to test_name.cpp
@@ -176,12 +179,14 @@ foreach test_name : test_names
   all_test_dlls += test_dll
 
   # Copy runner.exe to test directory as <test_name>.exe
+  # build_by_default: false - only built when running specific tests (runner.py:855)
+  # Bulk test runs use runner.exe directly via test_wrapper.py or runner_exe
   test_runner = custom_target(test_name + '_runner',
     input: runner_exe,
     output: test_name + '.exe',
     command: ['cp', '@INPUT@', '@OUTPUT@'],
     depends: [test_dll],  # Ensure DLL is built first
-    build_by_default: true
+    build_by_default: false
   )
 
   # Track test runner for alias
@@ -235,7 +240,7 @@ foreach test_name : test_names
 
   if use_wrapper
     # Use Python wrapper for deadlock detection with stack traces
-    test(test_name, find_program('python'),
+    test(test_name, python_exe,
       args: [
         meson.current_source_dir() / 'test_wrapper.py',
         runner_exe.full_path(),
