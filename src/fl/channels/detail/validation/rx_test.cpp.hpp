@@ -24,17 +24,17 @@ inline bool testRxChannel(
     fl::pinMode(pin_tx, fl::PinMode::Output);
     fl::digitalWrite(pin_tx, fl::PinValue::Low);  // Start LOW
 
-    // Generate fast toggles (RMT max signal_range is ~819 μs, so use 100 μs pulses)
-    const int num_toggles = 10;
-    const int toggle_delay_us = 100;  // 100 μs pulses = 5 kHz square wave
+    // Toggle parameters (generous timing works across all platforms)
+    const int num_toggles = 16;
+    const int toggle_delay_us = 1000;        // 1ms per toggle
+    const u32 signal_range_max_ns = 2000000; // 2ms idle threshold
 
     // Initialize RX channel with signal range for fast GPIO toggles
-    // RMT peripheral max is ~819 μs, so use 200 μs (2x our pulse width for safety)
     fl::RxConfig rx_config;
     rx_config.buffer_size = buffer_size;
     rx_config.hz = hz;
     rx_config.signal_range_min_ns = 100;    // min=100ns
-    rx_config.signal_range_max_ns = 200000;  // max=200μs
+    rx_config.signal_range_max_ns = signal_range_max_ns;
     rx_config.start_low = true;
 
     if (!rx_channel->begin(rx_config)) {

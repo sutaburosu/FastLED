@@ -1,4 +1,4 @@
-// @filter: (platform is esp32) or (platform is native)
+// @filter: (platform is esp32) or (platform is native) or (platform is teensy)
 
 // examples/Validation/Validation.ino
 //
@@ -193,7 +193,7 @@
 // Serial port timeout (milliseconds) - wait for serial monitor to attach
 #define SERIAL_TIMEOUT_MS 120000  // 120 seconds
 
-const fl::RxDeviceType RX_TYPE = fl::RxDeviceType::RMT;
+const fl::RxDeviceType RX_TYPE = fl::RxDeviceType::DEFAULT;
 
 // ============================================================================
 // Platform-Specific Pin Defaults
@@ -214,7 +214,11 @@ constexpr int DEFAULT_PIN_RX = validation::defaultRxPin();
 // RX buffer sized for maximum expected strip size
 // Each LED = 24 bits = 24 symbols, plus headroom for RESET pulses
 // Maximum: 3000 LEDs (hardcoded for ESP32/S3 with PSRAM support)
-#define RX_BUFFER_SIZE (3000 * 32 + 100)  // LEDs × 32:1 expansion + headroom
+#if defined(FL_IS_TEENSY_4X)
+constexpr int RX_BUFFER_SIZE = 100 * 32 + 100;  // Teensy: 100 LEDs max for validation
+#else
+constexpr int RX_BUFFER_SIZE = 3000 * 32 + 100;  // LEDs × 32:1 expansion + headroom
+#endif
 
 // Factory function for creating RxDevice instances
 // This allows ValidationRemoteControl to recreate the RX channel when the pin changes
@@ -224,7 +228,7 @@ fl::shared_ptr<fl::RxDevice> createRxDevice(int pin) {
 
 // Global validation state (shared between main loop and RPC handlers)
 // Use PSRAM-backed vector for RX buffer to avoid DRAM overflow on ESP32S2
-fl::vector_psram<uint8_t> g_rx_buffer_storage;  // Actual buffer storage
+fl::vector_psram<uint8_t> g_rx_buffer_storage;  // Actual buffer storage (falls back to SRAM without PSRAM)
 fl::shared_ptr<ValidationState> g_validation_state;  // Shared state pointer
 
 // ============================================================================
@@ -294,7 +298,7 @@ void setup() {
     ss << "\n[HARDWARE]\n";
     ss << "  TX Pin: " << PIN_TX << "\n";  // --expect "TX Pin: 0"
     ss << "  RX Pin: " << PIN_RX << "\n";  // --expect "RX Pin: 1"
-    ss << "  RX Device: " << (RX_TYPE == fl::RxDeviceType::RMT ? "RMT" : "ISR") << "\n";
+    ss << "  RX Device: " << fl::toString(RX_TYPE) << "\n";
     ss << "  Loopback Mode: " << loop_back_mode << "\n";
     ss << "  Color Order: RGB\n";
     ss << "  RX Buffer Size: " << RX_BUFFER_SIZE << " bytes";

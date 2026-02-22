@@ -134,6 +134,7 @@ class RpcClient:
         self.verbose = verbose
         self._serial: SerialInterface | None = serial_interface
         self._owns_serial = serial_interface is None
+        self._connected = False  # Track whether connect() has been called
         self._next_id: int = (
             1  # Request ID counter for JSON-RPC 2.0 correlation (uint32 range)
         )
@@ -141,7 +142,7 @@ class RpcClient:
     @property
     def is_connected(self) -> bool:
         """Check if serial connection is open."""
-        return self._serial is not None
+        return self._serial is not None and self._connected
 
     async def connect(self, boot_wait: float = 3.0, drain_boot: bool = True) -> None:
         """Open serial connection (async).
@@ -150,7 +151,7 @@ class RpcClient:
             boot_wait: Time to wait for device boot (seconds)
             drain_boot: Whether to drain boot output after connecting
         """
-        if self.is_connected:
+        if self._connected:
             return
 
         # Create serial interface if not provided externally (defaults to fbuild)
@@ -169,6 +170,7 @@ class RpcClient:
             print(f"🔌 [RPC] Using {backend_name} backend")
 
         await self._serial.connect()
+        self._connected = True
 
         if self.verbose:
             print(f"✅ [RPC] Serial connection established")
@@ -192,6 +194,7 @@ class RpcClient:
 
     async def close(self) -> None:
         """Close serial connection (async)."""
+        self._connected = False
         if self._serial is not None:
             await self._serial.close()
             self._serial = None

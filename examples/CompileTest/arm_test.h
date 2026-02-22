@@ -75,4 +75,11 @@ void arm_tests() {
     #error "NRF52 should have CLOCKLESS_FREQUENCY defined"
     #endif
 #endif
+
+// DEFAULT macro must survive FastLED.h inclusion (used by analogReference)
+#if defined(ARDUINO)
+#ifndef DEFAULT
+#error "DEFAULT macro should be defined after including FastLED.h on ARM Arduino platforms"
+#endif
+#endif
 }

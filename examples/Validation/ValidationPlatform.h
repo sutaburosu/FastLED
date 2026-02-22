@@ -22,6 +22,8 @@ constexpr int defaultTxPin() {
     return 1;  // ESP32-C3 (RISC-V)
 #elif defined(FL_IS_ESP_32P4)
     return 5;  // ESP32-P4: Connect GPIO 5 (TX) to GPIO 6 (RX) with jumper wire
+#elif defined(FL_IS_TEENSY_4X)
+    return 1;  // Teensy 4.x: any GPIO works for TX
 #else
     return 1;  // ESP32 (classic) and other variants
 #endif
@@ -41,6 +43,8 @@ constexpr int defaultRxPin() {
     return 0;
 #elif defined(FL_IS_ESP_32P4)
     return 6;  // ESP32-P4: jumper wire from GPIO 5
+#elif defined(FL_IS_TEENSY_4X)
+    return 2;  // Teensy 4.x: FlexPWM-capable pin, jumper wire from pin 1
 #else
     return 0;  // ESP32 (classic) and other variants
 #endif
@@ -60,8 +64,10 @@ constexpr const char* chipName() {
     return "ESP32 (Xtensa)";
 #elif defined(FL_IS_ESP_32P4)
     return "ESP32-P4 (dual-core RISC-V)";
+#elif defined(FL_IS_TEENSY_4X)
+    return "Teensy 4.x (Cortex-M7)";
 #else
-    return "Unknown ESP32 variant";
+    return "Unknown platform";
 #endif
 }
 

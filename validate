@@ -21,13 +21,14 @@ show_help() {
 FastLED Validation Test Wrapper
 
 Usage:
-  bash validate [ENVIRONMENT] --<driver> [OPTIONS]
+  bash validate [ENVIRONMENT] [--<driver>] [OPTIONS]
 
 Positional Arguments:
-  ENVIRONMENT         Optional PlatformIO environment (e.g., esp32s3, esp32dev)
+  ENVIRONMENT         Optional PlatformIO environment (e.g., esp32s3, esp32dev, teensy41)
                       If omitted, auto-detects from attached device
 
-Driver Selection (MANDATORY - must specify at least one):
+Driver Selection (optional - omit for GPIO-only mode):
+  (none)              GPIO-only mode: pin discovery + toggle capture test
   --parlio            Test parallel I/O driver
   --rmt               Test RMT (Remote Control) driver
   --spi               Test SPI driver
@@ -65,6 +66,8 @@ Description:
   - ERROR DETECTION: Catches ISR hangs, device crashes, and test failures
 
 Examples:
+  bash validate teensy41                    # GPIO-only: pin toggle capture test on Teensy
+  bash validate                             # GPIO-only: auto-detect device, pin toggle test
   bash validate --parlio                    # Auto-detect env, test PARLIO driver
   bash validate esp32s3 --parlio            # Run on esp32s3, test PARLIO driver
   bash validate --rmt --spi                 # Test RMT and SPI drivers

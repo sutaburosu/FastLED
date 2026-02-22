@@ -37,4 +37,9 @@ void avr_tests() {
 #ifndef QADD8_AVRASM
 #warning "AVR assembly optimizations may not be enabled"
 #endif
+
+// DEFAULT macro must survive FastLED.h inclusion (used by analogReference)
+#ifndef DEFAULT
+#error "DEFAULT macro should be defined after including FastLED.h on AVR"
+#endif
 }

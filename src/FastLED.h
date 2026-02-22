@@ -4,6 +4,11 @@
 #ifndef __INC_FASTSPI_LED2_H
 #define __INC_FASTSPI_LED2_H
 
+// Save Arduino macros that undef.h will remove, so we can restore them at the
+// end of this header. This lets FastLED internals use names like DEFAULT as C++
+// identifiers while still providing the macros that Arduino user code expects.
+#pragma push_macro("DEFAULT")
+
 #include "fl/stl/stdint.h"
 #include "fl/dll.h"  // Will optionally compile in.
 #include "platforms/is_platform.h"
@@ -1509,3 +1514,8 @@ using fl_string = fl::string;
 // Backdoor to get the size of the CLedController object. The one place
 // that includes this just uses extern to declare the function.
 // Declaration moved to src/fl/fastled.h
+
+// Restore Arduino macros that were saved at the top of this header.
+// User code (sketches) that includes FastLED.h will see DEFAULT etc.
+// as macros again, matching the Arduino API contract.
+#pragma pop_macro("DEFAULT")

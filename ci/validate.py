@@ -27,7 +27,11 @@ Legacy Text Patterns:
 Usage:
     🎯 AI agents should use 'bash validate' wrapper (see CLAUDE.md)
 
-    # Driver selection (mandatory)
+    # GPIO-only mode (no driver flag)
+    uv run ci/validate.py teensy41              # GPIO toggle capture test on Teensy
+    uv run ci/validate.py                       # Auto-detect device, GPIO-only
+
+    # Driver selection (optional)
     uv run ci/validate.py --parlio              # Test only PARLIO driver
     uv run ci/validate.py --rmt --spi           # Test RMT and SPI drivers
     uv run ci/validate.py --all                 # Test all drivers
@@ -419,14 +423,14 @@ async def run_pin_discovery(
         client = RpcClient(
             port, timeout=timeout, serial_interface=serial_interface, verbose=True
         )
-        await client.connect(boot_wait=3.0, drain_boot=True)
+        await client.connect(boot_wait=15.0, drain_boot=True)
 
         print()
         print("=" * 60)
         print("PING TEST (verify basic RPC works)")
         print("=" * 60)
         try:
-            ping_response = await client.send("ping", retries=3)
+            ping_response = await client.send("ping", timeout=30.0, retries=3)
             print(f"✅ Ping successful: {ping_response.data}")
         except KeyboardInterrupt:
             handle_keyboard_interrupt_properly()
@@ -655,7 +659,9 @@ See Also:
         )
 
         # Driver selection flags
-        driver_group = parser.add_argument_group("Driver Selection (mandatory)")
+        driver_group = parser.add_argument_group(
+            "Driver Selection (optional — omit for GPIO-only mode)"
+        )
         driver_group.add_argument(
             "--parlio",
             action="store_true",
@@ -1032,28 +1038,12 @@ async def run(args: Args | None = None) -> int:  # pyright: ignore[reportGeneral
         if args.i2s:
             drivers.append("I2S")
 
-    # MANDATORY: At least one driver OR --simd must be specified
-    if not drivers and not simd_test_mode:
-        print(f"{Fore.RED}{'=' * 60}")
-        print(f"{Fore.RED}ERROR: No LED driver specified.")
-        print(f"{Fore.RED}{'=' * 60}")
+    # GPIO-only mode: no drivers and not SIMD — just run GPIO pre-test
+    gpio_only_mode = not drivers and not simd_test_mode
+    if gpio_only_mode:
         print(
-            f"\n{Fore.RED}You must specify at least one driver to test.{Style.RESET_ALL}\n"
+            f"\n{Fore.CYAN}ℹ️  No driver specified — running GPIO-only mode (pin discovery + toggle capture test){Style.RESET_ALL}"
         )
-        print("Available driver options:")
-        print("  --parlio    Test parallel I/O driver")
-        print("  --rmt       Test RMT (Remote Control) driver")
-        print("  --spi       Test SPI driver")
-        print("  --uart      Test UART driver")
-        print("  --i2s       Test I2S LCD_CAM driver (ESP32-S3 only)")
-        print("  --all       Test all drivers")
-        print("\nExample commands:")
-        print("  uv run ci/validate.py --parlio")
-        print("  uv run ci/validate.py esp32s3 --parlio")
-        print("  uv run ci/validate.py --rmt --spi")
-        print("  uv run ci/validate.py --all")
-        print()
-        return 1
 
     # Parse --lanes argument
     min_lanes: int | None = None
@@ -1640,7 +1630,7 @@ async def run(args: Args | None = None) -> int:  # pyright: ignore[reportGeneral
 
         # Skip schema validation on constrained platforms (stack overflow risk)
         # ESP32-C6 (320KB RAM, ~8KB stack) crashes when serializing full RPC schema
-        constrained_platforms = ["esp32c6", "esp32c2"]
+        constrained_platforms = ["esp32c6", "esp32c2", "teensy41", "teensy40"]
         skip_schema = final_environment in constrained_platforms
 
         if skip_schema:
@@ -1705,9 +1695,9 @@ async def run(args: Args | None = None) -> int:  # pyright: ignore[reportGeneral
         effective_rx_pin: int | None = None
         pins_discovered = False
 
-        # Create serial interface based on --no-fbuild flag
-        force_pyserial = args.no_fbuild
-        if force_pyserial:
+        # Create serial interface - use pyserial unless fbuild is active
+        # fbuild's WebSocket-based serial has high latency (~25s) on some platforms
+        if not use_fbuild:
             from ci.util.serial_interface import create_serial_interface
 
             serial_iface: SerialInterface | None = create_serial_interface(
@@ -1804,6 +1794,18 @@ async def run(args: Args | None = None) -> int:  # pyright: ignore[reportGeneral
             return 1
 
         # Phase 4: Monitor serial output with validation patterns
+
+        # GPIO-only mode: GPIO pre-test passed, no driver tests to run
+        if gpio_only_mode:
+            print()
+            print("=" * 60)
+            print(f"{Fore.GREEN}✓ GPIO-ONLY VALIDATION SUCCEEDED{Style.RESET_ALL}")
+            print("=" * 60)
+            print("Pin discovery and GPIO connectivity pre-test passed.")
+            print("No driver tests requested — skipping RPC test matrix.")
+            print()
+            return 0
+
         # SIMD test mode - simple RPC call instead of full driver test
         if simd_test_mode:
             print()

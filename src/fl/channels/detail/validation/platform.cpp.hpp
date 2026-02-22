@@ -32,6 +32,8 @@ inline vector<string> getExpectedEngines() {
     expected.push_back("SPI");
     expected.push_back("RMT");
     // expected.push_back("I2S");  // I2S support varies
+#elif defined(FL_IS_TEENSY_4X)
+    // Teensy 4.x: ObjectFLED (DMA-based), skip engine validation for now
 #endif
 
     return expected;
@@ -78,8 +80,10 @@ inline void printEngineValidation(const fl::vector<fl::DriverInfo>& available_dr
     FL_WARN("\n[VALIDATION] Platform: ESP32-C3");
 #elif defined(FL_IS_ESP_32DEV)
     FL_WARN("\n[VALIDATION] Platform: ESP32 (classic)");
+#elif defined(FL_IS_TEENSY_4X)
+    FL_WARN("\n[VALIDATION] Platform: Teensy 4.x (Cortex-M7)");
 #else
-    FL_WARN("\n[VALIDATION] Platform: Unknown ESP32 variant - skipping engine validation");
+    FL_WARN("\n[VALIDATION] Platform: Unknown platform - skipping engine validation");
     return;
 #endif
 
