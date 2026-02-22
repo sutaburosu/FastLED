@@ -8,6 +8,7 @@ import shutil
 import subprocess
 import sys
 import time
+import uuid
 from pathlib import Path
 from typing import Optional
 
@@ -152,6 +153,50 @@ def _recover_stale_build(
         return False
 
 
+def _purge_trash(trash_dir: Path) -> None:
+    """Purge unlocked files from .trash directory."""
+    if not trash_dir.exists():
+        return
+    for item in list(trash_dir.iterdir()):
+        try:
+            if item.is_file():
+                item.unlink()
+            elif item.is_dir():
+                shutil.rmtree(item)
+        except PermissionError:
+            pass  # Still locked, skip
+
+
+def _safe_rmtree(build_dir: Path) -> None:
+    """Remove build directory, relocating locked files to .trash/ for later cleanup."""
+    trash_dir = build_dir.parent / ".trash"
+    # Purge any previously trashed files that are now unlocked
+    _purge_trash(trash_dir)
+
+    def _on_exc(func, path, exc):  # noqa: ARG001
+        """Handle locked files by renaming them into .trash/."""
+        p = Path(path)
+        trash_dir.mkdir(parents=True, exist_ok=True)
+        trash_name = f"{uuid.uuid4().hex[:8]}-{p.name}"
+        trash_path = trash_dir / trash_name
+        try:
+            p.rename(trash_path)
+        except (PermissionError, OSError):
+            pass  # Can't even rename - leave it and continue
+
+    if sys.version_info >= (3, 12):
+        shutil.rmtree(build_dir, onexc=_on_exc)
+    else:
+        shutil.rmtree(build_dir, onerror=lambda f, p, e: _on_exc(f, p, e[1]))
+
+    # If the directory still exists (some files couldn't be moved), try once more
+    if build_dir.exists():
+        try:
+            shutil.rmtree(build_dir)
+        except OSError:
+            _ts_print(f"[MESON] ⚠️  Some locked files moved to {trash_dir}")
+
+
 def run_meson_build_and_test(
     source_dir: Path,
     build_dir: Path,
@@ -224,7 +269,7 @@ def run_meson_build_and_test(
     # Clean if requested
     if clean and build_dir.exists():
         _ts_print(f"[MESON] Cleaning build directory: {build_dir}")
-        shutil.rmtree(build_dir)
+        _safe_rmtree(build_dir)
 
     # Setup build
     # Pass debug=True when build_mode is "debug" to enable sanitizers and full symbols
