@@ -33,7 +33,7 @@ struct RpcResult {
 /**
  * @brief Flags for clearing Remote state (can be OR'd together)
  */
-enum class ClearFlags : u8 {
+enum class RemoteClearFlags : u8 {
     None = 0,
     Results = 1 << 0,      ///< Clear results from executed functions
     Scheduled = 1 << 1,    ///< Clear scheduled calls
@@ -41,16 +41,16 @@ enum class ClearFlags : u8 {
     All = Results | Scheduled | Functions  ///< Clear everything
 };
 
-// Bitwise operators for ClearFlags
-inline ClearFlags operator|(ClearFlags a, ClearFlags b) {
-    return static_cast<ClearFlags>(static_cast<u8>(a) | static_cast<u8>(b));
+// Bitwise operators for RemoteClearFlags
+inline RemoteClearFlags operator|(RemoteClearFlags a, RemoteClearFlags b) {
+    return static_cast<RemoteClearFlags>(static_cast<u8>(a) | static_cast<u8>(b));
 }
 
-inline ClearFlags operator&(ClearFlags a, ClearFlags b) {
-    return static_cast<ClearFlags>(static_cast<u8>(a) & static_cast<u8>(b));
+inline RemoteClearFlags operator&(RemoteClearFlags a, RemoteClearFlags b) {
+    return static_cast<RemoteClearFlags>(static_cast<u8>(a) & static_cast<u8>(b));
 }
 
-inline bool operator!(ClearFlags flags) {
+inline bool operator!(RemoteClearFlags flags) {
     return static_cast<u8>(flags) == 0;
 }
 

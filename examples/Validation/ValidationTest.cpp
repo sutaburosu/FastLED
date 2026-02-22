@@ -633,7 +633,7 @@ void validateChipsetTiming(fl::ValidationConfig& config,
     FastLED.show();
     if (!FastLED.wait(1000)) {  // 1s timeout - driver stall guard
         FL_ERROR("[PREINIT] TX wait timeout - driver may be stalled on this platform");
-        FastLED.reset(ResetFlags::CHANNELS);
+        FastLED.clear(ClearFlags::CHANNELS);
         return;
     }
     // TX engine pre-init logging silenced for speed
@@ -681,7 +681,7 @@ void validateChipsetTiming(fl::ValidationConfig& config,
     // Destroy ALL channels before testing next timing configuration
     // CRITICAL: Clear FastLED's global channel registry to prevent accumulation
     // If we only destroy local shared_ptrs, FastLED still holds references
-    FastLED.reset(ResetFlags::CHANNELS);
+    FastLED.clear(ClearFlags::CHANNELS);
     // Channel destruction is synchronous - no delay needed
 }
 

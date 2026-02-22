@@ -501,26 +501,26 @@ enum EBlockChipsets {
 /// @returns the brightness scale, limited to max power
 typedef fl::u8 (*power_func)(fl::u8 scale, fl::u32 data);
 
-/// @brief Flags for FastLED.reset() to control what state gets reset
+/// @brief Flags for FastLED.clear() to control what state gets cleared/reset
 ///
-/// These flags can be combined using bitwise OR (|) to reset multiple
+/// These flags can be combined using bitwise OR (|) to clear multiple
 /// settings at once. Each flag controls a different aspect of FastLED's
 /// global state.
 ///
 /// @code
-/// // Reset only channels
-/// FastLED.reset(ResetFlags::CHANNELS);
+/// // Clear only channels
+/// FastLED.clear(ClearFlags::CHANNELS);
 ///
-/// // Reset power settings and brightness
-/// FastLED.reset(ResetFlags::POWER_SETTINGS | ResetFlags::BRIGHTNESS);
+/// // Clear power settings and brightness
+/// FastLED.clear(ClearFlags::POWER_SETTINGS | ClearFlags::BRIGHTNESS);
 ///
-/// // Reset everything
-/// FastLED.reset(ResetFlags::CHANNELS | ResetFlags::POWER_SETTINGS |
-///               ResetFlags::BRIGHTNESS | ResetFlags::REFRESH_RATE |
-///               ResetFlags::FPS_COUNTER | ResetFlags::CHANNEL_ENGINES);
+/// // Clear everything
+/// FastLED.clear(ClearFlags::CHANNELS | ClearFlags::POWER_SETTINGS |
+///               ClearFlags::BRIGHTNESS | ClearFlags::REFRESH_RATE |
+///               ClearFlags::FPS_COUNTER | ClearFlags::CHANNEL_ENGINES);
 /// @endcode
-enum class ResetFlags : fl::u32 {
-	NONE            = 0,       ///< Reset nothing (no-op)
+enum class ClearFlags : fl::u32 {
+	NONE            = 0,       ///< Clear nothing (no-op)
 	CHANNELS        = 1 << 0,  ///< Remove all channels from controller list
 	POWER_SETTINGS  = 1 << 1,  ///< Reset power management (setMaxPowerInMilliWatts)
 	BRIGHTNESS      = 1 << 2,  ///< Reset global brightness to 255
@@ -529,18 +529,18 @@ enum class ResetFlags : fl::u32 {
 	CHANNEL_ENGINES = 1 << 5   ///< Clear all channel engines from ChannelBusManager
 };
 
-/// Enable bitwise OR for ResetFlags
-inline ResetFlags operator|(ResetFlags a, ResetFlags b) {
-	return static_cast<ResetFlags>(static_cast<fl::u32>(a) | static_cast<fl::u32>(b));
+/// Enable bitwise OR for ClearFlags
+inline ClearFlags operator|(ClearFlags a, ClearFlags b) {
+	return static_cast<ClearFlags>(static_cast<fl::u32>(a) | static_cast<fl::u32>(b));
 }
 
-/// Enable bitwise AND for ResetFlags
-inline ResetFlags operator&(ResetFlags a, ResetFlags b) {
-	return static_cast<ResetFlags>(static_cast<fl::u32>(a) & static_cast<fl::u32>(b));
+/// Enable bitwise AND for ClearFlags
+inline ClearFlags operator&(ClearFlags a, ClearFlags b) {
+	return static_cast<ClearFlags>(static_cast<fl::u32>(a) & static_cast<fl::u32>(b));
 }
 
-/// Enable bitwise OR assignment for ResetFlags
-inline ResetFlags& operator|=(ResetFlags& a, ResetFlags b) {
+/// Enable bitwise OR assignment for ClearFlags
+inline ClearFlags& operator|=(ClearFlags& a, ClearFlags b) {
 	a = a | b;
 	return a;
 }
@@ -736,43 +736,7 @@ public:
 	/// @endcode
 	static void remove(fl::ChannelPtr channel);
 
-	/// @brief Reset FastLED state - wait for transmissions and reset specified settings
-	///
-	/// Waits for all pending channel bus transmissions to complete, then resets
-	/// the specified settings based on the provided flags. Multiple flags can be
-	/// combined using bitwise OR (|).
-	///
-	/// @param flags Settings to reset (REQUIRED). Can be OR'd together:
-	///              - ResetFlags::CHANNELS - Remove all channels from controller list
-	///              - ResetFlags::POWER_SETTINGS - Reset power management to defaults
-	///              - ResetFlags::BRIGHTNESS - Reset brightness to 255
-	///              - ResetFlags::REFRESH_RATE - Reset refresh rate limiting
-	///              - ResetFlags::FPS_COUNTER - Reset FPS tracking
-	///              - ResetFlags::CHANNEL_ENGINES - Clear all channel engines
-	///
-	/// @note Always calls wait() first to ensure all transmissions complete
-	/// @note CHANNELS: Removes all channels from mChannels, drops refcount to 1
-	/// @note POWER_SETTINGS: Resets to no power limiting (func=nullptr, data=0xFFFFFFFF)
-	/// @note BRIGHTNESS: Resets global brightness scale to 255 (full brightness)
-	/// @note REFRESH_RATE: Resets to unlimited refresh rate (m_nMinMicros=0)
-	/// @note FPS_COUNTER: Resets FPS tracking counter to 0
-	/// @note CHANNEL_ENGINES: Removes all registered channel engines from bus manager
-	/// @note Channel objects are not destroyed, only removed from the list
-	///
-	/// Examples:
-	/// @code
-	/// // Reset only channels
-	/// FastLED.reset(ResetFlags::CHANNELS);
-	///
-	/// // Reset power settings and brightness
-	/// FastLED.reset(ResetFlags::POWER_SETTINGS | ResetFlags::BRIGHTNESS);
-	///
-	/// // Reset everything back to constructor defaults
-	/// FastLED.reset(ResetFlags::CHANNELS | ResetFlags::POWER_SETTINGS |
-	///               ResetFlags::BRIGHTNESS | ResetFlags::REFRESH_RATE |
-	///               ResetFlags::FPS_COUNTER | ResetFlags::CHANNEL_ENGINES);
-	/// @endcode
-	static void reset(ResetFlags flags);
+
 
 	/// @}
 
@@ -1311,6 +1275,29 @@ public:
 	/// send the cleared data to the LEDs.
 	/// @param writeData whether or not to write out to the leds as well
 	void clear(bool writeData = false);
+
+	/// Clear/reset FastLED state based on the provided flags.
+	///
+	/// Waits for all pending channel bus transmissions to complete, then
+	/// clears the specified settings. Multiple flags can be combined
+	/// using bitwise OR (|).
+	///
+	/// @param flags Settings to clear (REQUIRED). Can be OR'd together:
+	///              - ClearFlags::CHANNELS - Remove all channels from controller list
+	///              - ClearFlags::POWER_SETTINGS - Reset power management to defaults
+	///              - ClearFlags::BRIGHTNESS - Reset brightness to 255
+	///              - ClearFlags::REFRESH_RATE - Reset refresh rate limiting
+	///              - ClearFlags::FPS_COUNTER - Reset FPS tracking
+	///              - ClearFlags::CHANNEL_ENGINES - Clear all channel engines
+	///
+	/// @code
+	/// // Clear only channels
+	/// FastLED.clear(ClearFlags::CHANNELS);
+	///
+	/// // Clear power settings and brightness
+	/// FastLED.clear(ClearFlags::POWER_SETTINGS | ClearFlags::BRIGHTNESS);
+	/// @endcode
+	static void clear(ClearFlags flags);
 
 	/// Clear out the local data array
 	void clearData();

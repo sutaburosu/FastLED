@@ -47,7 +47,7 @@ public:
 
     // Import types from various sources
     using RpcResult = fl::RpcResult;      // from fl/remote/types.h
-    using ClearFlags = fl::ClearFlags;    // from fl/remote/types.h
+    using ClearFlags = fl::RemoteClearFlags;    // from fl/remote/types.h
     using MethodInfo = fl::MethodInfo;    // from fl/remote/rpc/rpc.h
     using ParamInfo = fl::ParamInfo;      // from fl/remote/rpc/rpc.h
 

@@ -145,11 +145,11 @@ void CFastLED::remove(fl::ChannelPtr channel) {
 	mChannels.erase(channel);
 }
 
-void CFastLED::reset(ResetFlags flags) {
+void CFastLED::clear(ClearFlags flags) {
 	// Lambda to check if flag is set, clear it, and return true if it was set
-	auto clearFlag = [&flags](ResetFlags flag) -> bool {
-		if ((flags & flag) != ResetFlags::NONE) {
-			flags = static_cast<ResetFlags>(static_cast<fl::u32>(flags) & ~static_cast<fl::u32>(flag));
+	auto clearFlag = [&flags](ClearFlags flag) -> bool {
+		if ((flags & flag) != ClearFlags::NONE) {
+			flags = static_cast<ClearFlags>(static_cast<fl::u32>(flags) & ~static_cast<fl::u32>(flag));
 			return true;
 		}
 		return false;
@@ -157,28 +157,28 @@ void CFastLED::reset(ResetFlags flags) {
 
 
 	// Reset POWER_SETTINGS - reset power management to defaults
-	if (clearFlag(ResetFlags::POWER_SETTINGS)) {
+	if (clearFlag(ClearFlags::POWER_SETTINGS)) {
 		FastLED.m_pPowerFunc = nullptr;      // No power limiting function
 		FastLED.m_nPowerData = 0xFFFFFFFF;   // No power limit (max value)
 	}
 
 	// Reset BRIGHTNESS - reset global brightness to 255 (full brightness)
-	if (clearFlag(ResetFlags::BRIGHTNESS)) {
+	if (clearFlag(ClearFlags::BRIGHTNESS)) {
 		FastLED.m_Scale = 255;
 	}
 
 	// Reset REFRESH_RATE - reset refresh rate limiting to unlimited
-	if (clearFlag(ResetFlags::REFRESH_RATE)) {
+	if (clearFlag(ClearFlags::REFRESH_RATE)) {
 		FastLED.m_nMinMicros = 0;  // No minimum delay between frames
 	}
 
 	// Reset FPS_COUNTER - reset FPS tracking counter to 0
-	if (clearFlag(ResetFlags::FPS_COUNTER)) {
+	if (clearFlag(ClearFlags::FPS_COUNTER)) {
 		FastLED.m_nFPS = 0;
 	}
 
 	// Reset CHANNELS - remove all channels from controller list
-	if (clearFlag(ResetFlags::CHANNELS)) {
+	if (clearFlag(ClearFlags::CHANNELS)) {
 		// Wait for engines to complete, with 2s timeout to prevent infinite hang
 		// if an engine is permanently stalled (e.g. PARLIO on ESP32-C6 hw bug)
 		FastLED.wait(2000);
@@ -199,7 +199,7 @@ void CFastLED::reset(ResetFlags flags) {
 	}
 
 	// Reset CHANNEL_ENGINES - clear all registered channel engines
-	if (clearFlag(ResetFlags::CHANNEL_ENGINES)) {
+	if (clearFlag(ClearFlags::CHANNEL_ENGINES)) {
 		// Wait with 2s timeout to prevent infinite hang on stalled engines
 		FastLED.wait(2000);
 		fl::ChannelBusManager& manager = fl::channelBusManager();
@@ -207,7 +207,7 @@ void CFastLED::reset(ResetFlags flags) {
 	}
 
 	// Ensure all flags were handled - catches typos or missing implementations
-	FL_ASSERT(flags == ResetFlags::NONE, "Unhandled flags in FastLED.reset()");
+	FL_ASSERT(flags == ClearFlags::NONE, "Unhandled flags in FastLED.clear()");
 }
 
 // This is bad code. But it produces the smallest binaries for reasons

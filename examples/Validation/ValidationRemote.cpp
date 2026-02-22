@@ -1286,7 +1286,7 @@ void ValidationRemoteControl::registerFunctions(fl::shared_ptr<ValidationState> 
         uint32_t total2_us = t5 - t3;
 
         // Clean up channel
-        FastLED.reset(ResetFlags::CHANNELS);
+        FastLED.clear(ClearFlags::CHANNELS);
 
         // Determine if async behavior is working on draw 2 (no init overhead):
         // If async: show_us << total_us (show returns quickly, wait blocks for remainder)
