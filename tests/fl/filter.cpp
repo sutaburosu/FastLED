@@ -137,7 +137,7 @@ FL_TEST_CASE("MovingAverage - integer type") {
 // --- Dynamic buffer tests ---
 
 FL_TEST_CASE("MovingAverage - dynamic CircularBuffer") {
-    DynamicMovingAverage<float> ma(4);
+    MovingAverage<float, 0> ma(4);
     ma.update(2.0f);
     ma.update(4.0f);
     ma.update(6.0f);
@@ -149,7 +149,7 @@ FL_TEST_CASE("MovingAverage - dynamic CircularBuffer") {
 }
 
 FL_TEST_CASE("MovingAverage - dynamic resize") {
-    DynamicMovingAverage<float> ma(2);
+    MovingAverage<float, 0> ma(2);
     ma.update(10.0f);
     ma.update(20.0f);
     FL_CHECK_TRUE(ma.full());
@@ -171,7 +171,7 @@ FL_TEST_CASE("MovingAverage - dynamic resize") {
 }
 
 FL_TEST_CASE("MedianFilter - dynamic CircularBuffer") {
-    DynamicMedianFilter<float> mf(5);
+    MedianFilter<float, 0> mf(5);
     mf.update(3.0f);
     mf.update(1.0f);
     mf.update(4.0f);
@@ -181,7 +181,7 @@ FL_TEST_CASE("MedianFilter - dynamic CircularBuffer") {
 }
 
 FL_TEST_CASE("MedianFilter - dynamic resize") {
-    DynamicMedianFilter<float> mf(3);
+    MedianFilter<float, 0> mf(3);
     mf.update(10.0f);
     mf.update(20.0f);
     mf.update(30.0f);

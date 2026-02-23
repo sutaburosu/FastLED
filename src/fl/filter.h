@@ -21,19 +21,27 @@
 //   SavitzkyGolayFilter<T, N>    — polynomial-fit smoothing (preserves peaks)
 //   BilateralFilter<T, N>        — edge-preserving value-similarity weighting
 //
-// Static version — N specified:
-//   MedianFilter<float, 5> mf;
-//
-// Dynamic version — N omitted (defaults to 0), requires capacity at construction:
-//   MedianFilter<float> mf(5);
+// Each FIR filter has a sensible default N (window size). You can also set
+// N = 0 for a runtime-sized buffer that takes capacity at construction:
+//   MedianFilter<float> mf;          // static, default N = 5
+//   MedianFilter<float, 0> mf(10);   // dynamic, capacity set at runtime
 
 #include "fl/circular_buffer.h"
+#include "fl/force_inline.h"
 #include "fl/math.h"
 #include "fl/math_macros.h"
 #include "fl/stl/algorithm.h"
 #include "fl/stl/type_traits.h"
 
-// Detail impl headers
+// Detail impl headers — IIR
+#include "fl/detail/filter/exponential_smoother_impl.h"
+#include "fl/detail/filter/leaky_integrator_impl.h"
+#include "fl/detail/filter/cascaded_ema_impl.h"
+#include "fl/detail/filter/biquad_filter_impl.h"
+#include "fl/detail/filter/kalman_filter_impl.h"
+#include "fl/detail/filter/one_euro_filter_impl.h"
+
+// Detail impl headers — FIR
 #include "fl/detail/filter/moving_average_impl.h"
 #include "fl/detail/filter/median_filter_impl.h"
 #include "fl/detail/filter/weighted_moving_average_impl.h"
@@ -50,390 +58,426 @@ namespace fl {
 // IIR filters (no buffer, live in fl:: namespace directly)
 // ============================================================================
 
+// First-order exponential (RC low-pass) smoother. Requires a time constant
+// tau and a per-call dt so it works at any sample rate.
+//
+//   ExponentialSmoother<float> ema(0.1f);   // tau = 100 ms
+//   void loop() {
+//       float dt = millis_since_last / 1000.0f;
+//       float smoothed = ema.update(analogRead(A0), dt);
+//   }
+//
+// Larger tau = slower response. setTau() lets you change it at runtime.
+//
+// Fixed-point:
+//   using FP = fl::fixed_point<16,16>;
+//   ExponentialSmoother<FP> ema(FP(0.5f), FP(0.0f));
+//   FP v = ema.update(FP(1.0f), FP(0.05f));
 template <typename T = float>
 class ExponentialSmoother {
   public:
     explicit ExponentialSmoother(T tau_seconds, T initial = T(0))
-        : mTau(tau_seconds), mY(initial) {}
-
-    T update(T input, T dt_seconds) {
-        T decay = fl::exp(-(dt_seconds / mTau));
-        mY = input + (mY - input) * decay;
-        return mY;
-    }
-
-    void setTau(T tau_seconds) { mTau = tau_seconds; }
-    T value() const { return mY; }
-    void reset(T initial = T(0)) { mY = initial; }
-
+        : mImpl(tau_seconds, initial) {}
+    FASTLED_FORCE_INLINE T update(T input, T dt_seconds) { return mImpl.update(input, dt_seconds); }
+    FASTLED_FORCE_INLINE T value() const { return mImpl.value(); }
+    FASTLED_FORCE_INLINE void reset(T initial = T(0)) { mImpl.reset(initial); }
+    FASTLED_FORCE_INLINE void setTau(T tau_seconds) { mImpl.setTau(tau_seconds); }
   private:
-    T mTau;
-    T mY;
+    detail::ExponentialSmootherImpl<T> mImpl;
 };
 
+// Shift-based EMA: alpha = 1/(2^K). Very cheap on integer/fixed-point types
+// because it uses bit-shift instead of division.
+//
+//   LeakyIntegrator<int, 3> li;   // alpha = 1/8
+//   void loop() {
+//       int smoothed = li.update(rawADC);
+//   }
+//
+// For floats it divides by 2^K instead. K=2 (alpha=0.25) is a good default.
 template <typename T = float, int K = 2>
 class LeakyIntegrator {
   public:
-    LeakyIntegrator() : mY(T(0)) {}
-    explicit LeakyIntegrator(T initial) : mY(initial) {}
-
-    T update(T input) {
-        mY = mY + shift_right(input - mY);
-        return mY;
-    }
-
-    T value() const { return mY; }
-    void reset(T initial = T(0)) { mY = initial; }
-
+    LeakyIntegrator() = default;
+    explicit LeakyIntegrator(T initial) : mImpl(initial) {}
+    FASTLED_FORCE_INLINE T update(T input) { return mImpl.update(input); }
+    FASTLED_FORCE_INLINE T value() const { return mImpl.value(); }
+    FASTLED_FORCE_INLINE void reset(T initial = T(0)) { mImpl.reset(initial); }
   private:
-    template <typename U = T>
-    static typename fl::enable_if<fl::is_floating_point<U>::value, U>::type
-    shift_right(U val) { return val / static_cast<U>(1 << K); }
-
-    template <typename U = T>
-    static typename fl::enable_if<!fl::is_floating_point<U>::value, U>::type
-    shift_right(U val) { return val >> K; }
-
-    T mY;
+    detail::LeakyIntegratorImpl<T, K> mImpl;
 };
 
+// N stages of EMA in series for a near-Gaussian impulse response without a
+// buffer. More stages = smoother (but slower to respond).
+//
+//   CascadedEMA<float, 3> smooth(0.05f);  // 3-stage, tau = 50 ms
+//   void loop() {
+//       float v = smooth.update(sensorValue, dt);
+//   }
+//
+// Fixed-point:
+//   using FP = fl::fixed_point<16,16>;
+//   CascadedEMA<FP, 2> smooth(FP(0.1f), FP(0.0f));
+//   FP v = smooth.update(FP(reading), FP(dt));
 template <typename T = float, int Stages = 2>
 class CascadedEMA {
   public:
     explicit CascadedEMA(T tau_seconds, T initial = T(0))
-        : mTau(tau_seconds) {
-        for (int i = 0; i < Stages; ++i) {
-            mY[i] = initial;
-        }
-    }
-
-    T update(T input, T dt_seconds) {
-        T decay = fl::exp(-(dt_seconds / mTau));
-        T val = input;
-        for (int i = 0; i < Stages; ++i) {
-            mY[i] = val + (mY[i] - val) * decay;
-            val = mY[i];
-        }
-        return val;
-    }
-
-    T value() const { return mY[Stages - 1]; }
-    void setTau(T tau_seconds) { mTau = tau_seconds; }
-
-    void reset(T initial = T(0)) {
-        for (int i = 0; i < Stages; ++i) mY[i] = initial;
-    }
-
+        : mImpl(tau_seconds, initial) {}
+    FASTLED_FORCE_INLINE T update(T input, T dt_seconds) { return mImpl.update(input, dt_seconds); }
+    FASTLED_FORCE_INLINE T value() const { return mImpl.value(); }
+    FASTLED_FORCE_INLINE void reset(T initial = T(0)) { mImpl.reset(initial); }
+    FASTLED_FORCE_INLINE void setTau(T tau_seconds) { mImpl.setTau(tau_seconds); }
   private:
-    T mTau;
-    T mY[Stages];
+    detail::CascadedEMAImpl<T, Stages> mImpl;
 };
 
+// Second-order IIR filter. Use the butterworth() factory for a classic
+// low-pass with –12 dB/octave roll-off at a given cutoff frequency.
+//
+//   auto lpf = BiquadFilter<float>::butterworth(100.0f, 1000.0f);
+//   // cutoff = 100 Hz, sample rate = 1 kHz
+//   void loop() {
+//       float filtered = lpf.update(rawSample);
+//   }
+//
+// You can also construct directly with custom coefficients (b0,b1,b2,a1,a2).
 template <typename T = float>
 class BiquadFilter {
+    using Impl = detail::BiquadFilterImpl<T>;
+    BiquadFilter(const Impl& impl) : mImpl(impl) {}
   public:
     BiquadFilter(T b0, T b1, T b2, T a1, T a2)
-        : mB0(b0), mB1(b1), mB2(b2), mA1(a1), mA2(a2),
-          mX1(T(0)), mX2(T(0)), mY1(T(0)), mY2(T(0)), mLastValue(T(0)) {}
-
+        : mImpl(b0, b1, b2, a1, a2) {}
     static BiquadFilter butterworth(float cutoff_hz, float sample_rate) {
-        float omega = 2.0f * static_cast<float>(FL_PI) * cutoff_hz / sample_rate;
-        float sn = fl::sinf(omega);
-        float cs = fl::cosf(omega);
-        float alpha = sn * 0.7071067811865476f;
-        float a0 = 1.0f + alpha;
-        float b0f = (1.0f - cs) * 0.5f / a0;
-        float b1f = (1.0f - cs) / a0;
-        float b2f = b0f;
-        float a1f = (-2.0f * cs) / a0;
-        float a2f = (1.0f - alpha) / a0;
-        return BiquadFilter(T(b0f), T(b1f), T(b2f), T(a1f), T(a2f));
+        return BiquadFilter(Impl::butterworth(cutoff_hz, sample_rate));
     }
-
-    T update(T input) {
-        T output = mB0 * input + mB1 * mX1 + mB2 * mX2
-                 - mA1 * mY1 - mA2 * mY2;
-        mX2 = mX1;
-        mX1 = input;
-        mY2 = mY1;
-        mY1 = output;
-        mLastValue = output;
-        return output;
-    }
-
-    T value() const { return mLastValue; }
-
-    void reset() {
-        mX1 = mX2 = mY1 = mY2 = mLastValue = T(0);
-    }
-
+    FASTLED_FORCE_INLINE T update(T input) { return mImpl.update(input); }
+    FASTLED_FORCE_INLINE T value() const { return mImpl.value(); }
+    FASTLED_FORCE_INLINE void reset() { mImpl.reset(); }
   private:
-    T mB0, mB1, mB2, mA1, mA2;
-    T mX1, mX2;
-    T mY1, mY2;
-    T mLastValue;
+    Impl mImpl;
 };
 
+// 1-D scalar Kalman filter. Balances process noise (Q) against measurement
+// noise (R) to produce an optimal estimate.
+//
+//   KalmanFilter<float> kf(0.01f, 0.1f);  // Q = 0.01, R = 0.1
+//   void loop() {
+//       float estimate = kf.update(noisyMeasurement);
+//   }
+//
+// Fixed-point:
+//   using FP = fl::fixed_point<16,16>;
+//   KalmanFilter<FP> kf(FP(0.01f), FP(0.1f));
+//   FP estimate = kf.update(FP(measurement));
 template <typename T = float>
 class KalmanFilter {
   public:
     KalmanFilter(T process_noise, T measurement_noise, T initial = T(0))
-        : mQ(process_noise), mR(measurement_noise),
-          mX(initial), mP(T(1.0f)), mLastValue(initial) {}
-
-    T update(T measurement) {
-        mP = mP + mQ;
-        T k = mP / (mP + mR);
-        mX = mX + k * (measurement - mX);
-        mP = (T(1.0f) - k) * mP;
-        mLastValue = mX;
-        return mX;
-    }
-
-    T value() const { return mLastValue; }
-
-    void reset(T initial = T(0)) {
-        mX = initial;
-        mP = T(1.0f);
-        mLastValue = initial;
-    }
-
+        : mImpl(process_noise, measurement_noise, initial) {}
+    FASTLED_FORCE_INLINE T update(T measurement) { return mImpl.update(measurement); }
+    FASTLED_FORCE_INLINE T value() const { return mImpl.value(); }
+    FASTLED_FORCE_INLINE void reset(T initial = T(0)) { mImpl.reset(initial); }
   private:
-    T mQ;
-    T mR;
-    T mX;
-    T mP;
-    T mLastValue;
+    detail::KalmanFilterImpl<T> mImpl;
 };
 
+// Adaptive velocity-based smoother (1-Euro filter). Smooths slow movements
+// heavily but lets fast movements through with minimal lag. Ideal for
+// VR/graphics/pointer input.
+//
+//   OneEuroFilter<float> oef(1.0f, 0.5f);  // min_cutoff=1 Hz, beta=0.5
+//   void loop() {
+//       float dt = millis_since_last / 1000.0f;
+//       float smoothed = oef.update(pointerX, dt);
+//   }
+//
+// Higher beta = less lag on fast motions but more jitter at rest.
 template <typename T = float>
 class OneEuroFilter {
   public:
     OneEuroFilter(T min_cutoff, T beta, T d_cutoff = T(1.0f))
-        : mMinCutoff(min_cutoff), mBeta(beta), mDCutoff(d_cutoff),
-          mX(T(0)), mDX(T(0)), mFirst(true), mLastValue(T(0)) {}
-
-    T update(T input, T dt) {
-        if (mFirst) {
-            mX = input;
-            mDX = T(0);
-            mFirst = false;
-            mLastValue = input;
-            return input;
-        }
-        if (dt == T(0)) {
-            return mLastValue;
-        }
-        T dx = (input - mX) / dt;
-        T alpha_d = computeAlpha(mDCutoff, dt);
-        mDX = mDX + alpha_d * (dx - mDX);
-        T cutoff = mMinCutoff + mBeta * fl::abs(mDX);
-        T alpha = computeAlpha(cutoff, dt);
-        mX = mX + alpha * (input - mX);
-        mLastValue = mX;
-        return mX;
-    }
-
-    T value() const { return mLastValue; }
-
-    void reset(T initial = T(0)) {
-        mX = initial;
-        mDX = T(0);
-        mFirst = true;
-        mLastValue = initial;
-    }
-
+        : mImpl(min_cutoff, beta, d_cutoff) {}
+    FASTLED_FORCE_INLINE T update(T input, T dt) { return mImpl.update(input, dt); }
+    FASTLED_FORCE_INLINE T value() const { return mImpl.value(); }
+    FASTLED_FORCE_INLINE void reset(T initial = T(0)) { mImpl.reset(initial); }
   private:
-    static T computeAlpha(T cutoff, T dt) {
-        T tau = T(static_cast<float>(2.0 * FL_PI)) * cutoff * dt;
-        return tau / (T(1.0f) + tau);
-    }
-
-    T mMinCutoff;
-    T mBeta;
-    T mDCutoff;
-    T mX;
-    T mDX;
-    bool mFirst;
-    T mLastValue;
+    detail::OneEuroFilterImpl<T> mImpl;
 };
 
 // ============================================================================
-// FIR filter public API — single class with protected inheritance
+// FIR filter public API — composition with impl
 // N > 0: static (inlined) buffer, default-constructible
 // N == 0: dynamic buffer, requires capacity at construction
 // ============================================================================
 
-// --- MovingAverage ---
-template <typename T = float, fl::size N = 0>
-class MovingAverage : protected detail::MovingAverageImpl<T, N> {
-    using Base = detail::MovingAverageImpl<T, N>;
+// Simple moving average: O(1) running sum over the last N samples.
+// Good general-purpose smoother. Use when you want equal weight on recent history.
+//
+//   MovingAverage<float> ma;               // default N = 8
+//   MovingAverage<float, 16> ma16;         // explicit 16-sample window
+//   MovingAverage<float, 0> dyn(32);       // dynamic: capacity set at runtime
+//   void loop() {
+//       ma.update(analogRead(A0));
+//       float smoothed = ma.value();       // average of last 8 readings
+//   }
+//
+// Fixed-point:
+//   using FP = fl::fixed_point<16,16>;
+//   MovingAverage<FP, 4> ma;
+//   ma.update(FP(reading));
+//   float result = ma.value().to_float();
+template <typename T = float, fl::size N = 8>
+class MovingAverage {
   public:
-    using Base::update;
-    using Base::value;
-    using Base::reset;
-    using Base::full;
-    using Base::size;
-    using Base::capacity;
-    using Base::resize;
     MovingAverage() = default;
-    explicit MovingAverage(fl::size capacity) : Base(capacity) {}
+    explicit MovingAverage(fl::size capacity) : mImpl(capacity) {}
+    FASTLED_FORCE_INLINE T update(T input) { return mImpl.update(input); }
+    FASTLED_FORCE_INLINE T value() const { return mImpl.value(); }
+    FASTLED_FORCE_INLINE void reset() { mImpl.reset(); }
+    FASTLED_FORCE_INLINE bool full() const { return mImpl.full(); }
+    FASTLED_FORCE_INLINE fl::size size() const { return mImpl.size(); }
+    FASTLED_FORCE_INLINE fl::size capacity() const { return mImpl.capacity(); }
+    FASTLED_FORCE_INLINE void resize(fl::size new_capacity) { mImpl.resize(new_capacity); }
+  private:
+    detail::MovingAverageImpl<T, N> mImpl;
 };
 
-// --- MedianFilter ---
-template <typename T = float, fl::size N = 0>
-class MedianFilter : protected detail::MedianFilterImpl<T, N> {
-    using Base = detail::MedianFilterImpl<T, N>;
+// Sliding-window median: rejects outliers by returning the middle value.
+// Best for impulse/spike noise (e.g., bad sensor readings, random spikes).
+//
+//   MedianFilter<float> mf;                // default N = 5
+//   MedianFilter<float, 0> dyn(11);        // dynamic: odd N recommended
+//   void loop() {
+//       mf.update(distanceSensor());
+//       float clean = mf.value();          // spike-free output
+//   }
+//
+// Fixed-point:
+//   using FP = fl::fixed_point<16,16>;
+//   MedianFilter<FP, 5> mf;
+//   mf.update(FP(reading));
+//   float result = mf.value().to_float();
+template <typename T = float, fl::size N = 5>
+class MedianFilter {
   public:
-    using Base::update;
-    using Base::value;
-    using Base::reset;
-    using Base::size;
-    using Base::capacity;
-    using Base::resize;
     MedianFilter() = default;
-    explicit MedianFilter(fl::size capacity) : Base(capacity) {}
+    explicit MedianFilter(fl::size capacity) : mImpl(capacity) {}
+    FASTLED_FORCE_INLINE T update(T input) { return mImpl.update(input); }
+    FASTLED_FORCE_INLINE T value() const { return mImpl.value(); }
+    FASTLED_FORCE_INLINE void reset() { mImpl.reset(); }
+    FASTLED_FORCE_INLINE fl::size size() const { return mImpl.size(); }
+    FASTLED_FORCE_INLINE fl::size capacity() const { return mImpl.capacity(); }
+    FASTLED_FORCE_INLINE void resize(fl::size new_capacity) { mImpl.resize(new_capacity); }
+  private:
+    detail::MedianFilterImpl<T, N> mImpl;
 };
 
-// --- WeightedMovingAverage ---
-template <typename T = float, fl::size N = 0>
-class WeightedMovingAverage : protected detail::WeightedMovingAverageImpl<T, N> {
-    using Base = detail::WeightedMovingAverageImpl<T, N>;
+// Linearly weighted moving average: newer samples get more weight.
+// Weights are [1, 2, 3, ..., N]. Use when recent data matters more than older.
+//
+//   WeightedMovingAverage<float> wma;       // default N = 8
+//   void loop() {
+//       wma.update(sensorValue);
+//       float smoothed = wma.value();       // recent-biased average
+//   }
+//
+// Fixed-point:
+//   using FP = fl::fixed_point<16,16>;
+//   WeightedMovingAverage<FP, 3> wma;
+//   wma.update(FP(reading));
+//   float result = wma.value().to_float();
+template <typename T = float, fl::size N = 8>
+class WeightedMovingAverage {
   public:
-    using Base::update;
-    using Base::value;
-    using Base::reset;
-    using Base::full;
-    using Base::size;
-    using Base::capacity;
-    using Base::resize;
     WeightedMovingAverage() = default;
-    explicit WeightedMovingAverage(fl::size capacity) : Base(capacity) {}
+    explicit WeightedMovingAverage(fl::size capacity) : mImpl(capacity) {}
+    FASTLED_FORCE_INLINE T update(T input) { return mImpl.update(input); }
+    FASTLED_FORCE_INLINE T value() const { return mImpl.value(); }
+    FASTLED_FORCE_INLINE void reset() { mImpl.reset(); }
+    FASTLED_FORCE_INLINE bool full() const { return mImpl.full(); }
+    FASTLED_FORCE_INLINE fl::size size() const { return mImpl.size(); }
+    FASTLED_FORCE_INLINE fl::size capacity() const { return mImpl.capacity(); }
+    FASTLED_FORCE_INLINE void resize(fl::size new_capacity) { mImpl.resize(new_capacity); }
+  private:
+    detail::WeightedMovingAverageImpl<T, N> mImpl;
 };
 
-// --- TriangularFilter ---
-template <typename T = float, fl::size N = 0>
-class TriangularFilter : protected detail::TriangularFilterImpl<T, N> {
-    using Base = detail::TriangularFilterImpl<T, N>;
+// Triangular (tent) weighted average: peaks at center, tapers to edges.
+// Weights for N=5: [1, 2, 3, 2, 1]. Smoother than MovingAverage, cheaper
+// than Gaussian.
+//
+//   TriangularFilter<float> tf;             // default N = 8
+//   void loop() {
+//       tf.update(sensorValue);
+//       float smoothed = tf.value();
+//   }
+//
+// Fixed-point:
+//   using FP = fl::fixed_point<16,16>;
+//   TriangularFilter<FP, 5> tf;
+//   tf.update(FP(reading));
+//   float result = tf.value().to_float();
+template <typename T = float, fl::size N = 8>
+class TriangularFilter {
   public:
-    using Base::update;
-    using Base::value;
-    using Base::reset;
-    using Base::full;
-    using Base::size;
-    using Base::capacity;
-    using Base::resize;
     TriangularFilter() = default;
-    explicit TriangularFilter(fl::size capacity) : Base(capacity) {}
+    explicit TriangularFilter(fl::size capacity) : mImpl(capacity) {}
+    FASTLED_FORCE_INLINE T update(T input) { return mImpl.update(input); }
+    FASTLED_FORCE_INLINE T value() const { return mImpl.value(); }
+    FASTLED_FORCE_INLINE void reset() { mImpl.reset(); }
+    FASTLED_FORCE_INLINE bool full() const { return mImpl.full(); }
+    FASTLED_FORCE_INLINE fl::size size() const { return mImpl.size(); }
+    FASTLED_FORCE_INLINE fl::size capacity() const { return mImpl.capacity(); }
+    FASTLED_FORCE_INLINE void resize(fl::size new_capacity) { mImpl.resize(new_capacity); }
+  private:
+    detail::TriangularFilterImpl<T, N> mImpl;
 };
 
-// --- GaussianFilter ---
-template <typename T = float, fl::size N = 0>
-class GaussianFilter : protected detail::GaussianFilterImpl<T, N> {
-    using Base = detail::GaussianFilterImpl<T, N>;
+// Binomial-coefficient Gaussian approximation: bell-curve weighting.
+// Weights for N=5: [1, 4, 6, 4, 1] (Pascal's triangle row).
+// Best frequency-domain response of the simple FIR filters.
+//
+//   GaussianFilter<float> gf;               // default N = 5
+//   void loop() {
+//       gf.update(sensorValue);
+//       float smoothed = gf.value();
+//   }
+//
+// Fixed-point:
+//   using FP = fl::fixed_point<16,16>;
+//   GaussianFilter<FP, 5> gf;
+//   for (int i = 0; i < 5; ++i) gf.update(FP(7.0f));
+//   float result = gf.value().to_float();  // ≈ 7.0
+template <typename T = float, fl::size N = 5>
+class GaussianFilter {
   public:
-    using Base::update;
-    using Base::value;
-    using Base::reset;
-    using Base::full;
-    using Base::size;
-    using Base::capacity;
-    using Base::resize;
     GaussianFilter() = default;
-    explicit GaussianFilter(fl::size capacity) : Base(capacity) {}
+    explicit GaussianFilter(fl::size capacity) : mImpl(capacity) {}
+    FASTLED_FORCE_INLINE T update(T input) { return mImpl.update(input); }
+    FASTLED_FORCE_INLINE T value() const { return mImpl.value(); }
+    FASTLED_FORCE_INLINE void reset() { mImpl.reset(); }
+    FASTLED_FORCE_INLINE bool full() const { return mImpl.full(); }
+    FASTLED_FORCE_INLINE fl::size size() const { return mImpl.size(); }
+    FASTLED_FORCE_INLINE fl::size capacity() const { return mImpl.capacity(); }
+    FASTLED_FORCE_INLINE void resize(fl::size new_capacity) { mImpl.resize(new_capacity); }
+  private:
+    detail::GaussianFilterImpl<T, N> mImpl;
 };
 
-// --- AlphaTrimmedMean ---
-template <typename T = float, fl::size N = 0>
-class AlphaTrimmedMean : protected detail::AlphaTrimmedMeanImpl<T, N> {
-    using Base = detail::AlphaTrimmedMeanImpl<T, N>;
+// Alpha-trimmed mean: sorts window, trims extremes, averages the middle.
+// With N=7 and trim_count=1, sorts 7 values, drops min and max, averages
+// the remaining 5. Robust to outliers while still averaging.
+//
+//   AlphaTrimmedMean<float> atm(1);         // default N=7, trim 1 each end
+//   AlphaTrimmedMean<float, 5> atm5(2);     // N=5, trim 2 each end (= median)
+//   void loop() {
+//       atm.update(sensorValue);
+//       float robust = atm.value();
+//   }
+//
+// Fixed-point:
+//   using FP = fl::fixed_point<16,16>;
+//   AlphaTrimmedMean<FP, 5> atm(1);
+//   atm.update(FP(reading));
+//   float result = atm.value().to_float();
+template <typename T = float, fl::size N = 7>
+class AlphaTrimmedMean {
   public:
-    using Base::update;
-    using Base::value;
-    using Base::reset;
-    using Base::size;
-    using Base::capacity;
-    using Base::resize;
-    explicit AlphaTrimmedMean(fl::size trim_count = 1) : Base(trim_count) {}
-    AlphaTrimmedMean(fl::size capacity, fl::size trim_count) : Base(capacity, trim_count) {}
+    explicit AlphaTrimmedMean(fl::size trim_count = 1) : mImpl(trim_count) {}
+    AlphaTrimmedMean(fl::size capacity, fl::size trim_count) : mImpl(capacity, trim_count) {}
+    FASTLED_FORCE_INLINE T update(T input) { return mImpl.update(input); }
+    FASTLED_FORCE_INLINE T value() const { return mImpl.value(); }
+    FASTLED_FORCE_INLINE void reset() { mImpl.reset(); }
+    FASTLED_FORCE_INLINE fl::size size() const { return mImpl.size(); }
+    FASTLED_FORCE_INLINE fl::size capacity() const { return mImpl.capacity(); }
+    FASTLED_FORCE_INLINE void resize(fl::size new_capacity, fl::size trim_count) { mImpl.resize(new_capacity, trim_count); }
+  private:
+    detail::AlphaTrimmedMeanImpl<T, N> mImpl;
 };
 
-// --- HampelFilter ---
-template <typename T = float, fl::size N = 0>
-class HampelFilter : protected detail::HampelFilterImpl<T, N> {
-    using Base = detail::HampelFilterImpl<T, N>;
+// Hampel filter: median + MAD-based outlier rejection. Computes the median
+// and median absolute deviation (MAD) of the window, then replaces values
+// that deviate beyond threshold * MAD with the median.
+//
+//   HampelFilter<float> hf(3.0f);           // default N=5, threshold=3
+//   HampelFilter<float, 7> hf7(2.0f);       // 7-sample window, tighter threshold
+//   void loop() {
+//       float clean = hf.update(noisyValue); // outliers replaced with median
+//   }
+template <typename T = float, fl::size N = 5>
+class HampelFilter {
   public:
-    using Base::update;
-    using Base::value;
-    using Base::reset;
-    using Base::size;
-    using Base::capacity;
-    using Base::resize;
-    explicit HampelFilter(T threshold = T(3.0f)) : Base(threshold) {}
-    HampelFilter(fl::size capacity, T threshold) : Base(capacity, threshold) {}
+    explicit HampelFilter(T threshold = T(3.0f)) : mImpl(threshold) {}
+    HampelFilter(fl::size capacity, T threshold) : mImpl(capacity, threshold) {}
+    FASTLED_FORCE_INLINE T update(T input) { return mImpl.update(input); }
+    FASTLED_FORCE_INLINE T value() const { return mImpl.value(); }
+    FASTLED_FORCE_INLINE void reset() { mImpl.reset(); }
+    FASTLED_FORCE_INLINE fl::size size() const { return mImpl.size(); }
+    FASTLED_FORCE_INLINE fl::size capacity() const { return mImpl.capacity(); }
+    FASTLED_FORCE_INLINE void resize(fl::size new_capacity) { mImpl.resize(new_capacity); }
+  private:
+    detail::HampelFilterImpl<T, N> mImpl;
 };
 
-// --- SavitzkyGolayFilter ---
-template <typename T = float, fl::size N = 0>
-class SavitzkyGolayFilter : protected detail::SavitzkyGolayFilterImpl<T, N> {
-    using Base = detail::SavitzkyGolayFilterImpl<T, N>;
+// Savitzky-Golay: fits a local polynomial (quadratic) to the window and
+// returns the center value. Smooths noise while preserving peaks, edges,
+// and the overall shape of the signal better than averaging filters.
+//
+//   SavitzkyGolayFilter<float> sg;           // default N = 5
+//   SavitzkyGolayFilter<float, 7> sg7;       // wider window = more smoothing
+//   void loop() {
+//       sg.update(spectrumBin);
+//       float smoothed = sg.value();         // peaks preserved
+//   }
+//
+// Fixed-point:
+//   using FP = fl::fixed_point<16,16>;
+//   SavitzkyGolayFilter<FP, 5> sg;
+//   for (int i = 0; i < 5; ++i) sg.update(FP(3.0f));
+//   float result = sg.value().to_float();   // ≈ 3.0
+template <typename T = float, fl::size N = 5>
+class SavitzkyGolayFilter {
   public:
-    using Base::update;
-    using Base::value;
-    using Base::reset;
-    using Base::full;
-    using Base::size;
-    using Base::capacity;
-    using Base::resize;
     SavitzkyGolayFilter() = default;
-    explicit SavitzkyGolayFilter(fl::size capacity) : Base(capacity) {}
+    explicit SavitzkyGolayFilter(fl::size capacity) : mImpl(capacity) {}
+    FASTLED_FORCE_INLINE T update(T input) { return mImpl.update(input); }
+    FASTLED_FORCE_INLINE T value() const { return mImpl.value(); }
+    FASTLED_FORCE_INLINE void reset() { mImpl.reset(); }
+    FASTLED_FORCE_INLINE bool full() const { return mImpl.full(); }
+    FASTLED_FORCE_INLINE fl::size size() const { return mImpl.size(); }
+    FASTLED_FORCE_INLINE fl::size capacity() const { return mImpl.capacity(); }
+    FASTLED_FORCE_INLINE void resize(fl::size new_capacity) { mImpl.resize(new_capacity); }
+  private:
+    detail::SavitzkyGolayFilterImpl<T, N> mImpl;
 };
 
-// --- BilateralFilter ---
-template <typename T = float, fl::size N = 0>
-class BilateralFilter : protected detail::BilateralFilterImpl<T, N> {
-    using Base = detail::BilateralFilterImpl<T, N>;
+// Bilateral filter: edge-preserving smoother weighted by value similarity.
+// Each sample's weight depends on how close its value is to the newest sample.
+// Small sigma_range = only very similar values contribute (sharp edges kept).
+// Large sigma_range = all values contribute equally (acts like a box filter).
+//
+//   BilateralFilter<float> bf(1.0f);        // default N=5, sigma=1.0
+//   BilateralFilter<float, 7> bf7(0.5f);    // 7-sample, tighter similarity
+//   void loop() {
+//       bf.update(ledBrightness);
+//       float smoothed = bf.value();         // edges preserved
+//   }
+template <typename T = float, fl::size N = 5>
+class BilateralFilter {
   public:
-    using Base::update;
-    using Base::value;
-    using Base::reset;
-    using Base::full;
-    using Base::size;
-    using Base::capacity;
-    using Base::resize;
-    explicit BilateralFilter(T sigma_range = T(1.0f)) : Base(sigma_range) {}
-    BilateralFilter(fl::size capacity, T sigma_range) : Base(capacity, sigma_range) {}
+    explicit BilateralFilter(T sigma_range = T(1.0f)) : mImpl(sigma_range) {}
+    BilateralFilter(fl::size capacity, T sigma_range) : mImpl(capacity, sigma_range) {}
+    FASTLED_FORCE_INLINE T update(T input) { return mImpl.update(input); }
+    FASTLED_FORCE_INLINE T value() const { return mImpl.value(); }
+    FASTLED_FORCE_INLINE void reset() { mImpl.reset(); }
+    FASTLED_FORCE_INLINE bool full() const { return mImpl.full(); }
+    FASTLED_FORCE_INLINE fl::size size() const { return mImpl.size(); }
+    FASTLED_FORCE_INLINE fl::size capacity() const { return mImpl.capacity(); }
+    FASTLED_FORCE_INLINE void resize(fl::size new_capacity) { mImpl.resize(new_capacity); }
+  private:
+    detail::BilateralFilterImpl<T, N> mImpl;
 };
-
-// ============================================================================
-// Deprecated Dynamic* aliases for backward compatibility
-// ============================================================================
-
-template <typename T>
-using DynamicMovingAverage = MovingAverage<T, 0>;
-
-template <typename T>
-using DynamicMedianFilter = MedianFilter<T, 0>;
-
-template <typename T>
-using DynamicWeightedMovingAverage = WeightedMovingAverage<T, 0>;
-
-template <typename T>
-using DynamicTriangularFilter = TriangularFilter<T, 0>;
-
-template <typename T>
-using DynamicGaussianFilter = GaussianFilter<T, 0>;
-
-template <typename T>
-using DynamicAlphaTrimmedMean = AlphaTrimmedMean<T, 0>;
-
-template <typename T>
-using DynamicHampelFilter = HampelFilter<T, 0>;
-
-template <typename T>
-using DynamicSavitzkyGolayFilter = SavitzkyGolayFilter<T, 0>;
-
-template <typename T>
-using DynamicBilateralFilter = BilateralFilter<T, 0>;
 
 } // namespace fl
