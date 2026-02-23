@@ -6,141 +6,29 @@
 
 namespace fl {
 
-// TODO:
-// ERROR bit to indicate over flow.
-
-// Static version with compile-time capacity
-template <typename T, fl::size N>
-class StaticCircularBuffer {
+// Core circular buffer logic operating on caller-owned storage.
+// Uses a sentinel slot: the storage must have (capacity + 1) elements.
+// Both StaticCircularBuffer and DynamicCircularBuffer compose this.
+template <typename T>
+class CircularBufferCore {
   public:
-    StaticCircularBuffer() : mHead(0), mTail(0) {}
+    CircularBufferCore() : mData(nullptr), mAllocSize(0), mHead(0), mTail(0) {}
 
-    StaticCircularBuffer(const StaticCircularBuffer& other) = default;
-    StaticCircularBuffer(StaticCircularBuffer&& other) : mHead(0), mTail(0) {
-        *this = fl::move(other);
-    }
+    CircularBufferCore(T* data, fl::size alloc_size)
+        : mData(data), mAllocSize(alloc_size), mHead(0), mTail(0) {}
 
-    StaticCircularBuffer& operator=(const StaticCircularBuffer& other) = default;
-    StaticCircularBuffer& operator=(StaticCircularBuffer&& other) {
-        if (this != &other) {
-            // Move each element from other's buffer to this buffer
-            for (fl::size i = 0; i < (N + 1); ++i) {
-                mBuffer[i] = fl::move(other.mBuffer[i]);
-            }
-            mHead = other.mHead;
-            mTail = other.mTail;
-            // Clear the source
-            other.clear();
-        }
-        return *this;
-    }
-
-    void push(const T &value) {
-        if (full()) {
-            mTail = (mTail + 1) % (N + 1); // Overwrite the oldest element
-        }
-        mBuffer[mHead] = value;
-        mHead = (mHead + 1) % (N + 1);
-    }
-
-    bool pop(T &value) {
-        if (empty()) {
-            return false;
-        }
-        value = fl::move(mBuffer[mTail]);
-        mBuffer[mTail] = T();  // Properly destroy the element by assigning default value
-        mTail = (mTail + 1) % (N + 1);
-        return true;
-    }
-
-    T& front() {
-        return mBuffer[mTail];
-    }
-
-    const T& front() const {
-        return mBuffer[mTail];
-    }
-
-    T& back() {
-        return mBuffer[(mHead + N) % (N + 1)];
-    }
-
-    const T& back() const {
-        return mBuffer[(mHead + N) % (N + 1)];
-    }
-
-    T& operator[](fl::size index) {
-        return mBuffer[(mTail + index) % (N + 1)];
-    }
-
-    const T& operator[](fl::size index) const {
-        return mBuffer[(mTail + index) % (N + 1)];
-    }
-
-    fl::size size() const { return (mHead + N + 1 - mTail) % (N + 1); }
-    constexpr fl::size capacity() const { return N; }
-    bool empty() const { return mHead == mTail; }
-    bool full() const { return ((mHead + 1) % (N + 1)) == mTail; }
-    void clear() {
-        // Properly destroy all elements by assigning default-constructed values
-        while (!empty()) {
-            T dummy;
-            pop(dummy);
-        }
-    }
-
-  private:
-    T mBuffer[N + 1]; // Extra space for distinguishing full/empty
-    fl::size mHead;
-    fl::size mTail;
-};
-
-// Dynamic version with runtime capacity (existing implementation)
-template <typename T> class DynamicCircularBuffer {
-  public:
-    DynamicCircularBuffer(fl::size capacity)
-        : mCapacity(capacity + 1), mHead(0),
-          mTail(0) { // Extra space for distinguishing full/empty
-        mBuffer.reset(new T[mCapacity]);
-    }
-
-    DynamicCircularBuffer(const DynamicCircularBuffer &) = delete;
-    DynamicCircularBuffer &operator=(const DynamicCircularBuffer &) = delete;
-
-    // Move constructor
-    DynamicCircularBuffer(DynamicCircularBuffer&& other) noexcept
-        : mBuffer(fl::move(other.mBuffer)),
-          mCapacity(other.mCapacity),
-          mHead(other.mHead),
-          mTail(other.mTail) {
-        // Leave other in valid empty state (mHead == mTail means empty)
-        // Keep mCapacity > 0 to avoid divide-by-zero in size()
-        other.mHead = 0;
-        other.mTail = 0;
-    }
-
-    // Move assignment operator
-    DynamicCircularBuffer& operator=(DynamicCircularBuffer&& other) noexcept {
-        if (this != &other) {
-            // Move the scoped_array (will steal heap pointer efficiently)
-            mBuffer = fl::move(other.mBuffer);
-            mCapacity = other.mCapacity;
-            mHead = other.mHead;
-            mTail = other.mTail;
-
-            // Leave other in valid empty state (mHead == mTail means empty)
-            // Keep mCapacity > 0 to avoid divide-by-zero in size()
-            other.mHead = 0;
-            other.mTail = 0;
-        }
-        return *this;
+    void assign(T* data, fl::size alloc_size) {
+        mData = data;
+        mAllocSize = alloc_size;
+        mHead = 0;
+        mTail = 0;
     }
 
     bool push_back(const T &value) {
         if (full()) {
-            mTail = increment(mTail); // Overwrite the oldest element
+            mTail = increment(mTail);
         }
-        mBuffer[mHead] = value;
+        mData[mHead] = value;
         mHead = increment(mHead);
         return true;
     }
@@ -150,19 +38,19 @@ template <typename T> class DynamicCircularBuffer {
             return false;
         }
         if (dst) {
-            *dst = fl::move(mBuffer[mTail]);
+            *dst = fl::move(mData[mTail]);
         }
-        mBuffer[mTail] = T();  // Properly destroy the element by assigning default value
+        mData[mTail] = T();
         mTail = increment(mTail);
         return true;
     }
 
     bool push_front(const T &value) {
         if (full()) {
-            mHead = decrement(mHead); // Overwrite the oldest element
+            mHead = decrement(mHead);
         }
         mTail = decrement(mTail);
-        mBuffer[mTail] = value;
+        mData[mTail] = value;
         return true;
     }
 
@@ -172,55 +60,175 @@ template <typename T> class DynamicCircularBuffer {
         }
         mHead = decrement(mHead);
         if (dst) {
-            *dst = fl::move(mBuffer[mHead]);
+            *dst = fl::move(mData[mHead]);
         }
-        mBuffer[mHead] = T();  // Properly destroy the element by assigning default value
+        mData[mHead] = T();
         return true;
     }
 
-    T &front() { return mBuffer[mTail]; }
+    T& front() { return mData[mTail]; }
+    const T& front() const { return mData[mTail]; }
 
-    const T &front() const { return mBuffer[mTail]; }
+    T& back() { return mData[decrement(mHead)]; }
+    const T& back() const { return mData[decrement(mHead)]; }
 
-    T &back() { return mBuffer[(mHead + mCapacity - 1) % mCapacity]; }
-
-    const T &back() const {
-        return mBuffer[(mHead + mCapacity - 1) % mCapacity];
+    T& operator[](fl::size index) {
+        return mData[(mTail + index) % mAllocSize];
+    }
+    const T& operator[](fl::size index) const {
+        return mData[(mTail + index) % mAllocSize];
     }
 
-    T &operator[](fl::size index) { return mBuffer[(mTail + index) % mCapacity]; }
-
-    const T &operator[](fl::size index) const {
-        return mBuffer[(mTail + index) % mCapacity];
+    fl::size size() const {
+        if (mAllocSize == 0) return 0;
+        return (mHead + mAllocSize - mTail) % mAllocSize;
     }
-
-    fl::size size() const { return (mHead + mCapacity - mTail) % mCapacity; }
-
-    fl::size capacity() const { return mCapacity - 1; }
-
-    bool empty() const { return mHead == mTail; }
-
-    bool full() const { return increment(mHead) == mTail; }
+    fl::size capacity() const { return mAllocSize > 0 ? mAllocSize - 1 : 0; }
+    bool empty() const { return mAllocSize == 0 || mHead == mTail; }
+    bool full() const { return mAllocSize > 0 && increment(mHead) == mTail; }
 
     void clear() {
-        // Properly destroy all elements by assigning default-constructed values
         while (!empty()) {
-            T dummy;
-            pop_front(&dummy);
+            pop_front();
         }
     }
 
-  private:
-    fl::size increment(fl::size index) const { return (index + 1) % mCapacity; }
+    // Expose head/tail for move operations.
+    fl::size head() const { return mHead; }
+    fl::size tail() const { return mTail; }
+    void setHead(fl::size h) { mHead = h; }
+    void setTail(fl::size t) { mTail = t; }
 
+  private:
+    fl::size increment(fl::size index) const { return (index + 1) % mAllocSize; }
     fl::size decrement(fl::size index) const {
-        return (index + mCapacity - 1) % mCapacity;
+        return (index + mAllocSize - 1) % mAllocSize;
     }
 
-    fl::scoped_array<T> mBuffer;
-    fl::size mCapacity;
+    T* mData;
+    fl::size mAllocSize; // capacity + 1 (includes sentinel slot)
     fl::size mHead;
     fl::size mTail;
+};
+
+// Static version with compile-time capacity
+template <typename T, fl::size N>
+class StaticCircularBuffer {
+  public:
+    StaticCircularBuffer() : mCore(mBuffer, N + 1) {}
+
+    StaticCircularBuffer(const StaticCircularBuffer& other) = default;
+    StaticCircularBuffer(StaticCircularBuffer&& other) : mCore(mBuffer, N + 1) {
+        for (fl::size i = 0; i < (N + 1); ++i) {
+            mBuffer[i] = fl::move(other.mBuffer[i]);
+        }
+        mCore.setHead(other.mCore.head());
+        mCore.setTail(other.mCore.tail());
+        other.clear();
+    }
+
+    StaticCircularBuffer& operator=(const StaticCircularBuffer& other) {
+        if (this != &other) {
+            for (fl::size i = 0; i < (N + 1); ++i) {
+                mBuffer[i] = other.mBuffer[i];
+            }
+            mCore.setHead(other.mCore.head());
+            mCore.setTail(other.mCore.tail());
+        }
+        return *this;
+    }
+
+    StaticCircularBuffer& operator=(StaticCircularBuffer&& other) {
+        if (this != &other) {
+            for (fl::size i = 0; i < (N + 1); ++i) {
+                mBuffer[i] = fl::move(other.mBuffer[i]);
+            }
+            mCore.setHead(other.mCore.head());
+            mCore.setTail(other.mCore.tail());
+            other.clear();
+        }
+        return *this;
+    }
+
+    void push(const T &value) { mCore.push_back(value); }
+    bool push_back(const T &value) { return mCore.push_back(value); }
+
+    bool pop(T &value) { return mCore.pop_front(&value); }
+    bool pop_front(T *dst = nullptr) { return mCore.pop_front(dst); }
+
+    T& front() { return mCore.front(); }
+    const T& front() const { return mCore.front(); }
+
+    T& back() { return mCore.back(); }
+    const T& back() const { return mCore.back(); }
+
+    T& operator[](fl::size index) { return mCore[index]; }
+    const T& operator[](fl::size index) const { return mCore[index]; }
+
+    fl::size size() const { return mCore.size(); }
+    constexpr fl::size capacity() const { return N; }
+    bool empty() const { return mCore.empty(); }
+    bool full() const { return mCore.full(); }
+    void clear() { mCore.clear(); }
+
+  private:
+    T mBuffer[N + 1]; // Extra space for distinguishing full/empty
+    CircularBufferCore<T> mCore;
+};
+
+// Dynamic version with runtime capacity
+template <typename T> class DynamicCircularBuffer {
+  public:
+    DynamicCircularBuffer(fl::size capacity)
+        : mBuffer(new T[capacity + 1]),
+          mCore(mBuffer.get(), capacity + 1) {}
+
+    DynamicCircularBuffer(const DynamicCircularBuffer &) = delete;
+    DynamicCircularBuffer &operator=(const DynamicCircularBuffer &) = delete;
+
+    DynamicCircularBuffer(DynamicCircularBuffer&& other) noexcept
+        : mBuffer(fl::move(other.mBuffer)),
+          mCore(mBuffer.get(), other.mCore.capacity() + 1) {
+        mCore.setHead(other.mCore.head());
+        mCore.setTail(other.mCore.tail());
+        other.mCore.assign(nullptr, 0);
+    }
+
+    DynamicCircularBuffer& operator=(DynamicCircularBuffer&& other) noexcept {
+        if (this != &other) {
+            mBuffer = fl::move(other.mBuffer);
+            fl::size alloc = other.mCore.capacity() + 1;
+            mCore.assign(mBuffer.get(), alloc);
+            mCore.setHead(other.mCore.head());
+            mCore.setTail(other.mCore.tail());
+            other.mCore.assign(nullptr, 0);
+        }
+        return *this;
+    }
+
+    bool push_back(const T &value) { return mCore.push_back(value); }
+    bool pop_front(T *dst = nullptr) { return mCore.pop_front(dst); }
+    bool push_front(const T &value) { return mCore.push_front(value); }
+    bool pop_back(T *dst = nullptr) { return mCore.pop_back(dst); }
+
+    T &front() { return mCore.front(); }
+    const T &front() const { return mCore.front(); }
+
+    T &back() { return mCore.back(); }
+    const T &back() const { return mCore.back(); }
+
+    T &operator[](fl::size index) { return mCore[index]; }
+    const T &operator[](fl::size index) const { return mCore[index]; }
+
+    fl::size size() const { return mCore.size(); }
+    fl::size capacity() const { return mCore.capacity(); }
+    bool empty() const { return mCore.empty(); }
+    bool full() const { return mCore.full(); }
+    void clear() { mCore.clear(); }
+
+  private:
+    fl::scoped_array<T> mBuffer;
+    CircularBufferCore<T> mCore;
 };
 
 // For backward compatibility, keep the old name for the dynamic version
