@@ -321,6 +321,19 @@ class sstream {
         return *this;
     }
 
+    //-------------------------------------------------------------------------
+    // Types with to_float() method (e.g., fixed_point types)
+    //-------------------------------------------------------------------------
+    template<typename T>
+    typename fl::enable_if<
+        fl::is_same<decltype(static_cast<const T*>(nullptr)->to_float()), float>::value
+        && !fl::is_floating_point<T>::value,
+        sstream&>::type
+    operator<<(const T &val) {
+        mStr.append(val.to_float());
+        return *this;
+    }
+
     // assignment operator completely replaces the current string
     sstream &operator=(const string &str) {
         mStr = str;

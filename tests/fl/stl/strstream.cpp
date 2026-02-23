@@ -36,6 +36,7 @@
 #include "fl/stl/strstream.h"
 #include "crgb.h"
 #include "test.h"
+#include "fl/fixed_point.h"
 #include "fl/int.h"
 #include "fl/stl/cstring.h"
 #include "fl/stl/ios.h"
@@ -1133,5 +1134,36 @@ FL_TEST_CASE("sstream octal formatting") {
         s << " " << fl::oct << fl::u32(64);  // switch to octal
         s << " " << fl::dec << fl::u32(64);  // switch back to decimal
         FL_CHECK(fl::strcmp(s.str().c_str(), "64 40 100 64") == 0);
+    }
+}
+
+FL_TEST_CASE("string append fixed_point types") {
+    FL_SUBCASE("s16x16 append") {
+        fl::fixed_point<16, 16, fl::Sign::SIGNED> val(1.5f);
+        fl::string s;
+        s.append(val);
+        // 1.5 should produce "1.50"
+        FL_CHECK(fl::strcmp(s.c_str(), "1.50") == 0);
+    }
+
+    FL_SUBCASE("u8x8 append") {
+        fl::fixed_point<8, 8, fl::Sign::UNSIGNED> val(3.25f);
+        fl::string s;
+        s.append(val);
+        FL_CHECK(fl::strcmp(s.c_str(), "3.25") == 0);
+    }
+
+    FL_SUBCASE("s8x8 negative append") {
+        fl::fixed_point<8, 8, fl::Sign::SIGNED> val(-2.5f);
+        fl::string s;
+        s.append(val);
+        FL_CHECK(fl::strcmp(s.c_str(), "-2.50") == 0);
+    }
+
+    FL_SUBCASE("sstream operator<< with fixed_point") {
+        fl::fixed_point<16, 16, fl::Sign::SIGNED> val(4.75f);
+        fl::sstream s;
+        s << val;
+        FL_CHECK(fl::strcmp(s.str().c_str(), "4.75") == 0);
     }
 }

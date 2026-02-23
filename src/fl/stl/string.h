@@ -2785,6 +2785,16 @@ class string : public StrN<FASTLED_STR_INLINED_SIZE> {
 
     string &append(const double &val) { return append(float(val)); }
 
+    // Any type with a to_float() method (e.g., fixed_point types)
+    template <typename T>
+    typename fl::enable_if<
+        fl::is_same<decltype(static_cast<const T*>(nullptr)->to_float()), float>::value
+        && !fl::is_floating_point<T>::value,
+        string&>::type
+    append(const T &val) {
+        return append(val.to_float());
+    }
+
     // Hexadecimal formatting methods
     string &appendHex(i32 val) {
         char buf[64] = {0};
