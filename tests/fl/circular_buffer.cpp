@@ -468,3 +468,35 @@ FL_TEST_CASE("fl::DynamicCircularBuffer - single element capacity") {
     FL_CHECK_EQ(value, 42);
     FL_CHECK(buffer.empty());
 }
+
+FL_TEST_CASE("fl::StaticCircularBuffer - operator[] and back()") {
+    StaticCircularBuffer<int, 4> buffer;
+    buffer.push(10);
+    buffer.push(20);
+    buffer.push(30);
+
+    FL_CHECK_EQ(buffer[0], 10);
+    FL_CHECK_EQ(buffer[1], 20);
+    FL_CHECK_EQ(buffer[2], 30);
+    FL_CHECK_EQ(buffer.back(), 30);
+
+    // Modify through operator[]
+    buffer[1] = 200;
+    FL_CHECK_EQ(buffer[1], 200);
+
+    // Wraparound: pop two, push three more
+    int value;
+    buffer.pop(value);
+    buffer.pop(value);
+    buffer.push(40);
+    buffer.push(50);
+    buffer.push(60);
+
+    // Buffer should contain: 30, 40, 50, 60
+    FL_CHECK_EQ(buffer[0], 30);
+    FL_CHECK_EQ(buffer[1], 40);
+    FL_CHECK_EQ(buffer[2], 50);
+    FL_CHECK_EQ(buffer[3], 60);
+    FL_CHECK_EQ(buffer.front(), 30);
+    FL_CHECK_EQ(buffer.back(), 60);
+}

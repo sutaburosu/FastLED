@@ -61,6 +61,22 @@ class StaticCircularBuffer {
         return mBuffer[mTail];
     }
 
+    T& back() {
+        return mBuffer[(mHead + N) % (N + 1)];
+    }
+
+    const T& back() const {
+        return mBuffer[(mHead + N) % (N + 1)];
+    }
+
+    T& operator[](fl::size index) {
+        return mBuffer[(mTail + index) % (N + 1)];
+    }
+
+    const T& operator[](fl::size index) const {
+        return mBuffer[(mTail + index) % (N + 1)];
+    }
+
     fl::size size() const { return (mHead + N + 1 - mTail) % (N + 1); }
     constexpr fl::size capacity() const { return N; }
     bool empty() const { return mHead == mTail; }
