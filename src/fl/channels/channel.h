@@ -142,15 +142,15 @@ public:
     fl::string getEngineName() const;
 
 private:
-    // CPixelLEDController interface implementation
-    virtual void showPixels(PixelController<RGB, 1, 0xFFFFFFFF>& pixels) override;
-    virtual void init() override;
-
     /// @brief Friend declaration for make_shared to access private constructor
     template<typename T, typename... Args>
     friend fl::shared_ptr<T> fl::make_shared(Args&&... args);
 
 protected:
+    // CPixelLEDController interface implementation - protected so subclass delegates
+    // (e.g., UCS7604's DelegateController) can call through the base class chain.
+    void showPixels(PixelController<RGB, 1, 0xFFFFFFFF>& pixels) override;
+    void init() override;
     /// @brief Protected constructor for template subclasses (e.g., ClocklessIdf5)
     /// @param chipset Chipset configuration (clockless or SPI)
     /// @param rgbOrder RGB channel ordering
