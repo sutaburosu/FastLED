@@ -85,7 +85,7 @@ public:
 	/// @copydoc Pin::setOutput()
 	inline static void setOutput() { _init(); pinMode(PIN, PinMode::Output); }
 	/// @copydoc Pin::setInput()
-	inline static void setInput() { _init(); pinMode(PIN, INPUT); }
+	inline static void setInput() { _init(); pinMode(PIN, PinMode::Input); }
 
 	/// @copydoc Pin::hi()
 	inline static void hi() __attribute__ ((always_inline)) { *sPort |= sPinMask; }

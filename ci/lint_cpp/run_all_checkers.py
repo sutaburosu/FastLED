@@ -12,6 +12,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from ci.lint_cpp.arduino_macro_usage_checker import ArduinoMacroUsageChecker
 from ci.lint_cpp.attribute_checker import AttributeChecker
 from ci.lint_cpp.banned_headers_checker import (
     BANNED_HEADERS_COMMON,
@@ -161,6 +162,7 @@ def create_checkers(
 
     # Src-only checkers
     checkers_by_scope["src"] = [
+        ArduinoMacroUsageChecker(),  # Checks for banned Arduino macros (INPUT, OUTPUT, DEFAULT)
         UsingNamespaceFlChecker(),
         StdNamespaceChecker(),
         NamespaceIncludesChecker(),
