@@ -4,9 +4,10 @@
 #ifndef __INC_FASTSPI_LED2_H
 #define __INC_FASTSPI_LED2_H
 
-// Save Arduino macros that undef.h will remove, so we can restore them at the
-// end of this header. This lets FastLED internals use names like DEFAULT as C++
-// identifiers while still providing the macros that Arduino user code expects.
+// Arduino/Windows SDK may define DEFAULT as a macro. We undefine it so that
+// FastLED enums (e.g., fl::RxDeviceType::DEFAULT) work correctly.
+// Unlike other Arduino macros, DEFAULT is not restored — it conflicts with
+// FastLED's own C++ identifiers and is rarely used in Arduino user code.
 #pragma push_macro("DEFAULT")
 
 #include "fl/stl/stdint.h"
@@ -1502,7 +1503,7 @@ using fl_string = fl::string;
 // that includes this just uses extern to declare the function.
 // Declaration moved to src/fl/fastled.h
 
-// Restore Arduino macros that were saved at the top of this header.
-// User code (sketches) that includes FastLED.h will see DEFAULT etc.
-// as macros again, matching the Arduino API contract.
-#pragma pop_macro("DEFAULT")
+// NOTE: DEFAULT macro is intentionally NOT restored (#pragma pop_macro removed).
+// FastLED uses DEFAULT as a C++ enum value (e.g., fl::RxDeviceType::DEFAULT),
+// so restoring the Arduino/Windows SDK macro would break user code.
+// #pragma pop_macro("DEFAULT")  // removed — conflicts with FastLED enums

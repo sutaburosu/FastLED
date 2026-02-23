@@ -573,6 +573,9 @@ class Args:
     # Legacy API testing
     legacy: bool
 
+    # Chipset selection
+    chipset: str
+
     @staticmethod
     def parse_args() -> "Args":
         """Parse command-line arguments and return Args dataclass instance."""
@@ -854,6 +857,14 @@ See Also:
             help="Test using legacy template addLeds API (WS2812B<PIN>) instead of Channel API. Single-lane only, pin must be 0-8.",
         )
 
+        # Chipset selection
+        parser.add_argument(
+            "--chipset",
+            choices=["ws2812", "ucs7604"],
+            default="ws2812",
+            help="Chipset timing to use for validation (default: ws2812). ucs7604 uses UCS7604-800KHZ timing with 16-bit encoding.",
+        )
+
         parsed = parser.parse_args()
 
         # Convert argparse.Namespace to Args dataclass
@@ -887,6 +898,7 @@ See Also:
             lane_counts=parsed.lane_counts,  # NEW
             color_pattern=parsed.color_pattern,  # NEW
             legacy=parsed.legacy,
+            chipset=parsed.chipset,
         )
 
 
@@ -1223,6 +1235,13 @@ async def run(args: Args | None = None) -> int:  # pyright: ignore[reportGeneral
             "⚠️  Note: setSolidColor RPC command requires firmware support (may need implementation)"
         )
 
+    # Map chipset CLI arg to timing name for firmware
+    chipset_timing_map = {
+        "ws2812": "WS2812B-V5",
+        "ucs7604": "UCS7604-800KHZ",
+    }
+    timing_name = chipset_timing_map.get(args.chipset, "WS2812B-V5")
+
     # Generate runSingleTest commands for each test configuration
     # New API: one test per RPC call (no matrix, no batch operations)
     drivers_list = config["drivers"]
@@ -1246,6 +1265,7 @@ async def run(args: Args | None = None) -> int:  # pyright: ignore[reportGeneral
                     "laneSizes": lane_sizes,
                     "pattern": "MSB_LSB_A",  # Default pattern
                     "iterations": 1,  # Default iterations
+                    "timing": timing_name,
                 }
                 if args.legacy:
                     test_config["useLegacyApi"] = True

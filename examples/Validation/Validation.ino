@@ -176,7 +176,6 @@
 //
 // ============================================================================
 
-#include <Arduino.h>
 #include <FastLED.h>
 #include "fl/stl/sstream.h"
 #include "Common.h"

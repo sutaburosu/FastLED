@@ -5,6 +5,15 @@
 #include "LegacyClocklessProxy.h"
 #include <FastLED.h>
 #include "fl/stl/sstream.h"
+#include "fl/chipsets/encoders/ucs7604.h"
+#include "fl/chipsets/chipset_timing_config.h"
+#include "fl/chipsets/led_timing.h"
+#include "fl/chipsets/encoders/pixel_iterator.h"
+#include "fl/ease.h"
+#include "pixel_controller.h"
+#include "color.h"
+#include "fl/stl/vector.h"
+#include "fl/stl/iterator.h"
 
 // Phase 0: Include PARLIO debug instrumentation
 #if defined(ESP32) && FASTLED_ESP32_HAS_PARLIO
@@ -103,6 +112,57 @@ void dumpRawEdgeTiming(fl::shared_ptr<fl::RxDevice> rx_channel,
         }
     }
     FL_WARN("");
+}
+
+/// @brief Check if a timing config uses UCS7604 encoder
+static bool isUCS7604(const fl::ChipsetTimingConfig& timing) {
+    return timing.encoder == fl::CLOCKLESS_ENCODER_UCS7604_8BIT ||
+           timing.encoder == fl::CLOCKLESS_ENCODER_UCS7604_16BIT ||
+           timing.encoder == fl::CLOCKLESS_ENCODER_UCS7604_16BIT_1600;
+}
+
+/// @brief Build expected UCS7604 encoded bytes from LED data
+/// @param leds LED data span
+/// @param timing Timing config (contains encoder enum)
+/// @return Vector of expected encoded bytes (preamble + padding + pixel data)
+static fl::vector<uint8_t> buildExpectedUCS7604(fl::span<CRGB> leds, const fl::ChipsetTimingConfig& timing) {
+    fl::vector<uint8_t> expected;
+
+    // Map encoder to UCS7604Mode
+    fl::UCS7604Mode mode;
+    switch (timing.encoder) {
+        case fl::CLOCKLESS_ENCODER_UCS7604_8BIT:
+            mode = fl::UCS7604_MODE_8BIT_800KHZ;
+            break;
+        case fl::CLOCKLESS_ENCODER_UCS7604_16BIT:
+            mode = fl::UCS7604_MODE_16BIT_800KHZ;
+            break;
+        case fl::CLOCKLESS_ENCODER_UCS7604_16BIT_1600:
+            mode = fl::UCS7604_MODE_16BIT_1600KHZ;
+            break;
+        default:
+            return expected;
+    }
+
+    // Default current control (0x0F for all channels) matching channel.cpp.hpp defaults
+    fl::UCS7604CurrentControl current;  // defaults to 0xF for all channels
+
+    // Create PixelIterator from LED data (RGB order, no color adjustment, no dithering)
+    PixelController<RGB> pc(leds.data(), leds.size(), ColorAdjustment::noAdjustment(), DISABLE_DITHER);
+    auto pixel_iter = pc.as_iterator(RgbwInvalid());
+
+    // For 16-bit modes, use default gamma 2.8
+    fl::shared_ptr<const fl::Gamma8> gamma;
+    bool use_gamma = (mode != fl::UCS7604_MODE_8BIT_800KHZ);
+    if (use_gamma) {
+        gamma = fl::Gamma8::getOrCreate(2.8f);
+    }
+
+    // Encode using the same function the driver uses
+    fl::encodeUCS7604(pixel_iter, leds.size(), fl::back_inserter(expected),
+                      mode, current, false /* is_rgbw */, gamma.get());
+
+    return expected;
 }
 
 // Capture transmitted LED data via RX loopback
@@ -320,55 +380,80 @@ void runTest(const char* test_name,
             continue;
         }
 
-        size_t bytes_expected = num_leds * 3;
-
-        // NEVER EVER CHANGE THIS!!!!!
-        const size_t front_padding_bytes = 0; // No front padding: PARLIO FRONT_PAD_BYTES=0
-        const size_t rx_buffer_offset = front_padding_bytes;
-
-        if (bytes_captured > bytes_expected + front_padding_bytes) {
-            FL_WARN("Info: Captured " << bytes_captured << " bytes ("
-                    << front_padding_bytes << " front pad + "
-                    << bytes_expected << " LED data + "
-                    << (bytes_captured - bytes_expected - front_padding_bytes) << " back pad/RESET)");
-        }
-
-        // Validate: byte-level comparison (COLOR_ORDER is RGB, so no reordering)
         int mismatches = 0;
-        size_t bytes_to_check = (bytes_captured < bytes_expected + rx_buffer_offset) ?
-                                 (bytes_captured > rx_buffer_offset ? bytes_captured - rx_buffer_offset : 0) :
-                                 bytes_expected;
-        (void)bytes_to_check;
 
-        for (size_t i = 0; i < num_leds; i++) {
-            size_t byte_offset = rx_buffer_offset + i * 3; // Skip front padding
-            if (byte_offset + 2 >= bytes_captured) { // Check against total captured bytes
-                FL_ERROR("[" << ctx.driver_name << "/" << ctx.timing_name << "/" << ctx.pattern_name
-                        << " | Lane " << ctx.lane_index << "/" << ctx.lane_count
-                        << " (Pin " << ctx.pin_number << ", " << ctx.num_leds << " LEDs) | RX:" << ctx.rx_type_name << "] "
-                        << "Incomplete data for LED[" << static_cast<int>(i)
-                        << "] (only " << bytes_captured << " bytes captured)");
-                break;
+        if (isUCS7604(config.timing)) {
+            // UCS7604: Compare full encoded frame (preamble + padding + pixel data) byte-for-byte
+            fl::vector<uint8_t> expected_encoded = buildExpectedUCS7604(
+                config.tx_configs[config_idx].mLeds, config.timing);
+            size_t expected_len = expected_encoded.size();
+
+            FL_WARN("UCS7604 encoded comparison: expected " << expected_len << " bytes, captured " << bytes_captured);
+
+            size_t compare_len = (bytes_captured < expected_len) ? bytes_captured : expected_len;
+            for (size_t i = 0; i < compare_len; i++) {
+                if (expected_encoded[i] != config.rx_buffer[i]) {
+                    mismatches++;
+                }
+            }
+            // Count any missing bytes as mismatches
+            if (bytes_captured < expected_len) {
+                mismatches += static_cast<int>(expected_len - bytes_captured);
             }
 
-            uint8_t expected_r = leds[i].r;
-            uint8_t expected_g = leds[i].g;
-            uint8_t expected_b = leds[i].b;
+            FL_WARN("Bytes Captured: " << bytes_captured << " (expected: " << expected_len << ")");
+            int total_bytes = static_cast<int>(expected_len);
+            FL_WARN("Accuracy: " << (100.0 * (total_bytes - mismatches) / total_bytes) << "% ("
+                    << (total_bytes - mismatches) << "/" << total_bytes << " bytes match)");
+        } else {
+            // WS2812: Compare raw RGB per-LED
+            size_t bytes_expected = num_leds * 3;
 
-            uint8_t actual_r = config.rx_buffer[byte_offset + 0];
-            uint8_t actual_g = config.rx_buffer[byte_offset + 1];
-            uint8_t actual_b = config.rx_buffer[byte_offset + 2];
+            // NEVER EVER CHANGE THIS!!!!!
+            const size_t front_padding_bytes = 0; // No front padding: PARLIO FRONT_PAD_BYTES=0
+            const size_t rx_buffer_offset = front_padding_bytes;
 
-            if (expected_r != actual_r || expected_g != actual_g || expected_b != actual_b) {
-                // Per-LED error logging silenced for speed - errors tracked in mismatch count
-                // JSON-RPC response will include mismatch summary
-                mismatches++;
+            if (bytes_captured > bytes_expected + front_padding_bytes) {
+                FL_WARN("Info: Captured " << bytes_captured << " bytes ("
+                        << front_padding_bytes << " front pad + "
+                        << bytes_expected << " LED data + "
+                        << (bytes_captured - bytes_expected - front_padding_bytes) << " back pad/RESET)");
             }
+
+            // Validate: byte-level comparison (COLOR_ORDER is RGB, so no reordering)
+            size_t bytes_to_check = (bytes_captured < bytes_expected + rx_buffer_offset) ?
+                                     (bytes_captured > rx_buffer_offset ? bytes_captured - rx_buffer_offset : 0) :
+                                     bytes_expected;
+            (void)bytes_to_check;
+
+            for (size_t i = 0; i < num_leds; i++) {
+                size_t byte_offset = rx_buffer_offset + i * 3; // Skip front padding
+                if (byte_offset + 2 >= bytes_captured) { // Check against total captured bytes
+                    FL_ERROR("[" << ctx.driver_name << "/" << ctx.timing_name << "/" << ctx.pattern_name
+                            << " | Lane " << ctx.lane_index << "/" << ctx.lane_count
+                            << " (Pin " << ctx.pin_number << ", " << ctx.num_leds << " LEDs) | RX:" << ctx.rx_type_name << "] "
+                            << "Incomplete data for LED[" << static_cast<int>(i)
+                            << "] (only " << bytes_captured << " bytes captured)");
+                    break;
+                }
+
+                uint8_t expected_r = leds[i].r;
+                uint8_t expected_g = leds[i].g;
+                uint8_t expected_b = leds[i].b;
+
+                uint8_t actual_r = config.rx_buffer[byte_offset + 0];
+                uint8_t actual_g = config.rx_buffer[byte_offset + 1];
+                uint8_t actual_b = config.rx_buffer[byte_offset + 2];
+
+                if (expected_r != actual_r || expected_g != actual_g || expected_b != actual_b) {
+                    mismatches++;
+                }
+            }
+
+            FL_WARN("Bytes Captured: " << bytes_captured << " (expected: " << bytes_expected << ")");
+            FL_WARN("Accuracy: " << (100.0 * (num_leds - mismatches) / num_leds) << "% ("
+                    << (num_leds - mismatches) << "/" << num_leds << " LEDs match)");
         }
-
-        FL_WARN("Bytes Captured: " << bytes_captured << " (expected: " << bytes_expected << ")");
-        FL_WARN("Accuracy: " << (100.0 * (num_leds - mismatches) / num_leds) << "% ("
-                << (num_leds - mismatches) << "/" << num_leds << " LEDs match)");
 
         if (mismatches == 0) {
             FL_WARN("Result: PASS ✓");
@@ -435,72 +520,112 @@ void runMultiTest(const char* test_name,
 
             // Validate pixel data
             int mismatches = 0;
-            size_t bytes_expected = num_leds * 3;
 
-            // Determine front padding offset (PARLIO only)
-            const size_t rx_buffer_offset = 0; // No front padding: PARLIO FRONT_PAD_BYTES=0
-
-            // DEBUG: Print first 24 bytes of captured data (first LED)
-            FL_WARN("[RUN " << run << "] Driver=" << config.driver_name << ", offset=" << rx_buffer_offset << ", bytes_captured=" << bytes_captured);
+            // DEBUG: Print first 24 bytes of captured data
+            FL_WARN("[RUN " << run << "] Driver=" << config.driver_name << ", bytes_captured=" << bytes_captured);
             FL_WARN("[RUN " << run << "] First 24 bytes:");
             for (size_t i = 0; i < 24 && i < bytes_captured; i++) {
                 FL_WARN("  [" << i << "] = 0x" << fl::hex << static_cast<int>(config.rx_buffer[i]) << fl::dec);
             }
 
-            size_t bytes_to_check = (bytes_captured < bytes_expected + rx_buffer_offset) ?
-                                     (bytes_captured > rx_buffer_offset ? bytes_captured - rx_buffer_offset : 0) :
-                                     bytes_expected;
-            (void)bytes_to_check;
+            if (isUCS7604(config.timing)) {
+                // UCS7604: Compare full encoded frame byte-for-byte
+                fl::vector<uint8_t> expected_encoded = buildExpectedUCS7604(
+                    config.tx_configs[config_idx].mLeds, config.timing);
+                size_t expected_len = expected_encoded.size();
+                result.totalBytes = static_cast<int>(expected_len);
 
-            for (size_t i = 0; i < num_leds; i++) {
-                size_t byte_offset = rx_buffer_offset + i * 3; // Apply offset for PARLIO front padding
-                if (byte_offset + 2 >= bytes_captured) { // Check against total captured bytes
-                    break;
-                }
-
-                uint8_t expected_r = leds[i].r;
-                uint8_t expected_g = leds[i].g;
-                uint8_t expected_b = leds[i].b;
-
-                uint8_t actual_r = config.rx_buffer[byte_offset + 0];
-                uint8_t actual_g = config.rx_buffer[byte_offset + 1];
-                uint8_t actual_b = config.rx_buffer[byte_offset + 2];
-
-                // Per-byte comparison for byte-level stats
-                uint8_t exp_bytes[3] = {expected_r, expected_g, expected_b};
-                uint8_t act_bytes[3] = {actual_r, actual_g, actual_b};
-                bool led_mismatch = false;
-                for (int ch = 0; ch < 3; ch++) {
-                    if (exp_bytes[ch] != act_bytes[ch]) {
+                size_t compare_len = (bytes_captured < expected_len) ? bytes_captured : expected_len;
+                for (size_t i = 0; i < compare_len; i++) {
+                    if (expected_encoded[i] != config.rx_buffer[i]) {
                         result.mismatchedBytes++;
-                        if ((exp_bytes[ch] ^ act_bytes[ch]) == 0x01) {
+                        if ((expected_encoded[i] ^ config.rx_buffer[i]) == 0x01) {
                             result.lsbOnlyErrors++;
                         }
-                        led_mismatch = true;
+                        mismatches++;
+
+                        // Print corruption context for first mismatch only
+                        if (mismatches == 1) {
+                            FL_WARN("\n[CORRUPTION @ byte " << static_cast<int>(i) << ", Run " << run
+                                    << "] expected=0x" << fl::hex << static_cast<int>(expected_encoded[i])
+                                    << " actual=0x" << static_cast<int>(config.rx_buffer[i]) << fl::dec);
+                        }
+
+                        // Store first N errors (using byte-level reporting)
+                        if (result.errors.size() < static_cast<size_t>(multi_config.max_errors_per_run)) {
+                            result.errors.push_back(fl::LEDError(
+                                static_cast<int>(i), expected_encoded[i], 0, 0,
+                                config.rx_buffer[i], 0, 0
+                            ));
+                        }
                     }
                 }
+                // Count missing bytes as mismatches
+                if (bytes_captured < expected_len) {
+                    mismatches += static_cast<int>(expected_len - bytes_captured);
+                }
+            } else {
+                // WS2812: Per-LED RGB comparison
+                size_t bytes_expected = num_leds * 3;
 
-                if (led_mismatch) {
-                    // Print corruption context for first mismatch only
-                    if (mismatches == 0) {
-                        FL_WARN("\n[CORRUPTION @ LED " << static_cast<int>(i) << ", Run " << run << "]");
+                // Determine front padding offset (PARLIO only)
+                const size_t rx_buffer_offset = 0; // No front padding: PARLIO FRONT_PAD_BYTES=0
 
-                        // Calculate edge index and print timing around corruption point
-                        size_t corruption_edge_index = i * 48;
-                        size_t offset = corruption_edge_index > 4 ? corruption_edge_index - 4 : 0;
+                size_t bytes_to_check = (bytes_captured < bytes_expected + rx_buffer_offset) ?
+                                         (bytes_captured > rx_buffer_offset ? bytes_captured - rx_buffer_offset : 0) :
+                                         bytes_expected;
+                (void)bytes_to_check;
 
-                        // Dump raw edge timing around corruption point (9 edges: -4 to +4)
-                        dumpRawEdgeTiming(config.rx_channel, config.timing, fl::EdgeRange(offset, 9));
+                for (size_t i = 0; i < num_leds; i++) {
+                    size_t byte_offset = rx_buffer_offset + i * 3; // Apply offset for PARLIO front padding
+                    if (byte_offset + 2 >= bytes_captured) { // Check against total captured bytes
+                        break;
                     }
 
-                    mismatches++;
+                    uint8_t expected_r = leds[i].r;
+                    uint8_t expected_g = leds[i].g;
+                    uint8_t expected_b = leds[i].b;
 
-                    // Store first N errors
-                    if (result.errors.size() < static_cast<size_t>(multi_config.max_errors_per_run)) {
-                        result.errors.push_back(fl::LEDError(
-                            i, expected_r, expected_g, expected_b,
-                            actual_r, actual_g, actual_b
-                        ));
+                    uint8_t actual_r = config.rx_buffer[byte_offset + 0];
+                    uint8_t actual_g = config.rx_buffer[byte_offset + 1];
+                    uint8_t actual_b = config.rx_buffer[byte_offset + 2];
+
+                    // Per-byte comparison for byte-level stats
+                    uint8_t exp_bytes[3] = {expected_r, expected_g, expected_b};
+                    uint8_t act_bytes[3] = {actual_r, actual_g, actual_b};
+                    bool led_mismatch = false;
+                    for (int ch = 0; ch < 3; ch++) {
+                        if (exp_bytes[ch] != act_bytes[ch]) {
+                            result.mismatchedBytes++;
+                            if ((exp_bytes[ch] ^ act_bytes[ch]) == 0x01) {
+                                result.lsbOnlyErrors++;
+                            }
+                            led_mismatch = true;
+                        }
+                    }
+
+                    if (led_mismatch) {
+                        // Print corruption context for first mismatch only
+                        if (mismatches == 0) {
+                            FL_WARN("\n[CORRUPTION @ LED " << static_cast<int>(i) << ", Run " << run << "]");
+
+                            // Calculate edge index and print timing around corruption point
+                            size_t corruption_edge_index = i * 48;
+                            size_t offset = corruption_edge_index > 4 ? corruption_edge_index - 4 : 0;
+
+                            // Dump raw edge timing around corruption point (9 edges: -4 to +4)
+                            dumpRawEdgeTiming(config.rx_channel, config.timing, fl::EdgeRange(offset, 9));
+                        }
+
+                        mismatches++;
+
+                        // Store first N errors
+                        if (result.errors.size() < static_cast<size_t>(multi_config.max_errors_per_run)) {
+                            result.errors.push_back(fl::LEDError(
+                                i, expected_r, expected_g, expected_b,
+                                actual_r, actual_g, actual_b
+                            ));
+                        }
                     }
                 }
             }

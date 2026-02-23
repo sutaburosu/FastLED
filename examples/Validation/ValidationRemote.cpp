@@ -266,13 +266,18 @@ fl::Json ValidationRemoteControl::runSingleTestImpl(const fl::Json& args) {
 
     // Get timing configuration
     // Legacy API: WS2812B<PIN> template uses TIMING_WS2812_800KHZ (T1=250, T2=625, T3=375)
-    // Channel API: Uses TIMING_WS2812B_V5 (T1=225, T2=355, T3=645)
+    // Channel API: Uses timing_name from RPC (default: WS2812B-V5)
     // RX decode timing MUST match actual TX timing for correct capture
-    fl::NamedTimingConfig timing_config(
-        use_legacy_api ? fl::makeTimingConfig<fl::TIMING_WS2812_800KHZ>()
-                       : fl::makeTimingConfig<fl::TIMING_WS2812B_V5>(),
-        use_legacy_api ? "WS2812-800KHZ" : timing_name.c_str()
-    );
+    fl::ChipsetTimingConfig resolved_timing;
+    if (use_legacy_api) {
+        resolved_timing = fl::makeTimingConfig<fl::TIMING_WS2812_800KHZ>();
+        timing_name = "WS2812-800KHZ";
+    } else if (timing_name == "UCS7604-800KHZ") {
+        resolved_timing = fl::makeTimingConfig<fl::TIMING_UCS7604_800KHZ>();
+    } else {
+        resolved_timing = fl::makeTimingConfig<fl::TIMING_WS2812B_V5>();
+    }
+    fl::NamedTimingConfig timing_config(resolved_timing, timing_name.c_str());
 
     // Dynamically allocate LED arrays for each lane
     fl::vector<fl::unique_ptr<fl::vector<CRGB>>> led_arrays;
