@@ -1156,4 +1156,9 @@ struct make_index_sequence_impl<0, Is...> {
 template <fl::size N>
 using make_index_sequence = typename make_index_sequence_impl<N>::type;
 
+//-------------------------------------------------------------------------------
+// is_fixed_point trait — default false; specialized in fl/fixed_point.h
+//-------------------------------------------------------------------------------
+template <typename T> struct is_fixed_point : false_type {};
+
 } // namespace fl

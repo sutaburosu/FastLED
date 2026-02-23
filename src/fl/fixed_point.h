@@ -302,6 +302,40 @@ using sfixed_point = fixed_point<IntBits, FracBits, Sign::SIGNED>;
 template <int IntBits, int FracBits>
 using ufixed_point = fixed_point<IntBits, FracBits, Sign::UNSIGNED>;
 
+//-------------------------------------------------------------------------------
+// is_fixed_point trait — specialization for fixed_point<I,F,S>
+// (default false_type lives in fl/stl/type_traits.h)
+//-------------------------------------------------------------------------------
+template <int I, int F, Sign S>
+struct is_fixed_point<fixed_point<I, F, S>> : true_type {};
+
+// Handle cv-qualified and reference types
+template <typename T> struct is_fixed_point<const T> : is_fixed_point<T> {};
+template <typename T> struct is_fixed_point<volatile T> : is_fixed_point<T> {};
+template <typename T> struct is_fixed_point<const volatile T> : is_fixed_point<T> {};
+template <typename T> struct is_fixed_point<T&> : is_fixed_point<T> {};
+
+//-------------------------------------------------------------------------------
+// powfp<T>(base, exp) — free-function power for fixed_point types.
+// Calls T::pow(base, exp) which uses exp2/log2 lookup tables internally.
+//-------------------------------------------------------------------------------
+template <typename T>
+inline typename enable_if<is_fixed_point<T>::value, T>::type
+powfp(T base, T exp) {
+    return T::pow(base, exp);
+}
+
+//-------------------------------------------------------------------------------
+// expfp<T>(x) — fixed-point exponential: computes e^x.
+// Uses powfp(e, x) where e is a fixed-point constant for Euler's number.
+//-------------------------------------------------------------------------------
+template <typename T>
+inline typename enable_if<is_fixed_point<T>::value, T>::type
+expfp(T x) {
+    static const T e_val(static_cast<float>(FL_E));
+    return powfp(e_val, x);
+}
+
 } // namespace fl
 
 // ---- Cross-type operator implementations (after all types are fully defined) ----

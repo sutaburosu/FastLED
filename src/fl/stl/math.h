@@ -72,22 +72,22 @@ template<typename T> inline T ceil(T value) { return ceil_impl_float(value); }
 // Square root functions
 inline float sqrtf(float value) { return sqrt_impl_float(value); }
 inline double sqrt(double value) { return sqrt_impl_double(value); }
-template<typename T> inline T sqrt(T value) { return sqrt_impl_float(value); }
+template<typename T> inline typename enable_if<!is_fixed_point<T>::value, T>::type sqrt(T value) { return sqrt_impl_float(value); }
 
 // Exponential functions
 inline float expf(float value) { return exp_impl_float(value); }
 inline double exp(double value) { return exp_impl_double(value); }
-template<typename T> inline T exp(T value) { return exp_impl_float(value); }
+template<typename T> inline typename enable_if<!is_fixed_point<T>::value, T>::type exp(T value) { return exp_impl_float(value); }
 
 // Sine functions
 inline float sinf(float value) { return sin_impl_float(value); }
 inline double sin(double value) { return sin_impl_double(value); }
-template<typename T> inline T sin(T value) { return sin_impl_float(value); }
+template<typename T> inline typename enable_if<!is_fixed_point<T>::value, T>::type sin(T value) { return sin_impl_float(value); }
 
 // Cosine functions
 inline float cosf(float value) { return cos_impl_float(value); }
 inline double cos(double value) { return cos_impl_double(value); }
-template<typename T> inline T cos(T value) { return cos_impl_float(value); }
+template<typename T> inline typename enable_if<!is_fixed_point<T>::value, T>::type cos(T value) { return cos_impl_float(value); }
 
 // Natural logarithm functions
 inline float logf(float value) { return log_impl_float(value); }
@@ -107,7 +107,7 @@ template<typename T> inline T log2(T value) { return log_impl_float(value) / log
 // Power functions
 inline float powf(float base, float exponent) { return pow_impl_float(base, exponent); }
 inline double pow(double base, double exponent) { return pow_impl_double(base, exponent); }
-template<typename T> inline T pow(T base, T exponent) { return pow_impl_float(base, exponent); }
+template<typename T> inline typename enable_if<!is_fixed_point<T>::value, T>::type pow(T base, T exponent) { return pow_impl_float(base, exponent); }
 
 // Absolute value functions (floating point)
 inline float fabsf(float value) { return fabs_impl_float(value); }
