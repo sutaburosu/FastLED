@@ -21,8 +21,7 @@
 # CRITICAL: These flags ensure ABI compatibility between libfastled.a and executables
 
 # Group 1: Preprocessor defines (platform and feature configuration)
-base_defines = [
-  '-DFASTLED_USE_PROGMEM=0',
+base_defines = shared_defines + [
   '-DSTUB_PLATFORM',
   '-DARDUINO=10808',
   '-DFASTLED_USE_STUB_ARDUINO',
@@ -70,8 +69,7 @@ endif
 # Common flags present in all modes (ABI-critical)
 base_common = [
   '-std=gnu++11',              # GNU C++11 standard
-  '-fno-exceptions',           # Disable C++ exceptions (ABI compatibility)
-  '-fno-rtti',                 # Disable runtime type information
+] + shared_no_exception_flags + [
   '-fno-strict-aliasing',      # Prevent strict aliasing optimizations
 ]
 

@@ -82,6 +82,8 @@ build_mode = get_option('build_mode')
 cpp_compiler = meson.get_compiler('cpp')
 is_wasm_build = host_machine.system() == 'emscripten'
 
+subdir('ci/meson/shared')
+
 if not is_wasm_build
   # Native build: compilation flags, link flags, libraries, tests, and examples
   subdir('ci/meson/native')

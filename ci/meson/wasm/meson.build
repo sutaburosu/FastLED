@@ -21,11 +21,10 @@ wasm_compiler_dir = include_directories('../../../src/platforms/wasm/compiler')
 # ============================================================================
 # WASM preprocessor defines (from build_flags.toml [all].defines)
 # ============================================================================
-wasm_defines = [
+wasm_defines = shared_defines + [
   # FastLED Engine Configuration
   '-DFASTLED_ENGINE_EVENTS_MAX_LISTENERS=50',
   '-DFASTLED_FORCE_NAMESPACE=1',
-  '-DFASTLED_USE_PROGMEM=0',
   '-DUSE_OFFSET_CONVERTER=0',
   '-DGL_ENABLE_GET_PROC_ADDRESS=0',
 
@@ -52,8 +51,7 @@ wasm_common_flags = [
 
   # Runtime Behavior
   '-fno-threadsafe-statics',
-  '-fno-exceptions',
-  '-fno-rtti',
+] + shared_no_exception_flags + [
 
   # Threading Support
   '-pthread',
