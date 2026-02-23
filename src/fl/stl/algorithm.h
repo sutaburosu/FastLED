@@ -545,6 +545,19 @@ void mergesort_impl(Iterator first, Iterator last, Compare comp) {
 
 } // namespace detail
 
+// Lower bound: find first position in sorted [first, last) where value could be inserted.
+template <typename Iterator, typename T, typename Compare>
+Iterator lower_bound(Iterator first, Iterator last, const T& value, Compare comp) {
+    return detail::lower_bound_impl(first, last, value, comp);
+}
+
+template <typename Iterator, typename T>
+Iterator lower_bound(Iterator first, Iterator last, const T& value) {
+    typedef typename fl::remove_reference<decltype(*first)>::type value_type;
+    return detail::lower_bound_impl(first, last, value,
+        [](const value_type& a, const T& b) { return a < b; });
+}
+
 // Sort function with custom comparator (using quicksort)
 template <typename Iterator, typename Compare>
 void sort(Iterator first, Iterator last, Compare comp) {
