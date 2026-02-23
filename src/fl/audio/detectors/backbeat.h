@@ -159,6 +159,8 @@ private:
     static constexpr size SPECTRAL_PROFILE_SIZE = 16;
     float mProfileAlpha;  // EMA smoothing factor for profile updates
 
+    shared_ptr<const FFTBins> mRetainedFFT;
+
     // ----- Helper Methods -----
     void updateBeatDetector(shared_ptr<AudioContext> context);
     void updateBeatPosition();

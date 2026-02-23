@@ -4,6 +4,7 @@
 #include "fl/audio/detectors/vocal.h"
 #include "fl/audio/audio_context.h"
 #include "fl/stl/math.h"
+#include "fl/stl/algorithm.h"
 
 namespace fl {
 
@@ -11,7 +12,6 @@ VocalDetector::VocalDetector()
     : mVocalActive(false)
     , mPreviousVocalActive(false)
     , mConfidence(0.0f)
-    , mThreshold(0.65f)
     , mSpectralCentroid(0.0f)
     , mSpectralRolloff(0.0f)
     , mFormantRatio(0.0f)
@@ -21,7 +21,8 @@ VocalDetector::~VocalDetector() = default;
 
 void VocalDetector::update(shared_ptr<AudioContext> context) {
     mSampleRate = context->getSampleRate();
-    const FFTBins& fft = context->getFFT(128);
+    mRetainedFFT = context->getFFT(128);
+    const FFTBins& fft = *mRetainedFFT;
     mNumBins = static_cast<int>(fft.bins_raw.size());
 
     // Calculate spectral features
@@ -29,8 +30,28 @@ void VocalDetector::update(shared_ptr<AudioContext> context) {
     mSpectralRolloff = calculateSpectralRolloff(fft);
     mFormantRatio = estimateFormantRatio(fft);
 
-    // Detect vocal based on spectral characteristics
-    mVocalActive = detectVocal(mSpectralCentroid, mSpectralRolloff, mFormantRatio);
+    // Calculate raw confidence and apply EMA smoothing
+    float rawConfidence = calculateRawConfidence(mSpectralCentroid, mSpectralRolloff, mFormantRatio);
+    mSmoothedConfidence = mSmoothingAlpha * mSmoothedConfidence + (1.0f - mSmoothingAlpha) * rawConfidence;
+
+    // Hysteresis: use separate on/off thresholds to prevent chattering
+    bool wantActive;
+    if (mVocalActive) {
+        wantActive = (mSmoothedConfidence >= mOffThreshold);
+    } else {
+        wantActive = (mSmoothedConfidence >= mOnThreshold);
+    }
+
+    // Debounce: require state to persist for MIN_FRAMES_TO_TRANSITION frames
+    if (wantActive != mVocalActive) {
+        mFramesInState++;
+        if (mFramesInState >= MIN_FRAMES_TO_TRANSITION) {
+            mVocalActive = wantActive;
+            mFramesInState = 0;
+        }
+    } else {
+        mFramesInState = 0;
+    }
 
     // Track state changes for fireCallbacks
     mStateChanged = (mVocalActive != mPreviousVocalActive);
@@ -38,7 +59,7 @@ void VocalDetector::update(shared_ptr<AudioContext> context) {
 
 void VocalDetector::fireCallbacks() {
     if (mStateChanged) {
-        if (onVocal) onVocal(static_cast<u8>(mConfidence * 255.0f));
+        if (onVocal) onVocal(static_cast<u8>(mSmoothedConfidence * 255.0f));
         if (mVocalActive && onVocalStart) onVocalStart();
         if (!mVocalActive && onVocalEnd) onVocalEnd();
         mPreviousVocalActive = mVocalActive;
@@ -50,9 +71,11 @@ void VocalDetector::reset() {
     mVocalActive = false;
     mPreviousVocalActive = false;
     mConfidence = 0.0f;
+    mSmoothedConfidence = 0.0f;
     mSpectralCentroid = 0.0f;
     mSpectralRolloff = 0.0f;
     mFormantRatio = 0.0f;
+    mFramesInState = 0;
 }
 
 float VocalDetector::calculateSpectralCentroid(const FFTBins& fft) {
@@ -124,29 +147,26 @@ float VocalDetector::estimateFormantRatio(const FFTBins& fft) {
     return (f1Energy < 1e-6f) ? 0.0f : f2Energy / f1Energy;
 }
 
-bool VocalDetector::detectVocal(float centroid, float rolloff, float formantRatio) {
+float VocalDetector::calculateRawConfidence(float centroid, float rolloff, float formantRatio) {
     // Normalize centroid to 0-1 range using actual bin count
     float normalizedCentroid = centroid / static_cast<float>(mNumBins);
 
-    // Check if features fall within vocal ranges
-    // Human voice typically has:
-    // - Spectral centroid: 0.3-0.7 (mid-frequency focused)
-    // - Spectral rolloff: 0.5-0.8 (energy concentrated in lower-mid frequencies)
-    // - Formant ratio: 0.8-2.0 (characteristic F1/F2 relationship)
-    bool centroidOk = (normalizedCentroid >= 0.3f && normalizedCentroid <= 0.7f);
-    bool rolloffOk = (rolloff >= 0.5f && rolloff <= 0.8f);
-    bool formantOk = (formantRatio >= 0.8f && formantRatio <= 2.0f);
+    // Continuous confidence scores for each feature (no hard binary cutoffs)
 
-    // Calculate confidence scores for each feature
-    float centroidScore = 1.0f - fl::fl_abs(normalizedCentroid - 0.5f) * 2.0f;
-    float rolloffScore = 1.0f - fl::fl_abs(rolloff - 0.65f) / 0.35f;
-    float formantScore = (formantOk) ? 1.0f : 0.0f;
+    // Centroid score: peak at 0.5 (mid-frequency), falls off toward edges
+    // Human voice has centroid in ~0.3-0.7 range
+    float centroidScore = fl::fl_max(0.0f, 1.0f - fl::fl_abs(normalizedCentroid - 0.5f) * 2.5f);
 
-    // Overall confidence is average of all scores
+    // Rolloff score: peak at 0.65 (energy concentrated in lower-mid frequencies)
+    float rolloffScore = fl::fl_max(0.0f, 1.0f - fl::fl_abs(rolloff - 0.65f) / 0.3f);
+
+    // Formant score: continuous, peaks at ideal F2/F1 ratio of ~1.4 for vowels
+    // Falls off smoothly rather than binary 0/1
+    float formantScore = fl::fl_max(0.0f, 1.0f - fl::fl_abs(formantRatio - 1.4f) / 0.6f);
+
+    // Overall confidence is weighted average
     mConfidence = (centroidScore + rolloffScore + formantScore) / 3.0f;
-
-    // Detect vocal if all features are in range and confidence is above threshold
-    return (centroidOk && rolloffOk && formantOk && mConfidence >= mThreshold);
+    return mConfidence;
 }
 
 } // namespace fl

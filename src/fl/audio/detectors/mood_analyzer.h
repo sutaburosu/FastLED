@@ -108,6 +108,8 @@ private:
     fl::vector<float> mArousalHistory;
     int mHistoryIndex;
 
+    shared_ptr<const FFTBins> mRetainedFFT;
+
     // Analysis methods
     float calculateSpectralCentroid(const FFTBins& fft);
     float calculateSpectralRolloff(const FFTBins& fft, float threshold = 0.85f);

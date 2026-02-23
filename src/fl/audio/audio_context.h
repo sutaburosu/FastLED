@@ -4,6 +4,7 @@
 #include "fl/fft.h"
 #include "fl/stl/vector.h"
 #include "fl/stl/shared_ptr.h"
+#include "fl/stl/weak_ptr.h"
 #include "fl/stl/span.h"
 
 namespace fl {
@@ -20,13 +21,13 @@ public:
     float getZCF() const { return mSample.zcf(); }
     u32 getTimestamp() const { return mSample.timestamp(); }
 
-    // ----- Lazy FFT Computation (with caching) -----
-    const FFTBins& getFFT(
+    // ----- Lazy FFT Computation (with weak_ptr caching) -----
+    shared_ptr<const FFTBins> getFFT(
         int bands = 16,
         float fmin = FFT_Args::DefaultMinFrequency(),
         float fmax = FFT_Args::DefaultMaxFrequency()
     );
-    bool hasFFT() const { return mFFTComputed; }
+    bool hasFFT() const { return !mFFTCache.empty(); }
 
     // ----- FFT History (for temporal analysis) -----
     const vector<FFTBins>& getFFTHistory(int depth = 4);
@@ -42,14 +43,20 @@ public:
     void clearCache();
 
 private:
+    static constexpr int MAX_FFT_CACHE_ENTRIES = 4;
+
+    struct FFTCacheEntry {
+        FFT_Args args;
+        weak_ptr<const FFTBins> bins;
+    };
+
     int mSampleRate = 44100;
     AudioSample mSample;
-    mutable FFTBins mFFT;
-    mutable bool mFFTComputed;
-    mutable FFT_Args mFFTArgs;
+    FFT mFFT; // FFT engine (has its own kernel cache)
+    vector<FFTCacheEntry> mFFTCache; // Weak cache: lives while callers hold shared_ptr
     vector<FFTBins> mFFTHistory;
-    int mFFTHistoryDepth;
-    int mFFTHistoryIndex;
+    int mFFTHistoryDepth = 0;
+    int mFFTHistoryIndex = 0;
 };
 
 } // namespace fl

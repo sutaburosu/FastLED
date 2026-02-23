@@ -58,6 +58,8 @@ private:
     vector<float> mEnergyHistory;
     static constexpr size ENERGY_HISTORY_SIZE = 5;
 
+    shared_ptr<const FFTBins> mRetainedFFT;
+
     float calculateHighFreqEnergy(const FFTBins& fft);
     float calculateEnergyFlux(float currentEnergy);
     bool detectTransient(float flux, u32 timestamp);

@@ -73,18 +73,19 @@ shared_ptr<AudioContext> createMockAudioContext(u32 timestamp, bool isDownbeat,
         float amplitudeFloat = baseAmplitude * accentMultiplier;
         i16 amplitude = static_cast<i16>(FL_MIN(amplitudeFloat, 32767.0f));
 
-        // Use multiple frequencies to create richer spectral content
+        // Use multiple frequencies to create richer spectral content.
+        // Frequencies chosen to fall clearly within CQ bass bins (fmin=30 Hz).
         for (int i = 0; i < 512; i++) {
-            float t = static_cast<float>(i) / 512.0f;
+            float t = static_cast<float>(i) / 44100.0f;
 
-            // Bass component (stronger for downbeats)
-            float bass = fl::sin(t * 6.28318f * 2.0f); // 2 cycles
+            // Bass component at 100 Hz (stronger for downbeats)
+            float bass = fl::sin(2.0f * 3.14159f * 100.0f * t);
 
-            // Mid-range component
-            float mid = fl::sin(t * 6.28318f * 4.0f); // 4 cycles
+            // Mid-range component at 400 Hz
+            float mid = fl::sin(2.0f * 3.14159f * 400.0f * t);
 
-            // High component (less for downbeats to emphasize bass)
-            float high = fl::sin(t * 6.28318f * 8.0f); // 8 cycles
+            // High component at 800 Hz (less for downbeats to emphasize bass)
+            float high = fl::sin(2.0f * 3.14159f * 800.0f * t);
 
             // Weight frequencies differently for downbeats vs regular beats
             float mix;
@@ -95,7 +96,8 @@ shared_ptr<AudioContext> createMockAudioContext(u32 timestamp, bool isDownbeat,
             }
 
             // Apply amplitude envelope (impulse-like: sudden onset, decay)
-            float envelope = fl::exp(-t * 5.0f); // Exponential decay
+            float envelopeT = static_cast<float>(i) / 512.0f;
+            float envelope = fl::exp(-envelopeT * 5.0f); // Exponential decay
 
             i16 value = static_cast<i16>(amplitude * mix * envelope);
             pcmData.push_back(value);

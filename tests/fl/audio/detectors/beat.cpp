@@ -17,6 +17,19 @@ using fl::audio::test::makeSilence;
 
 namespace {
 
+struct AmplitudeLevel {
+    const char* label;
+    float amplitude;
+};
+
+static const AmplitudeLevel kBeatAmplitudes[] = {
+    {"very_quiet", 500.0f},   // ~-36 dBFS
+    {"quiet",      2000.0f},  // ~-24 dBFS
+    {"normal",     10000.0f}, // ~-10 dBFS
+    {"loud",       20000.0f}, // ~-4  dBFS
+    {"max",        32000.0f}, // ~0   dBFS
+};
+
 static AudioSample makeSample_BeatDetector(float freq, fl::u32 timestamp, float amplitude = 16000.0f) {
     return makeSample(freq, timestamp, amplitude);
 }
@@ -256,5 +269,109 @@ FL_TEST_CASE("BeatDetector - phase increases monotonically between beats") {
     if (totalChecks > 0) {
         float monotoneRatio = static_cast<float>(monotoneCount) / static_cast<float>(totalChecks);
         FL_CHECK_GT(monotoneRatio, 0.5f);  // At least half should be monotonic
+    }
+}
+
+FL_TEST_CASE("BeatDetector - amplitude sweep: onset detection across dB levels") {
+    for (const auto& level : kBeatAmplitudes) {
+        BeatDetector detector;
+        detector.setThreshold(0.1f);
+        int beatCount = 0;
+        detector.onBeat.add([&beatCount]() { beatCount++; });
+
+        fl::vector<fl::i16> silenceData(512, 0);
+        AudioSample silence(fl::span<const fl::i16>(silenceData.data(), silenceData.size()), 0);
+        auto ctx = fl::make_shared<AudioContext>(silence);
+        ctx->setSampleRate(44100);
+
+        // Feed 20 frames of silence to establish baseline
+        u32 timestamp = 0;
+        for (int i = 0; i < 20; ++i) {
+            timestamp += 23;
+            ctx->setSample(AudioSample(fl::span<const fl::i16>(silenceData.data(), silenceData.size()), timestamp));
+            ctx->getFFT(16, 30.0f);
+            detector.update(ctx);
+            detector.fireCallbacks();
+        }
+
+        // Inject a strong bass onset at this amplitude level
+        timestamp += 23;
+        fl::vector<fl::i16> bassData;
+        bassData.reserve(512);
+        for (int s = 0; s < 512; ++s) {
+            float phase = 2.0f * FL_M_PI * 200.0f * s / 44100.0f;
+            bassData.push_back(static_cast<fl::i16>(level.amplitude * fl::sinf(phase)));
+        }
+        ctx->setSample(AudioSample(fl::span<const fl::i16>(bassData.data(), bassData.size()), timestamp));
+        ctx->getFFT(16, 30.0f);
+        detector.update(ctx);
+        detector.fireCallbacks();
+
+        bool gotBeat = (beatCount >= 1) || detector.isBeat();
+
+        // Hard assert at normal/loud/max — these must detect the onset
+        if (level.amplitude >= 10000.0f) {
+            FL_CHECK_TRUE(gotBeat);
+        } else {
+            // very_quiet/quiet: log result. MIN_FLUX_THRESHOLD=50 blocks low amplitudes.
+            FL_MESSAGE("BeatDetector amplitude sweep [" << level.label
+                       << " amp=" << level.amplitude
+                       << "]: beat=" << (gotBeat ? "yes" : "no")
+                       << " (known limitation at low volumes)");
+        }
+    }
+}
+
+FL_TEST_CASE("BeatDetector - amplitude sweep: periodic beats converge BPM") {
+    // Only test normal/loud/max — below detection floor BPM tracking is meaningless
+    for (int idx = 2; idx < 5; ++idx) {
+        const auto& level = kBeatAmplitudes[idx];
+        BeatDetector detector;
+        detector.setThreshold(0.1f);
+
+        int beatCount = 0;
+        detector.onBeat.add([&beatCount]() { beatCount++; });
+
+        const int framesPerBeat = 22;
+        const int totalBeats = 12;
+        const u32 frameIntervalMs = 23;
+
+        fl::vector<fl::i16> silenceData(512, 0);
+        AudioSample silence(fl::span<const fl::i16>(silenceData.data(), silenceData.size()), 0);
+        auto ctx = fl::make_shared<AudioContext>(silence);
+        ctx->setSampleRate(44100);
+        ctx->getFFT(16, 30.0f);
+        ctx->getFFTHistory(4);
+
+        u32 timestamp = 0;
+        for (int beat = 0; beat < totalBeats; ++beat) {
+            for (int frame = 0; frame < framesPerBeat; ++frame) {
+                timestamp += frameIntervalMs;
+
+                if (frame == 0 && beat > 0) {
+                    fl::vector<fl::i16> bassData;
+                    bassData.reserve(512);
+                    for (int s = 0; s < 512; ++s) {
+                        float phase = 2.0f * FL_M_PI * 200.0f * s / 44100.0f;
+                        bassData.push_back(static_cast<fl::i16>(level.amplitude * fl::sinf(phase)));
+                    }
+                    ctx->setSample(AudioSample(fl::span<const fl::i16>(bassData.data(), bassData.size()), timestamp));
+                } else {
+                    ctx->setSample(AudioSample(fl::span<const fl::i16>(silenceData.data(), silenceData.size()), timestamp));
+                }
+
+                ctx->getFFT(16, 30.0f);
+                detector.update(ctx);
+                detector.fireCallbacks();
+            }
+        }
+
+        FL_CHECK_GT(beatCount, 5);
+
+        float bpm = detector.getBPM();
+        FL_CHECK_GT(bpm, 90.0f);
+        FL_CHECK_LT(bpm, 150.0f);
+
+        FL_CHECK_GT(detector.getConfidence(), 0.0f);
     }
 }

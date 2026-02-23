@@ -84,6 +84,8 @@ private:
     static constexpr u32 MIN_BEAT_INTERVAL_MS = 250;  // Max 240 BPM
     static constexpr u32 MAX_BEAT_INTERVAL_MS = 2000; // Min 30 BPM
 
+    shared_ptr<const FFTBins> mRetainedFFT;
+
     // Internal methods
     float calculateSpectralFlux(const FFTBins& fft);
     void updateAdaptiveThreshold();

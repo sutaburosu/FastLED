@@ -43,7 +43,8 @@ FL_TEST_CASE("AudioContext - lazy FFT computation") {
     AudioSample sample = makeSineAudioSample(1000.0f, 1000);
     AudioContext ctx(sample);
     FL_CHECK_FALSE(ctx.hasFFT());
-    const FFTBins& bins = ctx.getFFT(16);
+    auto binsPtr = ctx.getFFT(16);
+    const FFTBins& bins = *binsPtr;
     FL_CHECK(ctx.hasFFT());
     FL_CHECK_GT(bins.bins_raw.size(), 0u);
 
@@ -63,16 +64,16 @@ FL_TEST_CASE("AudioContext - lazy FFT computation") {
 FL_TEST_CASE("AudioContext - FFT history") {
     AudioSample sample1 = makeSineAudioSample(440.0f, 1000);
     AudioContext ctx(sample1);
-    ctx.getFFT(16);  // Compute FFT for first sample
+    auto fft1 = ctx.getFFT(16);  // Retain shared_ptr so weak cache is alive for setSample
 
     // Initialize history tracking BEFORE calling setSample
     ctx.getFFTHistory(4);
     FL_CHECK(ctx.hasFFTHistory());
 
-    // setSample pushes the current FFT into history
+    // setSample pushes the current FFT into history (locks weak_ptr)
     AudioSample sample2 = makeSineAudioSample(880.0f, 2000);
     ctx.setSample(sample2);
-    ctx.getFFT(16);  // Compute FFT for second sample
+    auto fft2 = ctx.getFFT(16);  // Retain for next setSample
 
     AudioSample sample3 = makeSineAudioSample(1200.0f, 3000);
     ctx.setSample(sample3);
@@ -85,7 +86,7 @@ FL_TEST_CASE("AudioContext - FFT history") {
 FL_TEST_CASE("AudioContext - getHistoricalFFT") {
     AudioSample sample1 = makeSineAudioSample(440.0f, 1000);
     AudioContext ctx(sample1);
-    ctx.getFFT(16);
+    auto fft1 = ctx.getFFT(16);  // Retain so setSample can lock weak_ptr
 
     // Initialize history tracking before pushing samples
     ctx.getFFTHistory(4);

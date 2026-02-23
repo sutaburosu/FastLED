@@ -61,6 +61,8 @@ private:
     u32 mLastSnareTime;
     u32 mLastHiHatTime;
 
+    shared_ptr<const FFTBins> mRetainedFFT;
+
     static constexpr u32 KICK_COOLDOWN_MS = 100;
     static constexpr u32 SNARE_COOLDOWN_MS = 80;
     static constexpr u32 HIHAT_COOLDOWN_MS = 50;

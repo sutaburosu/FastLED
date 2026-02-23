@@ -98,6 +98,8 @@ private:
     float mBassThreshold;           // Minimum bass energy ratio
     float mEnergyFluxThreshold;     // Minimum energy increase ratio
 
+    shared_ptr<const FFTBins> mRetainedFFT;
+
     // Analysis methods
     float getBassEnergy(const FFTBins& fft) const;
     float getMidEnergy(const FFTBins& fft) const;

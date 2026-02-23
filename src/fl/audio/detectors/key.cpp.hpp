@@ -90,7 +90,8 @@ KeyDetector::~KeyDetector() = default;
 
 void KeyDetector::update(shared_ptr<AudioContext> context) {
     // Get FFT data
-    const FFTBins& fft = context->getFFT(32);  // Use more bins for better pitch resolution
+    mRetainedFFT = context->getFFT(32);  // Use more bins for better pitch resolution
+    const FFTBins& fft = *mRetainedFFT;
     u32 timestamp = context->getTimestamp();
 
     // Extract chroma features

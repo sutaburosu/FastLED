@@ -136,6 +136,8 @@ private:
     bool mFireMeterChange = false;
     u8 mPendingMeter = 0;
 
+    shared_ptr<const FFTBins> mRetainedFFT;
+
     // ----- Helper Methods -----
     void updateBeatDetector(shared_ptr<AudioContext> context);
     float calculateBeatAccent(const FFTBins& fft, float bassEnergy);

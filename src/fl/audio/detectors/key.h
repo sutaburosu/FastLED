@@ -124,6 +124,8 @@ private:
     static const float MAJOR_PROFILE[12];
     static const float MINOR_PROFILE[12];
 
+    shared_ptr<const FFTBins> mRetainedFFT;
+
     // Helper methods
     void extractChroma(const FFTBins& fft, float* chroma);
     void normalizeChroma(float* chroma);

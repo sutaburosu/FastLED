@@ -30,7 +30,8 @@ void DropDetector::update(shared_ptr<AudioContext> context) {
         return;
     }
 
-    const FFTBins& fft = context->getFFT(32);
+    mRetainedFFT = context->getFFT(32);
+    const FFTBins& fft = *mRetainedFFT;
     float rms = context->getRMS();
     u32 timestamp = context->getTimestamp();
 

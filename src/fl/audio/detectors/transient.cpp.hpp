@@ -23,7 +23,8 @@ TransientDetector::TransientDetector()
 TransientDetector::~TransientDetector() = default;
 
 void TransientDetector::update(shared_ptr<AudioContext> context) {
-    const FFTBins& fft = context->getFFT(16);
+    mRetainedFFT = context->getFFT(16);
+    const FFTBins& fft = *mRetainedFFT;
     u32 timestamp = context->getTimestamp();
 
     // Calculate high-frequency energy (transients have strong high-freq components)

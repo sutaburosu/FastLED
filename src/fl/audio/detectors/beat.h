@@ -59,6 +59,8 @@ private:
     vector<float> mFluxHistory;
     static constexpr size FLUX_HISTORY_SIZE = 43;  // ~1 second at 43fps
 
+    shared_ptr<const FFTBins> mRetainedFFT;
+
     float calculateSpectralFlux(const FFTBins& fft);
     void updateAdaptiveThreshold();
     bool detectBeat(u32 timestamp);

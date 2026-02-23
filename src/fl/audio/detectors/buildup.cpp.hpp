@@ -40,7 +40,8 @@ void BuildupDetector::update(shared_ptr<AudioContext> context) {
         return;
     }
 
-    const FFTBins& fft = context->getFFT(32);
+    mRetainedFFT = context->getFFT(32);
+    const FFTBins& fft = *mRetainedFFT;
     float rms = context->getRMS();
     float treble = getTrebleEnergy(fft);
     u32 timestamp = context->getTimestamp();

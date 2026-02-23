@@ -9,6 +9,7 @@
 
 #include "fl/audio/audio_detector.h"
 #include "fl/audio/audio_context.h"
+#include "fl/math_macros.h"
 #include "fl/stl/function.h"
 #include "fl/stl/shared_ptr.h"
 
@@ -34,8 +35,9 @@ public:
 
     // State access
     bool isVocal() const { return mVocalActive; }
-    float getConfidence() const { return mConfidence; }
-    void setThreshold(float threshold) { mThreshold = threshold; }
+    float getConfidence() const { return mSmoothedConfidence; }
+    void setThreshold(float threshold) { mOnThreshold = threshold; mOffThreshold = fl::fl_max(0.0f, threshold - 0.2f); }
+    void setSmoothingAlpha(float alpha) { mSmoothingAlpha = alpha; }
     int getNumBins() const { return mNumBins; }
 
 private:
@@ -43,18 +45,25 @@ private:
     bool mPreviousVocalActive;
     bool mStateChanged = false;
     float mConfidence;
-    float mThreshold;
+    float mSmoothedConfidence = 0.0f;
+    float mOnThreshold = 0.65f;
+    float mOffThreshold = 0.45f;
+    float mSmoothingAlpha = 0.7f; // EMA smoothing factor (higher = more smoothing)
+    int mFramesInState = 0; // Debounce counter
+    static constexpr int MIN_FRAMES_TO_TRANSITION = 3; // Debounce: require N frames before state change
     float mSpectralCentroid;
     float mSpectralRolloff;
     float mFormantRatio;
     int mSampleRate = 44100;
     int mNumBins = 128;
 
+    shared_ptr<const FFTBins> mRetainedFFT;
+
     // Analysis methods
     float calculateSpectralCentroid(const FFTBins& fft);
     float calculateSpectralRolloff(const FFTBins& fft);
     float estimateFormantRatio(const FFTBins& fft);
-    bool detectVocal(float centroid, float rolloff, float formantRatio);
+    float calculateRawConfidence(float centroid, float rolloff, float formantRatio);
 };
 
 } // namespace fl

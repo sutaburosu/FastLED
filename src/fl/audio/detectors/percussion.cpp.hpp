@@ -26,7 +26,8 @@ PercussionDetector::PercussionDetector()
 PercussionDetector::~PercussionDetector() = default;
 
 void PercussionDetector::update(shared_ptr<AudioContext> context) {
-    const FFTBins& fft = context->getFFT(16);
+    mRetainedFFT = context->getFFT(16);
+    const FFTBins& fft = *mRetainedFFT;
     u32 timestamp = context->getTimestamp();
 
     // Calculate energy in each frequency band

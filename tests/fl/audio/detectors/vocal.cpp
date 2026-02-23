@@ -16,6 +16,19 @@ using fl::audio::test::makeSample;
 
 namespace {
 
+struct AmplitudeLevel {
+    const char* label;
+    float amplitude;
+};
+
+static const AmplitudeLevel kVocalAmplitudes[] = {
+    {"very_quiet", 500.0f},   // ~-36 dBFS
+    {"quiet",      2000.0f},  // ~-24 dBFS
+    {"normal",     10000.0f}, // ~-10 dBFS
+    {"loud",       20000.0f}, // ~-4  dBFS
+    {"max",        32000.0f}, // ~0   dBFS
+};
+
 static AudioSample makeSample_VocalDetector(float freq, fl::u32 timestamp, float amplitude = 16000.0f) {
     return makeSample(freq, timestamp, amplitude);
 }
@@ -134,4 +147,64 @@ FL_TEST_CASE("VocalDetector - onVocalStart and onVocalEnd callbacks") {
     }
     // Callbacks should not have fired negative times (verify no underflow)
     // and the mechanism should not crash (we got here without crash)
+}
+
+FL_TEST_CASE("VocalDetector - amplitude sweep: spectral features stable across dB levels") {
+    for (const auto& level : kVocalAmplitudes) {
+        VocalDetector detector;
+        detector.setSampleRate(44100);
+
+        auto ctx = fl::make_shared<AudioContext>(makeSample_VocalDetector(440.0f, 1000, level.amplitude));
+        ctx->setSampleRate(44100);
+        ctx->getFFT(128);
+        detector.update(ctx);
+
+        float conf = detector.getConfidence();
+        // Confidence should be in valid range at all amplitudes
+        FL_CHECK_GE(conf, -0.5f);
+        FL_CHECK_LE(conf, 1.0f);
+
+        // Pure sine should never trigger vocal detection at any amplitude
+        FL_CHECK_FALSE(detector.isVocal());
+    }
+}
+
+FL_TEST_CASE("VocalDetector - amplitude sweep: confidence consistency for same signal") {
+    // Feed 10 frames of 440 Hz sine per amplitude to let EMA settle,
+    // then compare confidence across normal/loud/max
+    float confidences[5] = {};
+
+    for (int idx = 0; idx < 5; ++idx) {
+        const auto& level = kVocalAmplitudes[idx];
+        VocalDetector detector;
+        detector.setSampleRate(44100);
+
+        // Feed 10 frames to let EMA smoother settle
+        for (int frame = 0; frame < 10; ++frame) {
+            auto ctx = fl::make_shared<AudioContext>(
+                makeSample_VocalDetector(440.0f, frame * 23, level.amplitude));
+            ctx->setSampleRate(44100);
+            ctx->getFFT(128);
+            detector.update(ctx);
+        }
+
+        confidences[idx] = detector.getConfidence();
+    }
+
+    // Hard assert: normal/loud/max confidences are within 0.15 of each other
+    // Ratio-based spectral features should be amplitude-invariant
+    float confNormal = confidences[2];
+    float confLoud = confidences[3];
+    float confMax = confidences[4];
+
+    FL_CHECK_LT(fl::abs(confNormal - confLoud), 0.15f);
+    FL_CHECK_LT(fl::abs(confNormal - confMax), 0.15f);
+    FL_CHECK_LT(fl::abs(confLoud - confMax), 0.15f);
+
+    // Log very_quiet divergence (FFT quantization noise at low amplitudes)
+    FL_MESSAGE("VocalDetector confidence sweep: very_quiet=" << confidences[0]
+               << " quiet=" << confidences[1]
+               << " normal=" << confidences[2]
+               << " loud=" << confidences[3]
+               << " max=" << confidences[4]);
 }

@@ -104,6 +104,8 @@ private:
     float mIntensityThreshold;      // Minimum intensity to start buildup
     float mEnergyRiseThreshold;     // Minimum energy rise rate
 
+    shared_ptr<const FFTBins> mRetainedFFT;
+
     // Analysis methods
     float calculateEnergyTrend() const;      // Calculate energy rise trend
     float calculateTrebleTrend() const;      // Calculate treble rise trend

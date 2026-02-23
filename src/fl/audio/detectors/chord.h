@@ -83,6 +83,8 @@ private:
     bool mFireChordEnd = false;
     bool mFireChord = false;
 
+    shared_ptr<const FFTBins> mRetainedFFT;
+
     // Detection methods
     void calculateChroma(const FFTBins& fft);
     Chord detectChord(const float* chroma, u32 timestamp);

@@ -44,7 +44,8 @@ ChordDetector::ChordDetector()
 ChordDetector::~ChordDetector() = default;
 
 void ChordDetector::update(shared_ptr<AudioContext> context) {
-    const FFTBins& fft = context->getFFT(32);  // Higher resolution for pitch detection
+    mRetainedFFT = context->getFFT(32);  // Higher resolution for pitch detection
+    const FFTBins& fft = *mRetainedFFT;
     u32 timestamp = context->getTimestamp();
 
     // Calculate chroma features

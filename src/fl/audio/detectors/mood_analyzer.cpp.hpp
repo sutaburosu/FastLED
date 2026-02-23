@@ -25,7 +25,8 @@ MoodAnalyzer::MoodAnalyzer()
 MoodAnalyzer::~MoodAnalyzer() = default;
 
 void MoodAnalyzer::update(shared_ptr<AudioContext> context) {
-    const FFTBins& fft = context->getFFT(32);  // Higher resolution for mood analysis
+    mRetainedFFT = context->getFFT(32);  // Higher resolution for mood analysis
+    const FFTBins& fft = *mRetainedFFT;
     const FFTBins* prevFFT = context->getHistoricalFFT(1);
 
     // Extract audio features
