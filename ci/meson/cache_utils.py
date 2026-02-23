@@ -180,11 +180,28 @@ def check_ninja_skip(build_dir: Path, target: str) -> bool:
         if abs(bn_mtime - saved.get("build_ninja_mtime", -1.0)) > 0.001:
             return False
 
-        # 2. Check src/ max source file mtime (detects src/ code changes).
+        # 2a. Check meson.build files (detects build config changes)
+        cwd = Path.cwd()
+        _meson_files = [
+            cwd / "meson.build",
+            cwd / "tests" / "meson.build",
+            cwd / "ci" / "meson" / "native" / "meson.build",
+            cwd / "ci" / "meson" / "wasm" / "meson.build",
+            cwd / "examples" / "meson.build",
+        ]
+        _meson_max = 0.0
+        for mf in _meson_files:
+            try:
+                _meson_max = max(_meson_max, mf.stat().st_mtime)
+            except OSError:
+                pass
+        if _meson_max > saved.get("meson_max_file_mtime", -1.0) + 0.001:
+            return False  # meson.build file modified since last build
+
+        # 2b. Check src/ max source file mtime (detects src/ code changes).
         # Previously used libfastled.a mtime as a proxy, but libfastled.a is only
         # updated AFTER ninja runs. Since this check fires BEFORE ninja, we must
         # scan src/ files directly to detect content modifications.
-        cwd = Path.cwd()
         src_max_file_mtime = _get_max_source_file_mtime(cwd / "src")
         if src_max_file_mtime > saved.get("src_max_file_mtime", -1.0) + 0.001:
             return False  # src/ source file modified since last build
@@ -263,6 +280,22 @@ def save_ninja_skip_state(build_dir: Path, target: str) -> None:
 
         # tests/ max source file mtime: detects test source modifications
         existing["tests_max_file_mtime"] = _get_max_source_file_mtime(cwd / "tests")
+
+        # meson.build max mtime: detects build configuration changes
+        _meson_files = [
+            cwd / "meson.build",
+            cwd / "tests" / "meson.build",
+            cwd / "ci" / "meson" / "native" / "meson.build",
+            cwd / "ci" / "meson" / "wasm" / "meson.build",
+            cwd / "examples" / "meson.build",
+        ]
+        _meson_max = 0.0
+        for mf in _meson_files:
+            try:
+                _meson_max = max(_meson_max, mf.stat().st_mtime)
+            except OSError:
+                pass
+        existing["meson_max_file_mtime"] = _meson_max
 
         # Update per-target state
         existing.setdefault("targets", {})[target] = {
@@ -421,11 +454,28 @@ def check_full_run_cache(
         ):
             return None
 
-        # 2. Check src/ max source file mtime (detects src/ code changes).
+        # 2a. Check meson.build files (detects build config changes)
+        cwd = Path.cwd()
+        _meson_files = [
+            cwd / "meson.build",
+            cwd / "tests" / "meson.build",
+            cwd / "ci" / "meson" / "native" / "meson.build",
+            cwd / "ci" / "meson" / "wasm" / "meson.build",
+            cwd / "examples" / "meson.build",
+        ]
+        _meson_max = 0.0
+        for mf in _meson_files:
+            try:
+                _meson_max = max(_meson_max, mf.stat().st_mtime)
+            except OSError:
+                pass
+        if _meson_max > saved.get("meson_max_file_mtime", -1.0) + 0.001:
+            return None
+
+        # 2b. Check src/ max source file mtime (detects src/ code changes).
         # Previously used libfastled.a mtime as a proxy, but libfastled.a is only
         # updated AFTER ninja runs. Since this check fires BEFORE ninja, we must
         # scan src/ files directly to detect content modifications.
-        cwd = Path.cwd()
         src_max_mtime = _get_max_source_file_mtime(cwd / "src")
         if src_max_mtime > saved.get("src_max_file_mtime", -1.0) + 0.001:
             return None
@@ -467,6 +517,21 @@ def save_full_run_result(
         build_ninja = build_dir / "build.ninja"
         cwd = Path.cwd()
 
+        # Compute meson.build max mtime
+        _meson_files = [
+            cwd / "meson.build",
+            cwd / "tests" / "meson.build",
+            cwd / "ci" / "meson" / "native" / "meson.build",
+            cwd / "ci" / "meson" / "wasm" / "meson.build",
+            cwd / "examples" / "meson.build",
+        ]
+        _meson_max = 0.0
+        for mf in _meson_files:
+            try:
+                _meson_max = max(_meson_max, mf.stat().st_mtime)
+            except OSError:
+                pass
+
         data = {
             "result": "pass",
             "num_passed": num_passed,
@@ -478,6 +543,7 @@ def save_full_run_result(
             "src_max_file_mtime": _get_max_source_file_mtime(cwd / "src"),
             "tests_max_file_mtime": _get_max_source_file_mtime(cwd / "tests"),
             "examples_max_file_mtime": _get_max_source_file_mtime(cwd / "examples"),
+            "meson_max_file_mtime": _meson_max,
         }
 
         with open(cache_file, "w", encoding="utf-8") as f:

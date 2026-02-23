@@ -12,6 +12,18 @@ fs = import('fs')
 # Find uv for running Zig compiler
 uv = find_program('uv')
 
+# Absolute include paths — must match between PCH and test DLL compilation so
+# that #pragma once recognises headers from both contexts as the same file.
+# Meson's include_directories() emits *relative* -I flags; the PCH custom_target
+# uses project_source_root() which produces *absolute* -I flags.  Mixing the two
+# makes clang (especially on Windows) treat the same header as two different
+# files, breaking #pragma once across PCH boundaries.
+test_abs_include_args = [
+  '-I' + meson.project_source_root() / 'src',
+  '-I' + meson.project_source_root() / 'tests',
+  '-I' + meson.project_source_root() / 'src/platforms/stub',
+]
+
 # Build precompiled header from test_pch.h (contains FastLED.h, doctest + common headers)
 # Uses the same C++ compiler configured in meson_native.txt to ensure PCH compatibility
 # Wrapper script fixes the depfile to reference PCH output instead of temp .obj file
@@ -30,9 +42,7 @@ test_pch = custom_target('test_pch',
     '-MD', '-MF', '@DEPFILE@',     # Generate dependency file (will be fixed by wrapper)
     unit_test_compile_args,        # Same flags as all tests
     '-fPIC',                       # Required: tests build as shared_library which needs PIC
-    '-I' + meson.project_source_root() / 'src',
-    '-I' + meson.project_source_root() / 'tests',
-    '-I' + meson.project_source_root() / 'src/platforms/stub',
+    test_abs_include_args,
     # STRICT PCH VALIDATION FLAGS (to catch invalidation issues):
     '-Werror=invalid-pch',                      # Treat invalid PCH as hard error
     '-verify-pch',                              # Load and verify PCH is not stale
@@ -153,7 +163,7 @@ foreach test_name : test_names
 
   # Some tests need additional source files for ESP32 parallel SPI host simulation
   test_sources = [test_file, test_pch]
-  test_cpp_args = unit_test_compile_args + [
+  test_cpp_args = test_abs_include_args + unit_test_compile_args + [
     '-DTEST_DLL_MODE',                          # Define TEST_DLL_MODE for DLL builds
     '-include-pch', meson.current_build_dir() / 'test_pch.h.pch',
     '-Werror=invalid-pch',                      # Treat invalid PCH as hard error
@@ -167,7 +177,6 @@ foreach test_name : test_names
   # NOTE: No dependencies needed - libunwind moved to runner.exe
   test_dll = shared_library(test_name,
     test_sources,
-    include_directories: [src_dir, stub_dir, tests_dir],
     cpp_args: test_cpp_args,
     link_args: unit_test_link_args,
     link_with: [fastled_lib, doctest_dll_main],  # Use DLL-mode doctest main

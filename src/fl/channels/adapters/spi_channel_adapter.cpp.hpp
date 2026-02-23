@@ -226,7 +226,6 @@ void SpiChannelEngineAdapter::enqueue(ChannelDataPtr channelData) {
 
 void SpiChannelEngineAdapter::show() {
     if (mEnqueuedChannels.empty()) {
-        FL_DBG("SpiChannelEngineAdapter: show() called with no enqueued channels");
         return;
     }
 

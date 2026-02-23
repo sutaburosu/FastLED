@@ -206,6 +206,7 @@ class CacheInvalidationRules:
                 "tests/**/*.hpp",
                 "meson.build",
                 "tests/meson.build",
+                "ci/meson/native/meson.build",
             ],
             "python_test": [
                 "ci/tests/**/*.py",
@@ -225,6 +226,7 @@ class CacheInvalidationRules:
                 "meson.build",
                 "ci/util/meson_example_runner.py",
                 "examples/meson.build",
+                "ci/meson/native/meson.build",
             ],
             "all": [
                 "src/**/*.cpp",

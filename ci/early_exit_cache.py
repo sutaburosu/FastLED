@@ -186,6 +186,24 @@ def ninja_skip(
             > 0.001
         ):
             return False
+        # Check meson.build files that affect build configuration.
+        # Changes to these files require meson reconfigure + rebuild.
+        _meson_files = [
+            Path("meson.build"),
+            Path("tests/meson.build"),
+            Path("ci/meson/native/meson.build"),
+            Path("ci/meson/wasm/meson.build"),
+            Path("examples/meson.build"),
+        ]
+        saved_meson_max = saved.get("meson_max_file_mtime", -1.0)
+        _meson_max = 0.0
+        for mf in _meson_files:
+            try:
+                _meson_max = max(_meson_max, mf.stat().st_mtime)
+            except OSError:
+                pass
+        if _meson_max > saved_meson_max + 0.001:
+            return False
         # Check src/ max source file mtime to detect src/ code changes.
         # Previously used libfastled.a mtime as a proxy, but libfastled.a is only
         # updated AFTER ninja runs. Since this check fires BEFORE ninja, we must
@@ -297,6 +315,22 @@ def full_run_cache(
             abs(build_ninja.stat().st_mtime - saved.get("build_ninja_mtime", -1.0))
             > 0.001
         ):
+            return None
+        # Check meson.build files (detects build config changes)
+        _meson_files = [
+            Path("meson.build"),
+            Path("tests/meson.build"),
+            Path("ci/meson/native/meson.build"),
+            Path("ci/meson/wasm/meson.build"),
+            Path("examples/meson.build"),
+        ]
+        _meson_max = 0.0
+        for mf in _meson_files:
+            try:
+                _meson_max = max(_meson_max, mf.stat().st_mtime)
+            except OSError:
+                pass
+        if _meson_max > saved.get("meson_max_file_mtime", -1.0) + 0.001:
             return None
         # Check src/ max source file mtime (detects src/ code changes).
         # Previously used libfastled.a mtime as a proxy, but libfastled.a is only

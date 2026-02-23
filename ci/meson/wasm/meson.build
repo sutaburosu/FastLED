@@ -204,6 +204,15 @@ wasm_pch = custom_target('wasm_pch',
 # The weak/strong symbol separation is a native build concern only.
 wasm_all_sources = fastled_sources + platforms_shared_files
 
+# Absolute include paths — must match the PCH compilation so that #pragma once
+# recognises headers included via the PCH and via source files as the same file.
+# Meson's include_directories() emits *relative* -I flags which causes clang
+# (especially emscripten on Windows) to treat them as distinct files.
+wasm_abs_include_args = [
+  '-I' + meson.project_source_root() / 'src',
+  '-I' + meson.project_source_root() / 'src' / 'platforms' / 'wasm' / 'compiler',
+]
+
 wasm_pch_usage_args = [
   '-include-pch', meson.current_build_dir() / 'wasm_pch.h.pch',
   '-Werror=invalid-pch',
@@ -212,8 +221,7 @@ wasm_pch_usage_args = [
 
 fastled_wasm_lib = static_library('fastled',
   wasm_all_sources + [wasm_pch],
-  include_directories: [src_dir, wasm_compiler_dir],
-  cpp_args: wasm_lib_compile_args + wasm_pch_usage_args,
+  cpp_args: wasm_abs_include_args + wasm_lib_compile_args + wasm_pch_usage_args,
   pic: false,
   install: false
 )

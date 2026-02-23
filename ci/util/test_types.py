@@ -412,6 +412,7 @@ def calculate_cpp_test_fingerprint(
     meson_build_files = [
         cwd / "meson.build",  # Root build configuration
         cwd / "tests" / "meson.build",  # Test discovery and configuration
+        cwd / "ci" / "meson" / "native" / "meson.build",  # Native library build flags
     ]
     for meson_file in meson_build_files:
         if meson_file.exists():
@@ -475,6 +476,7 @@ def calculate_examples_fingerprint(
     meson_build_files = [
         cwd / "meson.build",  # Root build configuration
         cwd / "examples" / "meson.build",  # Example registration and configuration
+        cwd / "ci" / "meson" / "native" / "meson.build",  # Native library build flags
     ]
     for meson_file in meson_build_files:
         if meson_file.exists():
@@ -594,10 +596,14 @@ def calculate_wasm_fingerprint() -> FingerprintResult:
         )
         hasher.update(f"wasm_example:{wasm_result.hash}".encode("utf-8"))
 
-    # Include WASM compilation scripts
+    # Include WASM compilation scripts and build configuration
     wasm_compile_files = [
         cwd / "ci" / "wasm_compile.py",
+        cwd / "ci" / "wasm_build.py",
+        cwd / "ci" / "wasm_build_library.py",
         cwd / "ci" / "boards.py",
+        cwd / "ci" / "meson" / "wasm" / "meson.build",  # WASM library build flags & PCH
+        cwd / "meson.build",  # Root build configuration
     ]
     for script_file in wasm_compile_files:
         if script_file.exists():

@@ -78,7 +78,6 @@ void ChannelEngineUART::enqueue(ChannelDataPtr channelData) {
 
 void ChannelEngineUART::show() {
     FL_SCOPED_TRACE;
-    FL_DBG("UART: show() called with " << mEnqueuedChannels.size() << " enqueued channel(s)");
 
     if (!mEnqueuedChannels.empty()) {
         // Move enqueued channels to transmitting channels
