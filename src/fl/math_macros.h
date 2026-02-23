@@ -86,6 +86,10 @@ FL_DISABLE_WARNING_POP
 #define FL_PI 3.1415926535897932384626433832795
 #endif
 
+#ifndef FL_E
+#define FL_E 2.71828182845904523536
+#endif
+
 #ifndef FL_M_PI
 #define FL_M_PI FL_PI
 #endif
