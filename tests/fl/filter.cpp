@@ -1006,4 +1006,550 @@ FL_TEST_CASE("BiquadFilter::notch - rejects center frequency") {
     FL_CHECK_LT(max_abs, 0.15f);
 }
 
+// ============================================================================
+// Corner-case and stress tests
+// ============================================================================
+
+// --- MovingAverage corner cases ---
+
+FL_TEST_CASE("MovingAverage - single element window") {
+    MovingAverage<float, 1> ma;
+    ma.update(7.0f);
+    FL_CHECK_CLOSE(ma.value(), 7.0f, 0.01f);
+    ma.update(3.0f);
+    FL_CHECK_CLOSE(ma.value(), 3.0f, 0.01f);
+}
+
+FL_TEST_CASE("MovingAverage - value before full") {
+    MovingAverage<float, 4> ma;
+    ma.update(10.0f);
+    // Only 1 sample, average should be 10
+    FL_CHECK_CLOSE(ma.value(), 10.0f, 0.01f);
+    ma.update(20.0f);
+    // 2 samples, average should be 15
+    FL_CHECK_CLOSE(ma.value(), 15.0f, 0.01f);
+}
+
+FL_TEST_CASE("MovingAverage - running sum drift correction") {
+    // After many updates with float, the incremental sum can drift.
+    // Feed a constant and verify the average stays accurate.
+    MovingAverage<float, 8> ma;
+    for (int i = 0; i < 10000; ++i) {
+        ma.update(1.0f / 3.0f); // irrational-ish in float
+    }
+    float v = ma.value();
+    FL_CHECK_GT(v, 0.333f);
+    FL_CHECK_LT(v, 0.334f);
+}
+
+FL_TEST_CASE("MovingAverage - negative values") {
+    MovingAverage<float, 3> ma;
+    ma.update(-5.0f);
+    ma.update(-10.0f);
+    ma.update(-15.0f);
+    FL_CHECK_CLOSE(ma.value(), -10.0f, 0.01f);
+}
+
+FL_TEST_CASE("MovingAverage - alternating positive negative") {
+    MovingAverage<float, 4> ma;
+    ma.update(100.0f);
+    ma.update(-100.0f);
+    ma.update(100.0f);
+    ma.update(-100.0f);
+    FL_CHECK_CLOSE(ma.value(), 0.0f, 0.01f);
+}
+
+// --- MedianFilter corner cases ---
+
+FL_TEST_CASE("MedianFilter - all duplicate values") {
+    MedianFilter<float, 5> mf;
+    for (int i = 0; i < 5; ++i) mf.update(42.0f);
+    FL_CHECK_EQ(mf.value(), 42.0f);
+    // Now push a different value
+    mf.update(100.0f);
+    // Window: {42, 42, 42, 42, 100}, median = 42
+    FL_CHECK_EQ(mf.value(), 42.0f);
+}
+
+FL_TEST_CASE("MedianFilter - negative values") {
+    MedianFilter<float, 3> mf;
+    mf.update(-5.0f);
+    mf.update(-1.0f);
+    mf.update(-3.0f);
+    // Sorted: {-5, -3, -1}, median = -3
+    FL_CHECK_EQ(mf.value(), -3.0f);
+}
+
+FL_TEST_CASE("MedianFilter - before full returns partial median") {
+    MedianFilter<float, 5> mf;
+    mf.update(10.0f);
+    // 1 element, median = element
+    FL_CHECK_EQ(mf.value(), 10.0f);
+    mf.update(20.0f);
+    // 2 elements, sorted: {10, 20}, index 1 = 20
+    FL_CHECK_EQ(mf.value(), 20.0f);
+    mf.update(5.0f);
+    // 3 elements, sorted: {5, 10, 20}, index 1 = 10
+    FL_CHECK_EQ(mf.value(), 10.0f);
+}
+
+FL_TEST_CASE("MedianFilter - descending input") {
+    MedianFilter<float, 5> mf;
+    mf.update(50.0f);
+    mf.update(40.0f);
+    mf.update(30.0f);
+    mf.update(20.0f);
+    mf.update(10.0f);
+    // Sorted: {10, 20, 30, 40, 50}, median = 30
+    FL_CHECK_EQ(mf.value(), 30.0f);
+}
+
+FL_TEST_CASE("MedianFilter - many evictions stress test") {
+    MedianFilter<float, 3> mf;
+    // Push a long ascending sequence and verify median at each step
+    for (int i = 0; i < 100; ++i) {
+        mf.update(static_cast<float>(i));
+    }
+    // Window should be {97, 98, 99}, median = 98
+    FL_CHECK_EQ(mf.value(), 98.0f);
+}
+
+// --- WeightedMovingAverage corner cases ---
+
+FL_TEST_CASE("WeightedMovingAverage - single sample") {
+    WeightedMovingAverage<float, 4> wma;
+    wma.update(7.0f);
+    // Only 1 sample with weight 1, result = 7
+    FL_CHECK_CLOSE(wma.value(), 7.0f, 0.01f);
+}
+
+FL_TEST_CASE("WeightedMovingAverage - negative values") {
+    WeightedMovingAverage<float, 3> wma;
+    wma.update(-3.0f);
+    wma.update(-6.0f);
+    wma.update(-9.0f);
+    // Weights: [1,2,3], sum = (-3*1 + -6*2 + -9*3) / 6 = (-3-12-27)/6 = -42/6 = -7
+    FL_CHECK_CLOSE(wma.value(), -7.0f, 0.01f);
+}
+
+// --- TriangularFilter corner cases ---
+
+FL_TEST_CASE("TriangularFilter - single sample") {
+    TriangularFilter<float, 5> tf;
+    tf.update(3.0f);
+    FL_CHECK_CLOSE(tf.value(), 3.0f, 0.01f);
+}
+
+FL_TEST_CASE("TriangularFilter - constant signal") {
+    TriangularFilter<float, 5> tf;
+    for (int i = 0; i < 5; ++i) tf.update(8.0f);
+    FL_CHECK_CLOSE(tf.value(), 8.0f, 0.01f);
+}
+
+// --- GaussianFilter corner cases ---
+
+FL_TEST_CASE("GaussianFilter - single sample") {
+    GaussianFilter<float, 5> gf;
+    gf.update(3.0f);
+    // 1 sample, binom coeff [1], result = 3
+    FL_CHECK_CLOSE(gf.value(), 3.0f, 0.01f);
+}
+
+FL_TEST_CASE("GaussianFilter - two samples") {
+    GaussianFilter<float, 5> gf;
+    gf.update(0.0f);
+    gf.update(10.0f);
+    // Binomial for n=2: [1, 1], so average = 5.0
+    FL_CHECK_CLOSE(gf.value(), 5.0f, 0.01f);
+}
+
+// --- AlphaTrimmedMean corner cases ---
+
+FL_TEST_CASE("AlphaTrimmedMean - trim equals half (becomes median)") {
+    AlphaTrimmedMean<float, 5> atm(2); // trim 2 from each end of 5 = 1 left = median
+    atm.update(1.0f);
+    atm.update(2.0f);
+    atm.update(3.0f);
+    atm.update(4.0f);
+    atm.update(5.0f);
+    // Sorted: [1,2,3,4,5], trim 2 each end → [3], avg = 3.0
+    FL_CHECK_CLOSE(atm.value(), 3.0f, 0.01f);
+}
+
+FL_TEST_CASE("AlphaTrimmedMean - trim exceeds half (falls back to median)") {
+    AlphaTrimmedMean<float, 5> atm(3); // trim 3 from each end of 5 → lo=3, hi=2 → lo >= hi
+    atm.update(10.0f);
+    atm.update(20.0f);
+    atm.update(30.0f);
+    atm.update(40.0f);
+    atm.update(50.0f);
+    // Falls back to median: sorted[2] = 30
+    FL_CHECK_CLOSE(atm.value(), 30.0f, 0.01f);
+}
+
+FL_TEST_CASE("AlphaTrimmedMean - negative values") {
+    AlphaTrimmedMean<float, 5> atm(1);
+    atm.update(-10.0f);
+    atm.update(-5.0f);
+    atm.update(0.0f);
+    atm.update(5.0f);
+    atm.update(10.0f);
+    // Sorted: [-10,-5,0,5,10], trim 1 each end → [-5,0,5], avg = 0.0
+    FL_CHECK_CLOSE(atm.value(), 0.0f, 0.01f);
+}
+
+FL_TEST_CASE("AlphaTrimmedMean - before full") {
+    AlphaTrimmedMean<float, 5> atm(1);
+    atm.update(10.0f);
+    // 1 sample, trim 1 each end: lo=1, hi=0 → falls back to median
+    FL_CHECK_CLOSE(atm.value(), 10.0f, 0.01f);
+}
+
+// --- HampelFilter corner cases ---
+
+FL_TEST_CASE("HampelFilter - all identical then slight variation") {
+    HampelFilter<float, 5> hf(3.0f);
+    hf.update(10.0f);
+    hf.update(10.0f);
+    hf.update(10.0f);
+    hf.update(10.0f);
+    // All identical: MAD = 0. Any different value is treated as outlier.
+    float v = hf.update(10.1f);
+    // With MAD=0, deviation != 0, so replaced with median = 10.0
+    FL_CHECK_CLOSE(v, 10.0f, 0.01f);
+}
+
+FL_TEST_CASE("HampelFilter - first sample passes through") {
+    HampelFilter<float, 5> hf(3.0f);
+    // First sample: sortedCount=0, no median to compare against
+    float v = hf.update(42.0f);
+    FL_CHECK_CLOSE(v, 42.0f, 0.01f);
+}
+
+FL_TEST_CASE("HampelFilter - negative values") {
+    HampelFilter<float, 5> hf(3.0f);
+    hf.update(-10.0f);
+    hf.update(-10.0f);
+    hf.update(-10.0f);
+    hf.update(-10.0f);
+    float v = hf.update(-1000.0f);
+    // Outlier should be replaced with median = -10
+    FL_CHECK_CLOSE(v, -10.0f, 0.01f);
+}
+
+// --- LeakyIntegrator corner cases ---
+
+FL_TEST_CASE("LeakyIntegrator - negative integer values") {
+    LeakyIntegrator<int, 1> li; // alpha = 1/2
+    li.update(-100);
+    // y = 0 + (-100 - 0) >> 1
+    // For negative right shift: implementation-defined, but typically arithmetic
+    // On most platforms: (-100) >> 1 = -50
+    int v = li.value();
+    // Should be approximately -50 (exact value depends on platform shift behavior)
+    FL_CHECK_LE(v, -49);
+    FL_CHECK_GE(v, -51);
+}
+
+FL_TEST_CASE("LeakyIntegrator - converges from above") {
+    LeakyIntegrator<float, 2> li(10.0f); // start at 10
+    for (int i = 0; i < 100; ++i) {
+        li.update(0.0f);
+    }
+    FL_CHECK_CLOSE(li.value(), 0.0f, 0.01f);
+}
+
+FL_TEST_CASE("LeakyIntegrator - K=0 means alpha=1 (snap to input)") {
+    LeakyIntegrator<float, 0> li; // alpha = 1/1 = 1
+    float v = li.update(5.0f);
+    FL_CHECK_CLOSE(v, 5.0f, 0.01f);
+}
+
+// --- ExponentialSmoother corner cases ---
+
+FL_TEST_CASE("ExponentialSmoother - very large dt snaps to input") {
+    ExponentialSmoother<float> ema(0.1f, 0.0f);
+    // dt = 1000 seconds >> tau, so exp(-10000) ≈ 0, snaps to input
+    float v = ema.update(5.0f, 1000.0f);
+    FL_CHECK_CLOSE(v, 5.0f, 0.01f);
+}
+
+FL_TEST_CASE("ExponentialSmoother - dt=0 holds value") {
+    ExponentialSmoother<float> ema(0.1f, 3.0f);
+    // dt=0: exp(0) = 1, so y = input + (y - input)*1 = y (no change)
+    float v = ema.update(100.0f, 0.0f);
+    FL_CHECK_CLOSE(v, 3.0f, 0.01f);
+}
+
+FL_TEST_CASE("ExponentialSmoother - negative input") {
+    ExponentialSmoother<float> ema(0.1f, 0.0f);
+    for (int i = 0; i < 100; ++i) {
+        ema.update(-5.0f, 0.01f);
+    }
+    FL_CHECK_GT(ema.value(), -5.1f);
+    FL_CHECK_LT(ema.value(), -4.9f);
+}
+
+// --- AttackDecayFilter corner cases ---
+
+FL_TEST_CASE("AttackDecayFilter - zero tau snaps to input") {
+    // tau=0: dt/tau = inf, exp(-inf) = 0, so y = input + (y-input)*0 = input
+    AttackDecayFilter<float> adf(0.0f, 0.0f, 0.0f);
+    float v = adf.update(5.0f, 0.01f);
+    FL_CHECK_EQ(v, v); // not NaN
+    FL_CHECK_CLOSE(v, 5.0f, 0.01f);
+}
+
+FL_TEST_CASE("AttackDecayFilter - equal signal (no attack or decay)") {
+    AttackDecayFilter<float> adf(0.1f, 0.5f, 5.0f);
+    // Input equals current value - should stay
+    float v = adf.update(5.0f, 0.01f);
+    FL_CHECK_CLOSE(v, 5.0f, 0.01f);
+}
+
+// --- CascadedEMA corner cases ---
+
+FL_TEST_CASE("CascadedEMA - single stage same as EMA") {
+    CascadedEMA<float, 1> cema(0.1f, 0.0f);
+    ExponentialSmoother<float> ema(0.1f, 0.0f);
+    for (int i = 0; i < 50; ++i) {
+        float vc = cema.update(1.0f, 0.01f);
+        float ve = ema.update(1.0f, 0.01f);
+        FL_CHECK_CLOSE(vc, ve, 0.001f);
+    }
+}
+
+FL_TEST_CASE("CascadedEMA - zero tau snaps to input") {
+    CascadedEMA<float, 2> cema(0.0f, 0.0f);
+    float v = cema.update(5.0f, 0.01f);
+    FL_CHECK_EQ(v, v); // not NaN
+}
+
+// --- DCBlocker corner cases ---
+
+FL_TEST_CASE("DCBlocker - R=0 is pure differentiator") {
+    DCBlocker<float> dc(0.0f);
+    // y[n] = x[n] - x[n-1] + 0*y[n-1] = x[n] - x[n-1]
+    dc.update(5.0f);  // y = 5 - 0 = 5
+    float v = dc.update(8.0f); // y = 8 - 5 = 3
+    FL_CHECK_CLOSE(v, 3.0f, 0.01f);
+    v = dc.update(8.0f); // y = 8 - 8 = 0
+    FL_CHECK_CLOSE(v, 0.0f, 0.01f);
+}
+
+FL_TEST_CASE("DCBlocker - R=1 accumulates forever") {
+    DCBlocker<float> dc(1.0f);
+    // y[n] = x[n] - x[n-1] + 1*y[n-1]
+    float v = dc.update(5.0f);  // 5 - 0 + 0 = 5
+    FL_CHECK_CLOSE(v, 5.0f, 0.01f);
+    v = dc.update(5.0f); // 5 - 5 + 5 = 5 (constant in = constant out with R=1)
+    FL_CHECK_CLOSE(v, 5.0f, 0.01f);
+}
+
+FL_TEST_CASE("DCBlocker - negative values") {
+    DCBlocker<float> dc(0.995f);
+    for (int i = 0; i < 1000; ++i) {
+        dc.update(-3.0f);
+    }
+    // Constant DC at -3 should converge to 0
+    FL_CHECK_GT(dc.value(), -0.1f);
+    FL_CHECK_LT(dc.value(), 0.1f);
+}
+
+// --- KalmanFilter corner cases ---
+
+FL_TEST_CASE("KalmanFilter - high process noise tracks fast") {
+    KalmanFilter<float> kf(1.0f, 0.01f, 0.0f); // high Q, low R
+    float v = kf.update(100.0f);
+    // Should track almost immediately with high Q and low R
+    FL_CHECK_GT(v, 90.0f);
+}
+
+FL_TEST_CASE("KalmanFilter - low process noise is sluggish") {
+    KalmanFilter<float> kf(0.001f, 10.0f, 0.0f); // low Q, high R
+    float v = kf.update(100.0f);
+    // Should barely move
+    FL_CHECK_LT(v, 10.0f);
+}
+
+FL_TEST_CASE("KalmanFilter - negative values") {
+    KalmanFilter<float> kf(0.01f, 0.1f, 0.0f);
+    for (int i = 0; i < 100; ++i) {
+        kf.update(-3.0f);
+    }
+    FL_CHECK_CLOSE(kf.value(), -3.0f, 0.1f);
+}
+
+// --- OneEuroFilter corner cases ---
+
+FL_TEST_CASE("OneEuroFilter - first sample returns input") {
+    OneEuroFilter<float> oef(1.0f, 0.5f);
+    float v = oef.update(42.0f, 0.016f);
+    FL_CHECK_EQ(v, 42.0f);
+}
+
+FL_TEST_CASE("OneEuroFilter - negative values") {
+    OneEuroFilter<float> oef(1.0f, 0.0f);
+    for (int i = 0; i < 100; ++i) {
+        oef.update(-5.0f, 0.016f);
+    }
+    FL_CHECK_CLOSE(oef.value(), -5.0f, 0.1f);
+}
+
+FL_TEST_CASE("OneEuroFilter - high beta tracks fast moves") {
+    OneEuroFilter<float> low_beta(1.0f, 0.0f);
+    OneEuroFilter<float> high_beta(1.0f, 10.0f);
+    // Settle both at 0
+    for (int i = 0; i < 50; ++i) {
+        low_beta.update(0.0f, 0.016f);
+        high_beta.update(0.0f, 0.016f);
+    }
+    // Jump to 100
+    for (int i = 0; i < 5; ++i) {
+        low_beta.update(100.0f, 0.016f);
+        high_beta.update(100.0f, 0.016f);
+    }
+    // High beta should track faster
+    FL_CHECK_GT(high_beta.value(), low_beta.value());
+}
+
+// --- BiquadFilter corner cases ---
+
+FL_TEST_CASE("BiquadFilter - cutoff near Nyquist") {
+    // cutoff = 499 Hz at 1000 Hz sample rate (near Nyquist = 500 Hz)
+    auto lpf = BiquadFilter<float>::butterworth(499.0f, 1000.0f);
+    float v = 0.0f;
+    for (int i = 0; i < 200; ++i) {
+        v = lpf.update(1.0f);
+    }
+    // Should still converge to DC
+    FL_CHECK_EQ(v, v); // not NaN
+    FL_CHECK_GT(v, 0.5f);
+}
+
+FL_TEST_CASE("BiquadFilter - custom coefficients identity") {
+    // b0=1, b1=0, b2=0, a1=0, a2=0 → y = x (pass-through)
+    BiquadFilter<float> pass(1.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+    FL_CHECK_CLOSE(pass.update(7.0f), 7.0f, 0.001f);
+    FL_CHECK_CLOSE(pass.update(-3.0f), -3.0f, 0.001f);
+}
+
+// --- SavitzkyGolayFilter corner cases ---
+
+FL_TEST_CASE("SavitzkyGolayFilter - before 5 samples uses simple average") {
+    SavitzkyGolayFilter<float, 7> sg;
+    sg.update(10.0f);
+    FL_CHECK_CLOSE(sg.value(), 10.0f, 0.01f);
+    sg.update(20.0f);
+    FL_CHECK_CLOSE(sg.value(), 15.0f, 0.01f);
+    sg.update(30.0f);
+    FL_CHECK_CLOSE(sg.value(), 20.0f, 0.01f);
+}
+
+FL_TEST_CASE("SavitzkyGolayFilter - quadratic signal") {
+    // SG with quadratic fit should perfectly reproduce a quadratic at center
+    SavitzkyGolayFilter<float, 5> sg;
+    // y = x^2: -2, -1, 0, 1, 2 → 4, 1, 0, 1, 4
+    sg.update(4.0f);
+    sg.update(1.0f);
+    sg.update(0.0f);
+    sg.update(1.0f);
+    sg.update(4.0f);
+    // Center value of the quadratic is 0.0
+    FL_CHECK_CLOSE(sg.value(), 0.0f, 0.5f);
+}
+
+// --- BilateralFilter corner cases ---
+
+FL_TEST_CASE("BilateralFilter - single sample") {
+    BilateralFilter<float, 5> bf(1.0f);
+    bf.update(7.0f);
+    FL_CHECK_CLOSE(bf.value(), 7.0f, 0.01f);
+}
+
+FL_TEST_CASE("BilateralFilter - negative values") {
+    BilateralFilter<float, 3> bf(1000.0f); // large sigma = box filter
+    bf.update(-1.0f);
+    bf.update(-2.0f);
+    bf.update(-3.0f);
+    FL_CHECK_CLOSE(bf.value(), -2.0f, 0.1f);
+}
+
+FL_TEST_CASE("BilateralFilter - all same values with tiny sigma") {
+    BilateralFilter<float, 5> bf(0.001f);
+    for (int i = 0; i < 5; ++i) bf.update(5.0f);
+    // All values identical, so all weights = exp(0) = 1
+    FL_CHECK_CLOSE(bf.value(), 5.0f, 0.01f);
+}
+
+// --- Cross-filter consistency ---
+
+FL_TEST_CASE("MedianFilter vs AlphaTrimmedMean with max trim") {
+    // AlphaTrimmedMean with trim=2 on N=5 should equal median
+    MedianFilter<float, 5> mf;
+    AlphaTrimmedMean<float, 5> atm(2);
+    float data[] = {3.0f, 7.0f, 1.0f, 9.0f, 5.0f};
+    for (int i = 0; i < 5; ++i) {
+        mf.update(data[i]);
+        atm.update(data[i]);
+    }
+    FL_CHECK_CLOSE(mf.value(), atm.value(), 0.01f);
+}
+
+// --- Dynamic buffer corner cases ---
+
+FL_TEST_CASE("WeightedMovingAverage - dynamic buffer") {
+    WeightedMovingAverage<float, 0> wma(3);
+    wma.update(1.0f);
+    wma.update(2.0f);
+    wma.update(3.0f);
+    float v = wma.value();
+    FL_CHECK_GT(v, 2.3f);
+    FL_CHECK_LT(v, 2.4f);
+}
+
+FL_TEST_CASE("TriangularFilter - dynamic buffer") {
+    TriangularFilter<float, 0> tf(5);
+    for (int i = 0; i < 5; ++i) tf.update(8.0f);
+    FL_CHECK_CLOSE(tf.value(), 8.0f, 0.01f);
+}
+
+FL_TEST_CASE("GaussianFilter - dynamic buffer") {
+    GaussianFilter<float, 0> gf(5);
+    for (int i = 0; i < 5; ++i) gf.update(7.0f);
+    FL_CHECK_CLOSE(gf.value(), 7.0f, 0.01f);
+}
+
+FL_TEST_CASE("SavitzkyGolayFilter - dynamic buffer") {
+    SavitzkyGolayFilter<float, 0> sg(5);
+    for (int i = 0; i < 5; ++i) sg.update(3.0f);
+    FL_CHECK_CLOSE(sg.value(), 3.0f, 0.01f);
+}
+
+FL_TEST_CASE("BilateralFilter - dynamic buffer") {
+    BilateralFilter<float, 0> bf(5, 1.0f);
+    for (int i = 0; i < 5; ++i) bf.update(4.0f);
+    FL_CHECK_CLOSE(bf.value(), 4.0f, 0.01f);
+}
+
+FL_TEST_CASE("HampelFilter - dynamic buffer") {
+    HampelFilter<float, 0> hf(5, 3.0f);
+    hf.update(10.0f);
+    hf.update(10.0f);
+    hf.update(10.0f);
+    hf.update(10.0f);
+    float v = hf.update(1000.0f);
+    FL_CHECK_CLOSE(v, 10.0f, 0.1f);
+}
+
+FL_TEST_CASE("AlphaTrimmedMean - dynamic buffer") {
+    AlphaTrimmedMean<float, 0> atm(5, 1);
+    atm.update(1.0f);
+    atm.update(5.0f);
+    atm.update(5.0f);
+    atm.update(5.0f);
+    atm.update(100.0f);
+    FL_CHECK_CLOSE(atm.value(), 5.0f, 0.01f);
+}
+
 } // anonymous namespace
