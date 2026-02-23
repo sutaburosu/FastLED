@@ -820,4 +820,190 @@ FL_TEST_CASE("WeightedMovingAverage - constant signal returns constant") {
     FL_CHECK_LT(wma.value(), 42.01f);
 }
 
+// ============================================================================
+// AttackDecayFilter tests
+// ============================================================================
+
+FL_TEST_CASE("AttackDecayFilter - converges to constant input") {
+    AttackDecayFilter<float> adf(0.1f, 0.1f, 0.0f); // same tau = same as EMA
+    float v = 0.0f;
+    for (int i = 0; i < 100; ++i) {
+        v = adf.update(1.0f, 0.01f);
+    }
+    FL_CHECK_GT(v, 0.99f);
+    FL_CHECK_LT(v, 1.01f);
+}
+
+FL_TEST_CASE("AttackDecayFilter - fast attack slow decay") {
+    AttackDecayFilter<float> adf(0.01f, 1.0f, 0.0f);
+    // Rising: should track quickly (attack tau = 10ms)
+    float v = 0.0f;
+    for (int i = 0; i < 10; ++i) {
+        v = adf.update(1.0f, 0.01f);
+    }
+    FL_CHECK_GT(v, 0.95f); // should be very close after 100ms with 10ms tau
+
+    // Falling: should decay slowly (decay tau = 1s)
+    for (int i = 0; i < 10; ++i) {
+        v = adf.update(0.0f, 0.01f);
+    }
+    FL_CHECK_GT(v, 0.8f); // should still be high after 100ms with 1s tau
+}
+
+FL_TEST_CASE("AttackDecayFilter - slow attack fast decay") {
+    AttackDecayFilter<float> adf(1.0f, 0.01f, 0.0f);
+    // Rising: should track slowly (attack tau = 1s)
+    float v = 0.0f;
+    for (int i = 0; i < 10; ++i) {
+        v = adf.update(1.0f, 0.01f);
+    }
+    FL_CHECK_LT(v, 0.15f); // slow rise
+
+    // Now set value high and let it decay fast
+    adf.reset(1.0f);
+    for (int i = 0; i < 10; ++i) {
+        v = adf.update(0.0f, 0.01f);
+    }
+    FL_CHECK_LT(v, 0.05f); // should have decayed quickly
+}
+
+FL_TEST_CASE("AttackDecayFilter - reset") {
+    AttackDecayFilter<float> adf(0.1f, 0.5f, 5.0f);
+    FL_CHECK_GT(adf.value(), 4.9f);
+    adf.reset(0.0f);
+    FL_CHECK_EQ(adf.value(), 0.0f);
+}
+
+FL_TEST_CASE("AttackDecayFilter - setAttackTau and setDecayTau") {
+    AttackDecayFilter<float> adf(0.1f, 0.1f, 0.0f);
+    adf.setAttackTau(0.01f);
+    adf.setDecayTau(1.0f);
+    // Fast attack
+    float v = 0.0f;
+    for (int i = 0; i < 10; ++i) {
+        v = adf.update(1.0f, 0.01f);
+    }
+    FL_CHECK_GT(v, 0.95f);
+}
+
+// ============================================================================
+// DCBlocker tests
+// ============================================================================
+
+FL_TEST_CASE("DCBlocker - removes DC offset") {
+    DCBlocker<float> dc(0.995f);
+    // Feed constant DC signal — output should converge to zero.
+    float v = 0.0f;
+    for (int i = 0; i < 1000; ++i) {
+        v = dc.update(5.0f);
+    }
+    FL_CHECK_GT(v, -0.1f);
+    FL_CHECK_LT(v, 0.1f);
+}
+
+FL_TEST_CASE("DCBlocker - passes AC signal") {
+    DCBlocker<float> dc(0.995f);
+    // Feed alternating signal (AC-like). After settling, peaks should
+    // be close to the original amplitude.
+    for (int i = 0; i < 100; ++i) {
+        dc.update((i % 2 == 0) ? 1.0f : -1.0f);
+    }
+    float v_high = dc.update(1.0f);
+    float v_low = dc.update(-1.0f);
+    // Peak-to-peak should be close to 2.0 (the original amplitude).
+    float pp = v_high - v_low;
+    FL_CHECK_GT(pp, 1.8f);
+}
+
+FL_TEST_CASE("DCBlocker - reset") {
+    DCBlocker<float> dc;
+    dc.update(5.0f);
+    dc.update(5.0f);
+    dc.reset();
+    FL_CHECK_EQ(dc.value(), 0.0f);
+}
+
+FL_TEST_CASE("DCBlocker - first sample passes through") {
+    DCBlocker<float> dc(0.995f);
+    // First sample: y = x - 0 + R*0 = x
+    float v = dc.update(3.0f);
+    FL_CHECK_GT(v, 2.99f);
+    FL_CHECK_LT(v, 3.01f);
+}
+
+// ============================================================================
+// BiquadFilter highpass / bandpass / notch tests
+// ============================================================================
+
+FL_TEST_CASE("BiquadFilter::highpass - blocks DC") {
+    auto hpf = BiquadFilter<float>::highpass(100.0f, 1000.0f);
+    // Feed DC signal — output should converge to zero.
+    float v = 0.0f;
+    for (int i = 0; i < 200; ++i) {
+        v = hpf.update(1.0f);
+    }
+    FL_CHECK_GT(v, -0.05f);
+    FL_CHECK_LT(v, 0.05f);
+}
+
+FL_TEST_CASE("BiquadFilter::highpass - passes high frequency") {
+    auto hpf = BiquadFilter<float>::highpass(10.0f, 1000.0f);
+    // Feed high-frequency alternating signal (500 Hz at 1kHz sample rate).
+    for (int i = 0; i < 50; ++i) {
+        hpf.update((i % 2 == 0) ? 1.0f : -1.0f);
+    }
+    float v_high = hpf.update(1.0f);
+    float v_low = hpf.update(-1.0f);
+    float pp = v_high - v_low;
+    FL_CHECK_GT(pp, 1.5f); // should pass most of the signal
+}
+
+FL_TEST_CASE("BiquadFilter::bandpass - attenuates off-center") {
+    // Center at 250 Hz, sample rate 1000 Hz, Q=2
+    auto bpf = BiquadFilter<float>::bandpass(250.0f, 1000.0f, 2.0f);
+    // Feed DC (0 Hz) — should be attenuated.
+    float v = 0.0f;
+    for (int i = 0; i < 200; ++i) {
+        v = bpf.update(1.0f);
+    }
+    FL_CHECK_GT(v, -0.05f);
+    FL_CHECK_LT(v, 0.05f);
+}
+
+FL_TEST_CASE("BiquadFilter::notch - passes DC") {
+    // Notch at 60 Hz, sample rate 1000 Hz.
+    auto nf = BiquadFilter<float>::notch(60.0f, 1000.0f, 1.0f);
+    float v = 0.0f;
+    for (int i = 0; i < 200; ++i) {
+        v = nf.update(1.0f);
+    }
+    // DC should pass through a notch filter.
+    FL_CHECK_GT(v, 0.95f);
+    FL_CHECK_LT(v, 1.05f);
+}
+
+FL_TEST_CASE("BiquadFilter::notch - rejects center frequency") {
+    // Notch at 250 Hz with high Q, sample rate 1000 Hz.
+    // 250 Hz at 1000 Hz sample rate = period of 4 samples.
+    auto nf = BiquadFilter<float>::notch(250.0f, 1000.0f, 10.0f);
+    // Feed 250 Hz sine: sin(2*pi*250/1000 * n) = sin(pi/2 * n) = [0, 1, 0, -1, ...]
+    float max_abs = 0.0f;
+    for (int i = 0; i < 200; ++i) {
+        float input = 0.0f;
+        switch (i % 4) {
+            case 0: input = 0.0f; break;
+            case 1: input = 1.0f; break;
+            case 2: input = 0.0f; break;
+            case 3: input = -1.0f; break;
+        }
+        float v = nf.update(input);
+        if (i > 100) { // after settling
+            float av = (v < 0) ? -v : v;
+            if (av > max_abs) max_abs = av;
+        }
+    }
+    // Should be heavily attenuated.
+    FL_CHECK_LT(max_abs, 0.15f);
+}
+
 } // anonymous namespace

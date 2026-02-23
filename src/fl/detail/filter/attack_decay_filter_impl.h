@@ -1,0 +1,33 @@
+#pragma once
+
+#include "fl/math.h"
+
+namespace fl {
+namespace detail {
+
+template <typename T>
+class AttackDecayFilterImpl {
+  public:
+    AttackDecayFilterImpl(T attack_tau, T decay_tau, T initial = T(0))
+        : mAttackTau(attack_tau), mDecayTau(decay_tau), mY(initial) {}
+
+    T update(T input, T dt_seconds) {
+        T tau = (input > mY) ? mAttackTau : mDecayTau;
+        T decay = fl::exp(-(dt_seconds / tau));
+        mY = input + (mY - input) * decay;
+        return mY;
+    }
+
+    void setAttackTau(T tau_seconds) { mAttackTau = tau_seconds; }
+    void setDecayTau(T tau_seconds) { mDecayTau = tau_seconds; }
+    T value() const { return mY; }
+    void reset(T initial = T(0)) { mY = initial; }
+
+  private:
+    T mAttackTau;
+    T mDecayTau;
+    T mY;
+};
+
+} // namespace detail
+} // namespace fl

@@ -4,9 +4,11 @@
 //
 // IIR (stateful, no buffer):
 //   ExponentialSmoother<T>       — first-order exponential (IIR/RC) smoother
+//   AttackDecayFilter<T>        — asymmetric EMA: separate attack/decay taus
 //   CascadedEMA<T, Stages>      — N stages of EMA in series (Gaussian-like)
 //   LeakyIntegrator<T, K>       — shift-based EMA, cheap for integer/fixed-point
-//   BiquadFilter<T>             — second-order IIR (with Butterworth factory)
+//   DCBlocker<T>                — single-pole DC offset removal (audio input)
+//   BiquadFilter<T>             — second-order IIR (lowpass/highpass/bandpass/notch)
 //   KalmanFilter<T>             — 1D scalar Kalman filter
 //   OneEuroFilter<T>            — adaptive velocity-based smoothing (VR/graphics)
 //
@@ -35,9 +37,11 @@
 //   Filter                       | update()  | Memory | Notes
 //   -----------------------------|-----------|--------|-------------------------------
 //   ExponentialSmoother<T>       | O(1)      | 2T     | exp() per call, time-aware
+//   AttackDecayFilter<T>         | O(1)      | 3T     | exp() per call, asymmetric tau
+//   DCBlocker<T>                 | O(1)      | 2T     | 1 mul + 2 adds, no exp()
 //   LeakyIntegrator<T, K>        | O(1)      | 1T     | bit-shift only, very cheap
 //   CascadedEMA<T, S>            | O(S)      | S*T    | S stages, exp() per call
-//   BiquadFilter<T>              | O(1)      | 5T     | 5 muls + 4 adds, no exp()
+//   BiquadFilter<T>              | O(1)      | 5T     | 5 muls + 4 adds, LP/HP/BP/notch
 //   KalmanFilter<T>              | O(1)      | 4T     | 1 div + few muls
 //   OneEuroFilter<T>             | O(1)      | 5T     | 2 EMA steps + derivative
 //
@@ -62,19 +66,12 @@
 // ============================================================================
 //
 // Fast attack, slow decay (instant response to rising input, slow fade-out):
-//   Use two ExponentialSmoother instances with different tau values and pick
-//   the appropriate one based on input direction:
-//     ExponentialSmoother<float> fast(0.01f);  // fast tau for attack
-//     ExponentialSmoother<float> slow(0.5f);   // slow tau for decay
-//     float v = (input > prev) ? fast.update(input, dt)
-//                               : slow.update(input, dt);
-//   Or use LeakyIntegrator with a small K for fast tracking, and switch to
-//   a larger K when the signal drops.
+//   AttackDecayFilter<float> env(0.01f, 0.5f);  // attack=10ms, decay=500ms
+//   float v = env.update(input, dt);
 //
 // Slow attack, fast decay (sluggish ramp-up, snappy drop-off):
-//   Same dual-smoother approach but reversed:
-//     float v = (input < prev) ? fast.update(input, dt)
-//                               : slow.update(input, dt);
+//   AttackDecayFilter<float> env(0.5f, 0.01f);  // attack=500ms, decay=10ms
+//   float v = env.update(input, dt);
 //   Useful for peak-hold displays or "gravity" effects on VU meters.
 //
 // Preserve square waves / sharp edges (smooth noise but keep transitions):
@@ -111,9 +108,17 @@
 //   OneEuroFilter — designed specifically for this. Adaptive cutoff based
 //     on velocity: low jitter when still, low lag when moving fast.
 //
+// Audio input cleanup (DC removal, hum rejection):
+//   DCBlocker — removes DC offset from microphone / line-in / ADC bias.
+//   BiquadFilter::notch(60.0f, sr, 30.0f) — kills 50/60 Hz mains hum.
+//   BiquadFilter::highpass(20.0f, sr) — rumble filter, removes sub-bass.
+//
 // Audio envelope / VU meter:
-//   BiquadFilter::butterworth() for a clean low-pass at a specific cutoff.
-//   Combine with fast-attack/slow-decay (see above) for classic VU behavior.
+//   AttackDecayFilter<float> vu(0.001f, 0.3f);  // fast attack, slow decay
+//   Or BiquadFilter::butterworth() for a clean low-pass at a specific cutoff.
+//
+// Frequency isolation (audio band selection):
+//   BiquadFilter::bandpass(440.0f, sr, 2.0f) — isolate a frequency band.
 //
 // Noisy signal with known process model:
 //   KalmanFilter — optimal when you can estimate process noise (Q) and
@@ -131,6 +136,8 @@
 #include "fl/stl/type_traits.h"
 
 // Detail impl headers — IIR
+#include "fl/detail/filter/attack_decay_filter_impl.h"
+#include "fl/detail/filter/dc_blocker_impl.h"
 #include "fl/detail/filter/exponential_smoother_impl.h"
 #include "fl/detail/filter/leaky_integrator_impl.h"
 #include "fl/detail/filter/cascaded_ema_impl.h"
@@ -185,6 +192,59 @@ class ExponentialSmoother {
     detail::ExponentialSmootherImpl<T> mImpl;
 };
 
+// Asymmetric exponential smoother with separate time constants for rising
+// (attack) and falling (decay) signals. Picks the appropriate tau on each
+// update based on whether the input is above or below the current value.
+// Same exponential math as ExponentialSmoother, one exp() call per update.
+//
+// update(): O(1)   Memory: 3T
+//
+//   AttackDecayFilter<float> env(0.01f, 0.5f);  // attack=10ms, decay=500ms
+//   void loop() {
+//       float dt = millis_since_last / 1000.0f;
+//       float v = env.update(analogRead(A0), dt);
+//   }
+//
+// Swap the tau values for slow-attack / fast-decay (e.g., peak-hold, gravity).
+template <typename T = float>
+class AttackDecayFilter {
+  public:
+    AttackDecayFilter(T attack_tau, T decay_tau, T initial = T(0))
+        : mImpl(attack_tau, decay_tau, initial) {}
+    FASTLED_FORCE_INLINE T update(T input, T dt_seconds) { return mImpl.update(input, dt_seconds); }
+    FASTLED_FORCE_INLINE T value() const { return mImpl.value(); }
+    FASTLED_FORCE_INLINE void reset(T initial = T(0)) { mImpl.reset(initial); }
+    FASTLED_FORCE_INLINE void setAttackTau(T tau_seconds) { mImpl.setAttackTau(tau_seconds); }
+    FASTLED_FORCE_INLINE void setDecayTau(T tau_seconds) { mImpl.setDecayTau(tau_seconds); }
+  private:
+    detail::AttackDecayFilterImpl<T> mImpl;
+};
+
+// Single-pole DC offset removal filter. Essential for audio input processing
+// (microphone, line-in) where hardware bias or ADC offset adds a constant DC
+// component. One multiply and two adds per sample, no exp().
+//
+// update(): O(1)   Memory: 2T
+//
+//   DCBlocker<float> dc;             // default R = 0.995
+//   void loop() {
+//       float clean = dc.update(micSample);  // DC removed
+//   }
+//
+// R controls cutoff: closer to 1.0 = lower cutoff. R=0.995 gives ~1.6 Hz
+// at 1 kHz sample rate. R=0.99 gives ~3.2 Hz. R=0.9 is aggressive.
+template <typename T = float>
+class DCBlocker {
+  public:
+    explicit DCBlocker(T r = T(0.995f)) : mImpl(r) {}
+    FASTLED_FORCE_INLINE T update(T input) { return mImpl.update(input); }
+    FASTLED_FORCE_INLINE T value() const { return mImpl.value(); }
+    FASTLED_FORCE_INLINE void reset() { mImpl.reset(); }
+    FASTLED_FORCE_INLINE void setR(T r) { mImpl.setR(r); }
+  private:
+    detail::DCBlockerImpl<T> mImpl;
+};
+
 // Shift-based EMA: alpha = 1/(2^K). The cheapest filter here — one
 // bit-shift and one add for integer types, no exp() or division.
 //
@@ -237,16 +297,18 @@ class CascadedEMA {
 };
 
 // Second-order IIR filter (5 multiplies + 4 adds per sample, no exp()).
-// Use the butterworth() factory for a classic low-pass with -12 dB/octave
-// roll-off at a given cutoff frequency.
+// Factory methods for common filter types:
+//   butterworth() — low-pass, -12 dB/octave above cutoff
+//   highpass()    — high-pass, -12 dB/octave below cutoff
+//   bandpass()    — band-pass, passes center frequency, Q controls width
+//   notch()       — band-reject, removes center frequency (50/60 Hz hum)
 //
 // update(): O(1)   Memory: 5T (coefficients) + 4T (state)
 //
 //   auto lpf = BiquadFilter<float>::butterworth(100.0f, 1000.0f);
-//   // cutoff = 100 Hz, sample rate = 1 kHz
-//   void loop() {
-//       float filtered = lpf.update(rawSample);
-//   }
+//   auto hpf = BiquadFilter<float>::highpass(20.0f, 44100.0f);
+//   auto bpf = BiquadFilter<float>::bandpass(440.0f, 44100.0f, 2.0f);
+//   auto hum = BiquadFilter<float>::notch(60.0f, 44100.0f, 30.0f);
 //
 // You can also construct directly with custom coefficients (b0,b1,b2,a1,a2).
 template <typename T = float>
@@ -258,6 +320,17 @@ class BiquadFilter {
         : mImpl(b0, b1, b2, a1, a2) {}
     static BiquadFilter butterworth(float cutoff_hz, float sample_rate) {
         return BiquadFilter(Impl::butterworth(cutoff_hz, sample_rate));
+    }
+    static BiquadFilter highpass(float cutoff_hz, float sample_rate) {
+        return BiquadFilter(Impl::highpass(cutoff_hz, sample_rate));
+    }
+    static BiquadFilter bandpass(float center_hz, float sample_rate,
+                                  float q = 1.0f) {
+        return BiquadFilter(Impl::bandpass(center_hz, sample_rate, q));
+    }
+    static BiquadFilter notch(float center_hz, float sample_rate,
+                               float q = 1.0f) {
+        return BiquadFilter(Impl::notch(center_hz, sample_rate, q));
     }
     FASTLED_FORCE_INLINE T update(T input) { return mImpl.update(input); }
     FASTLED_FORCE_INLINE T value() const { return mImpl.value(); }
