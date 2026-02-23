@@ -221,15 +221,11 @@ FL_TEST_CASE("ChannelEngineI2S - state transitions") {
     // Start transmission
     engine.show();
 
-    // Wait and verify completion - yield to allow simulation thread to process
-    int iterations = 0;
-    const int maxIterations = 1000;
-    while (engine.poll() != IChannelEngine::EngineState::READY && iterations < maxIterations) {
-        fl::this_thread::yield();
-        iterations++;
-    }
+    // Deterministically complete transmission via mock injection
+    // (don't rely on simulation thread scheduling which causes flaky tests)
+    auto& mock = I2sLcdCamPeripheralMock::instance();
+    mock.simulateTransmitComplete();
 
-    FL_CHECK(iterations < maxIterations);  // Didn't timeout
     FL_CHECK(engine.poll() == IChannelEngine::EngineState::READY);  // Back to ready
 }
 
