@@ -8,7 +8,7 @@ using namespace fl;
 
 namespace { // Anonymous namespace for smoothing tests
 
-// --- Float tests (StaticCircularBuffer, default) ---
+// --- Float tests (CircularBuffer, default) ---
 
 FL_TEST_CASE("ExponentialSmoother - converges to constant input") {
     ExponentialSmoother<float> ema(0.1f, 0.0f); // tau=0.1s, start at 0
@@ -136,7 +136,7 @@ FL_TEST_CASE("MovingAverage - integer type") {
 
 // --- Dynamic buffer tests ---
 
-FL_TEST_CASE("MovingAverage - DynamicCircularBuffer") {
+FL_TEST_CASE("MovingAverage - dynamic CircularBuffer") {
     DynamicMovingAverage<float> ma(4);
     ma.update(2.0f);
     ma.update(4.0f);
@@ -170,7 +170,7 @@ FL_TEST_CASE("MovingAverage - dynamic resize") {
     FL_CHECK_LT(v2, 2.51f);
 }
 
-FL_TEST_CASE("MedianFilter - DynamicCircularBuffer") {
+FL_TEST_CASE("MedianFilter - dynamic CircularBuffer") {
     DynamicMedianFilter<float> mf(5);
     mf.update(3.0f);
     mf.update(1.0f);

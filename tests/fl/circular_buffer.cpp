@@ -3,9 +3,9 @@
 
 using namespace fl;
 
-FL_TEST_CASE("fl::StaticCircularBuffer - basic operations") {
+FL_TEST_CASE("fl::CircularBuffer - basic operations") {
     FL_SUBCASE("constructor creates empty buffer") {
-        StaticCircularBuffer<int, 5> buffer;
+        CircularBuffer<int, 5> buffer;
         FL_CHECK(buffer.empty());
         FL_CHECK_EQ(buffer.size(), 0);
         FL_CHECK_EQ(buffer.capacity(), 5);
@@ -13,7 +13,7 @@ FL_TEST_CASE("fl::StaticCircularBuffer - basic operations") {
     }
 
     FL_SUBCASE("push and pop single element") {
-        StaticCircularBuffer<int, 5> buffer;
+        CircularBuffer<int, 5> buffer;
         buffer.push(42);
         FL_CHECK_FALSE(buffer.empty());
         FL_CHECK_EQ(buffer.size(), 1);
@@ -26,7 +26,7 @@ FL_TEST_CASE("fl::StaticCircularBuffer - basic operations") {
     }
 
     FL_SUBCASE("push multiple elements") {
-        StaticCircularBuffer<int, 5> buffer;
+        CircularBuffer<int, 5> buffer;
         buffer.push(1);
         buffer.push(2);
         buffer.push(3);
@@ -43,7 +43,7 @@ FL_TEST_CASE("fl::StaticCircularBuffer - basic operations") {
     }
 
     FL_SUBCASE("fill to capacity") {
-        StaticCircularBuffer<int, 5> buffer;
+        CircularBuffer<int, 5> buffer;
         for (int i = 0; i < 5; i++) {
             buffer.push(i);
         }
@@ -53,7 +53,7 @@ FL_TEST_CASE("fl::StaticCircularBuffer - basic operations") {
     }
 
     FL_SUBCASE("overflow behavior - overwrites oldest") {
-        StaticCircularBuffer<int, 3> buffer;
+        CircularBuffer<int, 3> buffer;
         buffer.push(1);
         buffer.push(2);
         buffer.push(3);
@@ -75,8 +75,8 @@ FL_TEST_CASE("fl::StaticCircularBuffer - basic operations") {
     }
 }
 
-FL_TEST_CASE("fl::StaticCircularBuffer - clear operation") {
-    StaticCircularBuffer<int, 5> buffer;
+FL_TEST_CASE("fl::CircularBuffer - clear operation") {
+    CircularBuffer<int, 5> buffer;
     buffer.push(1);
     buffer.push(2);
     buffer.push(3);
@@ -88,15 +88,15 @@ FL_TEST_CASE("fl::StaticCircularBuffer - clear operation") {
     FL_CHECK_FALSE(buffer.full());
 }
 
-FL_TEST_CASE("fl::StaticCircularBuffer - pop from empty buffer") {
-    StaticCircularBuffer<int, 5> buffer;
+FL_TEST_CASE("fl::CircularBuffer - pop from empty buffer") {
+    CircularBuffer<int, 5> buffer;
     int value = 999;
     FL_CHECK_FALSE(buffer.pop(value));
     FL_CHECK_EQ(value, 999); // Value should not be modified
 }
 
-FL_TEST_CASE("fl::StaticCircularBuffer - wraparound behavior") {
-    StaticCircularBuffer<int, 4> buffer;
+FL_TEST_CASE("fl::CircularBuffer - wraparound behavior") {
+    CircularBuffer<int, 4> buffer;
 
     // Fill buffer
     for (int i = 0; i < 4; i++) {
@@ -124,9 +124,9 @@ FL_TEST_CASE("fl::StaticCircularBuffer - wraparound behavior") {
     FL_CHECK(buffer.empty());
 }
 
-FL_TEST_CASE("fl::StaticCircularBuffer - different types") {
+FL_TEST_CASE("fl::CircularBuffer - different types") {
     FL_SUBCASE("double type") {
-        StaticCircularBuffer<double, 3> buffer;
+        CircularBuffer<double, 3> buffer;
         buffer.push(3.14);
         buffer.push(2.71);
 
@@ -139,7 +139,7 @@ FL_TEST_CASE("fl::StaticCircularBuffer - different types") {
 
     FL_SUBCASE("struct type") {
         struct Point { int x, y; };
-        StaticCircularBuffer<Point, 3> buffer;
+        CircularBuffer<Point, 3> buffer;
 
         buffer.push({1, 2});
         buffer.push({3, 4});
@@ -154,9 +154,9 @@ FL_TEST_CASE("fl::StaticCircularBuffer - different types") {
     }
 }
 
-FL_TEST_CASE("fl::DynamicCircularBuffer - basic operations") {
+FL_TEST_CASE("fl::CircularBuffer - basic operations") {
     FL_SUBCASE("constructor creates empty buffer") {
-        DynamicCircularBuffer<int> buffer(5);
+        CircularBuffer<int> buffer(5);
         FL_CHECK(buffer.empty());
         FL_CHECK_EQ(buffer.size(), 0);
         FL_CHECK_EQ(buffer.capacity(), 5);
@@ -164,7 +164,7 @@ FL_TEST_CASE("fl::DynamicCircularBuffer - basic operations") {
     }
 
     FL_SUBCASE("push_back and pop_front") {
-        DynamicCircularBuffer<int> buffer(5);
+        CircularBuffer<int> buffer(5);
         FL_CHECK(buffer.push_back(42));
         FL_CHECK_FALSE(buffer.empty());
         FL_CHECK_EQ(buffer.size(), 1);
@@ -176,7 +176,7 @@ FL_TEST_CASE("fl::DynamicCircularBuffer - basic operations") {
     }
 
     FL_SUBCASE("pop_front without destination") {
-        DynamicCircularBuffer<int> buffer(3);
+        CircularBuffer<int> buffer(3);
         buffer.push_back(1);
         buffer.push_back(2);
         FL_CHECK_EQ(buffer.size(), 2);
@@ -190,7 +190,7 @@ FL_TEST_CASE("fl::DynamicCircularBuffer - basic operations") {
     }
 
     FL_SUBCASE("push_front and pop_back") {
-        DynamicCircularBuffer<int> buffer(5);
+        CircularBuffer<int> buffer(5);
         FL_CHECK(buffer.push_front(42));
         FL_CHECK_EQ(buffer.size(), 1);
 
@@ -201,7 +201,7 @@ FL_TEST_CASE("fl::DynamicCircularBuffer - basic operations") {
     }
 
     FL_SUBCASE("multiple push_back operations") {
-        DynamicCircularBuffer<int> buffer(5);
+        CircularBuffer<int> buffer(5);
         for (int i = 0; i < 5; i++) {
             buffer.push_back(i);
         }
@@ -217,7 +217,7 @@ FL_TEST_CASE("fl::DynamicCircularBuffer - basic operations") {
     }
 
     FL_SUBCASE("overflow - push_back overwrites oldest") {
-        DynamicCircularBuffer<int> buffer(3);
+        CircularBuffer<int> buffer(3);
         buffer.push_back(1);
         buffer.push_back(2);
         buffer.push_back(3);
@@ -230,7 +230,7 @@ FL_TEST_CASE("fl::DynamicCircularBuffer - basic operations") {
     }
 
     FL_SUBCASE("overflow - push_front overwrites oldest") {
-        DynamicCircularBuffer<int> buffer(3);
+        CircularBuffer<int> buffer(3);
         buffer.push_front(1);
         buffer.push_front(2);
         buffer.push_front(3);
@@ -240,8 +240,8 @@ FL_TEST_CASE("fl::DynamicCircularBuffer - basic operations") {
     }
 }
 
-FL_TEST_CASE("fl::DynamicCircularBuffer - front and back access") {
-    DynamicCircularBuffer<int> buffer(5);
+FL_TEST_CASE("fl::CircularBuffer - front and back access") {
+    CircularBuffer<int> buffer(5);
     buffer.push_back(10);
     buffer.push_back(20);
     buffer.push_back(30);
@@ -257,18 +257,18 @@ FL_TEST_CASE("fl::DynamicCircularBuffer - front and back access") {
     FL_CHECK_EQ(buffer.back(), 300);
 }
 
-FL_TEST_CASE("fl::DynamicCircularBuffer - const front and back access") {
-    DynamicCircularBuffer<int> buffer(5);
+FL_TEST_CASE("fl::CircularBuffer - const front and back access") {
+    CircularBuffer<int> buffer(5);
     buffer.push_back(10);
     buffer.push_back(20);
 
-    const DynamicCircularBuffer<int>& const_buffer = buffer;
+    const CircularBuffer<int>& const_buffer = buffer;
     FL_CHECK_EQ(const_buffer.front(), 10);
     FL_CHECK_EQ(const_buffer.back(), 20);
 }
 
-FL_TEST_CASE("fl::DynamicCircularBuffer - operator[] access") {
-    DynamicCircularBuffer<int> buffer(5);
+FL_TEST_CASE("fl::CircularBuffer - operator[] access") {
+    CircularBuffer<int> buffer(5);
     buffer.push_back(10);
     buffer.push_back(20);
     buffer.push_back(30);
@@ -284,18 +284,18 @@ FL_TEST_CASE("fl::DynamicCircularBuffer - operator[] access") {
     FL_CHECK_EQ(buffer[1], 200);
 }
 
-FL_TEST_CASE("fl::DynamicCircularBuffer - const operator[] access") {
-    DynamicCircularBuffer<int> buffer(5);
+FL_TEST_CASE("fl::CircularBuffer - const operator[] access") {
+    CircularBuffer<int> buffer(5);
     buffer.push_back(10);
     buffer.push_back(20);
 
-    const DynamicCircularBuffer<int>& const_buffer = buffer;
+    const CircularBuffer<int>& const_buffer = buffer;
     FL_CHECK_EQ(const_buffer[0], 10);
     FL_CHECK_EQ(const_buffer[1], 20);
 }
 
-FL_TEST_CASE("fl::DynamicCircularBuffer - clear operation") {
-    DynamicCircularBuffer<int> buffer(5);
+FL_TEST_CASE("fl::CircularBuffer - clear operation") {
+    CircularBuffer<int> buffer(5);
     buffer.push_back(1);
     buffer.push_back(2);
     buffer.push_back(3);
@@ -306,8 +306,8 @@ FL_TEST_CASE("fl::DynamicCircularBuffer - clear operation") {
     FL_CHECK_EQ(buffer.size(), 0);
 }
 
-FL_TEST_CASE("fl::DynamicCircularBuffer - pop from empty buffer") {
-    DynamicCircularBuffer<int> buffer(5);
+FL_TEST_CASE("fl::CircularBuffer - pop from empty buffer") {
+    CircularBuffer<int> buffer(5);
     int value = 999;
     FL_CHECK_FALSE(buffer.pop_front(&value));
     FL_CHECK_EQ(value, 999); // Value should not be modified
@@ -316,8 +316,8 @@ FL_TEST_CASE("fl::DynamicCircularBuffer - pop from empty buffer") {
     FL_CHECK_EQ(value, 999);
 }
 
-FL_TEST_CASE("fl::DynamicCircularBuffer - wraparound with operator[]") {
-    DynamicCircularBuffer<int> buffer(4);
+FL_TEST_CASE("fl::CircularBuffer - wraparound with operator[]") {
+    CircularBuffer<int> buffer(4);
 
     // Fill buffer
     for (int i = 0; i < 4; i++) {
@@ -337,8 +337,8 @@ FL_TEST_CASE("fl::DynamicCircularBuffer - wraparound with operator[]") {
     FL_CHECK_EQ(buffer[3], 11);
 }
 
-FL_TEST_CASE("fl::DynamicCircularBuffer - bidirectional operations") {
-    DynamicCircularBuffer<int> buffer(5);
+FL_TEST_CASE("fl::CircularBuffer - bidirectional operations") {
+    CircularBuffer<int> buffer(5);
 
     // Mix push_back, push_front, pop_front, pop_back
     buffer.push_back(5);
@@ -365,9 +365,9 @@ FL_TEST_CASE("fl::DynamicCircularBuffer - bidirectional operations") {
     FL_CHECK_EQ(buffer.back(), 5);
 }
 
-FL_TEST_CASE("fl::DynamicCircularBuffer - different types") {
+FL_TEST_CASE("fl::CircularBuffer - different types") {
     FL_SUBCASE("double type") {
-        DynamicCircularBuffer<double> buffer(3);
+        CircularBuffer<double> buffer(3);
         buffer.push_back(3.14);
         buffer.push_back(2.71);
 
@@ -380,7 +380,7 @@ FL_TEST_CASE("fl::DynamicCircularBuffer - different types") {
 
     FL_SUBCASE("struct type") {
         struct Point { int x, y; };
-        DynamicCircularBuffer<Point> buffer(3);
+        CircularBuffer<Point> buffer(3);
 
         buffer.push_back({1, 2});
         buffer.push_back({3, 4});
@@ -395,8 +395,7 @@ FL_TEST_CASE("fl::DynamicCircularBuffer - different types") {
     }
 }
 
-FL_TEST_CASE("fl::CircularBuffer - alias for DynamicCircularBuffer") {
-    // Verify that CircularBuffer is an alias for DynamicCircularBuffer
+FL_TEST_CASE("fl::CircularBuffer - dynamic mode") {
     CircularBuffer<int> buffer(5);
     buffer.push_back(42);
 
@@ -405,13 +404,13 @@ FL_TEST_CASE("fl::CircularBuffer - alias for DynamicCircularBuffer") {
     FL_CHECK_EQ(value, 42);
 }
 
-FL_TEST_CASE("fl::StaticCircularBuffer - capacity check") {
-    StaticCircularBuffer<int, 10> buffer;
+FL_TEST_CASE("fl::CircularBuffer - capacity check") {
+    CircularBuffer<int, 10> buffer;
     FL_CHECK_EQ(buffer.capacity(), 10);
 }
 
-FL_TEST_CASE("fl::DynamicCircularBuffer - stress test with many operations") {
-    DynamicCircularBuffer<int> buffer(100);
+FL_TEST_CASE("fl::CircularBuffer - stress test with many operations") {
+    CircularBuffer<int> buffer(100);
 
     // Push many elements
     for (int i = 0; i < 100; i++) {
@@ -440,8 +439,8 @@ FL_TEST_CASE("fl::DynamicCircularBuffer - stress test with many operations") {
     }
 }
 
-FL_TEST_CASE("fl::StaticCircularBuffer - single element capacity") {
-    StaticCircularBuffer<int, 1> buffer;
+FL_TEST_CASE("fl::CircularBuffer - single element capacity") {
+    CircularBuffer<int, 1> buffer;
     FL_CHECK_EQ(buffer.capacity(), 1);
 
     buffer.push(42);
@@ -454,8 +453,8 @@ FL_TEST_CASE("fl::StaticCircularBuffer - single element capacity") {
     FL_CHECK(buffer.empty());
 }
 
-FL_TEST_CASE("fl::DynamicCircularBuffer - single element capacity") {
-    DynamicCircularBuffer<int> buffer(1);
+FL_TEST_CASE("fl::CircularBuffer - single element capacity") {
+    CircularBuffer<int> buffer(1);
     FL_CHECK_EQ(buffer.capacity(), 1);
 
     buffer.push_back(42);
@@ -468,8 +467,8 @@ FL_TEST_CASE("fl::DynamicCircularBuffer - single element capacity") {
     FL_CHECK(buffer.empty());
 }
 
-FL_TEST_CASE("fl::StaticCircularBuffer - operator[] and back()") {
-    StaticCircularBuffer<int, 4> buffer;
+FL_TEST_CASE("fl::CircularBuffer - operator[] and back()") {
+    CircularBuffer<int, 4> buffer;
     buffer.push(10);
     buffer.push(20);
     buffer.push(30);

@@ -7,29 +7,34 @@
 namespace fl {
 
 // Core circular buffer logic operating on caller-owned storage.
-// Uses a sentinel slot: the storage must have (capacity + 1) elements.
-// Both static and dynamic CircularBuffer compose this.
+// Uses a boolean flag (mFull) to distinguish full from empty when head == tail.
 template <typename T>
 class CircularBufferCore {
   public:
-    CircularBufferCore() : mData(nullptr), mAllocSize(0), mHead(0), mTail(0) {}
+    CircularBufferCore() : mData(nullptr), mCapacity(0), mHead(0), mTail(0), mFull(false) {}
 
-    CircularBufferCore(T* data, fl::size alloc_size)
-        : mData(data), mAllocSize(alloc_size), mHead(0), mTail(0) {}
+    CircularBufferCore(T* data, fl::size capacity)
+        : mData(data), mCapacity(capacity), mHead(0), mTail(0), mFull(false) {}
 
-    void assign(T* data, fl::size alloc_size) {
+    void assign(T* data, fl::size capacity) {
         mData = data;
-        mAllocSize = alloc_size;
+        mCapacity = capacity;
         mHead = 0;
         mTail = 0;
+        mFull = false;
     }
 
     bool push_back(const T &value) {
-        if (full()) {
+        if (mCapacity == 0) return false;
+        if (mFull) {
+            // Overwrite oldest: advance tail
             mTail = increment(mTail);
         }
         mData[mHead] = value;
         mHead = increment(mHead);
+        if (mHead == mTail) {
+            mFull = true;
+        }
         return true;
     }
 
@@ -42,15 +47,21 @@ class CircularBufferCore {
         }
         mData[mTail] = T();
         mTail = increment(mTail);
+        mFull = false;
         return true;
     }
 
     bool push_front(const T &value) {
-        if (full()) {
+        if (mCapacity == 0) return false;
+        if (mFull) {
+            // Overwrite newest: retreat head
             mHead = decrement(mHead);
         }
         mTail = decrement(mTail);
         mData[mTail] = value;
+        if (mHead == mTail) {
+            mFull = true;
+        }
         return true;
     }
 
@@ -63,6 +74,7 @@ class CircularBufferCore {
             *dst = fl::move(mData[mHead]);
         }
         mData[mHead] = T();
+        mFull = false;
         return true;
     }
 
@@ -73,19 +85,20 @@ class CircularBufferCore {
     const T& back() const { return mData[decrement(mHead)]; }
 
     T& operator[](fl::size index) {
-        return mData[(mTail + index) % mAllocSize];
+        return mData[(mTail + index) % mCapacity];
     }
     const T& operator[](fl::size index) const {
-        return mData[(mTail + index) % mAllocSize];
+        return mData[(mTail + index) % mCapacity];
     }
 
     fl::size size() const {
-        if (mAllocSize == 0) return 0;
-        return (mHead + mAllocSize - mTail) % mAllocSize;
+        if (mCapacity == 0) return 0;
+        if (mFull) return mCapacity;
+        return (mHead + mCapacity - mTail) % mCapacity;
     }
-    fl::size capacity() const { return mAllocSize > 0 ? mAllocSize - 1 : 0; }
-    bool empty() const { return mAllocSize == 0 || mHead == mTail; }
-    bool full() const { return mAllocSize > 0 && increment(mHead) == mTail; }
+    fl::size capacity() const { return mCapacity; }
+    bool empty() const { return !mFull && mHead == mTail; }
+    bool full() const { return mFull; }
 
     void clear() {
         while (!empty()) {
@@ -93,22 +106,25 @@ class CircularBufferCore {
         }
     }
 
-    // Expose head/tail for move operations.
+    // Expose head/tail/full for move operations.
     fl::size head() const { return mHead; }
     fl::size tail() const { return mTail; }
+    bool isFull() const { return mFull; }
     void setHead(fl::size h) { mHead = h; }
     void setTail(fl::size t) { mTail = t; }
+    void setFull(bool f) { mFull = f; }
 
   private:
-    fl::size increment(fl::size index) const { return (index + 1) % mAllocSize; }
+    fl::size increment(fl::size index) const { return (index + 1) % mCapacity; }
     fl::size decrement(fl::size index) const {
-        return (index + mAllocSize - 1) % mAllocSize;
+        return (index + mCapacity - 1) % mCapacity;
     }
 
     T* mData;
-    fl::size mAllocSize; // capacity + 1 (includes sentinel slot)
+    fl::size mCapacity;
     fl::size mHead;
     fl::size mTail;
+    bool mFull;
 };
 
 // Unified circular buffer: N > 0 for inline storage, N == 0 for dynamic.
@@ -116,16 +132,16 @@ class CircularBufferCore {
 template <typename T, fl::size N = 0>
 class CircularBuffer {
   public:
-    // Default constructor — pre-sizes to N+1 (useful when N > 0).
+    // Default constructor — pre-sizes to N (useful when N > 0).
     CircularBuffer() {
-        mStorage.resize(N + 1);
-        mCore.assign(mStorage.data(), N + 1);
+        mStorage.resize(N);
+        mCore.assign(mStorage.data(), N);
     }
 
     // Capacity constructor — for dynamic (N==0) or overriding static size.
     explicit CircularBuffer(fl::size capacity) {
-        mStorage.resize(capacity + 1);
-        mCore.assign(mStorage.data(), capacity + 1);
+        mStorage.resize(capacity);
+        mCore.assign(mStorage.data(), capacity);
     }
 
     CircularBuffer(const CircularBuffer& other)
@@ -133,6 +149,7 @@ class CircularBuffer {
           mCore(mStorage.data(), mStorage.size()) {
         mCore.setHead(other.mCore.head());
         mCore.setTail(other.mCore.tail());
+        mCore.setFull(other.mCore.isFull());
     }
 
     CircularBuffer(CircularBuffer&& other)
@@ -140,6 +157,7 @@ class CircularBuffer {
           mCore(mStorage.data(), mStorage.size()) {
         mCore.setHead(other.mCore.head());
         mCore.setTail(other.mCore.tail());
+        mCore.setFull(other.mCore.isFull());
         other.mCore.assign(nullptr, 0);
     }
 
@@ -149,6 +167,7 @@ class CircularBuffer {
             mCore.assign(mStorage.data(), mStorage.size());
             mCore.setHead(other.mCore.head());
             mCore.setTail(other.mCore.tail());
+            mCore.setFull(other.mCore.isFull());
         }
         return *this;
     }
@@ -159,6 +178,7 @@ class CircularBuffer {
             mCore.assign(mStorage.data(), mStorage.size());
             mCore.setHead(other.mCore.head());
             mCore.setTail(other.mCore.tail());
+            mCore.setFull(other.mCore.isFull());
             other.mCore.assign(nullptr, 0);
         }
         return *this;
@@ -192,14 +212,14 @@ class CircularBuffer {
         fl::size count = mCore.size();
         fl::size to_save = (count < new_capacity) ? count : new_capacity;
         // Use a temporary storage to save elements
-        vector_inlined<T, (N > 0 ? N + 1 : 1)> saved;
+        vector_inlined<T, (N > 0 ? N : 1)> saved;
         saved.resize(to_save);
         for (fl::size i = 0; i < to_save; ++i) {
             saved[i] = mCore[i];
         }
         // Resize storage
-        mStorage.resize(new_capacity + 1);
-        mCore.assign(mStorage.data(), new_capacity + 1);
+        mStorage.resize(new_capacity);
+        mCore.assign(mStorage.data(), new_capacity);
         // Re-insert saved elements
         for (fl::size i = 0; i < to_save; ++i) {
             mCore.push_back(saved[i]);
@@ -207,15 +227,8 @@ class CircularBuffer {
     }
 
   private:
-    vector_inlined<T, (N > 0 ? N + 1 : 1)> mStorage;
+    vector_inlined<T, (N > 0 ? N : 1)> mStorage;
     CircularBufferCore<T> mCore;
 };
-
-// Deprecated aliases for backward compatibility
-template <typename T, fl::size N>
-using StaticCircularBuffer = CircularBuffer<T, N>;
-
-template <typename T>
-using DynamicCircularBuffer = CircularBuffer<T, 0>;
 
 } // namespace fl

@@ -792,16 +792,16 @@ FL_TEST_CASE("Container move semantics with shared_ptr") {
     }
 
     // Buffer types
-    FL_SUBCASE("fl::StaticCircularBuffer") {
+    FL_SUBCASE("fl::CircularBuffer") {
         auto ptr = make_shared_int(42);
 
-        fl::StaticCircularBuffer<fl::shared_ptr<int>, 10> source;
+        fl::CircularBuffer<fl::shared_ptr<int>, 10> source;
         populate(source, ptr);
 
         FL_REQUIRE(ptr.use_count() == 2);
         FL_REQUIRE(source.size() == 1);
 
-        fl::StaticCircularBuffer<fl::shared_ptr<int>, 10> destination;
+        fl::CircularBuffer<fl::shared_ptr<int>, 10> destination;
         destination = fl::move(source);
 
         FL_CHECK(source.size() == 0);
@@ -819,16 +819,16 @@ FL_TEST_CASE("Container move semantics with shared_ptr") {
         FL_CHECK(ptr.use_count() == 1);
     }
 
-    FL_SUBCASE("fl::DynamicCircularBuffer") {
+    FL_SUBCASE("fl::CircularBuffer") {
         auto ptr = make_shared_int(42);
 
-        fl::DynamicCircularBuffer<fl::shared_ptr<int>> source(10);
+        fl::CircularBuffer<fl::shared_ptr<int>> source(10);
         populate(source, ptr);
 
         FL_REQUIRE(ptr.use_count() == 2);
         FL_REQUIRE(source.size() == 1);
 
-        fl::DynamicCircularBuffer<fl::shared_ptr<int>> destination(5);
+        fl::CircularBuffer<fl::shared_ptr<int>> destination(5);
         destination = fl::move(source);
 
         FL_CHECK(source.size() == 0);

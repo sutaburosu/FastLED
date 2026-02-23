@@ -316,7 +316,7 @@ FL_TEST_CASE("AudioReactive configuration validation") {
 
 FL_TEST_CASE("AudioReactive CircularBuffer functionality") {
     // Test the CircularBuffer template directly
-    StaticCircularBuffer<float, 8> buffer;
+    CircularBuffer<float, 8> buffer;
     
     FL_CHECK(buffer.empty());
     FL_CHECK_FALSE(buffer.full());

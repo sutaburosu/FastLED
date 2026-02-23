@@ -163,7 +163,7 @@ struct is_pop_only_container {
 // Priority order: push_back > insert > push
 // ============================================================================
 
-// Priority 1: For containers with push_back (vector, deque, list, DynamicCircularBuffer)
+// Priority 1: For containers with push_back (vector, deque, list, CircularBuffer)
 template<typename Container>
 typename fl::enable_if<has_push_back<Container>::value, void>::type
 populate(Container& c, fl::shared_ptr<int> ptr) {
@@ -177,7 +177,7 @@ populate(Container& c, fl::shared_ptr<int> ptr) {
     c.insert(ptr);
 }
 
-// Priority 3: For containers with push (queue, StaticCircularBuffer)
+// Priority 3: For containers with push (queue, CircularBuffer)
 template<typename Container>
 typename fl::enable_if<!has_push_back<Container>::value && !has_insert_value<Container>::value && has_push<Container>::value, void>::type
 populate(Container& c, fl::shared_ptr<int> ptr) {
@@ -203,7 +203,7 @@ populate_map(Container& c, int key, fl::shared_ptr<int> ptr) {
 // Priority order: operator[] > front() > begin() > pop() > operator* > value()
 // ============================================================================
 
-// Priority 1: For containers with operator[0] (vector, deque, DynamicCircularBuffer)
+// Priority 1: For containers with operator[0] (vector, deque, CircularBuffer)
 template<typename Container>
 typename fl::enable_if<is_container_with_subscript<Container>::value, fl::shared_ptr<int>>::type
 retrieve(Container& c) {
@@ -224,7 +224,7 @@ retrieve(Container& c) {
     return *c.begin();
 }
 
-// Priority 4: For containers with pop(T&) (StaticCircularBuffer)
+// Priority 4: For containers with pop(T&) (CircularBuffer)
 template<typename Container>
 typename fl::enable_if<is_pop_only_container<Container>::value, fl::shared_ptr<int>>::type
 retrieve(Container& c) {
