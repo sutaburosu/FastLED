@@ -73,6 +73,22 @@
 namespace fl {
 
 // ============================================================================
+// Clockless Encoder Selection
+// ============================================================================
+
+/// @brief Identifies which encoder to use for clockless chipsets in the Channel API
+///
+/// Most clockless chipsets use plain WS2812-style encoding (raw pixel bytes).
+/// Some chipsets (e.g., UCS7604) require special preambles and encoding.
+/// This enum allows the Channel API to dispatch to the correct encoder.
+enum ClocklessEncoder : u8 {
+    CLOCKLESS_ENCODER_WS2812 = 0,           ///< Default, no preamble (WS2812 and compatible)
+    CLOCKLESS_ENCODER_UCS7604_8BIT,         ///< UCS7604 8-bit 800KHz
+    CLOCKLESS_ENCODER_UCS7604_16BIT,        ///< UCS7604 16-bit 800KHz
+    CLOCKLESS_ENCODER_UCS7604_16BIT_1600    ///< UCS7604 16-bit 1600KHz
+};
+
+// ============================================================================
 // Centralized Nanosecond Timing Definitions
 // ============================================================================
 
@@ -476,6 +492,7 @@ struct TIMING_UCS7604_800KHZ {
         T3 = 450,
         RESET = 280
     };
+    static constexpr ClocklessEncoder ENCODER = CLOCKLESS_ENCODER_UCS7604_16BIT;
 };
 
 /// UCS7604 RGBW controller @ 1600 kHz (16-bit color depth, high-speed)
@@ -488,6 +505,20 @@ struct TIMING_UCS7604_1600KHZ {
         T3 = 225,
         RESET = 280
     };
+    static constexpr ClocklessEncoder ENCODER = CLOCKLESS_ENCODER_UCS7604_16BIT_1600;
+};
+
+/// UCS7604 RGBW controller @ 800 kHz (8-bit color depth)
+/// Same wire timing as 16-bit 800KHz, but uses 8-bit encoding mode
+/// @note Use this for 8-bit UCS7604 via the Channel API
+struct TIMING_UCS7604_8BIT_800KHZ {
+    enum : u32 {
+        T1 = 400,
+        T2 = 400,
+        T3 = 450,
+        RESET = 280
+    };
+    static constexpr ClocklessEncoder ENCODER = CLOCKLESS_ENCODER_UCS7604_8BIT;
 };
 
 // ============================================================================

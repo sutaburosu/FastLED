@@ -19,6 +19,10 @@
 #include "fl/trace.h"
 
 #include "fl/pin.h"
+#include "fl/chipsets/encoders/ucs7604.h"
+#include "fl/chipsets/ucs7604.h"
+#include "fl/ease.h"
+#include "fl/stl/iterator.h"
 
 namespace fl {
 
@@ -155,6 +159,60 @@ int Channel::getClockPin() const {
 }
 
 
+namespace {
+
+/// @brief Encode UCS7604 pixel data into the channel data buffer
+/// @param data Output byte vector (cleared by caller)
+/// @param pixelIterator Pixel iterator with color order and RGBW conversion
+/// @param encoder ClocklessEncoder value identifying the UCS7604 mode
+/// @param settings Channel settings (for gamma override)
+/// @param rgbOrder RGB ordering for current control reordering
+void writeUCS7604(fl::vector_psram<u8>* data, PixelIterator& pixelIterator,
+                  ClocklessEncoder encoder, const ChannelOptions& settings,
+                  EOrder rgbOrder) {
+    // Map encoder enum to UCS7604Mode
+    UCS7604Mode mode;
+    switch (encoder) {
+        case CLOCKLESS_ENCODER_UCS7604_8BIT:
+            mode = UCS7604_MODE_8BIT_800KHZ;
+            break;
+        case CLOCKLESS_ENCODER_UCS7604_16BIT:
+            mode = UCS7604_MODE_16BIT_800KHZ;
+            break;
+        case CLOCKLESS_ENCODER_UCS7604_16BIT_1600:
+            mode = UCS7604_MODE_16BIT_1600KHZ;
+            break;
+        default:
+            // Should never happen — caller already checked
+            mode = UCS7604_MODE_16BIT_800KHZ;
+            break;
+    }
+
+    // Get current control from global UCS7604 brightness
+    UCS7604CurrentControl current = ucs7604::brightness();
+
+    // Reorder current control values to match wire order (same logic as UCS7604ControllerT)
+    u8 rgb_currents[3] = {current.r, current.g, current.b};
+    u8 pos0 = (rgbOrder >> 6) & 0x3;
+    u8 pos1 = (rgbOrder >> 3) & 0x3;
+    u8 pos2 = (rgbOrder >> 0) & 0x3;
+    UCS7604CurrentControl wire_current(
+        rgb_currents[pos0], rgb_currents[pos1], rgb_currents[pos2], current.w);
+
+    // Get gamma LUT
+    float gamma = settings.mGamma.value_or(2.8f);
+    fl::shared_ptr<const Gamma8> gamma8 = Gamma8::getOrCreate(gamma);
+
+    bool is_rgbw = pixelIterator.get_rgbw().active();
+    size_t num_leds = pixelIterator.size();
+
+    // Encode into the data buffer
+    encodeUCS7604(pixelIterator, num_leds, fl::back_inserter(*data),
+                  mode, wire_current, is_rgbw, gamma8.get());
+}
+
+} // anonymous namespace
+
 void Channel::showPixels(PixelController<RGB, 1, 0xFFFFFFFF> &pixels) {
     FL_SCOPED_TRACE;
 
@@ -191,8 +249,19 @@ void Channel::showPixels(PixelController<RGB, 1, 0xFFFFFFFF> &pixels) {
     data.clear();
 
     if (mChipset.is<ClocklessChipset>()) {
-        // Clockless chipsets: use WS2812 encoding (timing-sensitive byte stream)
-        pixelIterator.writeWS2812(&data);
+        // Clockless chipsets: dispatch based on encoder type
+        const ClocklessChipset* clockless = mChipset.ptr<ClocklessChipset>();
+        switch (clockless->timing.encoder) {
+            case CLOCKLESS_ENCODER_WS2812:
+                pixelIterator.writeWS2812(&data);
+                break;
+            case CLOCKLESS_ENCODER_UCS7604_8BIT:
+            case CLOCKLESS_ENCODER_UCS7604_16BIT:
+            case CLOCKLESS_ENCODER_UCS7604_16BIT_1600:
+                writeUCS7604(&data, pixelIterator, clockless->timing.encoder,
+                             mSettings, mRgbOrder);
+                break;
+        }
     } else if (mChipset.is<SpiChipsetConfig>()) {
         // SPI chipsets: dispatch based on chipset type (zero allocation)
         const SpiChipsetConfig* spi = mChipset.ptr<SpiChipsetConfig>();

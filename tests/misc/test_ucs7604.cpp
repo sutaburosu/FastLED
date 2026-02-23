@@ -16,6 +16,12 @@
 #include "dither_mode.h"
 #include "test.h"
 #include "eorder.h"
+#include "fl/channels/channel.h"
+#include "fl/channels/channel_events.h"
+#include "fl/channels/config.h"
+#include "fl/channels/data.h"
+#include "fl/channels/bus_manager.h"
+#include "fl/chipsets/chipset_timing_config.h"
 #include "fl/chipsets/encoders/pixel_iterator.h"
 #include "fl/chipsets/encoders/ucs7604.h"
 #include "fl/chipsets/led_timing.h"
@@ -24,9 +30,11 @@
 #include "fl/rgbw.h"
 #include "fl/slice.h"
 #include "pixel_controller.h"
+#include "pixeltypes.h"
 #include "rgbw.h"
 #include "fl/stl/vector.h"
 #include "hsv2rgb.h"
+#include "FastLED.h"
 
 using namespace fl;
 
@@ -1202,6 +1210,131 @@ FL_TEST_CASE("UCS7604 per-controller gamma override via setGamma") {
         RGB16 expected[] = { RGB16(expected_r, expected_g, expected_b) };
         verifyPixels16bit(output, expected);
     }
+}
+
+FL_TEST_CASE("UCS7604 channel encoder tag propagation") {
+    // Verify makeTimingConfig propagates the ENCODER field
+    auto ws_config = makeTimingConfig<TIMING_WS2812_800KHZ>();
+    FL_CHECK(ws_config.encoder == CLOCKLESS_ENCODER_WS2812);
+
+    auto ucs_16bit_config = makeTimingConfig<TIMING_UCS7604_800KHZ>();
+    FL_CHECK(ucs_16bit_config.encoder == CLOCKLESS_ENCODER_UCS7604_16BIT);
+
+    auto ucs_1600_config = makeTimingConfig<TIMING_UCS7604_1600KHZ>();
+    FL_CHECK(ucs_1600_config.encoder == CLOCKLESS_ENCODER_UCS7604_16BIT_1600);
+
+    auto ucs_8bit_config = makeTimingConfig<TIMING_UCS7604_8BIT_800KHZ>();
+    FL_CHECK(ucs_8bit_config.encoder == CLOCKLESS_ENCODER_UCS7604_8BIT);
+}
+
+FL_TEST_CASE("UCS7604 channel preamble in encoded data") {
+    // Create a channel with UCS7604 timing via the Channel API
+    constexpr size_t NUM_LEDS = 3;
+    static CRGB leds[NUM_LEDS];
+    leds[0] = CRGB::Red;
+    leds[1] = CRGB::Green;
+    leds[2] = CRGB::Blue;
+
+    auto timing = makeTimingConfig<TIMING_UCS7604_800KHZ>();
+    ChannelOptions opts;
+    ChannelConfig config(ClocklessChipset(2, timing), fl::span<CRGB>(leds, NUM_LEDS), RGB, opts);
+    ChannelPtr channel = Channel::create(config);
+
+    // Use onChannelDataEncoded event to capture the encoded data
+    bool eventFired = false;
+    fl::vector_psram<u8> capturedData;
+    auto& events = ChannelEvents::instance();
+    int listenerId = events.onChannelDataEncoded.add(
+        [&](const Channel& ch, const ChannelData& chData) {
+            if (&ch == channel.get()) {
+                eventFired = true;
+                const auto& data = chData.getData();
+                capturedData.assign(data.begin(), data.end());
+            }
+        });
+
+    // Add channel and trigger encoding
+    FastLED.add(channel);
+    FastLED.show();
+
+    // Verify event fired and we got data
+    FL_CHECK(eventFired);
+    FL_REQUIRE(capturedData.size() > 15);  // At least preamble
+
+    // Verify the UCS7604 preamble: first 6 bytes are 0xFF sync pattern
+    FL_CHECK(capturedData[0] == 0xFF);
+    FL_CHECK(capturedData[1] == 0xFF);
+    FL_CHECK(capturedData[2] == 0xFF);
+    FL_CHECK(capturedData[3] == 0xFF);
+    FL_CHECK(capturedData[4] == 0xFF);
+    FL_CHECK(capturedData[5] == 0xFF);
+
+    // Bytes 6-7: header 0x00, 0x03
+    FL_CHECK(capturedData[6] == 0x00);
+    FL_CHECK(capturedData[7] == 0x03);
+
+    // Byte 8: mode byte (16-bit 800KHz = 0x8B)
+    FL_CHECK(capturedData[8] == 0x8B);
+
+    // Bytes 9-12: current control (default 0x0F for all channels)
+    FL_CHECK(capturedData[9] == 0x0F);   // R current
+    FL_CHECK(capturedData[10] == 0x0F);  // G current
+    FL_CHECK(capturedData[11] == 0x0F);  // B current
+    FL_CHECK(capturedData[12] == 0x0F);  // W current
+
+    // Bytes 13-14: reserved (0x00, 0x00)
+    FL_CHECK(capturedData[13] == 0x00);
+    FL_CHECK(capturedData[14] == 0x00);
+
+    // For 16-bit RGB mode: 3 LEDs * 6 bytes/LED = 18 bytes of pixel data
+    // Total size should be divisible by 3 (UCS7604 protocol requirement)
+    FL_CHECK(capturedData.size() % 3 == 0);
+
+    // 15 preamble + 0 padding (33%3==0) + 18 LED data = 33 bytes
+    FL_CHECK(capturedData.size() == 33);
+
+    // Cleanup
+    FastLED.remove(channel);
+    events.onChannelDataEncoded.remove(listenerId);
+}
+
+FL_TEST_CASE("WS2812 channel produces no UCS7604 preamble") {
+    // Verify that a WS2812 channel does NOT produce a UCS7604 preamble
+    constexpr size_t NUM_LEDS = 3;
+    static CRGB leds[NUM_LEDS];
+    leds[0] = CRGB::Red;
+    leds[1] = CRGB::Green;
+    leds[2] = CRGB::Blue;
+
+    auto timing = makeTimingConfig<TIMING_WS2812_800KHZ>();
+    ChannelConfig config(ClocklessChipset(3, timing), fl::span<CRGB>(leds, NUM_LEDS), GRB);
+    ChannelPtr channel = Channel::create(config);
+
+    fl::vector_psram<u8> capturedData;
+    auto& events = ChannelEvents::instance();
+    int listenerId = events.onChannelDataEncoded.add(
+        [&](const Channel& ch, const ChannelData& chData) {
+            if (&ch == channel.get()) {
+                const auto& data = chData.getData();
+                capturedData.assign(data.begin(), data.end());
+            }
+        });
+
+    FastLED.add(channel);
+    FastLED.show();
+
+    // WS2812: 3 LEDs * 3 bytes = 9 bytes, no preamble
+    FL_CHECK(capturedData.size() == 9);
+
+    // First bytes should NOT be 0xFF sync pattern (no preamble)
+    // For GRB order with CRGB::Red (255,0,0): first pixel is G=0, R=255, B=0
+    FL_CHECK(capturedData[0] == 0x00);  // G
+    FL_CHECK(capturedData[1] == 0xFF);  // R
+    FL_CHECK(capturedData[2] == 0x00);  // B
+
+    // Cleanup
+    FastLED.remove(channel);
+    events.onChannelDataEncoded.remove(listenerId);
 }
 
 } // anonymous namespace
