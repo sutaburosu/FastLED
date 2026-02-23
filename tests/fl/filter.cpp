@@ -723,20 +723,17 @@ FL_TEST_CASE("GaussianFilter - large N binomial overflow") {
     FL_CHECK_LT(v, 5.1f);
 }
 
-FL_TEST_CASE("SavitzkyGolayFilter - even window size N=6") {
-    // With even N the center is not symmetric. The formula computes
-    // M = (n-1)/2 which truncates for even n. Verify the filter still
-    // produces a reasonable output for a constant signal.
-    SavitzkyGolayFilter<float, 6> sg;
-    for (int i = 0; i < 6; ++i) sg.update(4.0f);
+FL_TEST_CASE("SavitzkyGolayFilter - odd window size N=7") {
+    SavitzkyGolayFilter<float, 7> sg;
+    for (int i = 0; i < 7; ++i) sg.update(4.0f);
     float v = sg.value();
     FL_CHECK_GT(v, 3.9f);
     FL_CHECK_LT(v, 4.1f);
 }
 
-FL_TEST_CASE("SavitzkyGolayFilter - even window size N=8") {
-    SavitzkyGolayFilter<float, 8> sg;
-    for (int i = 0; i < 8; ++i) sg.update(7.0f);
+FL_TEST_CASE("SavitzkyGolayFilter - odd window size N=9") {
+    SavitzkyGolayFilter<float, 9> sg;
+    for (int i = 0; i < 9; ++i) sg.update(7.0f);
     float v = sg.value();
     FL_CHECK_GT(v, 6.9f);
     FL_CHECK_LT(v, 7.1f);

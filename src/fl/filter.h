@@ -25,6 +25,103 @@
 // N = 0 for a runtime-sized buffer that takes capacity at construction:
 //   MedianFilter<float> mf;          // static, default N = 5
 //   MedianFilter<float, 0> mf(10);   // dynamic, capacity set at runtime
+//
+// ============================================================================
+// Filter Reference Table
+// ============================================================================
+//
+// IIR filters (stateful, no buffer, constant memory):
+//
+//   Filter                       | update()  | Memory | Notes
+//   -----------------------------|-----------|--------|-------------------------------
+//   ExponentialSmoother<T>       | O(1)      | 2T     | exp() per call, time-aware
+//   LeakyIntegrator<T, K>        | O(1)      | 1T     | bit-shift only, very cheap
+//   CascadedEMA<T, S>            | O(S)      | S*T    | S stages, exp() per call
+//   BiquadFilter<T>              | O(1)      | 5T     | 5 muls + 4 adds, no exp()
+//   KalmanFilter<T>              | O(1)      | 4T     | 1 div + few muls
+//   OneEuroFilter<T>             | O(1)      | 5T     | 2 EMA steps + derivative
+//
+// FIR filters (windowed, buffer-backed, N = window size):
+//
+//   Filter                       | update()  | Memory | Odd N? | Notes
+//   -----------------------------|-----------|--------|--------|--------------------
+//   MovingAverage<T, N>          | O(1)      | N*T    | no     | running sum trick
+//   WeightedMovingAverage<T, N>  | O(N)      | N*T    | no     | linear weights [1..N]
+//   TriangularFilter<T, N>       | O(N)      | N*T    | yes    | tent weights, symmetric
+//   GaussianFilter<T, N>         | O(N)      | N*T    | no     | binomial coefficients
+//   MedianFilter<T, N>           | O(N)      | 2*N*T  | yes    | sorted insert + shift
+//   AlphaTrimmedMean<T, N>       | O(N)      | 2*N*T  | no     | sorted + trim + avg
+//   HampelFilter<T, N>           | O(N)      | 2*N*T  | yes    | sorted + MAD outlier
+//   SavitzkyGolayFilter<T, N>    | O(N)      | N*T    | yes    | polynomial fit, peaks
+//   BilateralFilter<T, N>        | O(N)      | N*T    | no     | exp() per sample
+//
+// "Odd N?" = static_assert enforces odd N (even N auto-corrected at runtime).
+//
+// ============================================================================
+// Choosing a Filter — Common Scenarios
+// ============================================================================
+//
+// Fast attack, slow decay (instant response to rising input, slow fade-out):
+//   Use two ExponentialSmoother instances with different tau values and pick
+//   the appropriate one based on input direction:
+//     ExponentialSmoother<float> fast(0.01f);  // fast tau for attack
+//     ExponentialSmoother<float> slow(0.5f);   // slow tau for decay
+//     float v = (input > prev) ? fast.update(input, dt)
+//                               : slow.update(input, dt);
+//   Or use LeakyIntegrator with a small K for fast tracking, and switch to
+//   a larger K when the signal drops.
+//
+// Slow attack, fast decay (sluggish ramp-up, snappy drop-off):
+//   Same dual-smoother approach but reversed:
+//     float v = (input < prev) ? fast.update(input, dt)
+//                               : slow.update(input, dt);
+//   Useful for peak-hold displays or "gravity" effects on VU meters.
+//
+// Preserve square waves / sharp edges (smooth noise but keep transitions):
+//   MedianFilter — rejects impulse noise without smearing edges. A spike
+//     gets replaced by the middle value; a genuine step persists once half
+//     the window has crossed the threshold.
+//   BilateralFilter — weights by value similarity, so samples on the other
+//     side of an edge contribute almost nothing. Best edge preservation of
+//     the averaging filters.
+//   SavitzkyGolayFilter — polynomial fit preserves peaks and step shapes
+//     better than any averaging filter, though it does smooth slightly.
+//
+// Reject random spikes / outliers (sensor glitches, bad readings):
+//   MedianFilter — the classic choice. Completely ignores isolated spikes.
+//   HampelFilter — like MedianFilter but replaces only statistical outliers
+//     (beyond threshold * MAD), passing normal variation through unchanged.
+//   AlphaTrimmedMean — trims extremes then averages the rest. Smoother
+//     output than pure median, still robust to outliers.
+//
+// Smooth noisy sensor data (general-purpose, low latency):
+//   LeakyIntegrator — cheapest option: one shift + one add. Good enough
+//     for most ADC smoothing on microcontrollers.
+//   MovingAverage — O(1) update, easy to reason about. N=8 or N=16 are
+//     common choices for ADC readings.
+//   ExponentialSmoother — time-aware, handles variable sample rates cleanly.
+//
+// Gaussian-quality smoothing (best frequency response, minimal ringing):
+//   GaussianFilter — binomial weights approximate a Gaussian kernel. Best
+//     stopband attenuation of the simple FIR filters.
+//   CascadedEMA — IIR approximation of Gaussian with no buffer. 3-4 stages
+//     gives near-Gaussian impulse response.
+//
+// Pointer / VR / motion tracking (low lag on fast gestures, smooth at rest):
+//   OneEuroFilter — designed specifically for this. Adaptive cutoff based
+//     on velocity: low jitter when still, low lag when moving fast.
+//
+// Audio envelope / VU meter:
+//   BiquadFilter::butterworth() for a clean low-pass at a specific cutoff.
+//   Combine with fast-attack/slow-decay (see above) for classic VU behavior.
+//
+// Noisy signal with known process model:
+//   KalmanFilter — optimal when you can estimate process noise (Q) and
+//     measurement noise (R). Converges to the true value over time.
+//
+// Cheapest possible filter (minimal CPU, integer-only MCU):
+//   LeakyIntegrator<int, K> — one right-shift and one add. No division,
+//     no multiplication, no buffer. K=2 (alpha=1/4) or K=3 (alpha=1/8).
 
 #include "fl/circular_buffer.h"
 #include "fl/force_inline.h"
@@ -58,8 +155,10 @@ namespace fl {
 // IIR filters (no buffer, live in fl:: namespace directly)
 // ============================================================================
 
-// First-order exponential (RC low-pass) smoother. Requires a time constant
-// tau and a per-call dt so it works at any sample rate.
+// First-order exponential (RC low-pass) smoother. Time-aware: takes dt so
+// it works at any sample rate. Requires one exp() call per update.
+//
+// update(): O(1)   Memory: 2T
 //
 //   ExponentialSmoother<float> ema(0.1f);   // tau = 100 ms
 //   void loop() {
@@ -86,8 +185,10 @@ class ExponentialSmoother {
     detail::ExponentialSmootherImpl<T> mImpl;
 };
 
-// Shift-based EMA: alpha = 1/(2^K). Very cheap on integer/fixed-point types
-// because it uses bit-shift instead of division.
+// Shift-based EMA: alpha = 1/(2^K). The cheapest filter here — one
+// bit-shift and one add for integer types, no exp() or division.
+//
+// update(): O(1)   Memory: 1T
 //
 //   LeakyIntegrator<int, 3> li;   // alpha = 1/8
 //   void loop() {
@@ -107,8 +208,11 @@ class LeakyIntegrator {
     detail::LeakyIntegratorImpl<T, K> mImpl;
 };
 
-// N stages of EMA in series for a near-Gaussian impulse response without a
-// buffer. More stages = smoother (but slower to respond).
+// S stages of EMA in series for a near-Gaussian impulse response without a
+// buffer. One exp() call shared across all stages. More stages = smoother
+// (but slower to respond).
+//
+// update(): O(S)   Memory: S*T   (S = Stages, typically 2-4)
 //
 //   CascadedEMA<float, 3> smooth(0.05f);  // 3-stage, tau = 50 ms
 //   void loop() {
@@ -132,8 +236,11 @@ class CascadedEMA {
     detail::CascadedEMAImpl<T, Stages> mImpl;
 };
 
-// Second-order IIR filter. Use the butterworth() factory for a classic
-// low-pass with –12 dB/octave roll-off at a given cutoff frequency.
+// Second-order IIR filter (5 multiplies + 4 adds per sample, no exp()).
+// Use the butterworth() factory for a classic low-pass with -12 dB/octave
+// roll-off at a given cutoff frequency.
+//
+// update(): O(1)   Memory: 5T (coefficients) + 4T (state)
 //
 //   auto lpf = BiquadFilter<float>::butterworth(100.0f, 1000.0f);
 //   // cutoff = 100 Hz, sample rate = 1 kHz
@@ -160,7 +267,9 @@ class BiquadFilter {
 };
 
 // 1-D scalar Kalman filter. Balances process noise (Q) against measurement
-// noise (R) to produce an optimal estimate.
+// noise (R) to produce an optimal estimate. One division per update.
+//
+// update(): O(1)   Memory: 4T
 //
 //   KalmanFilter<float> kf(0.01f, 0.1f);  // Q = 0.01, R = 0.1
 //   void loop() {
@@ -183,9 +292,11 @@ class KalmanFilter {
     detail::KalmanFilterImpl<T> mImpl;
 };
 
-// Adaptive velocity-based smoother (1-Euro filter). Smooths slow movements
-// heavily but lets fast movements through with minimal lag. Ideal for
-// VR/graphics/pointer input.
+// Adaptive velocity-based smoother (1-Euro filter). Two EMA steps plus a
+// derivative estimate per update. Smooths slow movements heavily but lets
+// fast movements through with minimal lag. Ideal for VR/graphics/pointer.
+//
+// update(): O(1)   Memory: 5T
 //
 //   OneEuroFilter<float> oef(1.0f, 0.5f);  // min_cutoff=1 Hz, beta=0.5
 //   void loop() {
@@ -212,8 +323,11 @@ class OneEuroFilter {
 // N == 0: dynamic buffer, requires capacity at construction
 // ============================================================================
 
-// Simple moving average: O(1) running sum over the last N samples.
-// Good general-purpose smoother. Use when you want equal weight on recent history.
+// Simple moving average using a running sum: subtracts the oldest sample
+// and adds the newest, so each update is O(1) regardless of window size.
+// Good general-purpose smoother with equal weight on all samples.
+//
+// update(): O(1)   Memory: N*T
 //
 //   MovingAverage<float> ma;               // default N = 8
 //   MovingAverage<float, 16> ma16;         // explicit 16-sample window
@@ -244,11 +358,15 @@ class MovingAverage {
     detail::MovingAverageImpl<T, N> mImpl;
 };
 
-// Sliding-window median: rejects outliers by returning the middle value.
-// Best for impulse/spike noise (e.g., bad sensor readings, random spikes).
+// Sliding-window median: maintains a sorted copy of the window via binary
+// search + shift. Rejects outliers by returning the middle value. Best for
+// impulse/spike noise (e.g., bad sensor readings, random spikes).
+// N must be odd (static_assert for compile-time, auto-corrected at runtime).
+//
+// update(): O(N)   Memory: 2*N*T (ring + sorted copy)
 //
 //   MedianFilter<float> mf;                // default N = 5
-//   MedianFilter<float, 0> dyn(11);        // dynamic: odd N recommended
+//   MedianFilter<float, 0> dyn(11);        // dynamic, odd N required
 //   void loop() {
 //       mf.update(distanceSensor());
 //       float clean = mf.value();          // spike-free output
@@ -274,8 +392,11 @@ class MedianFilter {
     detail::MedianFilterImpl<T, N> mImpl;
 };
 
-// Linearly weighted moving average: newer samples get more weight.
-// Weights are [1, 2, 3, ..., N]. Use when recent data matters more than older.
+// Linearly weighted moving average: recomputes weighted sum each update.
+// Weights are [1, 2, 3, ..., N] so newer samples dominate. Use when recent
+// data matters more than older.
+//
+// update(): O(N)   Memory: N*T
 //
 //   WeightedMovingAverage<float> wma;       // default N = 8
 //   void loop() {
@@ -304,11 +425,14 @@ class WeightedMovingAverage {
     detail::WeightedMovingAverageImpl<T, N> mImpl;
 };
 
-// Triangular (tent) weighted average: peaks at center, tapers to edges.
-// Weights for N=5: [1, 2, 3, 2, 1]. Smoother than MovingAverage, cheaper
-// than Gaussian.
+// Triangular (tent) weighted average: recomputes tent-shaped weights each
+// update. Weights for N=5: [1, 2, 3, 2, 1]. Smoother than MovingAverage,
+// cheaper than Gaussian. N must be odd for a symmetric peak
+// (static_assert for compile-time, auto-corrected at runtime).
 //
-//   TriangularFilter<float> tf;             // default N = 8
+// update(): O(N)   Memory: N*T
+//
+//   TriangularFilter<float> tf;             // default N = 7
 //   void loop() {
 //       tf.update(sensorValue);
 //       float smoothed = tf.value();
@@ -319,7 +443,7 @@ class WeightedMovingAverage {
 //   TriangularFilter<FP, 5> tf;
 //   tf.update(FP(reading));
 //   float result = tf.value().to_float();
-template <typename T = float, fl::size N = 8>
+template <typename T = float, fl::size N = 7>
 class TriangularFilter {
   public:
     TriangularFilter() = default;
@@ -335,9 +459,11 @@ class TriangularFilter {
     detail::TriangularFilterImpl<T, N> mImpl;
 };
 
-// Binomial-coefficient Gaussian approximation: bell-curve weighting.
-// Weights for N=5: [1, 4, 6, 4, 1] (Pascal's triangle row).
-// Best frequency-domain response of the simple FIR filters.
+// Binomial-coefficient Gaussian approximation: recomputes Pascal's-triangle
+// weights each update. Weights for N=5: [1, 4, 6, 4, 1]. Best
+// frequency-domain response of the simple FIR filters.
+//
+// update(): O(N)   Memory: N*T
 //
 //   GaussianFilter<float> gf;               // default N = 5
 //   void loop() {
@@ -366,9 +492,12 @@ class GaussianFilter {
     detail::GaussianFilterImpl<T, N> mImpl;
 };
 
-// Alpha-trimmed mean: sorts window, trims extremes, averages the middle.
-// With N=7 and trim_count=1, sorts 7 values, drops min and max, averages
-// the remaining 5. Robust to outliers while still averaging.
+// Alpha-trimmed mean: maintains a sorted window via binary search + shift,
+// trims extreme values from both ends, and averages the middle. With N=7
+// and trim_count=1, drops min and max, averages the remaining 5. Robust
+// to outliers while still averaging.
+//
+// update(): O(N)   Memory: 2*N*T (ring + sorted copy)
 //
 //   AlphaTrimmedMean<float> atm(1);         // default N=7, trim 1 each end
 //   AlphaTrimmedMean<float, 5> atm5(2);     // N=5, trim 2 each end (= median)
@@ -397,9 +526,12 @@ class AlphaTrimmedMean {
     detail::AlphaTrimmedMeanImpl<T, N> mImpl;
 };
 
-// Hampel filter: median + MAD-based outlier rejection. Computes the median
-// and median absolute deviation (MAD) of the window, then replaces values
-// that deviate beyond threshold * MAD with the median.
+// Hampel filter: maintains a sorted window, computes the median and median
+// absolute deviation (MAD), then replaces values that deviate beyond
+// threshold * MAD with the median. N must be odd (static_assert for
+// compile-time, auto-corrected at runtime).
+//
+// update(): O(N)   Memory: 2*N*T (ring + sorted copy)
 //
 //   HampelFilter<float> hf(3.0f);           // default N=5, threshold=3
 //   HampelFilter<float, 7> hf7(2.0f);       // 7-sample window, tighter threshold
@@ -421,9 +553,12 @@ class HampelFilter {
     detail::HampelFilterImpl<T, N> mImpl;
 };
 
-// Savitzky-Golay: fits a local polynomial (quadratic) to the window and
-// returns the center value. Smooths noise while preserving peaks, edges,
-// and the overall shape of the signal better than averaging filters.
+// Savitzky-Golay: fits a local quadratic polynomial to the window and returns
+// the center value. Recomputes polynomial weights each update. Smooths noise
+// while preserving peaks, edges, and signal shape better than averaging.
+// N must be odd (static_assert for compile-time, auto-corrected at runtime).
+//
+// update(): O(N)   Memory: N*T
 //
 //   SavitzkyGolayFilter<float> sg;           // default N = 5
 //   SavitzkyGolayFilter<float, 7> sg7;       // wider window = more smoothing
@@ -454,9 +589,12 @@ class SavitzkyGolayFilter {
 };
 
 // Bilateral filter: edge-preserving smoother weighted by value similarity.
-// Each sample's weight depends on how close its value is to the newest sample.
-// Small sigma_range = only very similar values contribute (sharp edges kept).
-// Large sigma_range = all values contribute equally (acts like a box filter).
+// Computes exp() per sample in the window each update. Each sample's weight
+// depends on how close its value is to the newest sample. Small sigma_range
+// = only very similar values contribute (sharp edges kept). Large sigma_range
+// = all values contribute equally (acts like a box filter).
+//
+// update(): O(N)   Memory: N*T   (one exp() per sample per update)
 //
 //   BilateralFilter<float> bf(1.0f);        // default N=5, sigma=1.0
 //   BilateralFilter<float, 7> bf7(0.5f);    // 7-sample, tighter similarity

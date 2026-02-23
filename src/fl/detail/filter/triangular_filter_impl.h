@@ -1,6 +1,7 @@
 #pragma once
 
 #include "fl/circular_buffer.h"
+#include "fl/log.h"
 #include "fl/math_macros.h"
 
 namespace fl {
@@ -8,10 +9,17 @@ namespace detail {
 
 template <typename T, fl::size N = 0>
 class TriangularFilterImpl {
+    static_assert(N == 0 || (N % 2 == 1),
+                  "TriangularFilter: N must be odd for a symmetric tent shape");
   public:
     TriangularFilterImpl() : mLastValue(T(0)) {}
     explicit TriangularFilterImpl(fl::size capacity)
-        : mBuf(capacity), mLastValue(T(0)) {}
+        : mBuf(capacity), mLastValue(T(0)) {
+        if (capacity % 2 == 0) {
+            FL_ERROR("TriangularFilter: capacity should be odd, adding 1");
+            mBuf = CircularBuffer<T, N>(capacity + 1);
+        }
+    }
 
     T update(T input) {
         mBuf.push_back(input);
@@ -35,6 +43,10 @@ class TriangularFilterImpl {
     fl::size capacity() const { return mBuf.capacity(); }
 
     void resize(fl::size new_capacity) {
+        if (new_capacity % 2 == 0) {
+            FL_ERROR("TriangularFilter: capacity should be odd, adding 1");
+            new_capacity += 1;
+        }
         mBuf = CircularBuffer<T, N>(new_capacity);
         mLastValue = T(0);
     }

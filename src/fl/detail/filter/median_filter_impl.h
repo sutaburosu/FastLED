@@ -1,6 +1,7 @@
 #pragma once
 
 #include "fl/circular_buffer.h"
+#include "fl/log.h"
 #include "fl/stl/algorithm.h"
 
 namespace fl {
@@ -8,11 +9,19 @@ namespace detail {
 
 template <typename T, fl::size N = 0>
 class MedianFilterImpl {
+    static_assert(N == 0 || (N % 2 == 1),
+                  "MedianFilter: N must be odd for an unambiguous median");
   public:
     MedianFilterImpl() : mSortedCount(0), mLastMedian(T(0)) {}
     explicit MedianFilterImpl(fl::size capacity)
         : mRing(capacity), mSorted(capacity),
-          mSortedCount(0), mLastMedian(T(0)) {}
+          mSortedCount(0), mLastMedian(T(0)) {
+        if (capacity % 2 == 0) {
+            FL_ERROR("MedianFilter: capacity should be odd, adding 1");
+            mRing = CircularBuffer<T, N>(capacity + 1);
+            mSorted = CircularBuffer<T, N>(capacity + 1);
+        }
+    }
 
     T update(T input) {
         if (!mRing.full()) {
@@ -58,6 +67,10 @@ class MedianFilterImpl {
     fl::size capacity() const { return mRing.capacity(); }
 
     void resize(fl::size new_capacity) {
+        if (new_capacity % 2 == 0) {
+            FL_ERROR("MedianFilter: capacity should be odd, adding 1");
+            new_capacity += 1;
+        }
         mRing = CircularBuffer<T, N>(new_capacity);
         mSorted = CircularBuffer<T, N>(new_capacity);
         mSortedCount = 0;

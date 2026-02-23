@@ -1,6 +1,7 @@
 #pragma once
 
 #include "fl/circular_buffer.h"
+#include "fl/log.h"
 #include "fl/math.h"
 #include "fl/stl/algorithm.h"
 #include "fl/detail/filter/div_by_count.h"
@@ -10,12 +11,20 @@ namespace detail {
 
 template <typename T, fl::size N = 0>
 class HampelFilterImpl {
+    static_assert(N == 0 || (N % 2 == 1),
+                  "HampelFilter: N must be odd for an unambiguous median");
   public:
     explicit HampelFilterImpl(T threshold = T(3.0f))
         : mSortedCount(0), mThreshold(threshold), mLastValue(T(0)) {}
     explicit HampelFilterImpl(fl::size capacity, T threshold = T(3.0f))
         : mRing(capacity), mSorted(capacity),
-          mSortedCount(0), mThreshold(threshold), mLastValue(T(0)) {}
+          mSortedCount(0), mThreshold(threshold), mLastValue(T(0)) {
+        if (capacity % 2 == 0) {
+            FL_ERROR("HampelFilter: capacity should be odd, adding 1");
+            mRing = CircularBuffer<T, N>(capacity + 1);
+            mSorted = CircularBuffer<T, N>(capacity + 1);
+        }
+    }
 
     T update(T input) {
         T output = input;
@@ -79,6 +88,10 @@ class HampelFilterImpl {
     fl::size capacity() const { return mRing.capacity(); }
 
     void resize(fl::size new_capacity) {
+        if (new_capacity % 2 == 0) {
+            FL_ERROR("HampelFilter: capacity should be odd, adding 1");
+            new_capacity += 1;
+        }
         mRing = CircularBuffer<T, N>(new_capacity);
         mSorted = CircularBuffer<T, N>(new_capacity);
         mSortedCount = 0;
