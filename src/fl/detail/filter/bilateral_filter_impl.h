@@ -2,6 +2,7 @@
 
 #include "fl/circular_buffer.h"
 #include "fl/math.h"
+#include "fl/stl/span.h"
 
 namespace fl {
 namespace detail {
@@ -16,31 +17,15 @@ class BilateralFilterImpl {
 
     T update(T input) {
         mBuf.push_back(input);
-        fl::size n = mBuf.size();
+        return recompute(input);
+    }
 
-        T two_sigma_sq = T(2.0f) * mSigmaRange * mSigmaRange;
-
-        if (two_sigma_sq == T(0)) {
-            mLastValue = input;
-            return mLastValue;
+    T update(fl::span<const T> values) {
+        if (values.size() == 0) return mLastValue;
+        for (fl::size i = 0; i < values.size(); ++i) {
+            mBuf.push_back(values[i]);
         }
-
-        T weighted_sum = T(0);
-        T weight_total = T(0);
-
-        for (fl::size i = 0; i < n; ++i) {
-            T diff = mBuf[i] - input;
-            T range_weight = fl::exp(-(diff * diff) / two_sigma_sq);
-            weighted_sum = weighted_sum + mBuf[i] * range_weight;
-            weight_total = weight_total + range_weight;
-        }
-
-        if (!(weight_total == T(0))) {
-            mLastValue = weighted_sum / weight_total;
-        } else {
-            mLastValue = input;
-        }
-        return mLastValue;
+        return recompute(values[values.size() - 1]);
     }
 
     T value() const { return mLastValue; }
@@ -55,6 +40,34 @@ class BilateralFilterImpl {
     }
 
   private:
+    T recompute(T reference) {
+        fl::size n = mBuf.size();
+
+        T two_sigma_sq = T(2.0f) * mSigmaRange * mSigmaRange;
+
+        if (two_sigma_sq == T(0)) {
+            mLastValue = reference;
+            return mLastValue;
+        }
+
+        T weighted_sum = T(0);
+        T weight_total = T(0);
+
+        for (fl::size i = 0; i < n; ++i) {
+            T diff = mBuf[i] - reference;
+            T range_weight = fl::exp(-(diff * diff) / two_sigma_sq);
+            weighted_sum = weighted_sum + mBuf[i] * range_weight;
+            weight_total = weight_total + range_weight;
+        }
+
+        if (!(weight_total == T(0))) {
+            mLastValue = weighted_sum / weight_total;
+        } else {
+            mLastValue = reference;
+        }
+        return mLastValue;
+    }
+
     CircularBuffer<T, N> mBuf;
     T mSigmaRange;
     T mLastValue;

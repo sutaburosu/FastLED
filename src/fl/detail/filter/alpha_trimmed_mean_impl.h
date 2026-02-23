@@ -2,6 +2,7 @@
 
 #include "fl/circular_buffer.h"
 #include "fl/stl/algorithm.h"
+#include "fl/stl/span.h"
 #include "fl/detail/filter/div_by_count.h"
 
 namespace fl {
@@ -15,6 +16,32 @@ class AlphaTrimmedMeanImpl {
     explicit AlphaTrimmedMeanImpl(fl::size capacity, fl::size trim_count)
         : mRing(capacity), mSorted(capacity),
           mSortedCount(0), mTrimCount(trim_count), mLastValue(T(0)) {}
+
+    T update(fl::span<const T> values) {
+        if (values.size() == 0) return mLastValue;
+        for (fl::size i = 0; i < values.size(); ++i) {
+            mRing.push_back(values[i]);
+        }
+        // Rebuild sorted array from ring contents
+        mSortedCount = mRing.size();
+        for (fl::size i = 0; i < mSortedCount; ++i) {
+            mSorted[i] = mRing[i];
+        }
+        fl::sort(&mSorted[0], &mSorted[0] + mSortedCount);
+        // Compute trimmed mean
+        fl::size lo = mTrimCount;
+        fl::size hi = (mSortedCount > mTrimCount) ? mSortedCount - mTrimCount : 0;
+        if (lo >= hi) {
+            mLastValue = mSorted[mSortedCount / 2];
+        } else {
+            T sum = T(0);
+            for (fl::size i = lo; i < hi; ++i) {
+                sum = sum + mSorted[i];
+            }
+            mLastValue = div_by_count(sum, hi - lo);
+        }
+        return mLastValue;
+    }
 
     T update(T input) {
         if (!mRing.full()) {

@@ -1552,4 +1552,164 @@ FL_TEST_CASE("AlphaTrimmedMean - dynamic buffer") {
     FL_CHECK_CLOSE(atm.value(), 5.0f, 0.01f);
 }
 
+// ============================================================================
+// Bulk update(span) equivalence tests
+// ============================================================================
+
+FL_TEST_CASE("WeightedMovingAverage - bulk update equivalent to sequential") {
+    float data[] = {3.0f, 7.0f, 1.0f, 9.0f, 5.0f, 2.0f, 8.0f};
+
+    WeightedMovingAverage<float, 5> seq;
+    for (int i = 0; i < 7; ++i) seq.update(data[i]);
+
+    WeightedMovingAverage<float, 5> bulk;
+    bulk.update(fl::span<const float>(data, 7));
+
+    FL_CHECK_CLOSE(seq.value(), bulk.value(), 0.001f);
+}
+
+FL_TEST_CASE("WeightedMovingAverage - bulk fewer than window") {
+    float data[] = {3.0f, 7.0f};
+
+    WeightedMovingAverage<float, 5> seq;
+    for (int i = 0; i < 2; ++i) seq.update(data[i]);
+
+    WeightedMovingAverage<float, 5> bulk;
+    bulk.update(fl::span<const float>(data, 2));
+
+    FL_CHECK_CLOSE(seq.value(), bulk.value(), 0.001f);
+}
+
+FL_TEST_CASE("WeightedMovingAverage - bulk single element") {
+    float data[] = {42.0f};
+
+    WeightedMovingAverage<float, 5> seq;
+    seq.update(data[0]);
+
+    WeightedMovingAverage<float, 5> bulk;
+    bulk.update(fl::span<const float>(data, 1));
+
+    FL_CHECK_CLOSE(seq.value(), bulk.value(), 0.001f);
+}
+
+FL_TEST_CASE("WeightedMovingAverage - bulk empty span") {
+    WeightedMovingAverage<float, 5> f;
+    f.update(5.0f);
+    float before = f.value();
+    f.update(fl::span<const float>(nullptr, 0));
+    FL_CHECK_CLOSE(f.value(), before, 0.001f);
+}
+
+FL_TEST_CASE("TriangularFilter - bulk update equivalent to sequential") {
+    float data[] = {3.0f, 7.0f, 1.0f, 9.0f, 5.0f, 2.0f, 8.0f};
+
+    TriangularFilter<float, 5> seq;
+    for (int i = 0; i < 7; ++i) seq.update(data[i]);
+
+    TriangularFilter<float, 5> bulk;
+    bulk.update(fl::span<const float>(data, 7));
+
+    FL_CHECK_CLOSE(seq.value(), bulk.value(), 0.001f);
+}
+
+FL_TEST_CASE("GaussianFilter - bulk update equivalent to sequential") {
+    float data[] = {3.0f, 7.0f, 1.0f, 9.0f, 5.0f, 2.0f, 8.0f};
+
+    GaussianFilter<float, 5> seq;
+    for (int i = 0; i < 7; ++i) seq.update(data[i]);
+
+    GaussianFilter<float, 5> bulk;
+    bulk.update(fl::span<const float>(data, 7));
+
+    FL_CHECK_CLOSE(seq.value(), bulk.value(), 0.001f);
+}
+
+FL_TEST_CASE("SavitzkyGolayFilter - bulk update equivalent to sequential") {
+    float data[] = {3.0f, 7.0f, 1.0f, 9.0f, 5.0f, 2.0f, 8.0f};
+
+    SavitzkyGolayFilter<float, 5> seq;
+    for (int i = 0; i < 7; ++i) seq.update(data[i]);
+
+    SavitzkyGolayFilter<float, 5> bulk;
+    bulk.update(fl::span<const float>(data, 7));
+
+    FL_CHECK_CLOSE(seq.value(), bulk.value(), 0.001f);
+}
+
+FL_TEST_CASE("BilateralFilter - bulk update equivalent to sequential") {
+    float data[] = {3.0f, 7.0f, 1.0f, 9.0f, 5.0f, 2.0f, 8.0f};
+
+    BilateralFilter<float, 5> seq(1.0f);
+    for (int i = 0; i < 7; ++i) seq.update(data[i]);
+
+    BilateralFilter<float, 5> bulk(1.0f);
+    bulk.update(fl::span<const float>(data, 7));
+
+    FL_CHECK_CLOSE(seq.value(), bulk.value(), 0.001f);
+}
+
+FL_TEST_CASE("MedianFilter - bulk update equivalent to sequential") {
+    float data[] = {3.0f, 7.0f, 1.0f, 9.0f, 5.0f, 2.0f, 8.0f};
+
+    MedianFilter<float, 5> seq;
+    for (int i = 0; i < 7; ++i) seq.update(data[i]);
+
+    MedianFilter<float, 5> bulk;
+    bulk.update(fl::span<const float>(data, 7));
+
+    FL_CHECK_CLOSE(seq.value(), bulk.value(), 0.001f);
+}
+
+FL_TEST_CASE("MedianFilter - bulk fewer than window") {
+    float data[] = {3.0f, 7.0f};
+
+    MedianFilter<float, 5> seq;
+    for (int i = 0; i < 2; ++i) seq.update(data[i]);
+
+    MedianFilter<float, 5> bulk;
+    bulk.update(fl::span<const float>(data, 2));
+
+    FL_CHECK_CLOSE(seq.value(), bulk.value(), 0.001f);
+}
+
+FL_TEST_CASE("MedianFilter - bulk empty span") {
+    MedianFilter<float, 5> f;
+    f.update(5.0f);
+    float before = f.value();
+    f.update(fl::span<const float>(nullptr, 0));
+    FL_CHECK_CLOSE(f.value(), before, 0.001f);
+}
+
+FL_TEST_CASE("AlphaTrimmedMean - bulk update equivalent to sequential") {
+    float data[] = {3.0f, 7.0f, 1.0f, 9.0f, 5.0f, 2.0f, 8.0f};
+
+    AlphaTrimmedMean<float, 5> seq(1);
+    for (int i = 0; i < 7; ++i) seq.update(data[i]);
+
+    AlphaTrimmedMean<float, 5> bulk(1);
+    bulk.update(fl::span<const float>(data, 7));
+
+    FL_CHECK_CLOSE(seq.value(), bulk.value(), 0.001f);
+}
+
+FL_TEST_CASE("HampelFilter - bulk update equivalent to sequential") {
+    float data[] = {3.0f, 7.0f, 1.0f, 9.0f, 5.0f, 2.0f, 8.0f};
+
+    HampelFilter<float, 5> seq(3.0f);
+    for (int i = 0; i < 7; ++i) seq.update(data[i]);
+
+    HampelFilter<float, 5> bulk(3.0f);
+    bulk.update(fl::span<const float>(data, 7));
+
+    FL_CHECK_CLOSE(seq.value(), bulk.value(), 0.001f);
+}
+
+FL_TEST_CASE("HampelFilter - bulk empty span") {
+    HampelFilter<float, 5> f(3.0f);
+    f.update(5.0f);
+    float before = f.value();
+    f.update(fl::span<const float>(nullptr, 0));
+    FL_CHECK_CLOSE(f.value(), before, 0.001f);
+}
+
 } // anonymous namespace

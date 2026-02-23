@@ -133,6 +133,7 @@
 #include "fl/math.h"
 #include "fl/math_macros.h"
 #include "fl/stl/algorithm.h"
+#include "fl/stl/span.h"
 #include "fl/stl/type_traits.h"
 
 // Detail impl headers — IIR
@@ -456,6 +457,7 @@ class MedianFilter {
     MedianFilter() = default;
     explicit MedianFilter(fl::size capacity) : mImpl(capacity) {}
     FASTLED_FORCE_INLINE T update(T input) { return mImpl.update(input); }
+    FASTLED_FORCE_INLINE T update(fl::span<const T> values) { return mImpl.update(values); }
     FASTLED_FORCE_INLINE T value() const { return mImpl.value(); }
     FASTLED_FORCE_INLINE void reset() { mImpl.reset(); }
     FASTLED_FORCE_INLINE fl::size size() const { return mImpl.size(); }
@@ -488,6 +490,7 @@ class WeightedMovingAverage {
     WeightedMovingAverage() = default;
     explicit WeightedMovingAverage(fl::size capacity) : mImpl(capacity) {}
     FASTLED_FORCE_INLINE T update(T input) { return mImpl.update(input); }
+    FASTLED_FORCE_INLINE T update(fl::span<const T> values) { return mImpl.update(values); }
     FASTLED_FORCE_INLINE T value() const { return mImpl.value(); }
     FASTLED_FORCE_INLINE void reset() { mImpl.reset(); }
     FASTLED_FORCE_INLINE bool full() const { return mImpl.full(); }
@@ -522,6 +525,7 @@ class TriangularFilter {
     TriangularFilter() = default;
     explicit TriangularFilter(fl::size capacity) : mImpl(capacity) {}
     FASTLED_FORCE_INLINE T update(T input) { return mImpl.update(input); }
+    FASTLED_FORCE_INLINE T update(fl::span<const T> values) { return mImpl.update(values); }
     FASTLED_FORCE_INLINE T value() const { return mImpl.value(); }
     FASTLED_FORCE_INLINE void reset() { mImpl.reset(); }
     FASTLED_FORCE_INLINE bool full() const { return mImpl.full(); }
@@ -555,6 +559,7 @@ class GaussianFilter {
     GaussianFilter() = default;
     explicit GaussianFilter(fl::size capacity) : mImpl(capacity) {}
     FASTLED_FORCE_INLINE T update(T input) { return mImpl.update(input); }
+    FASTLED_FORCE_INLINE T update(fl::span<const T> values) { return mImpl.update(values); }
     FASTLED_FORCE_INLINE T value() const { return mImpl.value(); }
     FASTLED_FORCE_INLINE void reset() { mImpl.reset(); }
     FASTLED_FORCE_INLINE bool full() const { return mImpl.full(); }
@@ -590,6 +595,7 @@ class AlphaTrimmedMean {
     explicit AlphaTrimmedMean(fl::size trim_count = 1) : mImpl(trim_count) {}
     AlphaTrimmedMean(fl::size capacity, fl::size trim_count) : mImpl(capacity, trim_count) {}
     FASTLED_FORCE_INLINE T update(T input) { return mImpl.update(input); }
+    FASTLED_FORCE_INLINE T update(fl::span<const T> values) { return mImpl.update(values); }
     FASTLED_FORCE_INLINE T value() const { return mImpl.value(); }
     FASTLED_FORCE_INLINE void reset() { mImpl.reset(); }
     FASTLED_FORCE_INLINE fl::size size() const { return mImpl.size(); }
@@ -617,6 +623,7 @@ class HampelFilter {
     explicit HampelFilter(T threshold = T(3.0f)) : mImpl(threshold) {}
     HampelFilter(fl::size capacity, T threshold) : mImpl(capacity, threshold) {}
     FASTLED_FORCE_INLINE T update(T input) { return mImpl.update(input); }
+    FASTLED_FORCE_INLINE T update(fl::span<const T> values) { return mImpl.update(values); }
     FASTLED_FORCE_INLINE T value() const { return mImpl.value(); }
     FASTLED_FORCE_INLINE void reset() { mImpl.reset(); }
     FASTLED_FORCE_INLINE fl::size size() const { return mImpl.size(); }
@@ -651,6 +658,7 @@ class SavitzkyGolayFilter {
     SavitzkyGolayFilter() = default;
     explicit SavitzkyGolayFilter(fl::size capacity) : mImpl(capacity) {}
     FASTLED_FORCE_INLINE T update(T input) { return mImpl.update(input); }
+    FASTLED_FORCE_INLINE T update(fl::span<const T> values) { return mImpl.update(values); }
     FASTLED_FORCE_INLINE T value() const { return mImpl.value(); }
     FASTLED_FORCE_INLINE void reset() { mImpl.reset(); }
     FASTLED_FORCE_INLINE bool full() const { return mImpl.full(); }
@@ -681,6 +689,7 @@ class BilateralFilter {
     explicit BilateralFilter(T sigma_range = T(1.0f)) : mImpl(sigma_range) {}
     BilateralFilter(fl::size capacity, T sigma_range) : mImpl(capacity, sigma_range) {}
     FASTLED_FORCE_INLINE T update(T input) { return mImpl.update(input); }
+    FASTLED_FORCE_INLINE T update(fl::span<const T> values) { return mImpl.update(values); }
     FASTLED_FORCE_INLINE T value() const { return mImpl.value(); }
     FASTLED_FORCE_INLINE void reset() { mImpl.reset(); }
     FASTLED_FORCE_INLINE bool full() const { return mImpl.full(); }

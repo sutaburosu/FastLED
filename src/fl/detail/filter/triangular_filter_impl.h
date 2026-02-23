@@ -3,6 +3,7 @@
 #include "fl/circular_buffer.h"
 #include "fl/log.h"
 #include "fl/math_macros.h"
+#include "fl/stl/span.h"
 
 namespace fl {
 namespace detail {
@@ -23,17 +24,15 @@ class TriangularFilterImpl {
 
     T update(T input) {
         mBuf.push_back(input);
-        fl::size n = mBuf.size();
-        T weighted_sum = T(0);
-        T weight_total = T(0);
-        for (fl::size i = 0; i < n; ++i) {
-            fl::size w_int = fl::fl_min(i + 1, n - i);
-            T w = T(static_cast<float>(w_int));
-            weighted_sum = weighted_sum + mBuf[i] * w;
-            weight_total = weight_total + w;
+        return recompute();
+    }
+
+    T update(fl::span<const T> values) {
+        if (values.size() == 0) return mLastValue;
+        for (fl::size i = 0; i < values.size(); ++i) {
+            mBuf.push_back(values[i]);
         }
-        mLastValue = weighted_sum / weight_total;
-        return mLastValue;
+        return recompute();
     }
 
     T value() const { return mLastValue; }
@@ -52,6 +51,20 @@ class TriangularFilterImpl {
     }
 
   private:
+    T recompute() {
+        fl::size n = mBuf.size();
+        T weighted_sum = T(0);
+        T weight_total = T(0);
+        for (fl::size i = 0; i < n; ++i) {
+            fl::size w_int = fl::fl_min(i + 1, n - i);
+            T w = T(static_cast<float>(w_int));
+            weighted_sum = weighted_sum + mBuf[i] * w;
+            weight_total = weight_total + w;
+        }
+        mLastValue = weighted_sum / weight_total;
+        return mLastValue;
+    }
+
     CircularBuffer<T, N> mBuf;
     T mLastValue;
 };

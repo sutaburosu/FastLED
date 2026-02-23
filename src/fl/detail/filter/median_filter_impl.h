@@ -3,6 +3,7 @@
 #include "fl/circular_buffer.h"
 #include "fl/log.h"
 #include "fl/stl/algorithm.h"
+#include "fl/stl/span.h"
 
 namespace fl {
 namespace detail {
@@ -21,6 +22,21 @@ class MedianFilterImpl {
             mRing = CircularBuffer<T, N>(capacity + 1);
             mSorted = CircularBuffer<T, N>(capacity + 1);
         }
+    }
+
+    T update(fl::span<const T> values) {
+        if (values.size() == 0) return mLastMedian;
+        for (fl::size i = 0; i < values.size(); ++i) {
+            mRing.push_back(values[i]);
+        }
+        // Rebuild sorted array from ring contents
+        mSortedCount = mRing.size();
+        for (fl::size i = 0; i < mSortedCount; ++i) {
+            mSorted[i] = mRing[i];
+        }
+        fl::sort(&mSorted[0], &mSorted[0] + mSortedCount);
+        mLastMedian = mSorted[mSortedCount / 2];
+        return mLastMedian;
     }
 
     T update(T input) {

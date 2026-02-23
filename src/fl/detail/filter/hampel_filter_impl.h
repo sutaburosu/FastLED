@@ -4,6 +4,7 @@
 #include "fl/log.h"
 #include "fl/math.h"
 #include "fl/stl/algorithm.h"
+#include "fl/stl/span.h"
 #include "fl/detail/filter/div_by_count.h"
 
 namespace fl {
@@ -24,6 +25,15 @@ class HampelFilterImpl {
             mRing = CircularBuffer<T, N>(capacity + 1);
             mSorted = CircularBuffer<T, N>(capacity + 1);
         }
+    }
+
+    T update(fl::span<const T> values) {
+        if (values.size() == 0) return mLastValue;
+        T result = mLastValue;
+        for (fl::size i = 0; i < values.size(); ++i) {
+            result = update(values[i]);
+        }
+        return result;
     }
 
     T update(T input) {
