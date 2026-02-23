@@ -21,11 +21,11 @@
 //   SavitzkyGolayFilter<T, N>    — polynomial-fit smoothing (preserves peaks)
 //   BilateralFilter<T, N>        — edge-preserving value-similarity weighting
 //
-// Static aliases use fl::size N for the window size:
+// Static version — N specified:
 //   MedianFilter<float, 5> mf;
 //
-// Dynamic aliases use DynamicCircularBuffer under the hood:
-//   DynamicMedianFilter<float> mf(5);
+// Dynamic version — N omitted (defaults to 0), requires capacity at construction:
+//   MedianFilter<float> mf(5);
 
 #include "fl/circular_buffer.h"
 #include "fl/math.h"
@@ -33,549 +33,18 @@
 #include "fl/stl/algorithm.h"
 #include "fl/stl/type_traits.h"
 
+// Detail impl headers
+#include "fl/detail/filter/moving_average_impl.h"
+#include "fl/detail/filter/median_filter_impl.h"
+#include "fl/detail/filter/weighted_moving_average_impl.h"
+#include "fl/detail/filter/triangular_filter_impl.h"
+#include "fl/detail/filter/gaussian_filter_impl.h"
+#include "fl/detail/filter/alpha_trimmed_mean_impl.h"
+#include "fl/detail/filter/hampel_filter_impl.h"
+#include "fl/detail/filter/savitzky_golay_filter_impl.h"
+#include "fl/detail/filter/bilateral_filter_impl.h"
+
 namespace fl {
-
-namespace detail {
-
-// Division by integer count — dispatched by type.
-template <typename T>
-inline typename fl::enable_if<fl::is_floating_point<T>::value, T>::type
-div_by_count(T sum, fl::size count) { return sum / static_cast<T>(count); }
-
-template <typename T>
-inline typename fl::enable_if<fl::is_integral<T>::value, T>::type
-div_by_count(T sum, fl::size count) { return sum / static_cast<T>(count); }
-
-template <typename T>
-inline typename fl::enable_if<!fl::is_floating_point<T>::value &&
-                              !fl::is_integral<T>::value, T>::type
-div_by_count(T sum, fl::size count) { return sum / T(static_cast<float>(count)); }
-
-// ============================================================================
-// Buffer-backed filter implementations (detail namespace).
-// Users interact via the public aliases below (e.g. MedianFilter<float, 5>).
-// ============================================================================
-
-template <typename T, typename Buffer>
-class MovingAverageImpl {
-  public:
-    MovingAverageImpl() : mSum(T(0)) {}
-    explicit MovingAverageImpl(fl::size capacity) : mBuf(capacity), mSum(T(0)) {}
-
-    T update(T input) {
-        if (mBuf.full()) {
-            mSum = mSum - mBuf.front();
-        }
-        mBuf.push_back(input);
-        mSum = mSum + input;
-        return value();
-    }
-
-    T value() const {
-        fl::size count = mBuf.size();
-        if (count == 0) {
-            return T(0);
-        }
-        return divByCount(mSum, count);
-    }
-
-    void reset() {
-        mBuf.clear();
-        mSum = T(0);
-    }
-
-    bool full() const { return mBuf.full(); }
-    fl::size size() const { return mBuf.size(); }
-    fl::size capacity() const { return mBuf.capacity(); }
-
-    void resize(fl::size new_capacity) {
-        mBuf = Buffer(new_capacity);
-        mSum = T(0);
-    }
-
-  private:
-    template <typename U = T>
-    static typename fl::enable_if<fl::is_floating_point<U>::value, U>::type
-    divByCount(U sum, fl::size count) {
-        return sum / static_cast<U>(count);
-    }
-
-    template <typename U = T>
-    static typename fl::enable_if<fl::is_integral<U>::value, U>::type
-    divByCount(U sum, fl::size count) {
-        return sum / static_cast<U>(count);
-    }
-
-    template <typename U = T>
-    static typename fl::enable_if<!fl::is_floating_point<U>::value &&
-                                  !fl::is_integral<U>::value, U>::type
-    divByCount(U sum, fl::size count) {
-        return sum / U(static_cast<float>(count));
-    }
-
-    Buffer mBuf;
-    T mSum;
-};
-
-template <typename T, typename Buffer>
-class MedianFilterImpl {
-  public:
-    MedianFilterImpl() : mSortedCount(0), mLastMedian(T(0)) {}
-    explicit MedianFilterImpl(fl::size capacity)
-        : mRing(capacity), mSorted(capacity),
-          mSortedCount(0), mLastMedian(T(0)) {}
-
-    T update(T input) {
-        if (!mRing.full()) {
-            T* base = &mSorted[0];
-            T* pos = fl::lower_bound(base, base + mSortedCount, input);
-            fl::size idx = static_cast<fl::size>(pos - base);
-            for (fl::size i = mSortedCount; i > idx; --i) {
-                mSorted[i] = mSorted[i - 1];
-            }
-            mSorted[idx] = input;
-            ++mSortedCount;
-        } else {
-            T oldest = mRing.front();
-            T* base = &mSorted[0];
-            T* rm_pos = fl::lower_bound(base, base + mSortedCount, oldest);
-            fl::size rm = static_cast<fl::size>(rm_pos - base);
-            for (fl::size i = rm; i + 1 < mSortedCount; ++i) {
-                mSorted[i] = mSorted[i + 1];
-            }
-            T* ins_pos =
-                fl::lower_bound(base, base + mSortedCount - 1, input);
-            fl::size idx = static_cast<fl::size>(ins_pos - base);
-            for (fl::size i = mSortedCount - 1; i > idx; --i) {
-                mSorted[i] = mSorted[i - 1];
-            }
-            mSorted[idx] = input;
-        }
-
-        mRing.push_back(input);
-        mLastMedian = mSorted[mSortedCount / 2];
-        return mLastMedian;
-    }
-
-    T value() const { return mLastMedian; }
-
-    void reset() {
-        mRing.clear();
-        mSortedCount = 0;
-        mLastMedian = T(0);
-    }
-
-    fl::size size() const { return mRing.size(); }
-    fl::size capacity() const { return mRing.capacity(); }
-
-    void resize(fl::size new_capacity) {
-        mRing = Buffer(new_capacity);
-        mSorted = Buffer(new_capacity);
-        mSortedCount = 0;
-        mLastMedian = T(0);
-    }
-
-  private:
-    Buffer mRing;
-    Buffer mSorted;
-    fl::size mSortedCount;
-    T mLastMedian;
-};
-
-template <typename T, typename Buffer>
-class WeightedMovingAverageImpl {
-  public:
-    WeightedMovingAverageImpl() : mLastValue(T(0)) {}
-    explicit WeightedMovingAverageImpl(fl::size capacity)
-        : mBuf(capacity), mLastValue(T(0)) {}
-
-    T update(T input) {
-        mBuf.push_back(input);
-        fl::size n = mBuf.size();
-        T weighted_sum = T(0);
-        T weight_total = T(0);
-        for (fl::size i = 0; i < n; ++i) {
-            T w = T(static_cast<float>(i + 1));
-            weighted_sum = weighted_sum + mBuf[i] * w;
-            weight_total = weight_total + w;
-        }
-        mLastValue = weighted_sum / weight_total;
-        return mLastValue;
-    }
-
-    T value() const { return mLastValue; }
-    void reset() { mBuf.clear(); mLastValue = T(0); }
-    bool full() const { return mBuf.full(); }
-    fl::size size() const { return mBuf.size(); }
-    fl::size capacity() const { return mBuf.capacity(); }
-
-    void resize(fl::size new_capacity) {
-        mBuf = Buffer(new_capacity);
-        mLastValue = T(0);
-    }
-
-  private:
-    Buffer mBuf;
-    T mLastValue;
-};
-
-template <typename T, typename Buffer>
-class TriangularFilterImpl {
-  public:
-    TriangularFilterImpl() : mLastValue(T(0)) {}
-    explicit TriangularFilterImpl(fl::size capacity)
-        : mBuf(capacity), mLastValue(T(0)) {}
-
-    T update(T input) {
-        mBuf.push_back(input);
-        fl::size n = mBuf.size();
-        T weighted_sum = T(0);
-        T weight_total = T(0);
-        for (fl::size i = 0; i < n; ++i) {
-            fl::size w_int = fl::fl_min(i + 1, n - i);
-            T w = T(static_cast<float>(w_int));
-            weighted_sum = weighted_sum + mBuf[i] * w;
-            weight_total = weight_total + w;
-        }
-        mLastValue = weighted_sum / weight_total;
-        return mLastValue;
-    }
-
-    T value() const { return mLastValue; }
-    void reset() { mBuf.clear(); mLastValue = T(0); }
-    bool full() const { return mBuf.full(); }
-    fl::size size() const { return mBuf.size(); }
-    fl::size capacity() const { return mBuf.capacity(); }
-
-    void resize(fl::size new_capacity) {
-        mBuf = Buffer(new_capacity);
-        mLastValue = T(0);
-    }
-
-  private:
-    Buffer mBuf;
-    T mLastValue;
-};
-
-template <typename T, typename Buffer>
-class GaussianFilterImpl {
-  public:
-    GaussianFilterImpl() : mLastValue(T(0)) {}
-    explicit GaussianFilterImpl(fl::size capacity)
-        : mBuf(capacity), mLastValue(T(0)) {}
-
-    T update(T input) {
-        mBuf.push_back(input);
-        fl::size n = mBuf.size();
-        if (n == 0) { mLastValue = T(0); return mLastValue; }
-
-        T weighted_sum = T(0);
-        T weight_total = T(0);
-        fl::size binom = 1;
-        for (fl::size i = 0; i < n; ++i) {
-            T w = T(static_cast<float>(binom));
-            weighted_sum = weighted_sum + mBuf[i] * w;
-            weight_total = weight_total + w;
-            if (i + 1 < n) {
-                binom = binom * (n - 1 - i) / (i + 1);
-            }
-        }
-        mLastValue = weighted_sum / weight_total;
-        return mLastValue;
-    }
-
-    T value() const { return mLastValue; }
-    void reset() { mBuf.clear(); mLastValue = T(0); }
-    bool full() const { return mBuf.full(); }
-    fl::size size() const { return mBuf.size(); }
-    fl::size capacity() const { return mBuf.capacity(); }
-
-    void resize(fl::size new_capacity) {
-        mBuf = Buffer(new_capacity);
-        mLastValue = T(0);
-    }
-
-  private:
-    Buffer mBuf;
-    T mLastValue;
-};
-
-template <typename T, typename Buffer>
-class AlphaTrimmedMeanImpl {
-  public:
-    explicit AlphaTrimmedMeanImpl(fl::size trim_count = 1)
-        : mSortedCount(0), mTrimCount(trim_count), mLastValue(T(0)) {}
-    explicit AlphaTrimmedMeanImpl(fl::size capacity, fl::size trim_count)
-        : mRing(capacity), mSorted(capacity),
-          mSortedCount(0), mTrimCount(trim_count), mLastValue(T(0)) {}
-
-    T update(T input) {
-        if (!mRing.full()) {
-            T* base = &mSorted[0];
-            T* pos = fl::lower_bound(base, base + mSortedCount, input);
-            fl::size idx = static_cast<fl::size>(pos - base);
-            for (fl::size i = mSortedCount; i > idx; --i) {
-                mSorted[i] = mSorted[i - 1];
-            }
-            mSorted[idx] = input;
-            ++mSortedCount;
-        } else {
-            T oldest = mRing.front();
-            T* base = &mSorted[0];
-            T* rm_pos = fl::lower_bound(base, base + mSortedCount, oldest);
-            fl::size rm = static_cast<fl::size>(rm_pos - base);
-            for (fl::size i = rm; i + 1 < mSortedCount; ++i) {
-                mSorted[i] = mSorted[i + 1];
-            }
-            T* ins_pos = fl::lower_bound(base, base + mSortedCount - 1, input);
-            fl::size idx = static_cast<fl::size>(ins_pos - base);
-            for (fl::size i = mSortedCount - 1; i > idx; --i) {
-                mSorted[i] = mSorted[i - 1];
-            }
-            mSorted[idx] = input;
-        }
-        mRing.push_back(input);
-
-        fl::size lo = mTrimCount;
-        fl::size hi = (mSortedCount > mTrimCount) ? mSortedCount - mTrimCount : 0;
-        if (lo >= hi) {
-            mLastValue = mSorted[mSortedCount / 2];
-        } else {
-            T sum = T(0);
-            for (fl::size i = lo; i < hi; ++i) {
-                sum = sum + mSorted[i];
-            }
-            mLastValue = div_by_count(sum, hi - lo);
-        }
-        return mLastValue;
-    }
-
-    T value() const { return mLastValue; }
-
-    void reset() {
-        mRing.clear();
-        mSortedCount = 0;
-        mLastValue = T(0);
-    }
-
-    fl::size size() const { return mRing.size(); }
-    fl::size capacity() const { return mRing.capacity(); }
-
-    void resize(fl::size new_capacity, fl::size trim_count) {
-        mRing = Buffer(new_capacity);
-        mSorted = Buffer(new_capacity);
-        mSortedCount = 0;
-        mTrimCount = trim_count;
-        mLastValue = T(0);
-    }
-
-  private:
-    Buffer mRing;
-    Buffer mSorted;
-    fl::size mSortedCount;
-    fl::size mTrimCount;
-    T mLastValue;
-};
-
-template <typename T, typename Buffer>
-class HampelFilterImpl {
-  public:
-    explicit HampelFilterImpl(T threshold = T(3.0f))
-        : mSortedCount(0), mThreshold(threshold), mLastValue(T(0)) {}
-    explicit HampelFilterImpl(fl::size capacity, T threshold = T(3.0f))
-        : mRing(capacity), mSorted(capacity),
-          mSortedCount(0), mThreshold(threshold), mLastValue(T(0)) {}
-
-    T update(T input) {
-        T output = input;
-
-        if (mSortedCount > 0) {
-            T median = mSorted[mSortedCount / 2];
-            T mad_sum = T(0);
-            for (fl::size i = 0; i < mSortedCount; ++i) {
-                mad_sum = mad_sum + fl::abs(mSorted[i] - median);
-            }
-            T mad = div_by_count(mad_sum, mSortedCount);
-            T deviation = fl::abs(input - median);
-            if (mad == T(0)) {
-                if (!(deviation == T(0))) {
-                    output = median;
-                }
-            } else if (deviation > mThreshold * mad) {
-                output = median;
-            }
-        }
-
-        if (!mRing.full()) {
-            T* base = &mSorted[0];
-            T* pos = fl::lower_bound(base, base + mSortedCount, input);
-            fl::size idx = static_cast<fl::size>(pos - base);
-            for (fl::size i = mSortedCount; i > idx; --i) {
-                mSorted[i] = mSorted[i - 1];
-            }
-            mSorted[idx] = input;
-            ++mSortedCount;
-        } else {
-            T oldest = mRing.front();
-            T* base = &mSorted[0];
-            T* rm_pos = fl::lower_bound(base, base + mSortedCount, oldest);
-            fl::size rm = static_cast<fl::size>(rm_pos - base);
-            for (fl::size i = rm; i + 1 < mSortedCount; ++i) {
-                mSorted[i] = mSorted[i + 1];
-            }
-            T* ins_pos = fl::lower_bound(base, base + mSortedCount - 1, input);
-            fl::size idx = static_cast<fl::size>(ins_pos - base);
-            for (fl::size i = mSortedCount - 1; i > idx; --i) {
-                mSorted[i] = mSorted[i - 1];
-            }
-            mSorted[idx] = input;
-        }
-        mRing.push_back(input);
-
-        mLastValue = output;
-        return mLastValue;
-    }
-
-    T value() const { return mLastValue; }
-
-    void reset() {
-        mRing.clear();
-        mSortedCount = 0;
-        mLastValue = T(0);
-    }
-
-    fl::size size() const { return mRing.size(); }
-    fl::size capacity() const { return mRing.capacity(); }
-
-    void resize(fl::size new_capacity) {
-        mRing = Buffer(new_capacity);
-        mSorted = Buffer(new_capacity);
-        mSortedCount = 0;
-        mLastValue = T(0);
-    }
-
-  private:
-    Buffer mRing;
-    Buffer mSorted;
-    fl::size mSortedCount;
-    T mThreshold;
-    T mLastValue;
-};
-
-template <typename T, typename Buffer>
-class SavitzkyGolayFilterImpl {
-  public:
-    SavitzkyGolayFilterImpl() : mLastValue(T(0)) {}
-    explicit SavitzkyGolayFilterImpl(fl::size capacity)
-        : mBuf(capacity), mLastValue(T(0)) {}
-
-    T update(T input) {
-        mBuf.push_back(input);
-        fl::size n = mBuf.size();
-
-        if (n < 5) {
-            T sum = T(0);
-            for (fl::size i = 0; i < n; ++i) sum = sum + mBuf[i];
-            mLastValue = div_by_count(sum, n);
-            return mLastValue;
-        }
-
-        int M = static_cast<int>((n - 1) / 2);
-        int base_term = 3 * M * (M + 1) - 1;
-
-        T weighted_sum = T(0);
-        T weight_total = T(0);
-        for (fl::size j = 0; j < n; ++j) {
-            int i = static_cast<int>(j) - M;
-            int c = 3 * (base_term - 5 * i * i);
-            T w = T(static_cast<float>(c));
-            weighted_sum = weighted_sum + mBuf[j] * w;
-            weight_total = weight_total + w;
-        }
-
-        if (!(weight_total == T(0))) {
-            mLastValue = weighted_sum / weight_total;
-        } else {
-            mLastValue = input;
-        }
-        return mLastValue;
-    }
-
-    T value() const { return mLastValue; }
-    void reset() { mBuf.clear(); mLastValue = T(0); }
-    bool full() const { return mBuf.full(); }
-    fl::size size() const { return mBuf.size(); }
-    fl::size capacity() const { return mBuf.capacity(); }
-
-    void resize(fl::size new_capacity) {
-        mBuf = Buffer(new_capacity);
-        mLastValue = T(0);
-    }
-
-  private:
-    Buffer mBuf;
-    T mLastValue;
-};
-
-template <typename T, typename Buffer>
-class BilateralFilterImpl {
-  public:
-    explicit BilateralFilterImpl(T sigma_range = T(1.0f))
-        : mSigmaRange(sigma_range), mLastValue(T(0)) {}
-    explicit BilateralFilterImpl(fl::size capacity, T sigma_range)
-        : mBuf(capacity), mSigmaRange(sigma_range), mLastValue(T(0)) {}
-
-    T update(T input) {
-        mBuf.push_back(input);
-        fl::size n = mBuf.size();
-
-        T two_sigma_sq = T(2.0f) * mSigmaRange * mSigmaRange;
-
-        // When sigma is zero (or effectively zero), the Gaussian kernel
-        // becomes a Dirac delta: only samples identical to the input get
-        // weight 1, everything else gets weight 0.  In the limit this
-        // just returns the input itself.
-        if (two_sigma_sq == T(0)) {
-            mLastValue = input;
-            return mLastValue;
-        }
-
-        T weighted_sum = T(0);
-        T weight_total = T(0);
-
-        for (fl::size i = 0; i < n; ++i) {
-            T diff = mBuf[i] - input;
-            T range_weight = fl::exp(-(diff * diff) / two_sigma_sq);
-            weighted_sum = weighted_sum + mBuf[i] * range_weight;
-            weight_total = weight_total + range_weight;
-        }
-
-        if (!(weight_total == T(0))) {
-            mLastValue = weighted_sum / weight_total;
-        } else {
-            mLastValue = input;
-        }
-        return mLastValue;
-    }
-
-    T value() const { return mLastValue; }
-    void reset() { mBuf.clear(); mLastValue = T(0); }
-    bool full() const { return mBuf.full(); }
-    fl::size size() const { return mBuf.size(); }
-    fl::size capacity() const { return mBuf.capacity(); }
-
-    void resize(fl::size new_capacity) {
-        mBuf = Buffer(new_capacity);
-        mLastValue = T(0);
-    }
-
-  private:
-    Buffer mBuf;
-    T mSigmaRange;
-    T mLastValue;
-};
-
-} // namespace detail
 
 // ============================================================================
 // IIR filters (no buffer, live in fl:: namespace directly)
@@ -752,8 +221,6 @@ class OneEuroFilter {
             mLastValue = input;
             return input;
         }
-        // Guard against dt==0 which would cause division by zero.
-        // Treat zero dt as "no time elapsed" — hold the previous output.
         if (dt == T(0)) {
             return mLastValue;
         }
@@ -792,64 +259,181 @@ class OneEuroFilter {
 };
 
 // ============================================================================
-// Public aliases — static (compile-time N) and dynamic versions.
-//
-// Static:   MedianFilter<float, 5> mf;
-// Dynamic:  DynamicMedianFilter<float> mf(5);
+// FIR filter public API — single class with protected inheritance
+// N > 0: static (inlined) buffer, default-constructible
+// N == 0: dynamic buffer, requires capacity at construction
 // ============================================================================
 
-template <typename T = float, fl::size N = 8>
-using MovingAverage = detail::MovingAverageImpl<T, StaticCircularBuffer<T, N>>;
+// --- MovingAverage ---
+template <typename T = float, fl::size N = 0>
+class MovingAverage : protected detail::MovingAverageImpl<T, N> {
+    using Base = detail::MovingAverageImpl<T, N>;
+  public:
+    using Base::update;
+    using Base::value;
+    using Base::reset;
+    using Base::full;
+    using Base::size;
+    using Base::capacity;
+    using Base::resize;
+    MovingAverage() = default;
+    explicit MovingAverage(fl::size capacity) : Base(capacity) {}
+};
+
+// --- MedianFilter ---
+template <typename T = float, fl::size N = 0>
+class MedianFilter : protected detail::MedianFilterImpl<T, N> {
+    using Base = detail::MedianFilterImpl<T, N>;
+  public:
+    using Base::update;
+    using Base::value;
+    using Base::reset;
+    using Base::size;
+    using Base::capacity;
+    using Base::resize;
+    MedianFilter() = default;
+    explicit MedianFilter(fl::size capacity) : Base(capacity) {}
+};
+
+// --- WeightedMovingAverage ---
+template <typename T = float, fl::size N = 0>
+class WeightedMovingAverage : protected detail::WeightedMovingAverageImpl<T, N> {
+    using Base = detail::WeightedMovingAverageImpl<T, N>;
+  public:
+    using Base::update;
+    using Base::value;
+    using Base::reset;
+    using Base::full;
+    using Base::size;
+    using Base::capacity;
+    using Base::resize;
+    WeightedMovingAverage() = default;
+    explicit WeightedMovingAverage(fl::size capacity) : Base(capacity) {}
+};
+
+// --- TriangularFilter ---
+template <typename T = float, fl::size N = 0>
+class TriangularFilter : protected detail::TriangularFilterImpl<T, N> {
+    using Base = detail::TriangularFilterImpl<T, N>;
+  public:
+    using Base::update;
+    using Base::value;
+    using Base::reset;
+    using Base::full;
+    using Base::size;
+    using Base::capacity;
+    using Base::resize;
+    TriangularFilter() = default;
+    explicit TriangularFilter(fl::size capacity) : Base(capacity) {}
+};
+
+// --- GaussianFilter ---
+template <typename T = float, fl::size N = 0>
+class GaussianFilter : protected detail::GaussianFilterImpl<T, N> {
+    using Base = detail::GaussianFilterImpl<T, N>;
+  public:
+    using Base::update;
+    using Base::value;
+    using Base::reset;
+    using Base::full;
+    using Base::size;
+    using Base::capacity;
+    using Base::resize;
+    GaussianFilter() = default;
+    explicit GaussianFilter(fl::size capacity) : Base(capacity) {}
+};
+
+// --- AlphaTrimmedMean ---
+template <typename T = float, fl::size N = 0>
+class AlphaTrimmedMean : protected detail::AlphaTrimmedMeanImpl<T, N> {
+    using Base = detail::AlphaTrimmedMeanImpl<T, N>;
+  public:
+    using Base::update;
+    using Base::value;
+    using Base::reset;
+    using Base::size;
+    using Base::capacity;
+    using Base::resize;
+    explicit AlphaTrimmedMean(fl::size trim_count = 1) : Base(trim_count) {}
+    AlphaTrimmedMean(fl::size capacity, fl::size trim_count) : Base(capacity, trim_count) {}
+};
+
+// --- HampelFilter ---
+template <typename T = float, fl::size N = 0>
+class HampelFilter : protected detail::HampelFilterImpl<T, N> {
+    using Base = detail::HampelFilterImpl<T, N>;
+  public:
+    using Base::update;
+    using Base::value;
+    using Base::reset;
+    using Base::size;
+    using Base::capacity;
+    using Base::resize;
+    explicit HampelFilter(T threshold = T(3.0f)) : Base(threshold) {}
+    HampelFilter(fl::size capacity, T threshold) : Base(capacity, threshold) {}
+};
+
+// --- SavitzkyGolayFilter ---
+template <typename T = float, fl::size N = 0>
+class SavitzkyGolayFilter : protected detail::SavitzkyGolayFilterImpl<T, N> {
+    using Base = detail::SavitzkyGolayFilterImpl<T, N>;
+  public:
+    using Base::update;
+    using Base::value;
+    using Base::reset;
+    using Base::full;
+    using Base::size;
+    using Base::capacity;
+    using Base::resize;
+    SavitzkyGolayFilter() = default;
+    explicit SavitzkyGolayFilter(fl::size capacity) : Base(capacity) {}
+};
+
+// --- BilateralFilter ---
+template <typename T = float, fl::size N = 0>
+class BilateralFilter : protected detail::BilateralFilterImpl<T, N> {
+    using Base = detail::BilateralFilterImpl<T, N>;
+  public:
+    using Base::update;
+    using Base::value;
+    using Base::reset;
+    using Base::full;
+    using Base::size;
+    using Base::capacity;
+    using Base::resize;
+    explicit BilateralFilter(T sigma_range = T(1.0f)) : Base(sigma_range) {}
+    BilateralFilter(fl::size capacity, T sigma_range) : Base(capacity, sigma_range) {}
+};
+
+// ============================================================================
+// Deprecated Dynamic* aliases for backward compatibility
+// ============================================================================
 
 template <typename T>
-using DynamicMovingAverage = detail::MovingAverageImpl<T, DynamicCircularBuffer<T>>;
-
-template <typename T = float, fl::size N = 5>
-using MedianFilter = detail::MedianFilterImpl<T, StaticCircularBuffer<T, N>>;
+using DynamicMovingAverage = MovingAverage<T, 0>;
 
 template <typename T>
-using DynamicMedianFilter = detail::MedianFilterImpl<T, DynamicCircularBuffer<T>>;
-
-template <typename T = float, fl::size N = 8>
-using WeightedMovingAverage = detail::WeightedMovingAverageImpl<T, StaticCircularBuffer<T, N>>;
+using DynamicMedianFilter = MedianFilter<T, 0>;
 
 template <typename T>
-using DynamicWeightedMovingAverage = detail::WeightedMovingAverageImpl<T, DynamicCircularBuffer<T>>;
-
-template <typename T = float, fl::size N = 8>
-using TriangularFilter = detail::TriangularFilterImpl<T, StaticCircularBuffer<T, N>>;
+using DynamicWeightedMovingAverage = WeightedMovingAverage<T, 0>;
 
 template <typename T>
-using DynamicTriangularFilter = detail::TriangularFilterImpl<T, DynamicCircularBuffer<T>>;
-
-template <typename T = float, fl::size N = 5>
-using GaussianFilter = detail::GaussianFilterImpl<T, StaticCircularBuffer<T, N>>;
+using DynamicTriangularFilter = TriangularFilter<T, 0>;
 
 template <typename T>
-using DynamicGaussianFilter = detail::GaussianFilterImpl<T, DynamicCircularBuffer<T>>;
-
-template <typename T = float, fl::size N = 7>
-using AlphaTrimmedMean = detail::AlphaTrimmedMeanImpl<T, StaticCircularBuffer<T, N>>;
+using DynamicGaussianFilter = GaussianFilter<T, 0>;
 
 template <typename T>
-using DynamicAlphaTrimmedMean = detail::AlphaTrimmedMeanImpl<T, DynamicCircularBuffer<T>>;
-
-template <typename T = float, fl::size N = 5>
-using HampelFilter = detail::HampelFilterImpl<T, StaticCircularBuffer<T, N>>;
+using DynamicAlphaTrimmedMean = AlphaTrimmedMean<T, 0>;
 
 template <typename T>
-using DynamicHampelFilter = detail::HampelFilterImpl<T, DynamicCircularBuffer<T>>;
-
-template <typename T = float, fl::size N = 5>
-using SavitzkyGolayFilter = detail::SavitzkyGolayFilterImpl<T, StaticCircularBuffer<T, N>>;
+using DynamicHampelFilter = HampelFilter<T, 0>;
 
 template <typename T>
-using DynamicSavitzkyGolayFilter = detail::SavitzkyGolayFilterImpl<T, DynamicCircularBuffer<T>>;
-
-template <typename T = float, fl::size N = 5>
-using BilateralFilter = detail::BilateralFilterImpl<T, StaticCircularBuffer<T, N>>;
+using DynamicSavitzkyGolayFilter = SavitzkyGolayFilter<T, 0>;
 
 template <typename T>
-using DynamicBilateralFilter = detail::BilateralFilterImpl<T, DynamicCircularBuffer<T>>;
+using DynamicBilateralFilter = BilateralFilter<T, 0>;
 
 } // namespace fl

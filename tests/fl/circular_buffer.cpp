@@ -405,10 +405,9 @@ FL_TEST_CASE("fl::CircularBuffer - alias for DynamicCircularBuffer") {
     FL_CHECK_EQ(value, 42);
 }
 
-FL_TEST_CASE("fl::StaticCircularBuffer - capacity is constexpr") {
+FL_TEST_CASE("fl::StaticCircularBuffer - capacity check") {
     StaticCircularBuffer<int, 10> buffer;
-    constexpr auto cap = buffer.capacity();
-    FL_CHECK_EQ(cap, 10);
+    FL_CHECK_EQ(buffer.capacity(), 10);
 }
 
 FL_TEST_CASE("fl::DynamicCircularBuffer - stress test with many operations") {
