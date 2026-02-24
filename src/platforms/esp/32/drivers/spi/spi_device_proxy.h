@@ -18,7 +18,7 @@
 #if defined(FL_IS_ESP32)
 
 #include "fl/stl/vector.h"
-#include "platforms/shared/spi_bus_manager.h"
+#include "platforms/shared/spi_manager.h"
 #include "platforms/esp/32/core/fastspi_esp32.h"
 #include "fl/stl/stdint.h"
 #include "fl/stddef.h"

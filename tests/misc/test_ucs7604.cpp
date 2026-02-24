@@ -20,7 +20,7 @@
 #include "fl/channels/channel_events.h"
 #include "fl/channels/config.h"
 #include "fl/channels/data.h"
-#include "fl/channels/bus_manager.h"
+#include "fl/channels/manager.h"
 #include "fl/chipsets/chipset_timing_config.h"
 #include "fl/chipsets/encoders/pixel_iterator.h"
 #include "fl/chipsets/encoders/ucs7604.h"

@@ -4,7 +4,7 @@
 /// @brief PARLIO hardware abstraction layer (HAL) implementation for ESP32
 ///
 /// This file contains the low-level PARLIO hardware management code extracted
-/// from channel_engine_parlio.cpp. It handles all hardware-specific operations
+/// from channel_driver_parlio.cpp. It handles all hardware-specific operations
 /// including ISR callbacks, DMA buffer generation, and ring buffer streaming.
 
 #include "platforms/is_platform.h"

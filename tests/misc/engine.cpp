@@ -45,22 +45,22 @@ private:
 
 FL_TEST_CASE("test_fx_engine") {
     constexpr uint16_t NUM_LEDS = 10;
-    fl::FxEngine engine(NUM_LEDS, false);
+    fl::FxEngine driver(NUM_LEDS, false);
     CRGB leds[NUM_LEDS];
 
     MockFxPtr redFx = fl::make_shared<MockFx>(NUM_LEDS, CRGB::Red);
     MockFxPtr blueFx = fl::make_shared<MockFx>(NUM_LEDS, CRGB::Blue);
 
-    int id0 = engine.addFx(redFx);
-    int id1 = engine.addFx(blueFx);
+    int id0 = driver.addFx(redFx);
+    int id1 = driver.addFx(blueFx);
 
     FL_REQUIRE_EQ(0, id0);
     FL_REQUIRE_EQ(1, id1);
 
     FL_SUBCASE("Initial state") {
-        int currId = engine.getCurrentFxId();
+        int currId = driver.getCurrentFxId();
         FL_CHECK(currId == id0);
-        const bool ok = engine.draw(0, leds);
+        const bool ok = driver.draw(0, leds);
         FL_CHECK(ok);
         for (uint16_t i = 0; i < NUM_LEDS; ++i) {
             // FL_CHECK(leds[i] == CRGB::Red);
@@ -75,9 +75,9 @@ FL_TEST_CASE("test_fx_engine") {
 
 
     FL_SUBCASE("Transition") {
-        bool ok = engine.nextFx(1000);
+        bool ok = driver.nextFx(1000);
         if (!ok) {
-            auto& effects = engine._getEffects();
+            auto& effects = driver._getEffects();
             for (auto it = effects.begin(); it != effects.end(); ++it) {
                 auto& fx = it->second;
                 printf("fx: %s\n", fx->fxName().c_str());
@@ -87,14 +87,14 @@ FL_TEST_CASE("test_fx_engine") {
         FL_REQUIRE(ok);
         
         // Start of transition
-        ok = engine.draw(0, leds);
+        ok = driver.draw(0, leds);
         FL_REQUIRE(ok);
         for (uint16_t i = 0; i < NUM_LEDS; ++i) {
             FL_REQUIRE(leds[i] == CRGB::Red);
         }
 
         // Middle of transition
-        FL_REQUIRE(engine.draw(500, leds));
+        FL_REQUIRE(driver.draw(500, leds));
         for (uint16_t i = 0; i < NUM_LEDS; ++i) {
             FL_REQUIRE(leds[i].r == 128);
             FL_REQUIRE(leds[i].g == 0);
@@ -102,15 +102,15 @@ FL_TEST_CASE("test_fx_engine") {
         }
 
         // End of transition
-        FL_REQUIRE(engine.draw(1000, leds));
+        FL_REQUIRE(driver.draw(1000, leds));
         for (uint16_t i = 0; i < NUM_LEDS; ++i) {
             FL_CHECK(leds[i] == CRGB::Blue);
         }
     }
 
     FL_SUBCASE("Transition with 0 time duration") {
-        engine.nextFx(0);
-        engine.draw(0, leds);
+        driver.nextFx(0);
+        driver.draw(0, leds);
         for (uint16_t i = 0; i < NUM_LEDS; ++i) {
             FL_CHECK(leds[i] == CRGB::Blue);
         }
@@ -210,13 +210,13 @@ FL_TEST_CASE("test_fixed_fps") {
 
     CRGB leds[1];
     bool interpolate = true;
-    fl::FxEngine engine(1, interpolate);
-    int id = engine.addFx(fake);
+    fl::FxEngine driver(1, interpolate);
+    int id = driver.addFx(fake);
     FL_CHECK_EQ(0, id);
-    engine.draw(0, &leds[0]);
+    driver.draw(0, &leds[0]);
     FL_CHECK_EQ(1, fake.mFrameCounter);
     FL_CHECK_EQ(leds[0], CRGB(0, 0, 0));
-    engine.draw(500, &leds[0]);
+    driver.draw(500, &leds[0]);
     FL_CHECK_EQ(2, fake.mFrameCounter);
     FL_CHECK_EQ(leds[0], CRGB(127, 0, 0));
 }

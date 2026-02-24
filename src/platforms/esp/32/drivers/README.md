@@ -75,7 +75,7 @@ bool buffered = uart.isBuffered(); // true if driver installed, false if ROM fal
 **Files:**
 - `uart/iuart_peripheral.h` - Virtual interface for testability
 - `uart/uart_peripheral_esp.h` - Real hardware implementation
-- `uart/channel_engine_uart.h` - LED control engine
+- `uart/channel_engine_uart.h` - LED control driver
 
 **Documentation:** See `uart/README.md` for complete LED UART documentation
 

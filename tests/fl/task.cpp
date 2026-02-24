@@ -256,7 +256,7 @@ FL_TEST_CASE("Task self-registration and destruction behavior [task]") {
         // Create a frame listener for this specific test
         TestFrameListener listener;
         
-        // Instead of calling FastLED.show(), directly trigger the engine events
+        // Instead of calling FastLED.show(), directly trigger the driver events
         // This tests the task system without requiring LED hardware setup
         fl::EngineEvents::onEndFrame();
         

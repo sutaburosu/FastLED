@@ -1,6 +1,6 @@
 # ESP32 SPI Driver for FastLED
 
-This directory contains the ESP32-specific implementation of FastLED's SPI channel engine for LED control.
+This directory contains the ESP32-specific implementation of FastLED's SPI channel driver for LED control.
 
 ## Quick Reference
 
@@ -34,13 +34,13 @@ This directory contains the ESP32-specific implementation of FastLED's SPI chann
 - **Preserves resources**: Leaves SPI2 available for other user peripherals
 - **Simplified architecture**: RMT5-only chips use a single, optimized code path
 
-**Misconception**: Earlier comments stated "ESP32-C6 does not have available SPI hosts (max 0 hosts)" - this was **imprecise**. The accurate statement is: "ESP32-C6 has 1 SPI host (SPI2), but RMT5 is the preferred engine for LED control."
+**Misconception**: Earlier comments stated "ESP32-C6 does not have available SPI hosts (max 0 hosts)" - this was **imprecise**. The accurate statement is: "ESP32-C6 has 1 SPI host (SPI2), but RMT5 is the preferred driver for LED control."
 
 ## File Overview
 
 | File | Purpose |
 |------|---------|
-| `channel_engine_spi.cpp` | Main SPI channel engine implementation (900+ lines) |
+| `channel_engine_spi.cpp` | Main SPI channel driver implementation (900+ lines) |
 | `channel_engine_spi.h` | Generic SPI channel interface (480 lines) |
 | `spi_hw_1_esp32.cpp` | Single-lane SPI hardware driver |
 | `spi_esp32_init.cpp` | ESP32 SPI initialization and configuration |
@@ -62,7 +62,7 @@ ESP32 SPI Peripheral (hardware DMA)
 
 ## Supported LED Chipsets
 
-SPI-based LED chipsets that work with this engine:
+SPI-based LED chipsets that work with this driver:
 
 - **APA102** (4-wire: Clock + Data)
 - **SK9822** (APA102 compatible)
@@ -80,7 +80,7 @@ SPI-based LED chipsets that work with this engine:
 ### Dual-Lane SPI (2 parallel strips)
 - Uses MOSI + MISO (2 data lines) + CLK
 - 2 LED strips transmit simultaneously
-- Platforms: All ESP32 variants with SPI engine enabled
+- Platforms: All ESP32 variants with SPI driver enabled
 
 ### Quad-Lane SPI (4 parallel strips)
 - Uses MOSI + MISO + WP + HD (4 data lines) + CLK
@@ -155,7 +155,7 @@ Debug messages include:
 
 ## Known Limitations
 
-1. **ESP32-C6/H2**: SPI engine disabled (see explanation above)
+1. **ESP32-C6/H2**: SPI driver disabled (see explanation above)
 2. **PARLIO on ESP32-C6**: Clock gating bug in ESP-IDF ≤ v5.4.1 (may be fixed in future releases)
 3. **SPI1 usage**: Generally avoided due to flash conflict
 4. **Quad-SPI on RISC-V**: ESP32-C3/C6/H2 support dual-lane max (hardware limitation)

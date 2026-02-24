@@ -4,7 +4,7 @@
 /// @brief Teensy 4.x (IMXRT1062) SPI Hardware Manager - Unified initialization
 ///
 /// This file consolidates all Teensy 4.x SPI hardware initialization into a single
-/// manager following the ESP32 channel_bus_manager pattern.
+/// manager following the ESP32 channel_manager pattern.
 ///
 /// Replaces scattered initialization from:
 /// - spi_hw_2_mxrt1062.cpp.hpp::initSpiHw2Instances()

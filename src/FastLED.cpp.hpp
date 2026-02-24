@@ -7,9 +7,9 @@
 #include "fl/compiler_control.h"
 #include "fl/channels/channel.h"
 #include "fl/channels/channel_events.h"
-#include "fl/channels/bus_manager.h"
+#include "fl/channels/manager.h"
 #include "fl/trace.h"
-#include "fl/channels/engine.h"  // for IChannelEngine
+#include "fl/channels/driver.h"  // for IChannelDriver
 #include "fl/delay.h"  // for delayMicroseconds
 #include "fl/stl/assert.h"  // for FL_ASSERT
 #include "hsv2rgb.h"  // for CRGB
@@ -191,19 +191,19 @@ void CFastLED::clear(ClearFlags flags) {
 		}
 
 		// Reset bus manager state (clear enqueued and transmitting channels)
-		fl::ChannelBusManager& manager = fl::channelBusManager();
+		fl::ChannelManager& manager = fl::channelManager();
 		manager.reset();
 
 		// Clear the internal storage (should already be empty, but ensure it)
 		mChannels.clear();
 	}
 
-	// Reset CHANNEL_ENGINES - clear all registered channel engines
+	// Reset CHANNEL_ENGINES - clear all registered channel drivers
 	if (clearFlag(ClearFlags::CHANNEL_ENGINES)) {
-		// Wait with 2s timeout to prevent infinite hang on stalled engines
-		FastLED.wait(2000);
-		fl::ChannelBusManager& manager = fl::channelBusManager();
-		manager.clearAllEngines();
+		// Always wait for all channel bus transmissions to complete first
+		FastLED.wait();
+		fl::ChannelManager& manager = fl::channelManager();
+		manager.clearAllDrivers();
 	}
 
 	// Ensure all flags were handled - catches typos or missing implementations
@@ -536,27 +536,27 @@ void delay_at_max_brightness_for_power(fl::u16 ms)
 // ============================================================================
 
 void CFastLED::setDriverEnabled(const char* name, bool enabled) {
-	fl::ChannelBusManager& manager = fl::channelBusManager();
+	fl::ChannelManager& manager = fl::channelManager();
 	manager.setDriverEnabled(name, enabled);
 }
 
 bool CFastLED::setExclusiveDriver(const char* name) {
-	fl::ChannelBusManager& manager = fl::channelBusManager();
+	fl::ChannelManager& manager = fl::channelManager();
 	return manager.setExclusiveDriver(name);
 }
 
 bool CFastLED::isDriverEnabled(const char* name) const {
-	fl::ChannelBusManager& manager = fl::channelBusManager();
+	fl::ChannelManager& manager = fl::channelManager();
 	return manager.isDriverEnabled(name);
 }
 
 fl::size CFastLED::getDriverCount() const {
-	fl::ChannelBusManager& manager = fl::channelBusManager();
+	fl::ChannelManager& manager = fl::channelManager();
 	return manager.getDriverCount();
 }
 
 fl::span<const fl::DriverInfo> CFastLED::getDriverInfos() const {
-	fl::ChannelBusManager& manager = fl::channelBusManager();
+	fl::ChannelManager& manager = fl::channelManager();
 	return manager.getDriverInfos();
 }
 
@@ -565,14 +565,14 @@ fl::span<const fl::DriverInfo> CFastLED::getDriverInfos() const {
 // ============================================================================
 
 void CFastLED::wait() {
-	fl::ChannelBusManager& manager = fl::channelBusManager();
-	// Wait for all engines to become READY
+	fl::ChannelManager& manager = fl::channelManager();
+	// Wait for all drivers to become READY
 	// Calls async_run() and uses time-based delays to avoid busy-waiting
 	manager.waitForReady();
 }
 
 bool CFastLED::wait(fl::u32 timeout_ms) {
-	fl::ChannelBusManager& manager = fl::channelBusManager();
+	fl::ChannelManager& manager = fl::channelManager();
 	return manager.waitForReady(timeout_ms);
 }
 
@@ -581,7 +581,7 @@ bool CFastLED::wait(fl::u32 timeout_ms) {
 // ============================================================================
 
 fl::ChannelPtr CFastLED::add(const fl::ChannelConfig& config) {
-    fl::ChannelBusManager& manager = fl::channelBusManager();
+    fl::ChannelManager& manager = fl::channelManager();
     FL_ASSERT(manager.getDriverCount() > 0,
               "No channel drivers available - channel API requires at least one registered driver");
     auto channel = fl::Channel::create(config);

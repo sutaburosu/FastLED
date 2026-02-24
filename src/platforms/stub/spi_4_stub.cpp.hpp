@@ -7,7 +7,7 @@
 /// It captures transmitted data for inspection without real hardware.
 
 #include "platforms/stub/spi_4_stub.h"
-#include "platforms/shared/spi_bus_manager.h"  // For DMABuffer, TransmitMode, SPIError
+#include "platforms/shared/spi_manager.h"  // For DMABuffer, TransmitMode, SPIError
 #include "fl/log.h"
 
 #if defined(FASTLED_TESTING) || defined(FASTLED_STUB_IMPL)

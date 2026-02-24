@@ -1,15 +1,15 @@
-# ESP32 RMT4 Driver (IDF 4.x) - ChannelBusManager Architecture
+# ESP32 RMT4 Driver (IDF 4.x) - ChannelManager Architecture
 
 ## Overview
 
-This directory contains the **ChannelBusManager-based RMT4 driver** for ESP32 platforms using ESP-IDF 4.x. It replaces the legacy global-state implementation (`idf4_rmt_impl.cpp`) with a modern, encapsulated architecture that integrates seamlessly with FastLED's unified channel management system.
+This directory contains the **ChannelManager-based RMT4 driver** for ESP32 platforms using ESP-IDF 4.x. It replaces the legacy global-state implementation (`idf4_rmt_impl.cpp`) with a modern, encapsulated architecture that integrates seamlessly with FastLED's unified channel management system.
 
 **Key Features:**
 - ✅ **Zero global state** - All state encapsulated in `ChannelEngineRMT4` class
 - ✅ **Double-buffer ISR-driven refill** - WiFi interference resistant
 - ✅ **Time-multiplexing support** - Handle >8 LED strips via channel sharing
 - ✅ **Direct hardware memory access** - High-performance pixel transmission
-- ✅ **Polling-based architecture** - Compatible with ChannelBusManager pattern
+- ✅ **Polling-based architecture** - Compatible with ChannelManager pattern
 - ✅ **Identical timing characteristics** - Drop-in replacement for legacy RMT4
 
 ---
@@ -20,11 +20,11 @@ This directory contains the **ChannelBusManager-based RMT4 driver** for ESP32 pl
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                   ChannelBusManager                          │
-│  (Singleton - manages all transmission engines)             │
+│                   ChannelManager                          │
+│  (Singleton - manages all transmission drivers)             │
 └────────────────────────┬────────────────────────────────────┘
                          │
-                         │ registers engine
+                         │ registers driver
                          ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                  ChannelEngineRMT4                           │
@@ -80,7 +80,7 @@ This directory contains the **ChannelBusManager-based RMT4 driver** for ESP32 pl
 1. **Encapsulation**
    - All global state moved into `ChannelEngineRMT4` class
    - No static variables or global mutexes
-   - Multiple engine instances possible (though not used)
+   - Multiple driver instances possible (though not used)
 
 2. **Lifecycle Management**
    - Constructor registers ISR, destructor cleans up all resources
@@ -307,7 +307,7 @@ The driver emits `FL_LOG_RMT()` messages for key events:
 - **Solution:** Ensure `FastLED.show()` returns quickly and is called in loop
 
 **Problem:** Compilation errors about `ChannelDataPtr`
-- **Cause:** Old FastLED version without ChannelBusManager support
+- **Cause:** Old FastLED version without ChannelManager support
 - **Solution:** Update to FastLED 3.7+ or rebuild from latest source
 
 ---
@@ -370,7 +370,7 @@ Set `FASTLED_RMT5=1` in platformio.ini or build flags.
 ## References
 
 - [ESP32 RMT Peripheral Documentation](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/rmt.html)
-- [FastLED ChannelBusManager Architecture](../../../../fl/channels/README.md)
+- [FastLED ChannelManager Architecture](../../../../fl/channels/README.md)
 - [WS2812 Timing Specification](https://cdn-shop.adafruit.com/datasheets/WS2812.pdf)
 
 ---
@@ -378,7 +378,7 @@ Set `FASTLED_RMT5=1` in platformio.ini or build flags.
 ## Credits
 
 **Original RMT4 Implementation:** FastLED contributors (idf4_rmt_impl.cpp)
-**ChannelBusManager Migration:** FastLED core team (2024)
+**ChannelManager Migration:** FastLED core team (2024)
 **Architecture Reference:** RMT5 implementation (channel_engine_rmt.cpp)
 
 ---

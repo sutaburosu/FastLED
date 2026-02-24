@@ -46,8 +46,8 @@
 ///
 /// For tests that need to inspect mock state after ParlioEngine hides it:
 /// ```cpp
-/// ParlioEngine& engine = ParlioEngine::getInstance();
-/// engine.initialize(...);
+/// ParlioEngine& driver = ParlioEngine::getInstance();
+/// driver.initialize(...);
 ///
 /// // Get mock instance via singleton
 /// auto& mock = ParlioPeripheralMock::instance();
@@ -146,9 +146,9 @@ public:
     ///
     /// Use in tests to advance the simulation:
     /// ```cpp
-    /// engine.beginTransmission(...);
+    /// driver.beginTransmission(...);
     /// mock->simulateTransmitComplete();  // Trigger ISR
-    /// engine.poll();  // Process completion
+    /// driver.poll();  // Process completion
     /// ```
     virtual void simulateTransmitComplete() = 0;
 
@@ -158,7 +158,7 @@ public:
     /// Use to test error handling paths:
     /// ```cpp
     /// mock->setTransmitFailure(true);
-    /// bool result = engine.beginTransmission(...);
+    /// bool result = driver.beginTransmission(...);
     /// CHECK_FALSE(result);  // Should fail
     /// ```
     virtual void setTransmitFailure(bool should_fail) = 0;

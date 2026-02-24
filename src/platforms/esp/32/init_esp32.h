@@ -17,7 +17,7 @@ namespace platforms {
 /// @brief Initialize ESP32 platform
 ///
 /// Performs one-time initialization of ESP32-specific subsystems:
-/// - Channel bus manager (PARLIO, SPI, RMT, UART engines)
+/// - Channel bus manager (PARLIO, SPI, RMT, UART drivers)
 /// - SPI bus manager (multi-lane SPI support)
 ///
 /// This function is called once during FastLED::init() and is safe to call

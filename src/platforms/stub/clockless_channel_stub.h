@@ -13,8 +13,8 @@
 #include "fl/unused.h"
 #include "fl/chipsets/timing_traits.h"
 #include "fl/channels/data.h"
-#include "fl/channels/engine.h"
-#include "fl/channels/bus_manager.h"
+#include "fl/channels/driver.h"
+#include "fl/channels/manager.h"
 #include "fl/stl/weak_ptr.h"
 #include "pixel_iterator.h"
 #include "fl/warn.h"
@@ -26,8 +26,8 @@ namespace fl {
 
 /// @brief Channel-based clockless controller for stub platform
 ///
-/// This controller integrates with the channel engine infrastructure,
-/// allowing the legacy FastLED.addLeds<>() API to route through channel engines
+/// This controller integrates with the channel driver infrastructure,
+/// allowing the legacy FastLED.addLeds<>() API to route through channel drivers
 /// for testing. It mirrors the architecture of ESP32's ClocklessIdf5.
 template <int DATA_PIN, typename TIMING, EOrder RGB_ORDER = RGB, int XTRA0 = 0, bool FLIP = false, int WAIT_TIME = 0>
 class ClocklessController : public CPixelLEDController<RGB_ORDER> {
@@ -35,8 +35,8 @@ private:
     // Channel data for transmission
     ChannelDataPtr mChannelData;
 
-    // Channel engine reference (weak pointer for lifetime safety)
-    fl::weak_ptr<IChannelEngine> mEngine;
+    // Channel driver reference (weak pointer for lifetime safety)
+    fl::weak_ptr<IChannelDriver> mDriver;
 
     // LED capture tracker for simulation/testing
     ActiveStripTracker mTracker;
@@ -55,17 +55,17 @@ public:
 protected:
     virtual void showPixels(PixelController<RGB_ORDER>& pixels) override
     {
-        // Get engine (lock weak_ptr to shared_ptr)
-        fl::shared_ptr<IChannelEngine> engine = mEngine.lock();
+        // Get driver (lock weak_ptr to shared_ptr)
+        fl::shared_ptr<IChannelDriver> driver = mDriver.lock();
 
-        // If engine is null/expired, select one from ChannelBusManager
-        if (!engine) {
-            engine = ChannelBusManager::instance().selectEngineForChannel(mChannelData, fl::string());  // Empty affinity
-            if (engine) {
-                // Cache the selected engine as weak_ptr
-                mEngine = engine;
+        // If driver is null/expired, select one from ChannelManager
+        if (!driver) {
+            driver = ChannelManager::instance().selectDriverForChannel(mChannelData, fl::string());  // Empty affinity
+            if (driver) {
+                // Cache the selected driver as weak_ptr
+                mDriver = driver;
             } else {
-                FL_ERROR("ClocklessController(stub): No compatible engine found - cannot transmit");
+                FL_ERROR("ClocklessController(stub): No compatible driver found - cannot transmit");
                 return;
             }
         }
@@ -75,7 +75,7 @@ protected:
         u32 startTime = fl::millis();
         u32 lastWarnTime = startTime;
         while (mChannelData->isInUse()) {
-            engine->poll();  // Keep polling until buffer is released
+            driver->poll();  // Keep polling until buffer is released
 
             // Warn every second if still waiting (possible deadlock or hardware issue)
             u32 elapsed = fl::millis() - startTime;
@@ -105,20 +105,8 @@ protected:
         data.clear();
         iterator.writeWS2812(&data);
 
-        // Simulate WS2812 GPIO pin toggling so NativeRxDevice can capture the data.
-        // This fills the per-pin edge buffer used by NativeRxDevice::decode().
-        // The timing constants come from the TIMING template parameter.
-        {
-            ChipsetTimingConfig timing = makeTimingConfig<TIMING>();
-            fl::stub::simulateWS2812Output(
-                DATA_PIN,
-                fl::span<const u8>(data.data(), data.size()),
-                timing
-            );
-        }
-
-        // Enqueue for transmission (will be sent when engine->show() is called)
-        engine->enqueue(mChannelData);
+        // Enqueue for transmission (will be sent when driver->show() is called)
+        driver->enqueue(mChannelData);
     }
 };
 

@@ -30,8 +30,7 @@
 // IWYU pragma: begin_keep
 #include "fl/stl/cstring.h"
 #include "fl/stl/chrono.h"
-// IWYU pragma: end_keep
-#include "platforms/shared/spi_bus_manager.h"  // For DMABuffer, TransmitMode, SPIError
+#include "platforms/shared/spi_manager.h"  // For DMABuffer, TransmitMode, SPIError
 
 namespace fl {
 

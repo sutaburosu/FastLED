@@ -1,6 +1,6 @@
 // src/fl/channels/detail/validation/platform.h
 //
-// Platform-specific validation - verify expected engines are available
+// Platform-specific validation - verify expected drivers are available
 
 #pragma once
 
@@ -8,19 +8,19 @@
 #include "fl/stl/string.h"
 
 // Include DriverInfo definition
-#include "fl/channels/bus_manager.h"
+#include "fl/channels/manager.h"
 
 namespace fl {
 
 namespace validation {
 
-/// @brief Get list of expected engines for the current platform
-/// @return Vector of expected engine names (e.g., ["PARLIO", "RMT"])
+/// @brief Get list of expected drivers for the current platform
+/// @return Vector of expected driver names (e.g., ["PARLIO", "RMT"])
 vector<string> getExpectedEngines();
 
-/// @brief Validate that all expected engines are available
+/// @brief Validate that all expected drivers are available
 /// @param available_drivers List of available drivers from FastLED
-/// @return true if all expected engines are present, false otherwise
+/// @return true if all expected drivers are present, false otherwise
 bool validateExpectedEngines(const fl::vector<fl::DriverInfo>& available_drivers);
 
 /// @brief Print validation results (logs warnings/errors)

@@ -22,7 +22,7 @@
 #if defined(FL_IS_SAMD21) || defined(FL_IS_SAMD51)
 
 #include "fl/stl/vector.h"
-#include "platforms/shared/spi_bus_manager.h"
+#include "platforms/shared/spi_manager.h"
 #include "platforms/arm/sam/fastspi_arm_sam.h"
 #include "fl/stl/stdint.h"
 #include "fl/stddef.h"

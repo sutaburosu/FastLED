@@ -53,7 +53,7 @@ namespace fl {
  * - 16-bit parallel data output + 1 clock pin
  * - ISR performs only MMIO writes (no volatile reads)
  * - Edge-triggered doorbell for producer/consumer synchronization
- * - Two-phase bit engine (data+CLK low, then CLK high)
+ * - Two-phase bit driver (data+CLK low, then CLK high)
  * - Platform-agnostic via abstraction layer
  *
  * Usage:

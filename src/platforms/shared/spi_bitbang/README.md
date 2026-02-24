@@ -104,7 +104,7 @@ Both implementations share the **same bit-banging logic** and **256-entry LUT de
 ## 🔑 Key Files
 
 ### ISR Implementation
-- **`spi_isr_engine.h`** - C interface for ISR engine (formerly `fl_parallel_spi_isr_rv.h`)
+- **`spi_isr_engine.h`** - C interface for ISR driver (formerly `fl_parallel_spi_isr_rv.h`)
 - **`spi_isr_engine.cpp`** - RISC-V optimized ISR implementation
 - **`spi_isr_1.h`** - 1-way ISR wrapper (formerly `parallel_spi_isr_single_esp32c3.hpp`)
 - **`spi_isr_2.h`** - 2-way ISR wrapper (formerly `parallel_spi_isr_dual_esp32c3.hpp`)
@@ -325,7 +325,7 @@ Each ISR example includes:
 
 ### ISR Core Design
 
-The ISR engine uses a **256-entry Look-Up Table (LUT)** that maps each possible byte value to GPIO SET/CLEAR masks:
+The ISR driver uses a **256-entry Look-Up Table (LUT)** that maps each possible byte value to GPIO SET/CLEAR masks:
 
 ```cpp
 struct PinMaskEntry {

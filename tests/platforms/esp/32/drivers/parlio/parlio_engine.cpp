@@ -8,7 +8,7 @@
 /// - Multi-lane transmission correctness
 /// - Timing parameter validation
 ///
-/// Unlike parlio_mock.cpp (which tests engine lifecycle), this file focuses on
+/// Unlike parlio_mock.cpp (which tests driver lifecycle), this file focuses on
 /// validating the actual DMA output data matches expected waveform parameters.
 
 
@@ -51,18 +51,18 @@ static void resetMock_engine() {
 FL_TEST_CASE("ParlioEngine - DMA output capture basic functionality") {
     resetMock_engine();
 
-    auto& engine = ParlioEngine::getInstance();
+    auto& driver = ParlioEngine::getInstance();
 
     fl::vector<int> pins = {1};
     ChipsetTimingConfig timing = getWS2812TimingForDmaTests();
 
-    bool init_ok = engine.initialize(1, pins, timing, 10);
+    bool init_ok = driver.initialize(1, pins, timing, 10);
     FL_REQUIRE(init_ok);
 
     // Simple test pattern: Single LED with RGB = 0xFF, 0x00, 0xAA
     uint8_t scratch[3] = {0xFF, 0x00, 0xAA};
 
-    bool tx_ok = engine.beginTransmission(scratch, 3, 1, 3);
+    bool tx_ok = driver.beginTransmission(scratch, 3, 1, 3);
     FL_REQUIRE(tx_ok);
 
     // Access mock to verify data capture
@@ -84,11 +84,11 @@ FL_TEST_CASE("ParlioEngine - DMA output capture basic functionality") {
 FL_TEST_CASE("ParlioEngine - verify captured DMA data is non-zero") {
     resetMock_engine();
 
-    auto& engine = ParlioEngine::getInstance();
+    auto& driver = ParlioEngine::getInstance();
 
     fl::vector<int> pins = {1};
     ChipsetTimingConfig timing = getWS2812TimingForDmaTests();
-    engine.initialize(1, pins, timing, 5);
+    driver.initialize(1, pins, timing, 5);
 
     // Known pattern with non-zero values
     uint8_t scratch[15] = {
@@ -99,7 +99,7 @@ FL_TEST_CASE("ParlioEngine - verify captured DMA data is non-zero") {
         0x80, 0x40, 0x20   // LED 4: Powers of 2
     };
 
-    bool tx_ok = engine.beginTransmission(scratch, 15, 1, 15);
+    bool tx_ok = driver.beginTransmission(scratch, 15, 1, 15);
     FL_REQUIRE(tx_ok);
 
     auto& mock = ParlioPeripheralMock::instance();
@@ -124,7 +124,7 @@ FL_TEST_CASE("ParlioEngine - verify captured DMA data is non-zero") {
 FL_TEST_CASE("ParlioEngine - multi-lane DMA output capture") {
     resetMock_engine();
 
-    auto& engine = ParlioEngine::getInstance();
+    auto& driver = ParlioEngine::getInstance();
 
     // 4-lane configuration
     fl::vector<int> pins = {1, 2, 4, 8};
@@ -136,7 +136,7 @@ FL_TEST_CASE("ParlioEngine - multi-lane DMA output capture") {
     size_t lane_stride = leds_per_lane * bytes_per_led;  // 9 bytes per lane
     size_t total_bytes = num_lanes * lane_stride;         // 36 bytes total
 
-    bool init_ok = engine.initialize(num_lanes, pins, timing, leds_per_lane);
+    bool init_ok = driver.initialize(num_lanes, pins, timing, leds_per_lane);
     FL_REQUIRE(init_ok);
 
     // Create per-lane scratch buffer with distinct patterns
@@ -162,7 +162,7 @@ FL_TEST_CASE("ParlioEngine - multi-lane DMA output capture") {
         scratch[3 * lane_stride + i] = 0x00;
     }
 
-    bool tx_ok = engine.beginTransmission(scratch.data(), total_bytes, num_lanes, lane_stride);
+    bool tx_ok = driver.beginTransmission(scratch.data(), total_bytes, num_lanes, lane_stride);
     FL_REQUIRE(tx_ok);
 
     auto& mock = ParlioPeripheralMock::instance();
@@ -184,11 +184,11 @@ FL_TEST_CASE("ParlioEngine - multi-lane DMA output capture") {
 FL_TEST_CASE("ParlioEngine - verify multiple transmissions are captured") {
     resetMock_engine();
 
-    auto& engine = ParlioEngine::getInstance();
+    auto& driver = ParlioEngine::getInstance();
 
     fl::vector<int> pins = {1};
     ChipsetTimingConfig timing = getWS2812TimingForDmaTests();
-    engine.initialize(1, pins, timing, 10);
+    driver.initialize(1, pins, timing, 10);
 
     auto& mock = ParlioPeripheralMock::instance();
 
@@ -197,14 +197,14 @@ FL_TEST_CASE("ParlioEngine - verify multiple transmissions are captured") {
 
     // First transmission
     uint8_t scratch1[3] = {0xFF, 0x00, 0x00};  // Red
-    engine.beginTransmission(scratch1, 3, 1, 3);
+    driver.beginTransmission(scratch1, 3, 1, 3);
 
     size_t count_after_first = mock.getTransmissionHistory().size();
     FL_CHECK(count_after_first > 0);
 
     // Second transmission
     uint8_t scratch2[3] = {0x00, 0xFF, 0x00};  // Green
-    engine.beginTransmission(scratch2, 3, 1, 3);
+    driver.beginTransmission(scratch2, 3, 1, 3);
 
     size_t count_after_second = mock.getTransmissionHistory().size();
     FL_CHECK(count_after_second >= count_after_first);
@@ -217,11 +217,11 @@ FL_TEST_CASE("ParlioEngine - verify multiple transmissions are captured") {
 FL_TEST_CASE("ParlioEngine - verify bit count matches expected") {
     resetMock_engine();
 
-    auto& engine = ParlioEngine::getInstance();
+    auto& driver = ParlioEngine::getInstance();
 
     fl::vector<int> pins = {1};
     ChipsetTimingConfig timing = getWS2812TimingForDmaTests();
-    engine.initialize(1, pins, timing, 10);
+    driver.initialize(1, pins, timing, 10);
 
     // 5 LEDs × 3 bytes/LED = 15 bytes
     // 15 bytes × 8 bits/byte = 120 bits input
@@ -231,7 +231,7 @@ FL_TEST_CASE("ParlioEngine - verify bit count matches expected") {
         scratch[i] = static_cast<uint8_t>((i * 17) & 0xFF);
     }
 
-    bool tx_ok = engine.beginTransmission(scratch, 15, 1, 15);
+    bool tx_ok = driver.beginTransmission(scratch, 15, 1, 15);
     FL_REQUIRE(tx_ok);
 
     auto& mock = ParlioPeripheralMock::instance();
@@ -255,15 +255,15 @@ FL_TEST_CASE("ParlioEngine - verify bit count matches expected") {
 FL_TEST_CASE("ParlioEngine - verify idle value is captured") {
     resetMock_engine();
 
-    auto& engine = ParlioEngine::getInstance();
+    auto& driver = ParlioEngine::getInstance();
 
     fl::vector<int> pins = {1};
     ChipsetTimingConfig timing = getWS2812TimingForDmaTests();
-    engine.initialize(1, pins, timing, 5);
+    driver.initialize(1, pins, timing, 5);
 
     uint8_t scratch[6] = {0x11, 0x22, 0x33, 0x44, 0x55, 0x66};
 
-    bool tx_ok = engine.beginTransmission(scratch, 6, 1, 6);
+    bool tx_ok = driver.beginTransmission(scratch, 6, 1, 6);
     FL_REQUIRE(tx_ok);
 
     auto& mock = ParlioPeripheralMock::instance();
@@ -281,7 +281,7 @@ FL_TEST_CASE("ParlioEngine - verify idle value is captured") {
 FL_TEST_CASE("ParlioEngine - large buffer streaming with capture") {
     resetMock_engine();
 
-    auto& engine = ParlioEngine::getInstance();
+    auto& driver = ParlioEngine::getInstance();
 
     fl::vector<int> pins = {1};
     ChipsetTimingConfig timing = getWS2812TimingForDmaTests();
@@ -290,7 +290,7 @@ FL_TEST_CASE("ParlioEngine - large buffer streaming with capture") {
     size_t num_leds = 100;
     size_t num_bytes = num_leds * 3;
 
-    bool init_ok = engine.initialize(1, pins, timing, num_leds);
+    bool init_ok = driver.initialize(1, pins, timing, num_leds);
     FL_REQUIRE(init_ok);
 
     fl::vector<uint8_t> scratch(num_bytes);
@@ -298,14 +298,14 @@ FL_TEST_CASE("ParlioEngine - large buffer streaming with capture") {
         scratch[i] = static_cast<uint8_t>((i * 7 + 13) & 0xFF);
     }
 
-    bool tx_ok = engine.beginTransmission(scratch.data(), num_bytes, 1, num_bytes);
+    bool tx_ok = driver.beginTransmission(scratch.data(), num_bytes, 1, num_bytes);
     FL_REQUIRE(tx_ok);
 
     auto& mock = ParlioPeripheralMock::instance();
 
     const auto& history = mock.getTransmissionHistory();
 
-    // For large buffers, engine may split into multiple DMA submissions
+    // For large buffers, driver may split into multiple DMA submissions
     FL_CHECK(history.size() > 0);
 
     // Verify total captured data is reasonable
@@ -326,20 +326,20 @@ FL_TEST_CASE("ParlioEngine - large buffer streaming with capture") {
 FL_TEST_CASE("ParlioEngine - verify timing parameters are applied") {
     resetMock_engine();
 
-    auto& engine = ParlioEngine::getInstance();
+    auto& driver = ParlioEngine::getInstance();
 
     fl::vector<int> pins = {1};
 
     // Custom timing config
     ChipsetTimingConfig custom_timing(400, 850, 500, 80, "CustomTiming");
 
-    bool init_ok = engine.initialize(1, pins, custom_timing, 5);
+    bool init_ok = driver.initialize(1, pins, custom_timing, 5);
     FL_REQUIRE(init_ok);
 
     uint8_t scratch[15] = {0xFF, 0xAA, 0x55, 0xF0, 0x0F, 0xC3, 0x3C, 0x99, 0x66,
                            0x11, 0x22, 0x33, 0x44, 0x55, 0x66};
 
-    bool tx_ok = engine.beginTransmission(scratch, 15, 1, 15);
+    bool tx_ok = driver.beginTransmission(scratch, 15, 1, 15);
     FL_REQUIRE(tx_ok);
 
     auto& mock = ParlioPeripheralMock::instance();
@@ -356,15 +356,15 @@ FL_TEST_CASE("ParlioEngine - verify timing parameters are applied") {
 FL_TEST_CASE("ParlioEngine - zero-length transmission edge case") {
     resetMock_engine();
 
-    auto& engine = ParlioEngine::getInstance();
+    auto& driver = ParlioEngine::getInstance();
 
     fl::vector<int> pins = {1};
     ChipsetTimingConfig timing = getWS2812TimingForDmaTests();
-    engine.initialize(1, pins, timing, 1);
+    driver.initialize(1, pins, timing, 1);
 
     // Zero-length transmission (edge case)
     uint8_t scratch[1] = {0};
-    bool tx_ok = engine.beginTransmission(scratch, 0, 1, 0);
+    bool tx_ok = driver.beginTransmission(scratch, 0, 1, 0);
     (void)tx_ok;  // Suppress unused warning - behavior is implementation-defined
 
     // Behavior is implementation-defined, but should not crash
@@ -379,16 +379,16 @@ FL_TEST_CASE("ParlioEngine - zero-length transmission edge case") {
 FL_TEST_CASE("ParlioEngine - single byte transmission") {
     resetMock_engine();
 
-    auto& engine = ParlioEngine::getInstance();
+    auto& driver = ParlioEngine::getInstance();
 
     fl::vector<int> pins = {1};
     ChipsetTimingConfig timing = getWS2812TimingForDmaTests();
-    engine.initialize(1, pins, timing, 1);
+    driver.initialize(1, pins, timing, 1);
 
     // Single byte (partial LED - unusual but possible)
     uint8_t scratch[1] = {0xA5};
 
-    bool tx_ok = engine.beginTransmission(scratch, 1, 1, 1);
+    bool tx_ok = driver.beginTransmission(scratch, 1, 1, 1);
     FL_REQUIRE(tx_ok);
 
     auto& mock = ParlioPeripheralMock::instance();
@@ -407,7 +407,7 @@ FL_TEST_CASE("ParlioEngine - single byte transmission") {
 FL_TEST_CASE("ParlioEngine - max lanes configuration with data capture") {
     resetMock_engine();
 
-    auto& engine = ParlioEngine::getInstance();
+    auto& driver = ParlioEngine::getInstance();
 
     // Maximum PARLIO data width (16 lanes)
     fl::vector<int> pins;
@@ -423,7 +423,7 @@ FL_TEST_CASE("ParlioEngine - max lanes configuration with data capture") {
     size_t lane_stride = leds_per_lane * bytes_per_led;
     size_t total_bytes = num_lanes * lane_stride;
 
-    bool init_ok = engine.initialize(num_lanes, pins, timing, leds_per_lane);
+    bool init_ok = driver.initialize(num_lanes, pins, timing, leds_per_lane);
     FL_REQUIRE(init_ok);
 
     fl::vector<uint8_t> scratch(total_bytes);
@@ -431,7 +431,7 @@ FL_TEST_CASE("ParlioEngine - max lanes configuration with data capture") {
         scratch[i] = static_cast<uint8_t>((i & 0xFF));
     }
 
-    bool tx_ok = engine.beginTransmission(scratch.data(), total_bytes, num_lanes, lane_stride);
+    bool tx_ok = driver.beginTransmission(scratch.data(), total_bytes, num_lanes, lane_stride);
     FL_REQUIRE(tx_ok);
 
     auto& mock = ParlioPeripheralMock::instance();
@@ -450,7 +450,7 @@ FL_TEST_CASE("ParlioEngine - max lanes configuration with data capture") {
 FL_TEST_CASE("ParlioEngine - two channels with different lengths (padding test)") {
     resetMock_engine();
 
-    auto& engine = ParlioEngine::getInstance();
+    auto& driver = ParlioEngine::getInstance();
 
     // 2-lane configuration
     fl::vector<int> pins = {1, 2};
@@ -471,7 +471,7 @@ FL_TEST_CASE("ParlioEngine - two channels with different lengths (padding test)"
     size_t max_channel_bytes = lane0_bytes;  // 15 bytes
     size_t total_bytes = num_lanes * max_channel_bytes;  // 30 bytes total
 
-    bool init_ok = engine.initialize(num_lanes, pins, timing, lane0_leds);
+    bool init_ok = driver.initialize(num_lanes, pins, timing, lane0_leds);
     FL_REQUIRE(init_ok);
 
     // Create per-lane scratch buffer
@@ -492,7 +492,7 @@ FL_TEST_CASE("ParlioEngine - two channels with different lengths (padding test)"
         scratch[1 * max_channel_bytes + i] = 0x00;
     }
 
-    bool tx_ok = engine.beginTransmission(scratch.data(), total_bytes, num_lanes, max_channel_bytes);
+    bool tx_ok = driver.beginTransmission(scratch.data(), total_bytes, num_lanes, max_channel_bytes);
     FL_REQUIRE(tx_ok);
 
     auto& mock = ParlioPeripheralMock::instance();
@@ -523,7 +523,7 @@ FL_TEST_CASE("ParlioEngine - two channels with different lengths (padding test)"
 FL_TEST_CASE("ParlioEngine - verify reset padding is applied for different channel lengths") {
     resetMock_engine();
 
-    auto& engine = ParlioEngine::getInstance();
+    auto& driver = ParlioEngine::getInstance();
 
     // Single lane with short data to verify reset padding
     fl::vector<int> pins = {1};
@@ -536,7 +536,7 @@ FL_TEST_CASE("ParlioEngine - verify reset padding is applied for different chann
     size_t bytes_per_led = 3;
     size_t total_bytes = leds_per_lane * bytes_per_led;  // 6 bytes
 
-    bool init_ok = engine.initialize(num_lanes, pins, timing, leds_per_lane);
+    bool init_ok = driver.initialize(num_lanes, pins, timing, leds_per_lane);
     FL_REQUIRE(init_ok);
 
     // Create data buffer with known pattern
@@ -545,7 +545,7 @@ FL_TEST_CASE("ParlioEngine - verify reset padding is applied for different chann
         scratch[i] = static_cast<uint8_t>(0xAA);
     }
 
-    bool tx_ok = engine.beginTransmission(scratch.data(), total_bytes, num_lanes, total_bytes);
+    bool tx_ok = driver.beginTransmission(scratch.data(), total_bytes, num_lanes, total_bytes);
     FL_REQUIRE(tx_ok);
 
     auto& mock = ParlioPeripheralMock::instance();

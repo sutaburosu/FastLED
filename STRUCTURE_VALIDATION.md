@@ -27,7 +27,7 @@ src/platforms/esp/
 │   │   └── ...
 │   │
 │   ├── rmt_5/                   # ✅ IDF 5.x RMT implementation (13 files)
-│   │   ├── idf5_clockless.h  # ChannelBusManager-based
+│   │   ├── idf5_clockless.h  # ChannelManager-based
 │   │   ├── rmt5_controller_lowlevel.cpp
 │   │   ├── rmt5_worker.cpp      # Worker pool system
 │   │   ├── rmt5_worker_pool.cpp
@@ -83,7 +83,7 @@ src/platforms/esp/
     │   ├── pin_mux_esp32.h      # ⚠️ Renamed from fastpin_esp32.h
     │   └── intr_guard.h         # ⚠️ NEW - WiFi interrupt guards
     │
-    ├── drivers/                 # ❌ NEW - All signal engines
+    ├── drivers/                 # ❌ NEW - All signal drivers
     │   ├── rmt/
     │   │   ├── clockless_rmt_esp32.cpp
     │   │   ├── rmt_channels.h
@@ -313,7 +313,7 @@ void I2SClocklessLedDriver::showPixels() {
     #if !FASTLED_RMT5  // ESP_IDF_VERSION < 5
         #include "rmt_4/idf4_clockless_rmt_esp32.h"
     #else
-        #include "rmt_5/idf5_clockless.h"  // ChannelBusManager-based
+        #include "rmt_5/idf5_clockless.h"  // ChannelManager-based
     #endif
 #endif
 ```

@@ -1,5 +1,5 @@
 /// @file spi_channel_adapter.h
-/// @brief Adapter that wraps HW SPI controllers for ChannelBusManager
+/// @brief Adapter that wraps HW SPI controllers for ChannelManager
 ///
 /// This adapter enables existing SpiHw1/2/4/8/16 controllers to work with
 /// the modern channel-based API while maintaining backward compatibility
@@ -11,7 +11,7 @@
 /// ```
 /// Application Code (APA102 strips)
 ///          ↓
-///    ChannelBusManager (proxy)
+///    ChannelManager (proxy)
 ///          ↓
 ///    SpiChannelEngineAdapter (this file)
 ///          ↓
@@ -24,7 +24,7 @@
 /// This adapter is for **TRUE SPI chipsets** (APA102, SK9822, HD108) that
 /// require synchronized clock signals. This is fundamentally different from
 /// ChannelEngineSpi, which implements clockless protocols (WS2812) using
-/// SPI hardware as a bit-banging engine.
+/// SPI hardware as a bit-banging driver.
 ///
 /// | Adapter | Chipsets | Clock Pin Usage | Purpose |
 /// |---------|----------|-----------------|---------|
@@ -32,18 +32,18 @@
 /// | ChannelEngineSpi | WS2812, SK6812 | Internal only | Clockless-over-SPI |
 ///
 /// **Priority Scheme:**
-/// True SPI adapters are registered with higher priority than clockless engines:
+/// True SPI adapters are registered with higher priority than clockless drivers:
 /// - SPI_HEXADECA (priority 9): 16-lane true SPI
 /// - SPI_OCTAL (priority 8): 8-lane true SPI
 /// - SPI_QUAD (priority 7): 4-lane true SPI
 /// - SPI_DUAL (priority 6): 2-lane true SPI
 /// - SPI_SINGLE (priority 5): 1-lane true SPI
 /// - PARLIO (priority 4): Clockless parallel I/O
-/// - ... (lower priority clockless engines)
+/// - ... (lower priority clockless drivers)
 
 #pragma once
 
-#include "fl/channels/engine.h"
+#include "fl/channels/driver.h"
 #include "fl/channels/data.h"
 #include "fl/stl/vector.h"
 #include "fl/stl/shared_ptr.h"
@@ -54,12 +54,12 @@
 
 namespace fl {
 
-/// @brief Adapter that wraps HW SPI controllers for ChannelBusManager
+/// @brief Adapter that wraps HW SPI controllers for ChannelManager
 ///
-/// This adapter implements the IChannelEngine interface by delegating to
+/// This adapter implements the IChannelDriver interface by delegating to
 /// existing SpiHwBase controllers (SpiHw1/2/4/8/16). It handles channel data
 /// batching, transmission coordination, and polling state management.
-class SpiChannelEngineAdapter : public IChannelEngine {
+class SpiChannelEngineAdapter : public IChannelDriver {
 public:
     /// @brief Create unified adapter managing multiple controllers
     /// @param hwControllers Vector of hardware controllers (SpiHw1, SpiHw16, etc.)
@@ -77,7 +77,7 @@ public:
     /// @brief Destructor
     ~SpiChannelEngineAdapter() override;
 
-    // IChannelEngine interface implementation
+    // IChannelDriver interface implementation
 
     /// @brief Check if adapter can handle channel data
     /// @param data Channel data to check
@@ -94,16 +94,16 @@ public:
     /// @note Groups channels by clock pin, acquires DMA buffers, calls transmit()
     void show() override;
 
-    /// @brief Query engine state and perform maintenance
-    /// @return Current engine state (READY, BUSY, DRAINING, or ERROR)
+    /// @brief Query driver state and perform maintenance
+    /// @return Current driver state (READY, BUSY, DRAINING, or ERROR)
     /// @note Checks isBusy(), releases buffers when complete
-    EngineState poll() override;
+    DriverState poll() override;
 
     /// @brief Get adapter name for debugging
     /// @return Engine name (e.g., "SPI_SINGLE")
     fl::string getName() const override { return mName; }
 
-    /// @brief Get engine capabilities (SPI protocols only)
+    /// @brief Get driver capabilities (SPI protocols only)
     /// @return Capabilities with supportsSpi=true, supportsClockless=false
     Capabilities getCapabilities() const override {
         return Capabilities(false, true);  // SPI only

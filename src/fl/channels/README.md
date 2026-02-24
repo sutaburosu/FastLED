@@ -7,7 +7,7 @@ The Channels API provides a modern, hardware-accelerated interface for driving m
 **Key benefits:**
 - **Parallel output** - Drive multiple LED strips simultaneously with hardware timing
 - **Zero CPU overhead** - DMA-based transmission frees the CPU for other tasks
-- **Automatic engine selection** - Platform-optimal hardware automatically chosen
+- **Automatic driver selection** - Platform-optimal hardware automatically chosen
 - **Runtime reconfiguration** - Change LED settings without recreating channels
 
 ## Architecture
@@ -17,7 +17,7 @@ The system consists of two layers:
 1. **Channel** - High-level LED strip controller with explicit configuration API
 2. **ChannelEngine** - Low-level hardware driver (RMT, PARLIO, SPI, I2S, UART)
 
-Users create `Channel` objects using the Channel API (recommended) or the template-based `FastLED.addLeds<>()` API (backwards compatible). The engine layer is managed automatically based on platform capabilities and priorities.
+Users create `Channel` objects using the Channel API (recommended) or the template-based `FastLED.addLeds<>()` API (backwards compatible). The driver layer is managed automatically based on platform capabilities and priorities.
 
 ---
 
@@ -96,7 +96,7 @@ This API is simpler for basic use cases but offers less flexibility than the Cha
 
 ## Hardware Engine Selection
 
-The system automatically selects the best hardware engine based on platform capabilities:
+The system automatically selects the best hardware driver based on platform capabilities:
 
 ### Engine Priority (ESP32)
 
@@ -112,7 +112,7 @@ Engines are tried in priority order until one accepts the channel:
 
 ### Overriding Engine Selection
 
-For testing or performance tuning, you can control engine selection:
+For testing or performance tuning, you can control driver selection:
 
 ```cpp
 void setup() {
@@ -120,14 +120,14 @@ void setup() {
     fl::ChannelConfig config(16, timing, leds, RGB);
     FastLED.add(config);
 
-    // Method 1: Force a specific engine exclusively (disables all others)
+    // Method 1: Force a specific driver exclusively (disables all others)
     FastLED.setExclusiveDriver("RMT");
 
-    // Method 2: Enable/disable specific engines
+    // Method 2: Enable/disable specific drivers
     FastLED.setDriverEnabled("PARLIO", true);   // Enable
     FastLED.setDriverEnabled("SPI", false);     // Disable
 
-    // Method 3: Adjust engine priority (higher = preferred)
+    // Method 3: Adjust driver priority (higher = preferred)
     // Engines are sorted by priority - changing priority triggers re-sort
     FastLED.setDriverPriority("RMT", 9000);     // Increase priority
     FastLED.setDriverPriority("PARLIO", 8000);  // Set below RMT
@@ -143,15 +143,15 @@ void setup() {
 ```
 
 **Control methods:**
-- `setExclusiveDriver(name)` - Disable all engines except the named one
-- `setDriverEnabled(name, enabled)` - Enable/disable specific engine
+- `setExclusiveDriver(name)` - Disable all drivers except the named one
+- `setDriverEnabled(name, enabled)` - Enable/disable specific driver
 - `setDriverPriority(name, priority)` - Change priority (triggers automatic re-sort)
 
 **When to override:**
-- Testing different engines for performance comparison
+- Testing different drivers for performance comparison
 - Debugging hardware-specific issues
-- Forcing a specific engine for known-good behavior
-- Prioritizing a custom third-party engine over built-in engines
+- Forcing a specific driver for known-good behavior
+- Prioritizing a custom third-party driver over built-in drivers
 
 **Default behavior is recommended** - automatic selection provides optimal performance and reliability.
 
@@ -179,9 +179,9 @@ void setup() {
         Serial.printf("Channel created: %s\n", ch.name().c_str());
     });
 
-    // Called when channel data is enqueued to engine
-    events.onChannelEnqueued.add([](const fl::Channel& ch, const fl::string& engine) {
-        Serial.printf("%s → %s\n", ch.name().c_str(), engine.c_str());
+    // Called when channel data is enqueued to driver
+    events.onChannelEnqueued.add([](const fl::Channel& ch, const fl::string& driver) {
+        Serial.printf("%s → %s\n", ch.name().c_str(), driver.c_str());
     });
 
     // Create channel (triggers onChannelCreated)
@@ -200,7 +200,7 @@ void loop() {
 **Available events:**
 - `onChannelCreated` - After channel construction
 - `onChannelAdded` - After adding to FastLED controller list
-- `onChannelEnqueued` - After data enqueued to engine
+- `onChannelEnqueued` - After data enqueued to driver
 - `onChannelConfigured` - After `applyConfig()` called
 - `onChannelRemoved` - After removing from controller list
 - `onChannelBeginDestroy` - Before channel destruction
@@ -306,7 +306,7 @@ void updateSettings(CRGB* newLeds, int count, EOrder order) {
 - RGB order, LED buffer (pointer/size), color correction, temperature, dither mode, RGBW settings
 
 **What stays the same:**
-- Pin assignment, chipset timing, engine binding, channel ID
+- Pin assignment, chipset timing, driver binding, channel ID
 
 **Use cases:**
 - Web-based LED controllers with live configuration
@@ -315,7 +315,7 @@ void updateSettings(CRGB* newLeds, int count, EOrder order) {
 
 ### Engine Affinity
 
-Bind specific channels to specific engines (useful for mixing chipset timings in parallel):
+Bind specific channels to specific drivers (useful for mixing chipset timings in parallel):
 
 ```cpp
 #include "FastLED.h"
@@ -329,14 +329,14 @@ CRGB ws2812_strip[NUM_LEDS];
 CRGB ws2816_strip[NUM_LEDS];
 
 void setup() {
-    // WS2812 strips bound to RMT engine
+    // WS2812 strips bound to RMT driver
     fl::ChannelOptions ws2812_opts;
     ws2812_opts.mAffinity = "RMT";
     auto timing_ws2812 = fl::makeTimingConfig<fl::TIMING_WS2812_800KHZ>();
     FastLED.add(fl::ChannelConfig(16, timing_ws2812,
         fl::span<CRGB>(ws2812_strip, NUM_LEDS), RGB, ws2812_opts));
 
-    // WS2816 strips bound to SPI engine (transmits in parallel with RMT)
+    // WS2816 strips bound to SPI driver (transmits in parallel with RMT)
     fl::ChannelOptions ws2816_opts;
     ws2816_opts.mAffinity = "SPI";
     auto timing_ws2816 = fl::makeTimingConfig<fl::TIMING_WS2816>();
@@ -349,14 +349,14 @@ void loop() {
     fill_rainbow(ws2812_strip, NUM_LEDS, 0, 255 / NUM_LEDS);
     fill_solid(ws2816_strip, NUM_LEDS, CRGB::Blue);
 
-    FastLED.show();  // Both engines transmit simultaneously
+    FastLED.show();  // Both drivers transmit simultaneously
     delay(20);
 }
 ```
 
 **Use cases:**
 - Parallel transmission of different chipset timings (see "Mixing Chipset Timings" below)
-- Testing specific engine implementations
+- Testing specific driver implementations
 - Debugging hardware-specific behavior
 
 ---
@@ -381,32 +381,32 @@ The template-based API is maintained for backwards compatibility with existing c
 
 ## Low-Level Engine API
 
-⚠️ **Advanced users only** - Most users don't need direct engine access. `FastLED.show()` handles everything automatically.
+⚠️ **Advanced users only** - Most users don't need direct driver access. `FastLED.show()` handles everything automatically.
 
 ### Mixing Chipset Timings
 
 Engines handle different chipset timings in two modes:
 
-**Sequential (Default)** - Single engine transmits different timings one after another:
+**Sequential (Default)** - Single driver transmits different timings one after another:
 
 ```cpp
 // Automatic - no configuration needed
 FastLED.addLeds<WS2812, 16>(leds1, 60);  // 800kHz timing
 FastLED.addLeds<WS2816, 17>(leds2, 60);  // Different timing
 
-FastLED.show();  // Sequential transmission through same engine
+FastLED.show();  // Sequential transmission through same driver
 ```
 
-**Parallel (Explicit)** - Multiple engines transmit different timings simultaneously (see Engine Affinity example above).
+**Parallel (Explicit)** - Multiple drivers transmit different timings simultaneously (see Engine Affinity example above).
 
 ### Engine States
 
-Hardware engines use a 4-state machine for non-blocking DMA transmission:
+Hardware drivers use a 4-state machine for non-blocking DMA transmission:
 
 | State | Description | `poll()` return value meaning |
 |-------|-------------|-------------------------------|
 | **READY** | Idle, ready to accept new data | Hardware is idle, safe to call `show()` |
-| **BUSY** | Actively transmitting or queuing channels | Transmission in progress, engine is working |
+| **BUSY** | Actively transmitting or queuing channels | Transmission in progress, driver is working |
 | **DRAINING** | All channels enqueued, DMA still transmitting | Transmission finishing, no more data needed |
 | **ERROR** | Hardware error occurred | Error state, check error message |
 
@@ -418,7 +418,7 @@ For advanced CPU/DMA parallelism (e.g., computing next frame while DMA transmits
 
 ```cpp
 #include "FastLED.h"
-#include "fl/channels/bus_manager.h"
+#include "fl/channels/manager.h"
 
 CRGB leds[300];
 
@@ -435,20 +435,20 @@ void computeNextFrame() {
 }
 
 void loop() {
-    // Get engine from ChannelBusManager
-    auto& manager = fl::ChannelBusManager::instance();
+    // Get driver from ChannelManager
+    auto& manager = fl::ChannelManager::instance();
 
-    // Check if engine is ready for new data
-    fl::IChannelEngine::EngineState state = manager.poll();
+    // Check if driver is ready for new data
+    fl::IChannelDriver::DriverState state = manager.poll();
 
-    if (state == fl::IChannelEngine::EngineState::READY) {
+    if (state == fl::IChannelDriver::DriverState::READY) {
         // Hardware is idle - safe to show next frame
         FastLED.show();
-    } else if (state == fl::IChannelEngine::EngineState::DRAINING) {
+    } else if (state == fl::IChannelDriver::DriverState::DRAINING) {
         // DMA transmission finishing - no more poll() needed this frame
         // Do useful work while waiting
         computeNextFrame();
-    } else if (state == fl::IChannelEngine::EngineState::ERROR) {
+    } else if (state == fl::IChannelDriver::DriverState::ERROR) {
         Serial.println(state.error.c_str());
     }
     // BUSY state: Keep polling until DRAINING or READY
@@ -459,20 +459,20 @@ void loop() {
 
 **When to use:**
 - High frame rate applications requiring CPU/DMA parallelism
-- Custom transmission scheduling across multiple engines
+- Custom transmission scheduling across multiple drivers
 - Fine-grained control over transmission timing
 
-**Key insight:** DRAINING state signals that the engine doesn't need more `poll()` calls - all channels are enqueued and DMA is finishing transmission. This is the optimal time to compute the next frame.
+**Key insight:** DRAINING state signals that the driver doesn't need more `poll()` calls - all channels are enqueued and DMA is finishing transmission. This is the optimal time to compute the next frame.
 
 ---
 
 ## Implementing a Custom Channel Engine
 
-Third-party developers can create custom channel engines to support new hardware peripherals or transmission protocols. This section covers the requirements and best practices.
+Third-party developers can create custom channel drivers to support new hardware peripherals or transmission protocols. This section covers the requirements and best practices.
 
 ### Overview
 
-A channel engine bridges the gap between high-level `Channel` objects and low-level hardware. Channels pass their encoded data to engines via an **ephemeral enqueue** - engines manage transmission, not channel registration.
+A channel driver bridges the gap between high-level `Channel` objects and low-level hardware. Channels pass their encoded data to drivers via an **ephemeral enqueue** - drivers manage transmission, not channel registration.
 
 **Key responsibilities:**
 - Accept ChannelData pointers via `enqueue()` (temporary, per-frame)
@@ -480,17 +480,17 @@ A channel engine bridges the gap between high-level `Channel` objects and low-le
 - Protect ChannelData with `isInUse` flag during transmission
 - Implement 4-state machine: READY → BUSY → DRAINING → READY
 
-### Required Interface: IChannelEngine
+### Required Interface: IChannelDriver
 
-Inherit from `fl::IChannelEngine` and implement these methods:
+Inherit from `fl::IChannelDriver` and implement these methods:
 
 ```cpp
-#include "fl/channels/engine.h"
+#include "fl/channels/driver.h"
 #include "fl/channels/data.h"
 
-class MyCustomEngine : public fl::IChannelEngine {
+class MyCustomEngine : public fl::IChannelDriver {
 public:
-    /// Check if engine can handle this channel type
+    /// Check if driver can handle this channel type
     bool canHandle(const ChannelDataPtr& data) const override {
         // Example: Only accept clockless chipsets
         return data && data->isClockless();
@@ -524,15 +524,15 @@ public:
             mTransmittingChannels.size()));
     }
 
-    /// Query engine state and perform maintenance
-    EngineState poll() override {
+    /// Query driver state and perform maintenance
+    DriverState poll() override {
         // Check hardware status
         if (isHardwareBusy()) {
-            return EngineState::BUSY;
+            return DriverState::BUSY;
         }
 
         if (isTransmitting()) {
-            return EngineState::DRAINING;
+            return DriverState::DRAINING;
         }
 
         // Transmission complete - CRITICAL: Clear isInUse flags
@@ -543,10 +543,10 @@ public:
             mTransmittingChannels.clear();
         }
 
-        return EngineState::READY;
+        return DriverState::READY;
     }
 
-    /// Get engine name for affinity binding
+    /// Get driver name for affinity binding
     fl::string getName() const override {
         return fl::string::from_literal("MY_ENGINE");
     }
@@ -569,7 +569,7 @@ private:
 
 ### Critical: isInUse Flag Management
 
-The `isInUse` flag prevents channels from modifying their data while the engine is transmitting. **All engines MUST manage this flag correctly.**
+The `isInUse` flag prevents channels from modifying their data while the driver is transmitting. **All drivers MUST manage this flag correctly.**
 
 **Rules:**
 1. **Set `isInUse(true)` in `show()`** - Before starting transmission
@@ -582,7 +582,7 @@ The `isInUse` flag prevents channels from modifying their data while the engine 
 - The safety check in `Channel::showPixels()` prevents this:
   ```cpp
   if (mChannelData->isInUse()) {
-      FL_ASSERT(false, "Skipping update - buffer in use by engine");
+      FL_ASSERT(false, "Skipping update - buffer in use by driver");
       return;
   }
   ```
@@ -600,16 +600,16 @@ void show() override {
     startHardware();
 }
 
-EngineState poll() override {
+DriverState poll() override {
     if (hardwareComplete()) {
         // Clear in-use AFTER transmission
         for (auto& channel : mTransmittingChannels) {
             channel->setInUse(false);  // ✅ Allow modification
         }
         mTransmittingChannels.clear();
-        return EngineState::READY;
+        return DriverState::READY;
     }
-    return EngineState::DRAINING;
+    return DriverState::DRAINING;
 }
 ```
 
@@ -631,13 +631,13 @@ Engines use a dual-queue system to separate pending data from in-flight data:
 ```
 Channel::showPixels()
     ↓
-engine->enqueue(data)  →  mEnqueuedChannels.push_back(data)
+driver->enqueue(data)  →  mEnqueuedChannels.push_back(data)
     ↓
-engine->show()         →  Move to mTransmittingChannels, clear mEnqueuedChannels
+driver->show()         →  Move to mTransmittingChannels, clear mEnqueuedChannels
     ↓
-engine->poll()         →  Check hardware status
+driver->poll()         →  Check hardware status
     ↓
-EngineState::READY     →  Clear mTransmittingChannels, ready for next frame
+DriverState::READY     →  Clear mTransmittingChannels, ready for next frame
 ```
 
 ### State Machine
@@ -659,49 +659,49 @@ READY → show() → BUSY → (all queued) → DRAINING → (hardware complete) 
 ```
 
 **Implementation notes:**
-- Most engines skip BUSY (instant transition to DRAINING after `show()`)
+- Most drivers skip BUSY (instant transition to DRAINING after `show()`)
 - DRAINING signals "all data enqueued, DMA finishing" - optimal time for CPU work
 - DRAINING means poll() doesn't need to be called again for current frame
 - ERROR requires manual recovery (reset hardware, clear state)
 
-### Registration with ChannelBusManager
+### Registration with ChannelManager
 
-Register your engine with the bus manager to make it available:
+Register your driver with the bus manager to make it available:
 
 ```cpp
-#include "fl/channels/bus_manager.h"
+#include "fl/channels/manager.h"
 
 // In your platform initialization code
 void setupCustomEngine() {
-    auto engine = fl::make_shared<MyCustomEngine>();
+    auto driver = fl::make_shared<MyCustomEngine>();
 
     // Register with priority (higher = preferred)
-    // Built-in ESP32 engines use priorities 4 (PARLIO), 2 (RMT), 1 (I2S), 0 (SPI), -1 (UART)
-    // Custom engines can use any integer priority value
-    fl::ChannelBusManager::instance().addEngine(
-        10,                // Priority (higher than built-in engines)
-        engine,            // Shared pointer to engine
+    // Built-in ESP32 drivers use priorities 4 (PARLIO), 2 (RMT), 1 (I2S), 0 (SPI), -1 (UART)
+    // Custom drivers can use any integer priority value
+    fl::ChannelManager::instance().addDriver(
+        10,                // Priority (higher than built-in drivers)
+        driver,            // Shared pointer to driver
         "MY_ENGINE"        // Unique name for affinity binding
     );
 }
 ```
 
-**Priority guidelines for custom engines:**
-- Use priority values higher than built-in engines (>4) to override defaults
+**Priority guidelines for custom drivers:**
+- Use priority values higher than built-in drivers (>4) to override defaults
 - Use negative priorities (<0) for low-priority fallback implementations
 - Priority values are just integers - no predefined ranges required
 
 **Engine selection:**
-1. Bus manager maintains engines sorted by priority (high to low)
-2. Iterates engines in priority order, calls `canHandle()` on each
-3. First engine returning `true` wins
+1. Bus manager maintains drivers sorted by priority (high to low)
+2. Iterates drivers in priority order, calls `canHandle()` on each
+3. First driver returning `true` wins
 4. User can override with `ChannelOptions.mAffinity` or `FastLED.setExclusiveDriver()`
 
 **Priority modification:**
-- Engines are sorted by priority on registration (via `addEngine()`)
+- Engines are sorted by priority on registration (via `addDriver()`)
 - Priority can be changed at runtime via `setDriverPriority(name, priority)`
-- Changing priority triggers automatic re-sort of engine list
-- Higher priority engines are checked first (e.g., priority 10 before priority 2)
+- Changing priority triggers automatic re-sort of driver list
+- Higher priority drivers are checked first (e.g., priority 10 before priority 2)
 
 ### DMA Wait Pattern
 
@@ -734,7 +734,7 @@ void show() override {
 - See `src/platforms/esp/32/drivers/parlio/parlio_engine.h` for ISR patterns
 
 **Error Handling:**
-- Return `EngineState::ERROR` on hardware failures
+- Return `DriverState::ERROR` on hardware failures
 - Clear `isInUse` flags before returning ERROR
 - Log errors with `FL_WARN()` or `FL_DBG()`
 - Provide diagnostic information in error messages
@@ -749,7 +749,7 @@ void show() override {
 - Implement `canHandle()` conservatively (reject unsupported chipsets)
 - Check timing constraints in `canHandle()` if hardware has limits
 - Support both clockless and SPI if hardware permits
-- Document hardware requirements in engine header
+- Document hardware requirements in driver header
 
 ### Example Engines
 
@@ -757,7 +757,7 @@ Reference implementations in the codebase:
 
 **Simple (good starting point):**
 - `src/platforms/esp/32/drivers/uart/channel_engine_uart.cpp.hpp` - UART Wave8 encoding
-- `src/platforms/stub/clockless_channel_stub.h` - Stub engine for testing
+- `src/platforms/stub/clockless_channel_stub.h` - Stub driver for testing
 
 **Advanced (full-featured):**
 - `src/platforms/esp/32/drivers/rmt/rmt_5/channel_engine_rmt.cpp.hpp` - RMT with ISR callbacks
@@ -774,26 +774,26 @@ Create unit tests following the existing patterns:
 
 ```cpp
 #include "test.h"
-#include "fl/channels/engine.h"
+#include "fl/channels/driver.h"
 #include "fl/channels/data.h"
 
 FL_TEST_CASE("MyEngine: Basic enqueue and transmission") {
-    auto engine = fl::make_shared<MyCustomEngine>();
+    auto driver = fl::make_shared<MyCustomEngine>();
 
     // Create test data
     auto data = fl::ChannelData::create(5, timing, fl::move(encodedData));
 
     // Enqueue
-    engine->enqueue(data);
+    driver->enqueue(data);
 
     // Verify isInUse flag lifecycle
     FL_CHECK_FALSE(data->isInUse());  // Not in use before show()
 
-    engine->show();
+    driver->show();
     FL_CHECK(data->isInUse());  // In use during transmission
 
     // Poll until complete
-    while (engine->poll() != fl::IChannelEngine::EngineState::READY) {
+    while (driver->poll() != fl::IChannelDriver::DriverState::READY) {
         fl::delayMicroseconds(100);
     }
 
@@ -801,7 +801,7 @@ FL_TEST_CASE("MyEngine: Basic enqueue and transmission") {
 }
 ```
 
-See `tests/fl/channels/engine.cpp` for more test examples.
+See `tests/fl/channels/driver.cpp` for more test examples.
 
 ---
 
@@ -812,7 +812,7 @@ See `tests/fl/channels/engine.cpp` for more test examples.
 - `fl/channels/config.h` - ChannelConfig, ClocklessChipset, SpiChipsetConfig
 - `fl/channels/options.h` - ChannelOptions (correction, temperature, dither, affinity, gamma)
 - `fl/channels/channel_events.h` - Lifecycle event callbacks
-- `fl/channels/engine.h` - Engine interface and state machine
+- `fl/channels/driver.h` - Engine interface and state machine
 
 **Examples:**
 - `examples/BlinkParallel.ino` - Parallel LED strip example

@@ -58,7 +58,7 @@
 #include "fl/warn.h"
 #include "fl/dbg.h"
 #include "fl/stl/cstring.h"
-#include "platforms/shared/spi_bus_manager.h"  // For DMABuffer, TransmitMode, SPIError
+#include "platforms/shared/spi_manager.h"  // For DMABuffer, TransmitMode, SPIError
 #include "platforms/arm/stm32/stm32_gpio_timer_helpers.h"  // Centralized GPIO/Timer/DMA helpers
 
 namespace fl {

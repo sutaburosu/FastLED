@@ -165,7 +165,7 @@ void validateHardware() {
 2. **Case Convention**:
    - C++ files: `snake_case` (all lowercase with underscores)
    - Classes: `PascalCase` (capitalize each word)
-   - Example: `ChannelEngine` → `channel_engine.h`
+   - Example: `ChannelDriver` → `channel_driver.h`
 
 3. **Name by WHAT it IS, not by role**:
    - ✅ Good: `bulk_strip.h` (describes the entity)

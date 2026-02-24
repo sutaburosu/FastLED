@@ -50,8 +50,8 @@
 ///
 /// For tests that need to inspect mock state after SpiEngine hides it:
 /// ```cpp
-/// SpiEngine& engine = SpiEngine::getInstance();
-/// engine.initialize(...);
+/// SpiEngine& driver = SpiEngine::getInstance();
+/// driver.initialize(...);
 ///
 /// // Get mock instance via singleton
 /// auto& mock = SpiPeripheralMock::instance();
@@ -150,9 +150,9 @@ public:
     ///
     /// Use in tests to advance the simulation:
     /// ```cpp
-    /// engine.queueTransaction(...);
+    /// driver.queueTransaction(...);
     /// mock.simulateTransactionComplete();  // Trigger callback
-    /// engine.poll();  // Process completion
+    /// driver.poll();  // Process completion
     /// ```
     virtual void simulateTransactionComplete() = 0;
 
@@ -162,7 +162,7 @@ public:
     /// Use to test error handling paths:
     /// ```cpp
     /// mock.setTransactionFailure(true);
-    /// bool result = engine.queueTransaction(...);
+    /// bool result = driver.queueTransaction(...);
     /// CHECK_FALSE(result);  // Should fail
     /// ```
     virtual void setTransactionFailure(bool should_fail) = 0;

@@ -30,7 +30,7 @@
 /// 2. Increment counters and log AFTER transmission completes
 /// 3. Enable logging ONLY for single-shot debugging, then REMOVE IT
 ///
-/// See channel_engine_parlio.cpp lines 60-74, 399-426, 686-707, 1206-1226
+/// See channel_driver_parlio.cpp lines 60-74, 399-426, 686-707, 1206-1226
 /// and TASK.md UPDATE #2/#3 for detailed investigation of logging impact.
 ///
 /// ⚠️ ⚠️ ⚠️  DO NOT ADD LOGGING TO HOT PATHS - YOU WILL BREAK THE CODE ⚠️ ⚠️ ⚠️
@@ -103,7 +103,7 @@ enum class ParlioEngineState {
 /// @brief Singleton PARLIO hardware engine for ESP32
 ///
 /// This class encapsulates all PARLIO hardware management, ISR handling,
-/// and DMA transmission logic. The channel engine uses this HAL to submit
+/// and DMA transmission logic. The channel driver uses this HAL to submit
 /// LED data without dealing with hardware details.
 ///
 /// ## Lifecycle

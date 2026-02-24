@@ -14,7 +14,7 @@
 #include "fl/stl/stdint.h"
 #include "fl/chipsets/led_timing.h"
 #include "fl/channels/data.h"
-#include "fl/channels/engine.h"
+#include "fl/channels/driver.h"
 
 FL_EXTERN_C_BEGIN
 
@@ -27,21 +27,21 @@ FL_EXTERN_C_END
 namespace fl {
 
 /**
- * RmtController5LowLevel - Lightweight FastLED controller using IChannelEngine
+ * RmtController5LowLevel - Lightweight FastLED controller using IChannelDriver
  *
  * Architecture:
- * - Creates ChannelData for transmission via IChannelEngine
+ * - Creates ChannelData for transmission via IChannelDriver
  * - Uses ChannelEngineRMT for actual RMT worker management
  * - Integrates with FastLED via standard controller interface
  *
  * Lifecycle:
  * 1. Constructor: Create ChannelData
  * 2. loadPixelData(): Copy pixel data to ChannelData buffer
- * 3. showPixels(): Enqueue ChannelData to engine and trigger transmission
+ * 3. showPixels(): Enqueue ChannelData to driver and trigger transmission
  *
  * Memory Model:
  * - Controller owns ChannelData (persistent)
- * - IChannelEngine manages RMT workers (temporary)
+ * - IChannelDriver manages RMT workers (temporary)
  */
 class RmtController5LowLevel {
 public:
@@ -61,8 +61,8 @@ private:
     // Channel data for transmission
     ChannelDataPtr mChannelData;
 
-    // Channel engine for RMT transmission
-    fl::shared_ptr<IChannelEngine> mEngine;
+    // Channel driver for RMT transmission
+    fl::shared_ptr<IChannelDriver> mDriver;
 };
 
 } // namespace fl

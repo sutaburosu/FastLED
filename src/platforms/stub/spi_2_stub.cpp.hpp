@@ -6,7 +6,7 @@
 #if defined(FASTLED_TESTING) || defined(FASTLED_STUB_IMPL)
 
 #include "spi_2_stub.h"
-#include "platforms/shared/spi_bus_manager.h"  // For DMABuffer, TransmitMode, SPIError
+#include "platforms/shared/spi_manager.h"  // For DMABuffer, TransmitMode, SPIError
 #include "fl/log.h"
 
 namespace fl {

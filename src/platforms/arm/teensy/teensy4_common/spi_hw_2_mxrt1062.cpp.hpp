@@ -21,8 +21,7 @@
 #include <SPI.h>
 #include <imxrt.h>
 // IWYU pragma: end_keep
-#include "fl/stl/cstring.h"  // ok include
-#include "platforms/shared/spi_bus_manager.h"  // For DMABuffer, TransmitMode, SPIError
+#include "platforms/shared/spi_manager.h"  // For DMABuffer, TransmitMode, SPIError
 
 namespace fl {
 

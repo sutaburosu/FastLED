@@ -11,8 +11,8 @@
 #include "fl/unused.h"
 #include "fl/chipsets/timing_traits.h"
 #include "fl/channels/data.h"
-#include "fl/channels/engine.h"
-#include "fl/channels/bus_manager.h"
+#include "fl/channels/driver.h"
+#include "fl/channels/manager.h"
 #include "pixel_iterator.h"
 #include "fl/warn.h"
 
@@ -20,8 +20,8 @@ namespace fl {
 
 /// @brief Channel-based SPI controller for WASM platform
 ///
-/// This controller integrates with the channel engine infrastructure for
-/// SPI-based WS2812 driving in web builds. Uses stub engine (no real hardware).
+/// This controller integrates with the channel driver infrastructure for
+/// SPI-based WS2812 driving in web builds. Uses stub driver (no real hardware).
 template <int DATA_PIN, typename TIMING, EOrder RGB_ORDER = RGB, int XTRA0 = 0, bool FLIP = false, int WAIT_TIME = 5>
 class ClocklessSPI : public CPixelLEDController<RGB_ORDER>
 {
@@ -29,12 +29,12 @@ private:
     // Channel data for transmission
     ChannelDataPtr mChannelData;
 
-    // Channel engine reference (selected dynamically from bus manager)
-    fl::shared_ptr<IChannelEngine> mEngine;
+    // Channel driver reference (selected dynamically from bus manager)
+    fl::shared_ptr<IChannelDriver> mDriver;
 
 public:
     ClocklessSPI()
-        : mEngine(getWasmSpiEngine())
+        : mDriver(getWasmSpiEngine())
     {
         // Create channel data with pin and timing configuration
         ChipsetTimingConfig timing = makeTimingConfig<TIMING>();
@@ -49,7 +49,7 @@ protected:
     //    This is the main entry point for the controller.
     virtual void showPixels(PixelController<RGB_ORDER>& pixels) override
     {
-        if (!mEngine) {
+        if (!mDriver) {
             FL_WARN_EVERY(100, "No Engine");
             return;
         }
@@ -58,8 +58,8 @@ protected:
         u32 startTime = fl::millis();
         u32 lastWarnTime = startTime;
         if (mChannelData->isInUse()) {
-            FL_WARN_EVERY(100, "ClocklessSPI(wasm): engine should have finished transmitting by now - waiting");
-            bool finished = mEngine->waitForReady();
+            FL_WARN_EVERY(100, "ClocklessSPI(wasm): driver should have finished transmitting by now - waiting");
+            bool finished = mDriver->waitForReady();
             if (!finished) {
                 FL_ERROR("ClocklessSPI(wasm): Engine still busy after " << fl::millis() - startTime << "ms");
                 return;
@@ -72,12 +72,12 @@ protected:
         data.clear();
         iterator.writeWS2812(&data);
 
-        // Enqueue for transmission (will be sent when engine->show() is called)
-        mEngine->enqueue(mChannelData);
+        // Enqueue for transmission (will be sent when driver->show() is called)
+        mDriver->enqueue(mChannelData);
     }
 
-    static fl::shared_ptr<IChannelEngine> getWasmSpiEngine() {
-        return ChannelBusManager::instance().getEngineByName("SPI");
+    static fl::shared_ptr<IChannelDriver> getWasmSpiEngine() {
+        return ChannelManager::instance().getDriverByName("SPI");
     }
 };
 

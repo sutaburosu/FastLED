@@ -436,7 +436,7 @@ void ParlioPeripheralESPImpl::delay(u32 ms) {
 //=============================================================================
 // Task Management (REMOVED - Use fl::TaskCoroutine directly)
 //=============================================================================
-// Task methods removed. Use fl::TaskCoroutine directly from engine code.
+// Task methods removed. Use fl::TaskCoroutine directly from driver code.
 
 //=============================================================================
 // Timer Management (REMOVED - Use fl/isr.h directly)

@@ -55,7 +55,7 @@
 // Allow software-mode testing without hardware Timer/DMA
 // Define this to enable software GPIO bitbanging mode for testing
 // #define FASTLED_STM32_DUALSPI_SOFTWARE_MODE 1
-#include "platforms/shared/spi_bus_manager.h"  // For DMABuffer, TransmitMode, SPIError
+#include "platforms/shared/spi_manager.h"  // For DMABuffer, TransmitMode, SPIError
 #include "platforms/arm/stm32/stm32_gpio_timer_helpers.h"  // Centralized GPIO/Timer/DMA helpers
 
 namespace fl {

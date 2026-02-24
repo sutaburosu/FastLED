@@ -11,8 +11,8 @@
 #ifdef FL_IS_ESP32
 
 #include "platforms/esp/32/init_esp32.h"
-#include "platforms/esp/32/init_channel_engine.h"
-#include "platforms/shared/spi_bus_manager.h"
+#include "platforms/esp/32/init_channel_driver.h"
+#include "platforms/shared/spi_manager.h"
 #include "fl/dbg.h"
 
 namespace fl {
@@ -31,10 +31,10 @@ void init() {
 
     FL_DBG("ESP32: Platform initialization starting");
 
-    // Initialize channel bus manager (PARLIO, SPI, RMT, UART engines)
-    // Note: This is actually called lazily on first access to ChannelBusManager::instance()
+    // Initialize channel bus manager (PARLIO, SPI, RMT, UART drivers)
+    // Note: This is actually called lazily on first access to ChannelManager::instance()
     // but we ensure it's initialized here for predictable behavior
-    fl::platforms::initChannelEngines();
+    fl::platforms::initChannelDrivers();
 
     // Initialize SPI bus manager
     // Note: The SPIBusManager is lazily initialized on first use, but we can

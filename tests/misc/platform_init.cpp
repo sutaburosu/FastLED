@@ -11,7 +11,7 @@ FL_TEST_CASE("platform_init") {
     FL_SUBCASE("fl::platforms::init() can be called") {
         // Test that the platform init function exists and can be called
         // This should be a no-op on most platforms, but ESP32 will initialize
-        // channel engines and SPI bus manager
+        // channel drivers and SPI bus manager
         fl::platforms::init();
 
         // If we got here without crashing, the function worked

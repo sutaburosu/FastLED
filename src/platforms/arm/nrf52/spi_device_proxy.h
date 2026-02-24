@@ -32,7 +32,7 @@
 #if defined(FL_IS_NRF52)
 
 #include "fl/stl/vector.h"
-#include "platforms/shared/spi_bus_manager.h"
+#include "platforms/shared/spi_manager.h"
 #include "platforms/arm/nrf52/fastspi_arm_nrf52.h"
 #include "fl/stl/stdint.h"
 #include "fl/stddef.h"

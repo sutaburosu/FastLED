@@ -14,7 +14,7 @@
 #include "spi_hw_4_nrf52.h"
 #include "fl/stl/cstring.h"
 #include "fl/numeric_limits.h"
-#include "platforms/shared/spi_bus_manager.h"  // For DMABuffer, TransmitMode, SPIError
+#include "platforms/shared/spi_manager.h"  // For DMABuffer, TransmitMode, SPIError
 
 namespace fl {
 

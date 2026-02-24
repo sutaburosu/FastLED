@@ -19,7 +19,7 @@
 /// - STM32: Initialize SPI hardware controllers
 /// - SAMD21/SAMD51: Initialize SPI hardware controllers
 /// - nRF52: Initialize SPI hardware controllers
-/// - WASM: Initialize engine listener
+/// - WASM: Initialize driver listener
 /// - Windows: Initialize Winsock
 /// - Silicon Labs/Renesas: Initialize GPIO system
 /// - Other platforms: Use stub implementation (no-op)

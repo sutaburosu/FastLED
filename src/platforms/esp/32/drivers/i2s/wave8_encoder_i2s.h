@@ -1,5 +1,5 @@
 /// @file wave8_encoder_i2s.h
-/// @brief Wave8 encoding for ESP32-S3 I2S LCD_CAM channel engine
+/// @brief Wave8 encoding for ESP32-S3 I2S LCD_CAM channel driver
 ///
 /// This encoder converts LED byte data into I2S LCD_CAM waveforms using wave8 expansion,
 /// enabling the I2S peripheral to generate WS2812-compatible timing via parallel GPIO.

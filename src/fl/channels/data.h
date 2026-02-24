@@ -1,5 +1,5 @@
 /// @file data.h
-/// @brief Channel transmission data - lightweight DTO for engine transmission
+/// @brief Channel transmission data - lightweight DTO for driver transmission
 
 #pragma once
 
@@ -30,7 +30,7 @@ using PaddingGenerator = fl::function<void(fl::span<const u8> src, fl::span<u8> 
 
 /// @brief Transmission data for a single LED channel
 ///
-/// This lightweight data transfer object holds everything the engine needs
+/// This lightweight data transfer object holds everything the driver needs
 /// to transmit LED data: pin number, timing configuration, and encoded bytes.
 /// Separated from Channel to allow concurrent transmission while channels
 /// prepare next frame.
@@ -80,11 +80,11 @@ public:
     /// @brief Get the data size in bytes
     size_t getSize() const { return mEncodedData.size(); }
 
-    /// @brief Check if channel data is currently in use by the engine
-    /// @return true if engine is transmitting this data, false otherwise
+    /// @brief Check if channel data is currently in use by the driver
+    /// @return true if driver is transmitting this data, false otherwise
     bool isInUse() const { return mInUse; }
 
-    /// @brief Mark channel data as in use by the engine
+    /// @brief Mark channel data as in use by the driver
     /// @param inUse true to mark as in use, false to mark as available
     void setInUse(bool inUse) { mInUse = inUse; }
 

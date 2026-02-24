@@ -391,7 +391,7 @@ void setup() {
     }
     FL_PRINT(ss.str());
 
-    // Validate that expected engines are available for this platform
+    // Validate that expected drivers are available for this platform
     validateExpectedEngines();
 
     // Emit JSON-RPC ready event for Python orchestration

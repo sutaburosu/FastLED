@@ -11,7 +11,7 @@
 /// SimEdgeObserver callbacks. NativeRxDevice registers as an observer in
 /// begin() and captures those edges, completing the TX→RX loopback simulation.
 
-#include "fl/channels/engine.h"
+#include "fl/channels/driver.h"
 #include "fl/channels/data.h"
 #include "fl/string.h"
 #include "platforms/stub/stub_gpio.h"
@@ -19,11 +19,11 @@
 namespace fl {
 namespace stub {
 
-/// @brief Stub channel engine that drives SimEdgeObserver notifications
+/// @brief Stub channel driver that drives SimEdgeObserver notifications
 ///
-/// Registered with higher priority than the generic no-op StubChannelEngine
+/// Registered with higher priority than the generic no-op StubChannelDriver
 /// so that Channel::showPixels() routes here when on the stub platform.
-class ClocklessChannelEngineStub : public IChannelEngine {
+class ClocklessChannelEngineStub : public IChannelDriver {
 public:
     virtual ~ClocklessChannelEngineStub() = default;
 
@@ -51,8 +51,8 @@ public:
         // No hardware to drive — transmission is synchronous in enqueue()
     }
 
-    virtual EngineState poll() override {
-        return EngineState(EngineState::READY);
+    virtual DriverState poll() override {
+        return DriverState(DriverState::READY);
     }
 
     virtual fl::string getName() const override {

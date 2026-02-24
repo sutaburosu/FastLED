@@ -56,7 +56,7 @@ JsonUiUpdateInput setJsonUiHandlers(const JsonUiUpdateOutput& updateJsHandler) {
             // FL_WARN("setJsonUiHandlers: No pending components to flush");
         }
         
-        // Return a function that allows updating the engine state
+        // Return a function that allows updating the driver state
         // FL_WARN("setJsonUiHandlers: Creating and returning updateEngineState lambda");
         auto result = fl::function<void(const char*)>([](const char* jsonStr) {
             // FL_WARN("*** updateEngineState lambda CALLED ***");

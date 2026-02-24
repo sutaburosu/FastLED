@@ -7,7 +7,7 @@
 namespace fl {
 
 class Channel;
-class IChannelEngine;
+class IChannelDriver;
 class ChannelData;
 struct ChannelConfig;
 
@@ -67,9 +67,9 @@ struct ChannelEvents {
     /// @note This event fires after writeWS2812/writeAPA102/etc. encoding completes
     fl::function_list<void(const Channel&, const ChannelData&)> onChannelDataEncoded;
 
-    /// Fired after channel data is enqueued to an engine
-    /// Second parameter is the engine name (empty string for unnamed engines)
-    fl::function_list<void(const Channel&, const fl::string& engineName)> onChannelEnqueued;
+    /// Fired after channel data is enqueued to a driver
+    /// Second parameter is the driver name (empty string for unnamed drivers)
+    fl::function_list<void(const Channel&, const fl::string& driverName)> onChannelEnqueued;
 };
 
 }  // namespace fl

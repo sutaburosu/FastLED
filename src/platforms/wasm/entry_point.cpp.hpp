@@ -16,7 +16,7 @@
 // - Provides main() entry point that runs on a pthread (via PROXY_TO_PTHREAD)
 // - Calls setup() once during initialization  
 // - Calls loop() repeatedly in main execution loop
-// - Integrates with FastLED engine events and listeners
+// - Integrates with FastLED driver events and listeners
 // - Maintains compatibility with existing extern_setup/extern_loop JavaScript bridges
 //
 // Architecture with PROXY_TO_PTHREAD:
@@ -79,9 +79,9 @@ void fastled_setup_once() {
         return;
     }
     
-    printf("FastLED WASM: Initializing engine and listeners...\n");
+    printf("FastLED WASM: Initializing driver and listeners...\n");
     
-    // Initialize engine listener and events
+    // Initialize driver listener and events
     EngineListener::Init();
     EngineEvents::addListener(&gEndFrameListener);
     
@@ -102,7 +102,7 @@ void fastled_loop_once() {
     // Ensure setup has been called
     fastled_setup_once();
     
-    // Call pre-loop engine events
+    // Call pre-loop driver events
     fl::EngineEvents::onPlatformPreLoop();
     
     // Call user's loop function

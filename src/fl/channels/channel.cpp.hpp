@@ -7,8 +7,8 @@
 #include "fl/channels/chipset_helpers.h"
 #include "fl/channels/config.h"
 #include "fl/channels/data.h"
-#include "fl/channels/engine.h"
-#include "fl/channels/bus_manager.h"
+#include "fl/channels/driver.h"
+#include "fl/channels/manager.h"
 #include "fl/stl/atomic.h"
 #include "fl/dbg.h"
 #include "fl/warn.h"
@@ -40,7 +40,7 @@ fl::string Channel::makeName(i32 id, const fl::optional<fl::string>& configName)
 }
 
 ChannelPtr Channel::create(const ChannelConfig &config) {
-    // Late binding strategy: Always create with empty engine
+    // Late binding strategy: Always create with empty driver
     // Engine binding happens on first showPixels() call:
     // - Affinity channels: Look up by name and cache
     // - Non-affinity channels: Select dynamically each frame
@@ -59,7 +59,7 @@ Channel::Channel(const ChipsetVariant& chipset, EOrder rgbOrder, RegistrationMod
     , mPin(getDataPinFromChipset(chipset))
     , mTiming(getTimingFromChipset(chipset))
     , mRgbOrder(rgbOrder)
-    , mEngine()
+    , mDriver()
     , mAffinity()
     , mId(nextId())
     , mName(makeName(mId)) {
@@ -77,13 +77,13 @@ Channel::Channel(const ChipsetVariant& chipset, fl::span<CRGB> leds,
     , mPin(getDataPinFromChipset(chipset))
     , mTiming(getTimingFromChipset(chipset))
     , mRgbOrder(rgbOrder)
-    , mEngine()  // Empty weak_ptr - late binding on first showPixels()
+    , mDriver()  // Empty weak_ptr - late binding on first showPixels()
     , mAffinity(options.mAffinity)  // Get affinity from ChannelOptions
     , mId(nextId())
     , mName(makeName(mId)) {
     // Initialize GPIO with pulldown to ensure stable LOW state
     // This prevents RX from capturing noise/glitches on uninitialized pins
-    // Must happen before any engine initialization
+    // Must happen before any driver initialization
     fl::pinMode(mPin, fl::PinMode::InputPulldown);
 
     // For SPI chipsets, also initialize the clock pin
@@ -112,7 +112,7 @@ Channel::Channel(int pin, const ChipsetTimingConfig& timing, fl::span<CRGB> leds
     , mPin(pin)
     , mTiming(timing)
     , mRgbOrder(rgbOrder)
-    , mEngine()  // Empty weak_ptr - late binding on first showPixels()
+    , mDriver()  // Empty weak_ptr - late binding on first showPixels()
     , mAffinity(options.mAffinity)  // Get affinity from ChannelOptions
     , mId(nextId())
     , mName(makeName(mId)) {
@@ -216,27 +216,27 @@ void writeUCS7604(fl::vector_psram<u8>* data, PixelIterator& pixelIterator,
 void Channel::showPixels(PixelController<RGB, 1, 0xFFFFFFFF> &pixels) {
     FL_SCOPED_TRACE;
 
-    // Safety check: don't modify buffer if engine is currently transmitting it
+    // Safety check: don't modify buffer if driver is currently transmitting it
     if (mChannelData->isInUse()) {
-        FL_WARN("Channel '" << mName << "': showPixels() called while mChannelData is in use by engine, attempting to wait");
-        auto engine = mEngine.lock();
-        if (!engine) {
-            FL_ERROR("Channel '" << mName << "': No engine bound yet the mChannelData is in use - cannot transmit");
+        FL_WARN("Channel '" << mName << "': showPixels() called while mChannelData is in use by driver, attempting to wait");
+        auto driver = mDriver.lock();
+        if (!driver) {
+            FL_ERROR("Channel '" << mName << "': No driver bound yet the mChannelData is in use - cannot transmit");
             return;
         }
-        // wait until the engine is in a READY state.
-        bool ok = engine->waitForReady();
+        // wait until the driver is in a READY state.
+        bool ok = driver->waitForReady();
         if (!ok) {
-            FL_ERROR("Channel '" << mName << "': Timeout occurred while waiting for engine to become READY");
+            FL_ERROR("Channel '" << mName << "': Timeout occurred while waiting for driver to become READY");
             return;
         }
         FL_WARN("Channel '" << mName << "': Engine became READY after waiting");
     }
 
-    auto engine = ChannelBusManager::instance().selectEngineForChannel(mChannelData, mAffinity);
-    mEngine = engine;
-    if (!engine) {
-        FL_ERROR("Channel '" << mName << "': No compatible engine found - cannot transmit");
+    auto driver = ChannelManager::instance().selectDriverForChannel(mChannelData, mAffinity);
+    mDriver = driver;
+    if (!driver) {
+        FL_ERROR("Channel '" << mName << "': No compatible driver found - cannot transmit");
         return;
     }
 
@@ -329,29 +329,29 @@ void Channel::showPixels(PixelController<RGB, 1, 0xFFFFFFFF> &pixels) {
 
 
 
-    // Enqueue for transmission (will be sent when engine->show() is called)
-    engine->enqueue(mChannelData);
+    // Enqueue for transmission (will be sent when driver->show() is called)
+    driver->enqueue(mChannelData);
     auto& events = ChannelEvents::instance();
-    events.onChannelEnqueued(*this, engine->getName());
+    events.onChannelEnqueued(*this, driver->getName());
 }
 
 void Channel::init() {
     // TODO: Implement initialization
 }
 
-// Stub engine - provides no-op implementation for testing or unsupported platforms
+// Stub driver - provides no-op implementation for testing or unsupported platforms
 namespace {
-class StubChannelEngine : public IChannelEngine {
+class StubChannelEngine : public IChannelDriver {
 public:
     virtual ~StubChannelEngine() = default;
 
     virtual bool canHandle(const ChannelDataPtr& data) const override {
         (void)data;
-        return true;  // Test engine accepts all channel types
+        return true;  // Test driver accepts all channel types
     }
 
     virtual void enqueue(ChannelDataPtr /*channelData*/) override {
-        // No-op: stub engine does nothing
+        // No-op: stub driver does nothing
         static bool warned = false;
         if (!warned) {
             FL_DBG("StubChannelEngine: No-op enqueue (use for testing or unsupported platforms)");
@@ -363,8 +363,8 @@ public:
         // No-op: no hardware to drive
     }
 
-    virtual EngineState poll() override {
-        return EngineState(EngineState::READY);  // Always "ready" (does nothing)
+    virtual DriverState poll() override {
+        return DriverState(DriverState::READY);  // Always "ready" (does nothing)
     }
 
     virtual fl::string getName() const override {
@@ -378,7 +378,7 @@ public:
 
 } // anonymous namespace
 
-IChannelEngine* getStubChannelEngine() {
+IChannelDriver* getStubChannelEngine() {
     static StubChannelEngine instance;
     return &instance;
 }
@@ -405,8 +405,8 @@ void Channel::removeFromDrawList() {
     auto& events = ChannelEvents::instance();
     events.onChannelRemoved(*this);
 
-    // Clear engine weak_ptr when removed from draw list
-    mEngine.reset();
+    // Clear driver weak_ptr when removed from draw list
+    mDriver.reset();
 }
 
 int Channel::size() const {
@@ -456,11 +456,11 @@ fl::optional<float> Channel::getGamma() const {
 
 fl::string Channel::getEngineName() const {
     // Lock the weak_ptr to get a shared_ptr
-    auto engine = mEngine.lock();
-    if (engine) {
-        return engine->getName();
+    auto driver = mDriver.lock();
+    if (driver) {
+        return driver->getName();
     }
-    return fl::string();  // Return empty string if no engine bound
+    return fl::string();  // Return empty string if no driver bound
 }
 
 } // namespace fl

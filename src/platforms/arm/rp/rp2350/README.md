@@ -128,7 +128,7 @@ if (!controllers.empty()) {
 - **`FASTLED_ACCURATE_CLOCK`**: Enabled when interrupts are allowed to maintain timing math accuracy.
 - **`FASTLED_USE_PROGMEM`**: Default `0` (flat memory model).
 - **Clockless driver selection/tuning**
-  - **`FASTLED_RP2040_CLOCKLESS_PIO`**: Use PIO engine for clockless. Default `1`.
+  - **`FASTLED_RP2040_CLOCKLESS_PIO`**: Use PIO driver for clockless. Default `1`.
   - **`FASTLED_RP2040_CLOCKLESS_IRQ_SHARED`**: Share IRQ usage between PIO and other subsystems. Default `1`.
   - **`FASTLED_RP2040_CLOCKLESS_M0_FALLBACK`**: Fallback to a Cortex‑M0 timing loop if PIO is disabled/unavailable. Default `0`.
 

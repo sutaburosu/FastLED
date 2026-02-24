@@ -35,7 +35,7 @@ extern fl::shared_ptr<SpiHw1>& getController3();
 /// This prevents duplicate registration and ensures consistent initialization.
 ///
 /// Old FL_CONSTRUCTOR approach removed in favor of lazy initialization pattern
-/// that matches the channel_bus_manager_esp32.cpp.hpp architecture.
+/// that matches the channel_manager_esp32.cpp.hpp architecture.
 ///
 /// Note: ESP32 does not have SpiHw2/4/8 instances.
 /// For parallel strips (2+ strips), ESP32 uses the I2S peripheral via SpiHw16,

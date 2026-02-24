@@ -6,9 +6,9 @@
 #include "FastLED.h"
 #include "fl/channels/channel.h"
 #include "fl/channels/config.h"
-#include "fl/channels/engine.h"
+#include "fl/channels/driver.h"
 #include "fl/channels/data.h"
-#include "fl/channels/bus_manager.h"
+#include "fl/channels/manager.h"
 #include "fl/chipsets/spi.h"
 #include "fl/stl/vector.h"
 #include "fl/stl/move.h"
@@ -183,8 +183,8 @@ FL_TEST_CASE("Clockless vs SPI chipset - type safety") {
     FL_CHECK_EQ(spiConfig.getClockPin(), 18);  // SPI has clock pin
 }
 
-/// Mock IChannelEngine for testing SPI data flow
-class MockSpiEngine : public IChannelEngine {
+/// Mock IChannelDriver for testing SPI data flow
+class MockSpiEngine : public IChannelDriver {
 public:
     int mEnqueueCount = 0;
     int mTransmitCount = 0;
@@ -207,11 +207,11 @@ public:
         }
     }
 
-    EngineState poll() override {
+    DriverState poll() override {
         if (!mTransmittingChannels.empty()) {
             mTransmittingChannels.clear();
         }
-        return EngineState::READY;
+        return DriverState::READY;
     }
 
     fl::string getName() const override { return mName; }
@@ -221,7 +221,7 @@ public:
         if (!data) {
             return false;
         }
-        // SPI engine only handles SPI chipsets
+        // SPI driver only handles SPI chipsets
         return data->isSpi();
     }
 
@@ -246,13 +246,13 @@ private:
     fl::vector<ChannelDataPtr> mTransmittingChannels;
 };
 
-FL_TEST_CASE("SPI chipset - mock engine integration") {
-    // Create and register mock SPI engine
+FL_TEST_CASE("SPI chipset - mock driver integration") {
+    // Create and register mock SPI driver
     auto mockEngine = fl::make_shared<MockSpiEngine>("MOCK_SPI");
-    ChannelBusManager& manager = ChannelBusManager::instance();
-    manager.addEngine(1000, mockEngine);
+    ChannelManager& manager = ChannelManager::instance();
+    manager.addDriver(1000, mockEngine);
 
-    // Set mock engine as exclusive (disables all other engines)
+    // Set mock driver as exclusive (disables all other drivers)
     bool exclusive = manager.setExclusiveDriver("MOCK_SPI");
     FL_REQUIRE(exclusive);
 
@@ -283,7 +283,7 @@ FL_TEST_CASE("SPI chipset - mock engine integration") {
     // Verify data was enqueued
     FL_CHECK_GT(mockEngine->mEnqueueCount, 0);
 
-    // Trigger transmission (FastLED.show() enqueues, engine.show() transmits)
+    // Trigger transmission (FastLED.show() enqueues, driver.show() transmits)
     mockEngine->show();
 
     // Verify data was transmitted
@@ -321,25 +321,25 @@ FL_TEST_CASE("ChannelData - chipset variant type checking") {
     FL_CHECK(spiData->isSpi());
     FL_CHECK_FALSE(spiData->isClockless());
 
-    // Test predicate filtering with mock SPI engine
+    // Test predicate filtering with mock SPI driver
     MockSpiEngine mockEngine;
 
-    // SPI engine should reject clockless data
+    // SPI driver should reject clockless data
     FL_CHECK_FALSE(mockEngine.canHandle(clocklessData));
 
-    // SPI engine should accept SPI data
+    // SPI driver should accept SPI data
     FL_CHECK(mockEngine.canHandle(spiData));
 }
 
 #if 0  // Disabled - uses old proxy pattern (manager.enqueue/show)
 
-FL_TEST_CASE("ChannelBusManager - predicate filtering (clockless rejected)") {
-    // Create mock SPI engine that ONLY accepts SPI chipsets
+FL_TEST_CASE("ChannelManager - predicate filtering (clockless rejected)") {
+    // Create mock SPI driver that ONLY accepts SPI chipsets
     auto mockSpiEngine = fl::make_shared<MockSpiEngine>("MOCK_SPI_TEST1");
-    ChannelBusManager& manager = ChannelBusManager::instance();
-    manager.addEngine(1000, mockSpiEngine);
+    ChannelManager& manager = ChannelManager::instance();
+    manager.addDriver(1000, mockSpiEngine);
 
-    // Set mock engine as exclusive (disables all other engines)
+    // Set mock driver as exclusive (disables all other drivers)
     bool exclusive = manager.setExclusiveDriver("MOCK_SPI_TEST1");
     FL_REQUIRE(exclusive);
 
@@ -351,7 +351,7 @@ FL_TEST_CASE("ChannelBusManager - predicate filtering (clockless rejected)") {
     FL_CHECK(clocklessData->isClockless());
     FL_CHECK_FALSE(clocklessData->isSpi());
 
-    // Try to enqueue clockless data to ChannelBusManager
+    // Try to enqueue clockless data to ChannelManager
     // Predicate filtering should reject it
     manager.enqueue(clocklessData);
     manager.show();  // Trigger transmission
@@ -363,13 +363,13 @@ FL_TEST_CASE("ChannelBusManager - predicate filtering (clockless rejected)") {
     manager.setDriverEnabled("MOCK_SPI_TEST1", false);
 }
 
-FL_TEST_CASE("ChannelBusManager - predicate filtering (SPI accepted)") {
-    // Create mock SPI engine that ONLY accepts SPI chipsets
+FL_TEST_CASE("ChannelManager - predicate filtering (SPI accepted)") {
+    // Create mock SPI driver that ONLY accepts SPI chipsets
     auto mockSpiEngine = fl::make_shared<MockSpiEngine>("MOCK_SPI_TEST2");
-    ChannelBusManager& manager = ChannelBusManager::instance();
-    manager.addEngine(1000, mockSpiEngine);
+    ChannelManager& manager = ChannelManager::instance();
+    manager.addDriver(1000, mockSpiEngine);
 
-    // Set mock engine as exclusive (disables all other engines)
+    // Set mock driver as exclusive (disables all other drivers)
     bool exclusive = manager.setExclusiveDriver("MOCK_SPI_TEST2");
     FL_REQUIRE(exclusive);
 
@@ -381,7 +381,7 @@ FL_TEST_CASE("ChannelBusManager - predicate filtering (SPI accepted)") {
     FL_CHECK(spiData->isSpi());
     FL_CHECK_FALSE(spiData->isClockless());
 
-    // Enqueue SPI data to ChannelBusManager
+    // Enqueue SPI data to ChannelManager
     // Predicate filtering should accept it
     manager.enqueue(spiData);
     manager.show();  // Trigger transmission

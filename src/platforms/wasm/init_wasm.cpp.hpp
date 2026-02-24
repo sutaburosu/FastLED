@@ -4,7 +4,7 @@
 /// @brief WebAssembly platform initialization implementation
 ///
 /// This file provides the implementation of platform initialization for WASM.
-/// It initializes the engine listener system for JavaScript runtime integration.
+/// It initializes the driver listener system for JavaScript runtime integration.
 
 #include "fl/compiler_control.h"
 #include "is_wasm.h"
@@ -14,11 +14,11 @@
 #include "platforms/wasm/init_wasm.h"
 #include "fl/dbg.h"
 
-// Include engine listener header
+// Include driver listener header
 #include "platforms/wasm/engine_listener.h"
 
-// Include channel engine initialization
-#include "platforms/wasm/init_channel_engine.h"
+// Include channel driver initialization
+#include "platforms/wasm/init_channel_driver.h"
 
 namespace fl {
 namespace platforms {
@@ -36,13 +36,13 @@ void init() {
 
     FL_DBG("WASM: Platform initialization starting");
 
-    // Initialize engine listener system
-    // This connects FastLED engine events to the JavaScript runtime
+    // Initialize driver listener system
+    // This connects FastLED driver events to the JavaScript runtime
     EngineListener::Init();
 
-    // Initialize channel engines for WASM platform
-    // This registers the stub engine with ChannelBusManager
-    platforms::initChannelEngines();
+    // Initialize channel drivers for WASM platform
+    // This registers the stub driver with ChannelManager
+    platforms::initChannelDrivers();
 
     initialized = true;
     FL_DBG("WASM: Platform initialization complete");

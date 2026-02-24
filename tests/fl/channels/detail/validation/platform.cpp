@@ -6,7 +6,7 @@
 #include "fl/channels/validation.h"
 #include "fl/channels/detail/validation/platform.h"
 #include "fl/channels/detail/validation/platform.cpp.hpp"
-#include "fl/channels/bus_manager.h"
+#include "fl/channels/manager.h"
 
 using namespace fl;
 
@@ -39,7 +39,7 @@ FL_TEST_CASE("validateExpectedEngines - one missing") {
     if (expected.size() > 0) {
         // Create drivers with one missing
         vector<DriverInfo> available;
-        for (size_t i = 1; i < expected.size(); i++) {  // Skip first engine
+        for (size_t i = 1; i < expected.size(); i++) {  // Skip first driver
             DriverInfo info;
             info.name = expected[i];
             info.priority = static_cast<int>(i);
@@ -58,7 +58,7 @@ FL_TEST_CASE("validateExpectedEngines - empty available drivers") {
 
     bool result = fl::validation::validateExpectedEngines(available);
 
-    // Should fail if any engines are expected
+    // Should fail if any drivers are expected
     if (expected.size() > 0) {
         FL_CHECK_FALSE(result);
     } else {

@@ -352,7 +352,7 @@ This limitation affects **validation only** - the UART driver works correctly wi
 
 ### Mock Peripheral Architecture
 
-The UART engine supports comprehensive unit testing through a peripheral abstraction layer:
+The UART driver supports comprehensive unit testing through a peripheral abstraction layer:
 
 ```
 ChannelEngineUART (High-level logic)
@@ -384,16 +384,16 @@ ChannelEngineUART (High-level logic)
 - Simulates UART behavior on host platforms (x86/ARM)
 - Captures transmitted data including simulated start/stop bits
 - Provides waveform inspection and validation
-- Enables hardware-independent testing of engine logic
+- Enables hardware-independent testing of driver logic
 
 ### Writing Unit Tests
 
-Use the mock peripheral to test UART engine behavior without real hardware:
+Use the mock peripheral to test UART driver behavior without real hardware:
 
 ```cpp
 #include "test.h"
 #include "platforms/shared/mock/esp/32/drivers/uart_peripheral_mock.h"
-#include "platforms/esp/32/drivers/uart/channel_engine_uart.h"
+#include "platforms/esp/32/drivers/uart/channel_driver_uart.h"
 
 using namespace fl;
 
@@ -401,8 +401,8 @@ TEST_CASE("UART transmission test") {
     // Create mock peripheral
     auto* mock = new UartPeripheralMock();
 
-    // Inject into channel engine
-    auto engine = new ChannelEngineUART(mock);
+    // Inject into channel driver
+    auto driver = new ChannelEngineUART(mock);
 
     // Configure mock UART
     UartConfig config(3200000, 17, -1, 4096, 0, 1, 1);
@@ -414,11 +414,11 @@ TEST_CASE("UART transmission test") {
 
     // Create channel data and enqueue
     auto channel = fl::make_shared<ChannelData>(/* ... */);
-    engine->enqueue(channel);
-    engine->show();
+    driver->enqueue(channel);
+    driver->show();
 
     // Poll until transmission complete
-    while (engine->poll() != EngineState::READY) {
+    while (driver->poll() != DriverState::READY) {
         fl::delayMicroseconds(100);
     }
 
@@ -427,7 +427,7 @@ TEST_CASE("UART transmission test") {
     CHECK(waveform.size() > 0);
     CHECK(mock->verifyStartStopBits());  // Validate framing
 
-    delete engine;
+    delete driver;
     delete mock;
 }
 ```
@@ -508,7 +508,7 @@ This architecture enables comprehensive testing while maintaining production per
 This implementation follows the architecture patterns from FastLED's PARLIO driver:
 - Peripheral abstraction layer for testability
 - Dependency injection for mock support
-- Channel engine integration with chipset grouping
+- Channel driver integration with chipset grouping
 - State machine for async transmission tracking
 
 **Key Innovation**: Leveraging UART's automatic start/stop bit insertion to simplify encoding compared to manual bit stuffing or full wave8 expansion.

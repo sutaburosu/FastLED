@@ -6,7 +6,7 @@
 /// the bus manager forces SOFT_SPI mode while preserving the proxy architecture.
 
 #include "test.h"
-#include "platforms/shared/spi_bus_manager.h"
+#include "platforms/shared/spi_manager.h"
 
 using namespace fl;
 

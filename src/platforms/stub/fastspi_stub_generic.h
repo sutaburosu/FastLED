@@ -13,7 +13,7 @@
 #include "platforms/shared/active_strip_data/active_strip_data.h"
 #include "platforms/shared/active_strip_tracker/active_strip_tracker.h"
 
-// Signal to the engine that all pins are hardware SPI
+// Signal to the driver that all pins are hardware SPI
 #define FASTLED_ALL_PINS_HARDWARE_SPI
 
 namespace fl {

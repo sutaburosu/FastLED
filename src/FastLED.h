@@ -134,7 +134,7 @@
 
 #include "fl/channels/channel.h"
 #include "fl/channels/channel_events.h"
-#include "fl/channels/bus_manager.h"
+#include "fl/channels/manager.h"
 #include "fl/channels/config.h"  // for ChannelConfig, MultiChannelConfig
 
 // ============================================================================
@@ -522,7 +522,7 @@ enum class ClearFlags : fl::u32 {
 	BRIGHTNESS      = 1 << 2,  ///< Reset global brightness to 255
 	REFRESH_RATE    = 1 << 3,  ///< Reset refresh rate limiting to unlimited
 	FPS_COUNTER     = 1 << 4,  ///< Reset FPS tracking counter to 0
-	CHANNEL_ENGINES = 1 << 5   ///< Clear all channel engines from ChannelBusManager
+	CHANNEL_ENGINES = 1 << 5   ///< Clear all channel drivers from ChannelManager
 };
 
 /// Enable bitwise OR for ClearFlags
@@ -619,7 +619,7 @@ public:
 	/// @brief Add a Channel-based LED controller (from ChannelPtr)
 	///
 	/// Registers a pre-created Channel instance with the FastLED controller list.
-	/// Channels provide hardware-accelerated parallel LED output using platform-specific engines.
+	/// Channels provide hardware-accelerated parallel LED output using platform-specific drivers.
 	///
 	/// @param channel Shared pointer to a Channel instance
 	///
@@ -731,8 +731,6 @@ public:
 	/// FastLED.remove(channel);  // Remove from controller list
 	/// @endcode
 	static void remove(fl::ChannelPtr channel);
-
-
 
 	/// @}
 
@@ -1139,7 +1137,7 @@ public:
 	/// @param enabled true to enable, false to disable
 	/// @note Disabled drivers are skipped during selection
 	/// @note Changes take effect immediately on next LED update
-	/// @note On platforms without registered engines, this is a safe no-op
+	/// @note On platforms without registered drivers, this is a safe no-op
 	void setDriverEnabled(const char* name, bool enabled);
 
 	/// Enable only one driver exclusively (disables all others)
@@ -1155,7 +1153,7 @@ public:
 	bool isDriverEnabled(const char* name) const;
 
 	/// Get count of registered channel drivers
-	/// @return Total number of registered engines (including unnamed ones)
+	/// @return Total number of registered drivers (including unnamed ones)
 	fl::size getDriverCount() const;
 
 	/// Get full state of all registered channel drivers

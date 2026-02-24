@@ -4,7 +4,7 @@
 /// @brief RP2040/RP2350 SPI Hardware Manager - Unified initialization
 ///
 /// This file consolidates all RP2040/RP2350 SPI hardware initialization into a single
-/// manager following the ESP32 channel_bus_manager pattern.
+/// manager following the ESP32 channel_manager pattern.
 ///
 /// Replaces scattered initialization from:
 /// - spi_hw_2_rp.cpp.hpp::initSpiHw2Instances()

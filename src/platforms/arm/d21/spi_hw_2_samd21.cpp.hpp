@@ -23,7 +23,7 @@
 #include "fl/arduino.h"
 #include <wiring_private.h>
 // IWYU pragma: end_keep
-#include "platforms/shared/spi_bus_manager.h"  // For DMABuffer, TransmitMode, SPIError
+#include "platforms/shared/spi_manager.h"  // For DMABuffer, TransmitMode, SPIError
 
 namespace fl {
 

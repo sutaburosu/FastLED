@@ -277,7 +277,7 @@ fl::vector<SpiHw4*> SpiHw4::createInstances() {
 
 ### Task 3.1: Update SPIBusManager Platform Detection ✅ DONE (Iteration 2)
 
-**File**: `src/platforms/shared/spi_bus_manager.h` ✅ UPDATED
+**File**: `src/platforms/shared/spi_manager.h` ✅ UPDATED
 
 Updated `getMaxSupportedSPIType()` to detect nRF52 - COMPLETE
 
@@ -288,7 +288,7 @@ Platform detection now includes:
 
 ### Task 3.2: Add Platform-Specific Includes ✅ DONE (Iteration 2)
 
-**File**: `src/platforms/shared/spi_bus_manager.h` ✅ UPDATED
+**File**: `src/platforms/shared/spi_manager.h` ✅ UPDATED
 
 Added nRF52 hardware includes - COMPLETE
 
@@ -592,7 +592,7 @@ Create unit tests for nRF52 parallel SPI:
 - [PPI Peripheral Guide](https://infocenter.nordicsemi.com/topic/com.nordic.infocenter.nrf52832.ps/ppi.html)
 
 ### FastLED Architecture
-- `src/platforms/shared/spi_bus_manager.h` - Bus manager interface
+- `src/platforms/shared/spi_manager.h` - Bus manager interface
 - `src/platforms/shared/spi_hw_2.h` - Dual-SPI interface
 - `src/platforms/shared/spi_hw_4.h` - Quad-SPI interface
 - `src/platforms/esp/32/spi_device_proxy.h` - ESP32 proxy reference

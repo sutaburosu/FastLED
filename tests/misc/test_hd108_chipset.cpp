@@ -105,7 +105,7 @@ fl::vector<u8> captureBytes(const CRGB* leds, int num_leds, u8 brightness) {
     controller.init();
     controller.showPixels(pixels);
 
-    // Trigger the engine event that pushes data to ActiveStripData
+    // Trigger the driver event that pushes data to ActiveStripData
     fl::EngineEvents::onEndShowLeds();
 
     // Get the captured data - should be exactly one strip after onBeginFrame() + showPixels()

@@ -1,5 +1,5 @@
 /// @file parlio_isr_context.h
-/// @brief ISR context and ISR-safe utilities for PARLIO engine
+/// @brief ISR context and ISR-safe utilities for PARLIO driver
 ///
 /// ⚠️ ⚠️ ⚠️  CRITICAL ISR SAFETY RULES - READ BEFORE MODIFYING ⚠️ ⚠️ ⚠️
 ///

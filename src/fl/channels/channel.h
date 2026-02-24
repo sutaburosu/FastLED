@@ -26,7 +26,7 @@
 namespace fl {
 
 // Forward declarations
-class IChannelEngine;
+class IChannelDriver;
 class ChannelData;
 struct ChannelOptions;
 class Channel;
@@ -41,10 +41,10 @@ FASTLED_SHARED_PTR(ChannelData);
 class Channel: public CPixelLEDController<RGB> {
 public:
     /// @brief Create a new channel with optional affinity binding
-    /// @param config Channel configuration (includes optional affinity for engine selection)
+    /// @param config Channel configuration (includes optional affinity for driver selection)
     /// @return Shared pointer to channel (auto-cleanup when out of scope)
-    /// @note Channels always use ChannelBusManager by default
-    /// @note If config.affinity is set, binds to the named engine from ChannelBusManager
+    /// @note Channels always use ChannelManager by default
+    /// @note If config.affinity is set, binds to the named driver from ChannelManager
     static ChannelPtr create(const ChannelConfig& config);
 
     /// @brief Destructor
@@ -65,6 +65,15 @@ public:
     /// @brief Get the clock pin for this channel (SPI only, -1 for clockless)
     /// @return Clock pin number or -1
     int getClockPin() const;
+
+    /// @brief Set gamma correction value
+    /// @param gamma Gamma value (e.g., 2.8)
+    /// @return Reference to this channel for chaining
+    Channel& setGamma(float gamma);
+
+    /// @brief Get gamma correction value
+    /// @return Gamma value if set, nullopt otherwise
+    fl::optional<float> getGamma() const;
 
     /// @brief Get the timing configuration for this channel (clockless only)
     /// @return ChipsetTimingConfig reference
@@ -87,7 +96,7 @@ public:
 
     /// @brief Apply reconfigurable settings from a ChannelConfig
     /// @param config The configuration to apply
-    /// @note Does NOT change: mPin, mTiming, mChipset, mEngine, mId
+    /// @note Does NOT change: mPin, mTiming, mChipset, mDriver, mId
     void applyConfig(const ChannelConfig& config);
 
     // Re-expose protected base class methods for external access
@@ -128,17 +137,8 @@ public:
     /// @brief Get the RGBW conversion mode
     Rgbw getRgbw() const;
 
-    /// @brief Set the gamma correction override for this channel
-    /// @param gamma Gamma exponent (e.g. 2.8, 3.2). Empty = chipset default.
-    /// @return Reference to this channel
-    Channel& setGamma(float gamma);
-
-    /// @brief Get the gamma correction override for this channel
-    /// @return Gamma override if set, or empty optional if using chipset default
-    fl::optional<float> getGamma() const;
-
-    /// @brief Get the name of the currently bound engine (if any)
-    /// @return Engine name, or empty string if no engine is bound or engine has expired
+    /// @brief Get the name of the currently bound driver (if any)
+    /// @return Engine name, or empty string if no driver is bound or driver has expired
     fl::string getEngineName() const;
 
 private:
@@ -185,16 +185,17 @@ private:
     int mPin;                        // Data pin (backwards compatibility)
     ChipsetTimingConfig mTiming;     // Timing (backwards compatibility, clockless only)
     EOrder mRgbOrder;
-    fl::weak_ptr<IChannelEngine> mEngine;  // Weak reference to engine (prevents dangling pointers)
+    fl::weak_ptr<IChannelDriver> mDriver;  // Weak reference to driver (prevents dangling pointers)
     fl::string mAffinity;            // Engine affinity name (empty = no affinity, dynamic selection)
     const i32 mId;
     fl::string mName;               // User-specified or auto-generated name
+    ChannelOptions mSettings;           // Per-channel settings (gamma, rgbw, etc.)
     ChannelDataPtr mChannelData;
 };
 
-/// @brief Get stub channel engine for testing or unsupported platforms
-/// @return Pointer to singleton stub engine instance
-/// @note Returns a no-op engine that allows code to compile/run on all platforms
-IChannelEngine* getStubChannelEngine();
+/// @brief Get stub channel driver for testing or unsupported platforms
+/// @return Pointer to singleton stub driver instance
+/// @note Returns a no-op driver that allows code to compile/run on all platforms
+IChannelDriver* getStubChannelEngine();
 
 }  // namespace fl

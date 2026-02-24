@@ -183,7 +183,7 @@ Tracks compilation speed and performance of FastLED header files across differen
 
 **Dynamically control LED hardware drivers at runtime** through the familiar `FastLED` API. Switch between RMT, SPI, and PARLIO drivers without recompiling - perfect for debugging, optimization, and adapting to runtime conditions.
 
-> **Platform Support**: API is available on all platforms for code compatibility. Full functionality (multi-engine switching) is **ESP32-only**. Non-ESP32 platforms have safe no-op implementations.
+> **Platform Support**: API is available on all platforms for code compatibility. Full functionality (multi-driver switching) is **ESP32-only**. Non-ESP32 platforms have safe no-op implementations.
 
 ```cpp
 // Force RMT driver exclusively (disables SPI, PARLIO, and future drivers)

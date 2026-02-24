@@ -85,11 +85,11 @@ platforms/esp/32/core/fastled_esp32.h (Master Aggregator)
     ├─→ drivers/rmt/clockless_rmt_esp32.h (Default driver)
     │       ↓
     │       ├─→ rmt_4/ (ESP-IDF 4.x - legacy)
-    │       │     ├── idf4_clockless_rmt_esp32.h (ChannelBusManager-based)
+    │       │     ├── idf4_clockless_rmt_esp32.h (ChannelManager-based)
     │       │     └── channel_engine_rmt4.h / channel_engine_rmt4.cpp
     │       │
     │       └─→ rmt_5/ (ESP-IDF 5.x - default, DMA-backed)
-    │             ├── idf5_clockless.h (ChannelBusManager-based)
+    │             ├── idf5_clockless.h (ChannelManager-based)
     │             ├── idf5_rmt.h / idf5_rmt.cpp
     │             ├── strip_rmt.h / strip_rmt.cpp
     │             └── rmt5_* worker pool implementation (7 files)
@@ -109,7 +109,7 @@ platforms/esp/32/core/fastled_esp32.h (Master Aggregator)
     │
     ├─→ drivers/parlio/clockless_parlio_esp32p4.h (P4 only)
     │       ↓
-    │       └─→ parlio_driver.h / parlio_driver_impl.h
+    │       └─→ parlio_engine.h / parlio_engine.cpp.hpp
     │
     └─→ drivers/spi_ws2812/clockless_spi_esp32.h (WS2812 over SPI)
             ↓
@@ -168,7 +168,7 @@ The RMT driver has completely separate implementations for ESP-IDF 4.x vs 5.x du
     #include "rmt_4/idf4_clockless_rmt_esp32.h"
 #else
     // ESP-IDF 5.x path
-    #include "rmt_5/idf5_clockless.h"  // ChannelBusManager-based
+    #include "rmt_5/idf5_clockless.h"  // ChannelManager-based
 #endif
 ```
 

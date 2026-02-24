@@ -9,8 +9,8 @@
 ///
 /// **Migration Path:**
 /// - Old: `FastLED.addClocklessLeds<WS2812, GRB, RMT>({...})`
-/// - New (automatic engine selection): `FastLED.add(config)`
-/// - New (with engine affinity):
+/// - New (automatic driver selection): `FastLED.add(config)`
+/// - New (with driver affinity):
 ///   ```cpp
 ///   fl::ChannelOptions options;
 ///   options.mAffinity = "PARLIO";  // or "RMT", "SPI", etc.

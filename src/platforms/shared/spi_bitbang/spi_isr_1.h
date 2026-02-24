@@ -13,7 +13,7 @@ namespace fl {
  *
  * This is the simplest variant of the parallel SPI ISR driver, using only
  * 1 data pin + 1 clock pin. Ideal for baseline testing and validation of the
- * ISR engine.
+ * ISR driver.
  *
  * Key Differences from multi-way variants:
  * - Only 1 data pin (instead of 2, 4, or 8)

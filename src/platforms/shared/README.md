@@ -11,7 +11,7 @@ Common, platform‑agnostic components used by multiple targets (data export, UI
 Shared platform code includes multi-lane SPI transposer infrastructure supporting 1/2/4/8 parallel data lanes:
 
 ### Unified SPI Transposer (spi_transposer.*)
-**NEW**: Unified bit-interleaving engine for all parallel SPI widths. Transposes sequential pixel data into parallel bitstreams for simultaneous multi-strip output.
+**NEW**: Unified bit-interleaving driver for all parallel SPI widths. Transposes sequential pixel data into parallel bitstreams for simultaneous multi-strip output.
 
 **Supported Widths:**
 - 1-lane (single-SPI)
@@ -74,7 +74,7 @@ See platform-specific READMEs for implementation details:
 
 ## Example export flow (frame lifecycle)
 
-1. During `show()`, the engine renders pixels. When the frame completes, `EngineEvents::onEndShowLeds` fires.
+1. During `show()`, the driver renders pixels. When the frame completes, `EngineEvents::onEndShowLeds` fires.
 2. `ActiveStripData` listens and clears per‑frame accumulators, then snapshots strip/screenmap data for export.
 3. The platform bridge pulls JSON or raw buffers (depending on target) and forwards them to the UI/consumer.
 4. After UI updates arrive, `EngineEvents::onEndFrame` applies any pending control changes via the UI manager.

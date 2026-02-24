@@ -250,7 +250,7 @@ When a device is destroyed (e.g., program exit):
 
 ## SPI Bus Manager
 
-**Location:** `src/platforms/shared/spi_bus_manager.h`
+**Location:** `src/platforms/shared/spi_manager.h`
 
 The **Bus Manager** is a **singleton** that acts as the central routing and lifecycle controller for all SPI devices.
 
@@ -1248,7 +1248,7 @@ FastLED's Advanced SPI system provides **intelligent, automatic parallel LED con
 
 ### Core Components
 
-- **SPI Bus Manager:** `src/platforms/shared/spi_bus_manager.h`
+- **SPI Bus Manager:** `src/platforms/shared/spi_manager.h`
 - **SPI Device Proxy:** `src/platforms/esp/32/spi_device_proxy.h`
 - **Quad-SPI Interface:** `src/platforms/shared/spi_hw_4.h`
 - **Dual-SPI Interface:** `src/platforms/shared/spi_hw_2.h`

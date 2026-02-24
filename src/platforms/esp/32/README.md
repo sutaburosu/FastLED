@@ -243,7 +243,7 @@ Hardware SPI implementations are organized by lane count:
 Shared infrastructure:
 - `src/platforms/shared/spi_hw_*.h` - Platform-agnostic interfaces
 - `src/platforms/shared/spi_transposer.*` - Unified bit-interleaving for all widths
-- `src/platforms/shared/spi_bus_manager.h` - Automatic multi-lane detection
+- `src/platforms/shared/spi_manager.h` - Automatic multi-lane detection
 
 ### Testing
 Comprehensive unit tests validate all lane configurations:
@@ -362,7 +362,7 @@ build_flags =
 - Public API: `src/fl/spi.h` (unified 1-16 lane SPI API)
 - 16-lane interface: `src/platforms/shared/spi_hw_16.h`
 - ESP32 I2S backend: `src/platforms/esp/32/drivers/i2s/spi_hw_i2s_esp32.{h,cpp}`
-- Bus manager: `src/platforms/shared/spi_bus_manager.h` (automatic promotion to 16-lane mode)
+- Bus manager: `src/platforms/shared/spi_manager.h` (automatic promotion to 16-lane mode)
 
 ### Architecture
 

@@ -5,7 +5,7 @@
 // ok no namespace fl
   FastLED — Parallel Soft-SPI Platform Abstraction Layer
   -------------------------------------------------------
-  Provides platform-specific GPIO write abstractions for the ISR engine.
+  Provides platform-specific GPIO write abstractions for the ISR driver.
 
   Two modes:
   1. ESP32 hardware - Direct MMIO writes to GPIO registers

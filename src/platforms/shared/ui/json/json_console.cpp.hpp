@@ -38,7 +38,7 @@ JsonConsole::~JsonConsole() {
     mReadCallback = fl::function<int()>{};
     mWriteCallback = fl::function<void(const char*)>{};
     
-    // Clear the update engine state function
+    // Clear the update driver state function
     mUpdateEngineState = fl::function<void(const char*)>{};
     
     // Note: We don't clear the global JsonUI manager since it might be shared
@@ -259,14 +259,14 @@ bool JsonConsole::setSliderValue(const fl::string& name, float value) {
     // Send the value directly, not wrapped in a "value" object
     doc.set(idStr, value);
     
-    // Convert to string and send to engine
+    // Convert to string and send to driver
     fl::string jsonStr = doc.to_string();
     
-    FL_WARN("JsonConsole: Sending JSON to engine: " << jsonStr.c_str());
+    FL_WARN("JsonConsole: Sending JSON to driver: " << jsonStr.c_str());
     mUpdateEngineState(jsonStr.c_str());
     
     // Force immediate processing of pending updates (for testing environments)
-    // In normal operation, this happens during the engine loop
+    // In normal operation, this happens during the driver loop
     FL_WARN("JsonConsole: Calling processJsonUiPendingUpdates()");
     processJsonUiPendingUpdates();
     

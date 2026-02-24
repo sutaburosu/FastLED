@@ -15,8 +15,8 @@
 #include "eorder.h"
 #include "pixel_iterator.h"
 #include "fl/channels/data.h"
-#include "fl/channels/engine.h"
-#include "fl/channels/bus_manager.h"
+#include "fl/channels/driver.h"
+#include "fl/channels/manager.h"
 #include "fl/chipsets/timing_traits.h"
 #include "fl/warn.h"
 
@@ -28,15 +28,15 @@ private:
     // Channel data for transmission
     ChannelDataPtr mChannelData;
 
-    // Channel engine reference (selected dynamically from bus manager)
-    fl::shared_ptr<IChannelEngine> mEngine;
+    // Channel driver reference (selected dynamically from bus manager)
+    fl::shared_ptr<IChannelDriver> mDriver;
 
     // -- Verify that the pin is valid
     static_assert(FastPin<DATA_PIN>::validpin(), "This pin has been marked as an invalid pin, common reasons includes it being a ground pin, read only, or too noisy (e.g. hooked up to the uart).");
 
 public:
     ClocklessSPI()
-        : mEngine(getClocklessSpiEngine())
+        : mDriver(getClocklessSpiEngine())
     {
         // Create channel data with pin and timing configuration
         ChipsetTimingConfig timing = makeTimingConfig<TIMING>();
@@ -51,7 +51,7 @@ protected:
     //    This is the main entry point for the controller.
     virtual void showPixels(PixelController<RGB_ORDER> &pixels) override
     {
-        if (!mEngine) {
+        if (!mDriver) {
             FL_WARN_EVERY(100, "No Engine");
             return;
         }
@@ -60,8 +60,8 @@ protected:
         u32 startTime = fl::millis();
         u32 lastWarnTime = startTime;
         if (mChannelData->isInUse()) {
-            FL_WARN_EVERY(100, "ClocklessSPI: engine should have finished transmitting by now - waiting");
-            bool finished = mEngine->waitForReady();
+            FL_WARN_EVERY(100, "ClocklessSPI: driver should have finished transmitting by now - waiting");
+            bool finished = mDriver->waitForReady();
             if (!finished) {
                 FL_ERROR("ClocklessSPI: Engine still busy after " << fl::millis() - startTime << "ms");
                 return;
@@ -74,12 +74,12 @@ protected:
         data.clear();
         iterator.writeWS2812(&data);
 
-        // Enqueue for transmission (will be sent when engine->show() is called)
-        mEngine->enqueue(mChannelData);
+        // Enqueue for transmission (will be sent when driver->show() is called)
+        mDriver->enqueue(mChannelData);
     }
 
-    static fl::shared_ptr<IChannelEngine> getClocklessSpiEngine() {
-        return ChannelBusManager::instance().getEngineByName("SPI");
+    static fl::shared_ptr<IChannelDriver> getClocklessSpiEngine() {
+        return ChannelManager::instance().getDriverByName("SPI");
     }
 };
 }  // namespace fl

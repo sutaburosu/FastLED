@@ -12,7 +12,7 @@
 #pragma once
 
 #include "fl/stl/stdint.h"  // for uint32_t, uint8_t
-#include "fl/channels/bus_manager.h"  // for DriverInfo
+#include "fl/channels/manager.h"  // for DriverInfo
 #include "fl/stl/shared_ptr.h"
 #include "fl/stl/span.h"
 #include "fl/stl/unique_ptr.h"

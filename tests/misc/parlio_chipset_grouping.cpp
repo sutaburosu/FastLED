@@ -40,7 +40,7 @@ static ChipsetTimingConfig getWS2812Timing_chipset_grouping() {
 //     return ChipsetTimingConfig(300, 900, 600, 80, "SK6812");
 // }
 
-/// @brief Reset mock and engine between tests
+/// @brief Reset mock and driver between tests
 static void resetMock_chipset_grouping() {
     auto& mock = ParlioPeripheralMock::instance();
     mock.clearTransmissionHistory();
@@ -48,10 +48,10 @@ static void resetMock_chipset_grouping() {
     mock.setTransmitDelay(0);
 
     // Wait for any previous transmission to complete (reduced from 1000 to 200 for performance)
-    auto& engine = ParlioEngine::getInstance();
+    auto& driver = ParlioEngine::getInstance();
     size_t max_polls = 200;
     for (size_t i = 0; i < max_polls; i++) {
-        ParlioEngineState state = engine.poll();
+        ParlioEngineState state = driver.poll();
         if (state == ParlioEngineState::READY || state == ParlioEngineState::ERROR) {
             break;
         }
@@ -67,7 +67,7 @@ static void resetMock_chipset_grouping() {
 FL_TEST_CASE("ParlioEngine - single chipset type (all channels same timing)") {
     resetMock_chipset_grouping();
 
-    auto& engine = ParlioEngine::getInstance();
+    auto& driver = ParlioEngine::getInstance();
 
     // 4 channels, all using WS2812B timing
     fl::vector<int> pins = {1, 2, 4, 8};
@@ -79,7 +79,7 @@ FL_TEST_CASE("ParlioEngine - single chipset type (all channels same timing)") {
     size_t lane_stride = leds_per_lane * bytes_per_led;
     size_t total_bytes = num_lanes * lane_stride;
 
-    bool init_ok = engine.initialize(num_lanes, pins, timing, leds_per_lane);
+    bool init_ok = driver.initialize(num_lanes, pins, timing, leds_per_lane);
     FL_REQUIRE(init_ok);
 
     // Create test data
@@ -89,7 +89,7 @@ FL_TEST_CASE("ParlioEngine - single chipset type (all channels same timing)") {
     }
 
     // Begin transmission (lane_stride is bytes per lane, not total_bytes)
-    bool tx_ok = engine.beginTransmission(scratch.data(), total_bytes, num_lanes, lane_stride);
+    bool tx_ok = driver.beginTransmission(scratch.data(), total_bytes, num_lanes, lane_stride);
     FL_REQUIRE(tx_ok);
 
     // Verify mock captured the transmission
@@ -150,16 +150,16 @@ FL_TEST_CASE("ParlioEngine - chipset timing equality operator") {
 FL_TEST_CASE("ParlioEngine - READY state before transmission") {
     resetMock_chipset_grouping();
 
-    auto& engine = ParlioEngine::getInstance();
+    auto& driver = ParlioEngine::getInstance();
 
     fl::vector<int> pins = {1};
     ChipsetTimingConfig timing = getWS2812Timing_chipset_grouping();
 
-    bool init_ok = engine.initialize(1, pins, timing, 10);
+    bool init_ok = driver.initialize(1, pins, timing, 10);
     FL_REQUIRE(init_ok);
 
-    // Before transmission, engine should be READY
-    ParlioEngineState state = engine.poll();
+    // Before transmission, driver should be READY
+    ParlioEngineState state = driver.poll();
     FL_CHECK(state == ParlioEngineState::READY);
 }
 
@@ -186,7 +186,7 @@ FL_TEST_CASE("ParlioEngine - READY state before transmission") {
 FL_TEST_CASE("ParlioEngine - document current single-timing constraint") {
     resetMock_chipset_grouping();
 
-    auto& engine = ParlioEngine::getInstance();
+    auto& driver = ParlioEngine::getInstance();
 
     // Current implementation: All channels in one transmission use the
     // timing configuration from the first channel only.
@@ -200,7 +200,7 @@ FL_TEST_CASE("ParlioEngine - document current single-timing constraint") {
     size_t lane_stride = leds_per_lane * 3;
     size_t total_bytes = num_lanes * lane_stride;
 
-    bool init_ok = engine.initialize(num_lanes, pins, timing_ws2812, leds_per_lane);
+    bool init_ok = driver.initialize(num_lanes, pins, timing_ws2812, leds_per_lane);
     FL_REQUIRE(init_ok);
 
     fl::vector<uint8_t> scratch(total_bytes);
@@ -209,7 +209,7 @@ FL_TEST_CASE("ParlioEngine - document current single-timing constraint") {
     }
 
     // All channels will use timing_ws2812 (from initialization)
-    bool tx_ok = engine.beginTransmission(scratch.data(), total_bytes, num_lanes, lane_stride);
+    bool tx_ok = driver.beginTransmission(scratch.data(), total_bytes, num_lanes, lane_stride);
     FL_REQUIRE(tx_ok);
 
     // Poll until complete (reduced from 1000 to 200 for performance)
@@ -217,7 +217,7 @@ FL_TEST_CASE("ParlioEngine - document current single-timing constraint") {
     ParlioEngineState final_state = ParlioEngineState::ERROR;
 
     for (size_t i = 0; i < max_polls; i++) {
-        ParlioEngineState state = engine.poll();
+        ParlioEngineState state = driver.poll();
         if (state == ParlioEngineState::READY) {
             final_state = ParlioEngineState::READY;
             break;

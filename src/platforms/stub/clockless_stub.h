@@ -8,7 +8,7 @@
 #include "platforms/wasm/clockless.h"
 #elif defined(FASTLED_STUB_IMPL)
 // Use channel-based controller for stub platform (mirrors ESP32 architecture)
-// This allows legacy FastLED.addLeds<>() API to route through channel engines
+// This allows legacy FastLED.addLeds<>() API to route through channel drivers
 #include "platforms/stub/clockless_channel_stub.h"
 // Keep old implementation available if needed (not currently used)
 // #include "platforms/stub/clockless_stub_generic.h"

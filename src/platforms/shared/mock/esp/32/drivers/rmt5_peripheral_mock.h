@@ -50,8 +50,8 @@
 ///
 /// For tests that need to inspect mock state after ChannelEngineRMT hides it:
 /// ```cpp
-/// auto engine = ChannelEngineRMT::create();
-/// engine->initialize(...);
+/// auto driver = ChannelEngineRMT::create();
+/// driver->initialize(...);
 ///
 /// // Get mock instance via singleton
 /// auto& mock = Rmt5PeripheralMock::instance();
@@ -154,9 +154,9 @@ public:
     ///
     /// Use in tests to advance the simulation:
     /// ```cpp
-    /// engine.transmit(channel, encoder, pixels, size);
+    /// driver.transmit(channel, encoder, pixels, size);
     /// mock.simulateTransmitDone(channel);  // Trigger callback
-    /// engine.poll();  // Process completion
+    /// driver.poll();  // Process completion
     /// ```
     virtual void simulateTransmitDone(void* channel_handle) = 0;
 
@@ -166,7 +166,7 @@ public:
     /// Use to test error handling paths:
     /// ```cpp
     /// mock.setTransmitFailure(true);
-    /// bool result = engine.transmit(...);
+    /// bool result = driver.transmit(...);
     /// CHECK_FALSE(result);  // Should fail
     /// ```
     virtual void setTransmitFailure(bool should_fail) = 0;

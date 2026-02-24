@@ -17,8 +17,8 @@ struct ChannelOptions {
     CRGB mTemperature = UncorrectedTemperature;
     fl::u8 mDitherMode = BINARY_DITHER;
     Rgbw mRgbw = RgbwInvalid::value(); // RGBW is RGB by default
-    fl::string mAffinity;              // Engine affinity (empty = let ChannelBusManager decide)
-    fl::optional<float> mGamma;        // Gamma override (empty = chipset default)
+    fl::string mAffinity;              // Engine affinity (empty = let ChannelManager decide)
+    fl::optional<float> mGamma;        // Gamma correction (nullopt = use default 2.8)
 };
 
 } // namespace fl

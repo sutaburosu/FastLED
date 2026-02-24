@@ -97,7 +97,7 @@ void jsUpdateUiComponents(const std::string &jsonStr) {  // okay std namespace
         }
         
     } else {
-        FL_WARN("*** ASYNC WASM ERROR: No engine state updater available, attempting emergency reinitialization...");
+        FL_WARN("*** ASYNC WASM ERROR: No driver state updater available, attempting emergency reinitialization...");
         
         // Try to reinitialize as a recovery mechanism
         getUiSystemInitialized() = false;  // Force reinitialization

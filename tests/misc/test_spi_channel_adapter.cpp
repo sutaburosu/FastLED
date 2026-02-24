@@ -2,7 +2,7 @@
 /// @brief Unit tests for SpiChannelEngineAdapter
 ///
 /// Tests the SPI hardware controller adapter that wraps SpiHw1/2/4/8/16 controllers
-/// for use with the modern ChannelBusManager API.
+/// for use with the modern ChannelManager API.
 
 #include "test.h"
 #include "FastLED.h"
@@ -345,7 +345,7 @@ FL_TEST_CASE("SpiChannelEngineAdapter - Initial state is READY") {
 
     auto adapter = SpiChannelEngineAdapter::create(controllers, priorities, names, "SPI_SINGLE");
 
-    FL_CHECK_EQ(adapter->poll(), IChannelEngine::EngineState::READY);
+    FL_CHECK_EQ(adapter->poll(), IChannelDriver::DriverState::READY);
 }
 
 FL_TEST_CASE("SpiChannelEngineAdapter - Enqueue adds to enqueued list") {
@@ -361,7 +361,7 @@ FL_TEST_CASE("SpiChannelEngineAdapter - Enqueue adds to enqueued list") {
     adapter->enqueue(data);
 
     // Should return DRAINING (data enqueued but not transmitted yet)
-    FL_CHECK_EQ(adapter->poll(), IChannelEngine::EngineState::DRAINING);
+    FL_CHECK_EQ(adapter->poll(), IChannelDriver::DriverState::DRAINING);
 }
 
 FL_TEST_CASE("SpiChannelEngineAdapter - Enqueue null data is ignored") {
@@ -376,7 +376,7 @@ FL_TEST_CASE("SpiChannelEngineAdapter - Enqueue null data is ignored") {
     adapter->enqueue(nullptr);
 
     // Should still be READY
-    FL_CHECK_EQ(adapter->poll(), IChannelEngine::EngineState::READY);
+    FL_CHECK_EQ(adapter->poll(), IChannelDriver::DriverState::READY);
 }
 
 FL_TEST_CASE("SpiChannelEngineAdapter - Enqueue non-SPI data is rejected") {
@@ -392,7 +392,7 @@ FL_TEST_CASE("SpiChannelEngineAdapter - Enqueue non-SPI data is rejected") {
     adapter->enqueue(data);
 
     // Should still be READY (data rejected)
-    FL_CHECK_EQ(adapter->poll(), IChannelEngine::EngineState::READY);
+    FL_CHECK_EQ(adapter->poll(), IChannelDriver::DriverState::READY);
 }
 
 FL_TEST_CASE("SpiChannelEngineAdapter - Show triggers transmission") {
@@ -430,7 +430,7 @@ FL_TEST_CASE("SpiChannelEngineAdapter - Transmission completes synchronously") {
     // Current implementation is synchronous - show() calls waitComplete() before returning
     // Note: transmit() sets mBusy=true, but waitComplete() clears it immediately
     // TODO: When async support is added, this test should verify BUSY state
-    FL_CHECK_EQ(adapter->poll(), IChannelEngine::EngineState::READY);
+    FL_CHECK_EQ(adapter->poll(), IChannelDriver::DriverState::READY);
 
     // Verify transmission machinery was invoked
     FL_CHECK(spiHw1->wasTransmitCalled());
@@ -455,7 +455,7 @@ FL_TEST_CASE("SpiChannelEngineAdapter - Poll returns READY after transmission co
     spiHw1->completeTransmission();
 
     // Should return READY
-    FL_CHECK_EQ(adapter->poll(), IChannelEngine::EngineState::READY);
+    FL_CHECK_EQ(adapter->poll(), IChannelDriver::DriverState::READY);
 }
 
 FL_TEST_CASE("SpiChannelEngineAdapter - Poll releases channel after completion") {
@@ -510,7 +510,7 @@ FL_TEST_CASE("SpiChannelEngineAdapter - Poll returns DRAINING when enqueued but 
     spiHw1->completeTransmission();
 
     // Should return DRAINING (second batch enqueued but not shown)
-    FL_CHECK_EQ(adapter->poll(), IChannelEngine::EngineState::DRAINING);
+    FL_CHECK_EQ(adapter->poll(), IChannelDriver::DriverState::DRAINING);
 }
 
 FL_TEST_CASE("SpiChannelEngineAdapter - Multiple channels same clock pin") {

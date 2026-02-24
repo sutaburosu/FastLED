@@ -8,12 +8,12 @@
 
 using namespace fl;
 
-FL_TEST_CASE("Stub engine is registered") {
-    // Verify the stub engine is properly registered in ChannelBusManager
-    auto& manager = fl::ChannelBusManager::instance();
+FL_TEST_CASE("Stub driver is registered") {
+    // Verify the stub driver is properly registered in ChannelManager
+    auto& manager = fl::ChannelManager::instance();
     FL_CHECK_GT(manager.getDriverCount(), 0);
 
-    auto stubEngine = manager.getEngineByName("STUB");
+    auto stubEngine = manager.getDriverByName("STUB");
     FL_REQUIRE(stubEngine != nullptr);
 }
 

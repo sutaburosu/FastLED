@@ -1,7 +1,7 @@
 /// @file test_wave8_spi.cpp
 /// @brief Unit tests for SPI wave8 encoder
 ///
-/// Tests wave8 encoding for ESP32 SPI channel engine, including:
+/// Tests wave8 encoding for ESP32 SPI channel driver, including:
 /// - Single-lane encoding (no transposition)
 /// - Dual-lane encoding (2-lane transposition)
 /// - Quad-lane encoding (4-lane transposition)

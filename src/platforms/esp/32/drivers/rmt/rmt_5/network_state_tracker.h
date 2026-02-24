@@ -2,7 +2,7 @@
 /// @brief Singleton tracker for network state changes
 ///
 /// Centralizes network state tracking to avoid redundant checks and ensure
-/// consistent state across all RMT channel engines.
+/// consistent state across all RMT channel drivers.
 
 #pragma once
 
@@ -23,7 +23,7 @@ namespace fl {
 /// @brief Singleton tracker for network state (WiFi, Ethernet, Bluetooth)
 ///
 /// This singleton provides centralized network state tracking with change detection.
-/// All RMT channel engines share this single instance to avoid redundant network
+/// All RMT channel drivers share this single instance to avoid redundant network
 /// state queries and ensure consistent behavior.
 ///
 /// Example Usage:

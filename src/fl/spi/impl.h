@@ -7,7 +7,7 @@
 #include "platforms/is_platform.h"
 #include "fl/spi.h"
 // IWYU pragma: begin_keep
-#include "platforms/shared/spi_bus_manager.h"  // ok platform headers
+#include "platforms/shared/spi_manager.h"  // ok platform headers
 #include "platforms/shared/spi_types.h"  // ok platform headers
 #include "platforms/shared/spi_hw_base.h"  // ok platform headers
 #include "fl/log.h"

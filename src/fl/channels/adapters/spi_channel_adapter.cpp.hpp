@@ -74,7 +74,7 @@ SpiChannelEngineAdapter::~SpiChannelEngineAdapter() {
     mEnqueuedChannels.clear();
 
     // Poll until READY to ensure cleanup of any in-flight transmissions
-    while (poll() != EngineState::READY) {
+    while (poll() != DriverState::READY) {
         // Busy-wait for transmission completion
         // This is acceptable in destructor context
     }
@@ -257,7 +257,7 @@ void SpiChannelEngineAdapter::show() {
     FL_DBG("SpiChannelEngineAdapter: show() complete");
 }
 
-IChannelEngine::EngineState SpiChannelEngineAdapter::poll() {
+IChannelDriver::DriverState SpiChannelEngineAdapter::poll() {
     // Check if ANY controller is busy
     bool anyBusy = false;
     for (const auto& ctrl : mControllers) {
@@ -268,7 +268,7 @@ IChannelEngine::EngineState SpiChannelEngineAdapter::poll() {
     }
 
     if (anyBusy) {
-        return EngineState::BUSY;
+        return DriverState::BUSY;
     }
 
     // All controllers idle - release transmitting channels
@@ -286,10 +286,10 @@ IChannelEngine::EngineState SpiChannelEngineAdapter::poll() {
 
     // Check for draining state
     if (!mEnqueuedChannels.empty()) {
-        return EngineState::DRAINING;
+        return DriverState::DRAINING;
     }
 
-    return EngineState::READY;
+    return DriverState::READY;
 }
 
 fl::vector<SpiChannelEngineAdapter::ClockPinGroup> SpiChannelEngineAdapter::groupByClockPin(

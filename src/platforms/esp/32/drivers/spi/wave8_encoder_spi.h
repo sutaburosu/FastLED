@@ -1,5 +1,5 @@
 /// @file wave8_encoder_spi.h
-/// @brief Wave8 encoding for ESP32 SPI channel engine
+/// @brief Wave8 encoding for ESP32 SPI channel driver
 ///
 /// This encoder converts LED byte data into SPI waveforms using wave8 expansion,
 /// similar to the PARLIO driver but optimized for SPI hardware characteristics.

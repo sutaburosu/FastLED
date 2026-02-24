@@ -1,5 +1,5 @@
 /// @file parlio_debug.h
-/// @brief Debug metrics and utilities for PARLIO engine
+/// @brief Debug metrics and utilities for PARLIO driver
 
 #pragma once
 

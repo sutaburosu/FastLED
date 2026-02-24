@@ -44,7 +44,7 @@ inline vector<string> getExpectedEngines() {
 inline bool validateExpectedEngines(const fl::vector<fl::DriverInfo>& available_drivers) {
     auto expected = getExpectedEngines();
 
-    // If no expected engines defined (unknown platform), return true
+    // If no expected drivers defined (unknown platform), return true
     if (expected.empty()) {
         return true;
     }
@@ -85,19 +85,19 @@ inline void printEngineValidation(const fl::vector<fl::DriverInfo>& available_dr
 #elif defined(FL_IS_TEENSY_4X)
     FL_WARN("\n[VALIDATION] Platform: Teensy 4.x (Cortex-M7)");
 #else
-    FL_WARN("\n[VALIDATION] Platform: Unknown platform - skipping engine validation");
+    FL_WARN("\n[VALIDATION] Platform: Unknown ESP32 variant - skipping driver validation");
     return;
 #endif
 
-    // Print expected engines
+    // Print expected drivers
     fl::sstream ss;
-    ss << "[VALIDATION] Expected engines: " << expected.size() << "\n";
+    ss << "[VALIDATION] Expected drivers: " << expected.size() << "\n";
     for (fl::size i = 0; i < expected.size(); i++) {
         ss << "  - " << expected[i].c_str() << "\n";
     }
     FL_WARN(ss.str());
 
-    // Validate each expected engine
+    // Validate each expected driver
     bool all_present = true;
     for (fl::size i = 0; i < expected.size(); i++) {
         const fl::string& expected_name = expected[i];
@@ -111,15 +111,15 @@ inline void printEngineValidation(const fl::vector<fl::DriverInfo>& available_dr
         }
 
         if (!found) {
-            FL_ERROR("Expected engine '" << expected_name.c_str() << "' is MISSING from available drivers!");
+            FL_ERROR("Expected driver '" << expected_name.c_str() << "' is MISSING from available drivers!");
             all_present = false;
         }
     }
 
     if (all_present) {
-        FL_WARN("[VALIDATION] ✓ All expected engines are available");
+        FL_WARN("[VALIDATION] ✓ All expected drivers are available");
     } else {
-        FL_ERROR("Engine validation FAILED - some expected engines are missing!");
+        FL_ERROR("Engine validation FAILED - some expected drivers are missing!");
     }
 }
 

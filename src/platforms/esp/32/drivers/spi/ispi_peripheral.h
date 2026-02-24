@@ -1,7 +1,7 @@
 /// @file ispi_peripheral.h
 /// @brief Virtual interface for SPI peripheral hardware abstraction
 ///
-/// This interface enables mock injection for unit testing of the SPI channel engine.
+/// This interface enables mock injection for unit testing of the SPI channel driver.
 /// It abstracts all ESP-IDF SPI Master API calls into a clean interface that can be:
 /// - Implemented by SpiPeripheralESP (real hardware delegate)
 /// - Implemented by SpiPeripheralMock (unit test simulation)

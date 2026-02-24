@@ -16,7 +16,7 @@
 /// 1. **Testability**: Mock implementation enables host-based unit tests
 /// 2. **Separation of Concerns**: Hardware delegation vs. business logic
 /// 3. **Performance**: Virtual dispatch adds only ~2-3 CPU cycles overhead
-/// 4. **Maintainability**: Clear contract between engine and hardware
+/// 4. **Maintainability**: Clear contract between driver and hardware
 ///
 /// ## Interface Contract
 ///
@@ -189,7 +189,7 @@ public:
     /// - Sets clock frequency
     /// - Allocates hardware resources
     ///
-    /// Call once during engine initialization. Must succeed before any
+    /// Call once during driver initialization. Must succeed before any
     /// other methods can be used.
     virtual bool initialize(const ParlioPeripheralConfig& config) = 0;
 

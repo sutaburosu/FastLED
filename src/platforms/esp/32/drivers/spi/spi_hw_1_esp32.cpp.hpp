@@ -14,7 +14,7 @@
 #if defined(FL_IS_ESP32)
 
 #include "platforms/shared/spi_hw_1.h"
-#include "platforms/shared/spi_bus_manager.h"  // For DMABuffer, TransmitMode, SPIError
+#include "platforms/shared/spi_manager.h"  // For DMABuffer, TransmitMode, SPIError
 #include "platforms/esp/32/drivers/spi/spi_hw_base.h"  // Common ESP32 SPI definitions
 #include "fl/stl/cstring.h"
 #include "fl/numeric_limits.h"

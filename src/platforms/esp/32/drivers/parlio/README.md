@@ -570,7 +570,7 @@ Practical limits depend on your application's other memory needs.
 
 ### Mock Peripheral Architecture
 
-The PARLIO engine supports comprehensive unit testing through a peripheral abstraction layer:
+The PARLIO driver supports comprehensive unit testing through a peripheral abstraction layer:
 
 ```
 ParlioEngine (High-level logic)
@@ -602,11 +602,11 @@ ParlioEngine (High-level logic)
 - Simulates hardware behavior on host platforms (x86/ARM)
 - Captures transmitted waveform data for validation
 - Provides ISR simulation and error injection
-- Enables hardware-independent testing of engine logic
+- Enables hardware-independent testing of driver logic
 
 ### Writing Unit Tests
 
-Use the mock peripheral to test PARLIO engine behavior without real hardware:
+Use the mock peripheral to test PARLIO driver behavior without real hardware:
 
 ```cpp
 #include "test.h"
@@ -617,20 +617,20 @@ Use the mock peripheral to test PARLIO engine behavior without real hardware:
 using namespace fl::detail;
 
 TEST_CASE("ParlioEngine transmission test") {
-    // Get engine instance
-    auto& engine = ParlioEngine::getInstance();
+    // Get driver instance
+    auto& driver = ParlioEngine::getInstance();
 
     // Initialize with test configuration
     fl::vector<int> pins = {1, 2, 4, 8};
     ChipsetTimingConfig timing = {350, 800, 450, 50};  // WS2812 timing
-    engine.initialize(4, pins, timing, 100);
+    driver.initialize(4, pins, timing, 100);
 
     // Prepare test data
     uint8_t scratch[300];  // 100 LEDs × 3 bytes
     // ... fill with test pattern ...
 
     // Transmit
-    bool success = engine.beginTransmission(scratch, 300, 4, 300);
+    bool success = driver.beginTransmission(scratch, 300, 4, 300);
     CHECK(success);
 
     // Access mock for validation

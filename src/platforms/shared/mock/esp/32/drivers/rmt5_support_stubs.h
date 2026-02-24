@@ -2,7 +2,7 @@
 /// @brief Stub implementations of RMT5 support classes for host-based testing
 ///
 /// This file provides mock/stub implementations of ESP32-specific classes used
-/// by the RMT5 channel engine. These stubs enable unit testing of
+/// by the RMT5 channel driver. These stubs enable unit testing of
 /// ChannelEngineRMT on host platforms without requiring real ESP32 hardware.
 ///
 /// Classes provided:

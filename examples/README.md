@@ -16,7 +16,7 @@ This document maps the example sketches, shows how to run them on different targ
   - [Color, palettes, and HSV](#color-palettes-and-hsv)
   - [Classic 1D effects](#classic-1d-effects)
   - [2D, matrices, mapping](#2d-matrices-mapping)
-  - [FX engine and higher-level utilities](#fx-engine-and-higher-level-utilities)
+  - [FX engine and higher-level utilities](#fx-driver-and-higher-level-utilities)
   - [Audio and reactive demos](#audio-and-reactive-demos)
   - [Storage, SD card, and data](#storage-sd-card-and-data)
   - [Multiple strips, parallel, and high-density](#multiple-strips-parallel-and-high-density)

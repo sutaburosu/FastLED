@@ -1,6 +1,6 @@
 Driving WS2812 LEDs via the ESP32-P4 RGB LCD Controller
 
-The WS2812 (NeoPixel) protocol uses a ~1.25 µs bit period with precise high/low timing (e.g. “0” = ~0.35 µs high, ~0.85 µs low; “1” = ~0.8 µs high, ~0.45 µs low ). In principle the ESP32-P4’s LCD RGB (parallel) peripheral can be configured to generate such timed pulses. The LCD controller outputs data on up to 24 parallel GPIO lines, gated by a pixel clock (PCLK) and sync signals  . By choosing a suitable PCLK frequency and encoding each WS2812 bit as one or more “pixels,” the LCD engine can produce the required waveforms on multiple lines simultaneously.
+The WS2812 (NeoPixel) protocol uses a ~1.25 µs bit period with precise high/low timing (e.g. “0” = ~0.35 µs high, ~0.85 µs low; “1” = ~0.8 µs high, ~0.45 µs low ). In principle the ESP32-P4’s LCD RGB (parallel) peripheral can be configured to generate such timed pulses. The LCD controller outputs data on up to 24 parallel GPIO lines, gated by a pixel clock (PCLK) and sync signals  . By choosing a suitable PCLK frequency and encoding each WS2812 bit as one or more “pixels,” the LCD driver can produce the required waveforms on multiple lines simultaneously.
 
 RGB-LCD Peripheral: Capabilities & Configuration
 
@@ -80,9 +80,9 @@ Each WS2812 bit is mapped to a series of PCLK-driven “pixels.” For example, 
  
  Parallel Data Bus (Strips per GPIO)
  
- By setting data_width = 16, the LCD peripheral drives 16 GPIOs in parallel. Each GPIO can be connected (via a level-shifter) to a separate WS2812 strip. Thus the engine can update 16 strips simultaneously with one frame’s data. (In theory up to 24 strips are possible if data_width=24, but board pin availability and DMA limits usually favor 16.) Each strip’s data is independent, but they share the same timing (same PCLK and bit boundaries). Practically, 16 strips is the limit per RGB engine.
+ By setting data_width = 16, the LCD peripheral drives 16 GPIOs in parallel. Each GPIO can be connected (via a level-shifter) to a separate WS2812 strip. Thus the driver can update 16 strips simultaneously with one frame’s data. (In theory up to 24 strips are possible if data_width=24, but board pin availability and DMA limits usually favor 16.) Each strip’s data is independent, but they share the same timing (same PCLK and bit boundaries). Practically, 16 strips is the limit per RGB driver.
  
- Since the ESP32-P4 also supports a Parallel IO (PARLIO) TX peripheral, one can drive additional strips by using that engine as well. The PARLIO TX unit (with its own clock line) also supports up to 16 parallel data lines . On ESP32-P4 there are typically two PARLIO TX units available (each up to 16 bits), so in principle you could drive up to 32 more strips. However, using both engines concurrently requires careful pin assignment (no overlap) and sufficient DMA channels. In summary, the RGB-LCD engine handles 16 strips; PARLIO can add another 16 per unit if needed.
+ Since the ESP32-P4 also supports a Parallel IO (PARLIO) TX peripheral, one can drive additional strips by using that driver as well. The PARLIO TX unit (with its own clock line) also supports up to 16 parallel data lines . On ESP32-P4 there are typically two PARLIO TX units available (each up to 16 bits), so in principle you could drive up to 32 more strips. However, using both drivers concurrently requires careful pin assignment (no overlap) and sufficient DMA channels. In summary, the RGB-LCD driver handles 16 strips; PARLIO can add another 16 per unit if needed.
  
  Code Example: Initialization and LED Update
  
@@ -134,7 +134,7 @@ To generate the reset latch gap, the VSYNC front porch (vsync_front_porch) can b
 
 PARLIO TX Peripheral Comparison
 
-The Parallel IO (PARLIO) TX unit is another DMA-driven engine (separate from esp_lcd). Each PARLIO TX unit supports its own clock line and up to 16 data outputs . Configuring PARLIO is similar: you specify .data_width = 16, .clk_out_gpio_num, and the data GPIOs in parlio_tx_unit_config_t. For example:
+The Parallel IO (PARLIO) TX unit is another DMA-driven driver (separate from esp_lcd). Each PARLIO TX unit supports its own clock line and up to 16 data outputs . Configuring PARLIO is similar: you specify .data_width = 16, .clk_out_gpio_num, and the data GPIOs in parlio_tx_unit_config_t. For example:
 
 parlio_tx_unit_config_t pconfig = {
     .clk_src = PARLIO_CLK_SRC_DEFAULT,
@@ -150,11 +150,11 @@ ESP_ERROR_CHECK(parlio_tx_unit_enable(tx_unit));
 // Fill a buffer with WS2812 bit patterns (most significant bit first per word)
 // and use parlio_tx_write() or equivalent API to send it.
 
-Capacity: The RGB LCD engine handles 16 strips; PARLIO TX can drive 16 per unit. On P4, two TX units could drive 32, but in practice WLED examples show stable 16 strips via PARLIO (with room to scale) and 16 via LCD . Concurrency: Both engines use separate DMA channels, so they can run simultaneously provided they use different GPIOs and DMA resources. Overall, one could conceivably drive ~32 strips (16+16) at once with careful setup.
+Capacity: The RGB LCD driver handles 16 strips; PARLIO TX can drive 16 per unit. On P4, two TX units could drive 32, but in practice WLED examples show stable 16 strips via PARLIO (with room to scale) and 16 via LCD . Concurrency: Both drivers use separate DMA channels, so they can run simultaneously provided they use different GPIOs and DMA resources. Overall, one could conceivably drive ~32 strips (16+16) at once with careful setup.
 
 Performance, Bandwidth, and Limitations
  • Data rate: Each LED uses 24 bits. At 800 kHz and 16 strips, updating 1024 LEDs/strip (24,576 bits) takes ~30.72 ms (≈32 kB). The ESP32-P4’s DMA and memory bandwidth easily support this (tens of MB/s capability). With 16×1024 LEDs, you can achieve ~32 fps; with fewer LEDs or higher clock (e.g. 1.2 MHz), over 60–120 fps is possible. In WLED tests, 16×256 LEDs ran at ~130 fps . CPU usage is minimal since DMA handles the transfer; only buffer preparation and triggering uses CPU.
- • DMA/GDMA: The LCD driver uses GDMA; PARLIO TX also uses GDMA. They each allocate DMA descriptors for the frame. Configure dma_burst_size (power-of-2) for efficiency  . Neither engine will disturb Wi-Fi or other buses significantly at these data rates, but ensure sufficient free DMA channels (typically ample on P4).
+ • DMA/GDMA: The LCD driver uses GDMA; PARLIO TX also uses GDMA. They each allocate DMA descriptors for the frame. Configure dma_burst_size (power-of-2) for efficiency  . Neither driver will disturb Wi-Fi or other buses significantly at these data rates, but ensure sufficient free DMA channels (typically ample on P4).
  • GPIO Conflicts: The LCD controller “steals” its signals (PCLK, VSYNC, etc.) while active. Choose non-conflicting pins or set unused signals to -1. PARLIO similarly claims its pins. You cannot use a GPIO for two peripherals simultaneously. Also note that if you enable the “valid” signal in PARLIO, it may reduce the effective data bus width by 1 (as documented) .
  • Timing Diagram: Use a logic analyzer to verify one strip’s waveform. The analyzer should show 4 PCLK pulses per WS bit with the expected high/low durations. Label the bit times (T0H, T1H, etc.) and confirm they meet the ~1.25 µs period (refer to the timing diagram above). Ensure the reset gap (no PCLK for ≥50 µs) is present between frames.
 
@@ -264,4 +264,4 @@ src/platforms/esp/32/drivers/lcd_cam/  (LCD_CAM driver code - peripheral-based n
 
 5. **Feature Parity**:
    - Ensure RGB driver supports all features available in I80 driver
-   - Consider dual-engine mode (RGB LCD + PARLIO for 32 strips on P4)
+   - Consider dual-driver mode (RGB LCD + PARLIO for 32 strips on P4)

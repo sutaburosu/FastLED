@@ -17,7 +17,7 @@
 
 #include "rmt5_controller_lowlevel.h"
 #include "fl/chipsets/chipset_timing_config.h"
-#include "fl/channels/bus_manager.h"
+#include "fl/channels/manager.h"
 
 FL_EXTERN_C_BEGIN
 
@@ -51,9 +51,9 @@ RmtController5LowLevel::RmtController5LowLevel(
     // Create ChannelData for this controller
     mChannelData = ChannelData::create(pin, timingConfig);
 
-    // Get RMT engine from ChannelBusManager by name
-    auto& manager = channelBusManager();
-    mEngine = manager.getEngineByName("RMT");
+    // Get RMT driver from ChannelManager by name
+    auto& manager = channelManager();
+    mDriver = manager.getDriverByName("RMT");
 }
 
 RmtController5LowLevel::~RmtController5LowLevel() {
@@ -62,9 +62,9 @@ RmtController5LowLevel::~RmtController5LowLevel() {
 }
 
 void RmtController5LowLevel::loadPixelData(PixelIterator& pixels) {
-    // Safety check: don't modify buffer if engine is transmitting it
+    // Safety check: don't modify buffer if driver is transmitting it
     if (mChannelData->isInUse()) {
-        FL_WARN("RMT5 Controller: Skipping update - buffer in use by engine");
+        FL_WARN("RMT5 Controller: Skipping update - buffer in use by driver");
         return;
     }
 
@@ -77,17 +77,17 @@ void RmtController5LowLevel::loadPixelData(PixelIterator& pixels) {
 }
 
 void RmtController5LowLevel::showPixels() {
-    // Get RMT engine if not already set
-    if (!mEngine) {
-        auto& manager = channelBusManager();
-        mEngine = manager.getEngineByName("RMT");
+    // Get RMT driver if not already set
+    if (!mDriver) {
+        auto& manager = channelManager();
+        mDriver = manager.getDriverByName("RMT");
     }
 
-    // Enqueue channel data to RMT engine if available
-    if (mEngine) {
-        mEngine->enqueue(mChannelData);
+    // Enqueue channel data to RMT driver if available
+    if (mDriver) {
+        mDriver->enqueue(mChannelData);
     } else {
-        FL_WARN("RMT5 Controller: RMT engine not available for showPixels()");
+        FL_WARN("RMT5 Controller: RMT driver not available for showPixels()");
     }
 }
 
