@@ -9,16 +9,6 @@
     #define NOUSER
     #include <winsock2.h>  // IWYU pragma: keep
     #include <ws2tcpip.h>  // IWYU pragma: keep
-    // Now undefine conflicting macros from Arduino
-    #ifdef INPUT
-        #undef INPUT
-    #endif
-    #ifdef OUTPUT
-        #undef OUTPUT
-    #endif
-    #ifdef INPUT_PULLUP
-        #undef INPUT_PULLUP
-    #endif
     #pragma comment(lib, "ws2_32.lib")
 #else
     #include <sys/socket.h>  // IWYU pragma: keep

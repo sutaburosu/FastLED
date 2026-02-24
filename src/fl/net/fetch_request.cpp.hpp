@@ -22,10 +22,12 @@
         #define NOMINMAX  // Exclude min/max macros
     #endif
 
-    // Save Arduino INPUT macro before including Windows headers
+    // Undef Arduino macros that conflict with Windows SDK headers
     #ifdef INPUT
-        #define ARDUINO_INPUT_BACKUP INPUT
         #undef INPUT
+    #endif
+    #ifdef OUTPUT
+        #undef OUTPUT
     #endif
 
     // Prevent Windows from typedef'ing types that conflict with Arduino
@@ -40,12 +42,6 @@
     // Undefine workarounds
     #undef boolean
     #undef CRGB
-
-    // Restore Arduino INPUT macro after Windows headers
-    #ifdef ARDUINO_INPUT_BACKUP
-        #define INPUT ARDUINO_INPUT_BACKUP
-        #undef ARDUINO_INPUT_BACKUP
-    #endif
 
     #define SOCKET_ERROR_WOULD_BLOCK WSAEWOULDBLOCK
     #define GET_SOCKET_ERROR() WSAGetLastError()

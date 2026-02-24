@@ -177,6 +177,7 @@
 // ============================================================================
 
 #include <FastLED.h>
+#include "fl/stl/undef.h"  // Undefine Arduino macros (DEFAULT, INPUT, OUTPUT)
 #include "fl/stl/sstream.h"
 #include "Common.h"
 #include "ValidationTest.h"

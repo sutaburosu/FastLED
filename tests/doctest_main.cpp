@@ -7,10 +7,12 @@
 #define __AVX512VPOPCNTDQ__
 #endif
 
-// Fix INPUT macro conflict between Arduino and Windows headers
+// Undef Arduino macros that conflict with Windows SDK headers
 #ifdef INPUT
-#define ARDUINO_INPUT_BACKUP INPUT
 #undef INPUT
+#endif
+#ifdef OUTPUT
+#undef OUTPUT
 #endif
 
 // Suppress -Wpragma-pack warnings from Windows SDK headers
@@ -31,12 +33,6 @@
 #ifdef __clang__
 #pragma clang diagnostic pop
 #endif
-#endif
-
-// Restore Arduino INPUT macro after Windows headers
-#ifdef ARDUINO_INPUT_BACKUP
-#define INPUT ARDUINO_INPUT_BACKUP
-#undef ARDUINO_INPUT_BACKUP
 #endif
 
 // IWYU pragma: no_include "ios"

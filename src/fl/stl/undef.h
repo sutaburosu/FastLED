@@ -55,6 +55,3 @@
 #undef map
 #endif
 
-#ifdef DEFAULT
-#undef DEFAULT
-#endif
