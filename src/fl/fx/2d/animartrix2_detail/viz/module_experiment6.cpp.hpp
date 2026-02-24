@@ -3,6 +3,7 @@
 #include "fl/fx/2d/animartrix2_detail/render_value_fp.h"
 #include "fl/fx/2d/animartrix2_detail/perlin_float.h"
 
+FL_FAST_MATH_BEGIN
 FL_OPTIMIZATION_LEVEL_O3_BEGIN
 
 namespace fl {
@@ -130,3 +131,4 @@ void Module_Experiment6_FP::draw(Context &ctx) {
 }  // namespace fl
 
 FL_OPTIMIZATION_LEVEL_O3_END
+FL_FAST_MATH_END

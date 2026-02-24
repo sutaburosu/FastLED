@@ -5,6 +5,7 @@
 // and included independently by chasing_spirals implementations.
 
 #include "crgb.h"
+#include "fl/force_inline.h"
 #include "fl/fx/2d/animartrix2_detail/context.h"
 #include "fl/fx/2d/animartrix2_detail/core_types.h"
 #include "fl/fx/2d/animartrix2_detail/engine_core.h"
@@ -86,11 +87,11 @@ struct Engine {
         fl::run_default_oscillators(timings, move, getTime(), speed_factor, master_speed);
     }
 
-    float render_value(render_parameters &anim) {
+    FASTLED_FORCE_INLINE float render_value(render_parameters &anim) {
         return fl::render_value(anim);
     }
 
-    rgb rgb_sanity_check(rgb &p) {
+    FASTLED_FORCE_INLINE rgb rgb_sanity_check(rgb &p) {
         return fl::rgb_sanity_check(p);
     }
 
@@ -114,12 +115,12 @@ struct Engine {
     float colordodge(float &x, float &y) { return fl::colordodge(x, y); }
     float colorburn(float &x, float &y) { return fl::colorburn(x, y); }
 
-    void setPixelColorInternal(int x, int y, rgb pixel) {
+    FASTLED_FORCE_INLINE void setPixelColorInternal(int x, int y, rgb pixel) {
         fl::u16 idx = mCtx->xyMapFn(x, y, mCtx->xyMapUserData);
         mCtx->leds[idx] = CRGB(pixel.red, pixel.green, pixel.blue);
     }
 
-    fl::u16 xyMap(fl::u16 x, fl::u16 y) {
+    FASTLED_FORCE_INLINE fl::u16 xyMap(fl::u16 x, fl::u16 y) {
         return mCtx->xyMapFn(x, y, mCtx->xyMapUserData);
     }
 };

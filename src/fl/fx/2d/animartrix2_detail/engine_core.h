@@ -7,6 +7,8 @@
 #include "fl/stl/math.h"
 #include "fl/math_macros.h"
 #include "fl/stl/chrono.h"
+#include "fl/compiler_control.h"
+#include "fl/force_inline.h"
 #include "fl/fx/2d/animartrix2_detail/core_types.h"
 #include "fl/fx/2d/animartrix2_detail/perlin_float.h"
 
@@ -16,6 +18,9 @@
 
 #define FL_SIN_F(x) fl::sinf(x)
 #define FL_COS_F(x) fl::cosf(x)
+
+FL_FAST_MATH_BEGIN
+FL_OPTIMIZATION_LEVEL_O3_BEGIN
 
 namespace fl {
 
@@ -84,7 +89,7 @@ inline void run_default_oscillators(oscillators &timings, modulators &move,
 }
 
 // Float mapping maintaining 32 bit precision
-inline float map_float(float x, float in_min, float in_max, float out_min,
+FASTLED_FORCE_INLINE float map_float(float x, float in_min, float in_max, float out_min,
                        float out_max) {
     float result =
         (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
@@ -97,7 +102,7 @@ inline float map_float(float x, float in_min, float in_max, float out_min,
 
 // Main noise field renderer with clamping
 // Converts polar coordinates to cartesian, applies transformations, and renders Perlin noise
-inline float render_value(render_parameters &animation) {
+FASTLED_FORCE_INLINE float render_value(render_parameters &animation) {
     // Convert polar coordinates back to cartesian ones
     float newx = (animation.offset_x + animation.center_x -
                   (FL_COS_F(animation.angle) * animation.dist)) *
@@ -124,7 +129,7 @@ inline float render_value(render_parameters &animation) {
 }
 
 // Clamp RGB values to [0, 255]
-inline rgb rgb_sanity_check(rgb &pixel) {
+FASTLED_FORCE_INLINE rgb rgb_sanity_check(rgb &pixel) {
     if (pixel.red < 0)
         pixel.red = 0;
     if (pixel.green < 0)
@@ -174,3 +179,6 @@ inline void logFrame(unsigned long &c) {
 }
 
 } // namespace fl
+
+FL_OPTIMIZATION_LEVEL_O3_END
+FL_FAST_MATH_END

@@ -22,6 +22,7 @@
 #include "fl/sin32.h"
 #include "fl/fx/2d/animartrix2_detail/viz/chasing_spirals.h"
 
+FL_FAST_MATH_BEGIN
 FL_OPTIMIZATION_LEVEL_O3_BEGIN
 
 namespace fl {
@@ -486,3 +487,4 @@ void Chasing_Spirals_Q31_SIMD::draw(Context &ctx) {
 } // namespace fl
 
 FL_OPTIMIZATION_LEVEL_O3_END
+FL_FAST_MATH_END

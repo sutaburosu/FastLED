@@ -10,6 +10,7 @@
 #include "fl/stl/stdint.h"
 #include "fl/stl/math.h"
 #include "fl/math_macros.h"
+#include "fl/force_inline.h"
 
 namespace fl {
 
@@ -41,17 +42,17 @@ FASTLED_FORCE_INLINE fl::u8 P(fl::u8 x) {
 }
 
 // Perlin fade curve: 6t^5 - 15t^4 + 10t^3
-inline float fade(float t) {
+FASTLED_FORCE_INLINE float fade(float t) {
     return t * t * t * (t * (t * 6 - 15) + 10);
 }
 
 // Linear interpolation
-inline float lerp(float t, float a, float b) {
+FASTLED_FORCE_INLINE float lerp(float t, float a, float b) {
     return a + t * (b - a);
 }
 
 // Gradient function
-inline float grad(int hash, float x, float y, float z) {
+FASTLED_FORCE_INLINE float grad(int hash, float x, float y, float z) {
     int h = hash & 15;       /* CONVERT LO 4 BITS OF HASH CODE */
     float u = h < 8 ? x : y, /* INTO 12 GRADIENT DIRECTIONS.   */
         v = h < 4                ? y
@@ -61,7 +62,7 @@ inline float grad(int hash, float x, float y, float z) {
 }
 
 // 3D Perlin noise
-inline float pnoise(float x, float y, float z) {
+FASTLED_FORCE_INLINE float pnoise(float x, float y, float z) {
     int X = (int)fl::floorf(x) & 255, /* FIND UNIT CUBE THAT */
         Y = (int)fl::floorf(y) & 255, /* CONTAINS POINT.     */
         Z = (int)fl::floorf(z) & 255;
