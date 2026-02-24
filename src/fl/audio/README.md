@@ -2,13 +2,86 @@
 
 ## Quick Start Examples
 
-### High-Level: Beat-Reactive LEDs (Recommended)
+### Easiest: `FastLED.add(AudioConfig)` (Recommended)
 
-The `AudioProcessor` is the easiest way to build audio-reactive sketches. Register callbacks for the events you care about and feed it audio samples.
+The simplest way to get audio-reactive LEDs. `FastLED.add()` creates the microphone,
+wires up a scheduler task that auto-reads samples, and returns an `AudioProcessor`
+ready for callbacks. No manual `update()` loop needed — audio is pumped automatically
+during `FastLED.show()`.
 
 ```cpp
 #include "FastLED.h"
-#include "fl/audio_input.h"
+
+#define NUM_LEDS 60
+#define LED_PIN 2
+
+// I2S pins for INMP441 microphone (adjust for your board)
+#define I2S_WS  7
+#define I2S_SD  8
+#define I2S_CLK 4
+
+CRGB leds[NUM_LEDS];
+fl::shared_ptr<fl::AudioProcessor> audio;
+
+void setup() {
+    FastLED.addLeds<WS2812B, LED_PIN, GRB>(leds, NUM_LEDS);
+    FastLED.setBrightness(128);
+
+    // One line: create mic + auto-pump task
+    auto config = fl::AudioConfig::CreateInmp441(I2S_WS, I2S_SD, I2S_CLK, fl::Right);
+    audio = FastLED.add(config);
+    audio->setAutoGainEnabled(true);
+
+    // Flash white on every beat
+    audio->onBeat([] {
+        fill_solid(leds, NUM_LEDS, CRGB::White);
+    });
+
+    // Map bass level to hue
+    audio->onBass([](float level) {
+        uint8_t hue = static_cast<uint8_t>(level * 160);
+        fill_solid(leds, NUM_LEDS, CHSV(hue, 255, 255));
+    });
+
+    // Dim to black on silence
+    audio->onSilenceStart([] {
+        fill_solid(leds, NUM_LEDS, CRGB::Black);
+    });
+}
+
+void loop() {
+    fadeToBlackBy(leds, NUM_LEDS, 20);
+    FastLED.show();  // Audio is auto-pumped here
+}
+```
+
+**How it works:** `FastLED.add(config)` internally calls `IAudioInput::create()`, starts
+the mic, and creates a `fl::task::every_ms(1)` that drains all buffered samples and
+feeds them to the `AudioProcessor`. The task runs during `FastLED.show()` via
+end-frame → `async_run()` → `Scheduler::update()`. When the `shared_ptr<AudioProcessor>`
+destructs, the task and mic are cleaned up automatically (RAII).
+
+**Platform behavior:**
+- **ESP32 / Teensy** (`FASTLED_HAS_AUDIO_INPUT == 1`): Real I2S mic is created and pumped.
+- **Host / WASM / AVR** (`FASTLED_HAS_AUDIO_INPUT == 0`): Returns a valid but inert
+  `AudioProcessor` — callbacks never fire, polling getters return zero. Code compiles
+  everywhere without `#ifdef`.
+
+**Test injection:** On any platform, pass a custom `IAudioInput` directly:
+```cpp
+auto fakeInput = fl::make_shared<MyTestAudioSource>();
+auto audio = FastLED.add(fakeInput);  // works on host/stub too
+```
+
+### High-Level: Beat-Reactive LEDs (Manual Update)
+
+If you need more control over when samples are read (e.g., reading from a buffer
+at a specific rate), you can create the `AudioProcessor` yourself and call
+`update()` manually.
+
+```cpp
+#include "FastLED.h"
+#include "fl/audio/input.h"
 #include "fl/audio/audio_processor.h"
 
 using namespace fl;
@@ -62,7 +135,7 @@ void setup() {
 void loop() {
     AudioSample sample = mic->read();
     if (sample.isValid()) {
-        audio.update(sample);
+        audio.update(sample);  // Manual update
     }
 
     if (gBeat) {
@@ -82,7 +155,7 @@ Use `onKick()`, `onSnare()`, and `onHiHat()` callbacks to trigger different colo
 
 ```cpp
 #include "FastLED.h"
-#include "fl/audio_input.h"
+#include "fl/audio/input.h"
 #include "fl/audio/audio_processor.h"
 
 using namespace fl;
@@ -144,7 +217,7 @@ If you prefer polling over callbacks, `AudioProcessor` also provides getter meth
 
 ```cpp
 #include "FastLED.h"
-#include "fl/audio_input.h"
+#include "fl/audio/input.h"
 #include "fl/audio/audio_processor.h"
 
 using namespace fl;
@@ -208,7 +281,7 @@ Create your own detector by subclassing `AudioDetector`. This gives you direct a
 
 ```cpp
 #include "FastLED.h"
-#include "fl/audio_input.h"
+#include "fl/audio/input.h"
 #include "fl/audio/audio_context.h"
 #include "fl/audio/audio_detector.h"
 #include "fl/audio/audio_processor.h"
@@ -258,7 +331,7 @@ Create an `AudioContext` manually to share FFT data across multiple detectors. T
 
 ```cpp
 #include "FastLED.h"
-#include "fl/audio_input.h"
+#include "fl/audio/input.h"
 #include "fl/audio/audio_context.h"
 #include "fl/audio/audio_detector.h"
 
@@ -350,7 +423,7 @@ For full control, use `AudioSample` and `FFT` directly. This is useful when you 
 
 ```cpp
 #include "FastLED.h"
-#include "fl/audio_input.h"
+#include "fl/audio/input.h"
 #include "fl/audio.h"
 #include "fl/fft.h"
 
@@ -398,7 +471,7 @@ For the simplest audio reactivity without FFT, use `AudioSample` properties dire
 
 ```cpp
 #include "FastLED.h"
-#include "fl/audio_input.h"
+#include "fl/audio/input.h"
 #include "fl/audio.h"
 
 using namespace fl;
@@ -487,7 +560,11 @@ void loop() {
 ┌──────────────────────────────────────────────┐
 │  Your Sketch (.ino)                          │
 ├──────────────────────────────────────────────┤
-│  AudioProcessor    (high-level facade)       │  ← Start here
+│  FastLED.add(AudioConfig)  (integration)     │  ← Easiest
+│    auto-pump via fl::task::every_ms(1)       │
+│    returns shared_ptr<AudioProcessor>        │
+├──────────────────────────────────────────────┤
+│  AudioProcessor    (high-level facade)       │  ← Manual control
 │    callbacks:  onBeat(), onBass(), ...       │
 │    polling:    isBeat(), getBassLevel(), ... │
 ├──────────────────────────────────────────────┤
@@ -508,7 +585,8 @@ void loop() {
 
 | Level | Use when... | Key classes |
 |-------|-------------|-------------|
-| **High (AudioProcessor)** | You want beat/bass/vocal detection without writing DSP code | `AudioProcessor` |
+| **Easiest (FastLED.add)** | You want audio-reactive LEDs with zero boilerplate | `FastLED.add(AudioConfig)` |
+| **High (AudioProcessor)** | You want manual control over when samples are processed | `AudioProcessor` |
 | **Mid (AudioContext)** | You're writing a custom detector or need shared FFT caching | `AudioContext`, `AudioDetector` |
 | **Low (AudioSample/FFT)** | You want raw spectrum data or PCM-level control | `AudioSample`, `FFT`, `FFTBins` |
 | **Output (Synth)** | You need to generate audio waveforms | `ISynthEngine`, `ISynthOscillator` |
@@ -814,9 +892,10 @@ audio.configureNoiseFloorTracker(nfConfig);
 ```
 fl/audio/
 ├── README.md                    # This file
+├── input.h                      # AudioConfig, IAudioInput (hardware abstraction)
 ├── audio_context.h/.cpp.hpp     # Shared FFT cache (lazy evaluation)
 ├── audio_detector.h             # Base class for all detectors
-├── audio_processor.h/.cpp.hpp   # High-level facade (callbacks + polling)
+├── audio_processor.h/.cpp.hpp   # High-level facade (callbacks + polling + auto-pump)
 ├── synth.h/.cpp.hpp             # Bandlimited waveform synthesizer
 ├── auto_gain.h/.cpp.hpp         # Automatic gain control
 ├── signal_conditioner.h/.cpp.hpp # Signal conditioning pipeline

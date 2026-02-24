@@ -137,6 +137,9 @@
 #include "fl/channels/manager.h"
 #include "fl/channels/config.h"  // for ChannelConfig, MultiChannelConfig
 
+#include "fl/audio/input.h"
+#include "fl/audio/audio_processor.h"
+
 // ============================================================================
 // C STRING FUNCTION USING DECLARATIONS
 // ============================================================================
@@ -713,6 +716,45 @@ public:
 	/// auto channels = FastLED.add(multiConfig);
 	/// @endcode
 	FL_NODISCARD static fl::vector<fl::ChannelPtr> add(const fl::MultiChannelConfig& multiConfig);
+
+	/// @brief Add an audio input and return an auto-pumped AudioProcessor
+	///
+	/// Creates an audio input from the given config and sets up a scheduler task
+	/// that automatically reads samples and feeds them to the AudioProcessor
+	/// during FastLED.show(). The returned processor can be used to register
+	/// event callbacks (onBeat, onVocalStart, etc.) without manual update() calls.
+	///
+	/// On platforms without audio hardware support, returns a no-op AudioProcessor
+	/// (callbacks will never fire but the returned pointer is valid).
+	///
+	/// @param config Audio hardware configuration (e.g., AudioConfig::CreateInmp441(...))
+	/// @return shared_ptr to AudioProcessor, or nullptr on failure
+	///
+	/// Example:
+	/// @code
+	/// auto config = fl::AudioConfig::CreateInmp441(WS, SD, CLK, fl::Both);
+	/// auto audio = FastLED.add(config);
+	/// audio->setAutoGainEnabled(true);
+	/// audio->onBeat([]{ /* pulse leds */ });
+	/// @endcode
+	FL_NODISCARD static fl::shared_ptr<fl::AudioProcessor> add(const fl::AudioConfig& config);
+
+	/// @brief Add a pre-created audio input and return an auto-pumped AudioProcessor
+	///
+	/// This overload accepts a raw IAudioInput, enabling unit tests and stub
+	/// platforms to inject custom audio sources (e.g., MP3-decoded samples)
+	/// without real hardware. Available on all platforms.
+	///
+	/// @param input Shared pointer to an IAudioInput implementation
+	/// @return shared_ptr to AudioProcessor, or nullptr if input is null
+	///
+	/// Example (test injection):
+	/// @code
+	/// auto fakeInput = fl::make_shared<MyTestAudioInput>();
+	/// auto audio = FastLED.add(fakeInput);
+	/// audio->onBeat([]{ /* test callback */ });
+	/// @endcode
+	FL_NODISCARD static fl::shared_ptr<fl::AudioProcessor> add(fl::shared_ptr<fl::IAudioInput> input);
 
 	/// @brief Remove a channel from the LED controller list
 	///

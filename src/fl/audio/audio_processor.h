@@ -9,8 +9,13 @@
 #include "fl/stl/shared_ptr.h"
 #include "fl/stl/function.h"
 #include "fl/stl/vector.h"
+#include "fl/task.h"
+
+class CFastLED;
 
 namespace fl {
+
+class IAudioInput;
 
 class BeatDetector;
 class FrequencyBands;
@@ -314,6 +319,14 @@ private:
     shared_ptr<MoodAnalyzer> getMoodAnalyzer();
     shared_ptr<BuildupDetector> getBuildupDetector();
     shared_ptr<DropDetector> getDropDetector();
+
+    // Auto-pump support (used by CFastLED::add(AudioConfig))
+    fl::task mAutoTask;
+    fl::shared_ptr<IAudioInput> mAudioInput;
+
+    static fl::shared_ptr<AudioProcessor> createWithAutoInput(
+        fl::shared_ptr<IAudioInput> input);
+    friend class ::CFastLED;
 };
 
 } // namespace fl

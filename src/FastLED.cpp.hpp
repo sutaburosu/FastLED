@@ -11,6 +11,8 @@
 #include "fl/trace.h"
 #include "fl/channels/driver.h"  // for IChannelDriver
 #include "fl/delay.h"  // for delayMicroseconds
+#include "fl/log.h"  // for FL_WARN
+#include "fl/audio/input.h"  // for IAudioInput
 #include "fl/stl/assert.h"  // for FL_ASSERT
 #include "hsv2rgb.h"  // for CRGB
 #include "fl/int.h"  // for u32, u16
@@ -675,4 +677,38 @@ void CFastLED::onEndShowLeds() {
 
 fl::ChannelEvents& CFastLED::channelEvents() {
 	return fl::ChannelEvents::instance();
+}
+
+// ============================================================================
+// Audio Input Integration
+// ============================================================================
+
+fl::shared_ptr<fl::AudioProcessor> CFastLED::add(const fl::AudioConfig& config) {
+#if SKETCH_HAS_LOTS_OF_MEMORY && FASTLED_HAS_AUDIO_INPUT
+    fl::string errorMsg;
+    auto input = fl::IAudioInput::create(config, &errorMsg);
+    if (!input) {
+        FL_WARN("Failed to create audio input: " << errorMsg);
+        return nullptr;
+    }
+    input->start();
+    return fl::AudioProcessor::createWithAutoInput(fl::move(input));
+#else
+    (void)config;
+    return fl::make_shared<fl::AudioProcessor>();
+#endif
+}
+
+fl::shared_ptr<fl::AudioProcessor> CFastLED::add(fl::shared_ptr<fl::IAudioInput> input) {
+#if SKETCH_HAS_LOTS_OF_MEMORY
+    if (!input) {
+        FL_WARN("Cannot add null audio input");
+        return nullptr;
+    }
+    input->start();
+    return fl::AudioProcessor::createWithAutoInput(fl::move(input));
+#else
+    (void)input;
+    return fl::make_shared<fl::AudioProcessor>();
+#endif
 }

@@ -1,4 +1,5 @@
 #include "fl/audio/audio_processor.h"
+#include "fl/audio/input.h"
 #include "fl/audio/detectors/beat.h"
 #include "fl/audio/detectors/frequency_bands.h"
 #include "fl/audio/detectors/energy_analyzer.h"
@@ -855,6 +856,28 @@ shared_ptr<DropDetector> AudioProcessor::getDropDetector() {
         registerDetector(mDropDetector);
     }
     return mDropDetector;
+}
+
+shared_ptr<AudioProcessor> AudioProcessor::createWithAutoInput(
+        shared_ptr<IAudioInput> input) {
+    auto processor = make_shared<AudioProcessor>();
+    processor->mAudioInput = input;
+    // weak_ptr so the lambda doesn't prevent AudioProcessor destruction
+    weak_ptr<AudioProcessor> weak = processor;
+    weak_ptr<IAudioInput> weakInput = input;
+    processor->mAutoTask = fl::task::every_ms(1).then([weak, weakInput]() {
+        auto proc = weak.lock();
+        auto inp = weakInput.lock();
+        if (!proc || !inp) {
+            return;
+        }
+        vector_inlined<AudioSample, 16> samples;
+        inp->readAll(&samples);
+        for (const auto& sample : samples) {
+            proc->update(sample);
+        }
+    });
+    return processor;
 }
 
 } // namespace fl
