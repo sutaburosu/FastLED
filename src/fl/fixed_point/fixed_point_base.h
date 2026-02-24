@@ -48,10 +48,12 @@ class fixed_point_base {
     explicit constexpr fixed_point_base(float f)
         : mValue(static_cast<raw_type>(f * (static_cast<raw_type>(1) << FRAC_BITS))) {}
 
-    static FASTLED_FORCE_INLINE Derived from_raw(raw_type raw) {
-        Derived r;
-        r.mValue = raw;
-        return r;
+    // Raw constructor for constexpr from_raw (matches concrete type RawTag pattern)
+    struct RawTag {};
+    constexpr explicit fixed_point_base(raw_type raw, RawTag) : mValue(raw) {}
+
+    static constexpr FASTLED_FORCE_INLINE Derived from_raw(raw_type raw) {
+        return Derived(raw, typename Derived::RawTag());
     }
 
     // ---- Access ------------------------------------------------------------

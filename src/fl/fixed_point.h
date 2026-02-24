@@ -104,6 +104,9 @@ class fixed_point : protected fixed_point_impl<IntBits, FracBits, S>::type {
     // Float constructor
     FASTLED_FORCE_INLINE explicit constexpr fixed_point(float f) : Base(f) {}
 
+    // Raw constructor for constexpr from_raw
+    constexpr explicit fixed_point(RawType raw, typename Base::RawTag tag) : Base(raw, tag) {}
+
     // Auto-promotion from other fixed-point types
     // Enabled when: is_fp_promotable<From, To>::value is true
     template <int OtherInt, int OtherFrac, Sign OtherSign>
@@ -119,10 +122,8 @@ class fixed_point : protected fixed_point_impl<IntBits, FracBits, S>::type {
 
     // ---- Factory methods ----
 
-    static FASTLED_FORCE_INLINE fixed_point from_raw(RawType raw) {
-        fixed_point result;
-        result.Base::operator=(Base::from_raw(raw));
-        return result;
+    static constexpr FASTLED_FORCE_INLINE fixed_point from_raw(RawType raw) {
+        return fixed_point(raw, typename Base::RawTag());
     }
 
     // ---- Conversion methods ----
