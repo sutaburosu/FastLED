@@ -76,7 +76,7 @@ void AsyncLogger::flush() {
 
         // Process message in chunks to avoid heap allocation
         while (offset < len) {
-            fl::u16 chunk_size = fl_min(len - offset, static_cast<fl::u16>(sizeof(buffer) - 1));
+            fl::u16 chunk_size = min(len - offset, static_cast<fl::u16>(sizeof(buffer) - 1));
             fl::memcpy(buffer, msg + offset, chunk_size);
             buffer[chunk_size] = '\0';  // Null-terminate
 
@@ -130,7 +130,7 @@ fl::size AsyncLogger::flushN(fl::size maxMessages) {
 
         // Process message in chunks to avoid heap allocation
         while (offset < len) {
-            fl::u16 chunk_size = fl_min(len - offset, static_cast<fl::u16>(sizeof(buffer) - 1));
+            fl::u16 chunk_size = min(len - offset, static_cast<fl::u16>(sizeof(buffer) - 1));
             fl::memcpy(buffer, msg + offset, chunk_size);
             buffer[chunk_size] = '\0';  // Null-terminate
 

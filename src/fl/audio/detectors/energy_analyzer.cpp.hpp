@@ -30,8 +30,8 @@ void EnergyAnalyzer::update(shared_ptr<AudioContext> context) {
 
     // Update min/max
     if (mCurrentRMS > 0.001f) {  // Ignore near-silence
-        mMinEnergy = fl::fl_min(mMinEnergy, mCurrentRMS);
-        mMaxEnergy = fl::fl_max(mMaxEnergy, mCurrentRMS);
+        mMinEnergy = fl::min(mMinEnergy, mCurrentRMS);
+        mMaxEnergy = fl::max(mMaxEnergy, mCurrentRMS);
     }
 
     // Compute normalized 0-1 RMS using adaptive range tracking.
@@ -42,7 +42,7 @@ void EnergyAnalyzer::update(shared_ptr<AudioContext> context) {
     if (runningMax < 1.0f) {
         runningMax = 1.0f;
     }
-    mNormalizedRMS = fl::fl_min(1.0f, mCurrentRMS / runningMax);
+    mNormalizedRMS = fl::min(1.0f, mCurrentRMS / runningMax);
 }
 
 void EnergyAnalyzer::fireCallbacks() {

@@ -23,8 +23,8 @@ static HSV16 RGBtoHSV16(const CRGB &rgb) {
     u8 b = rgb.b;
 
     // Find min and max
-    u8 mx = fl_max(r, fl_max(g, b));
-    u8 mn = fl_min(r, fl_min(g, b));
+    u8 mx = max(r, max(g, b));
+    u8 mn = min(r, min(g, b));
     u8 delta = mx - mn;
 
     u16 h = 0;

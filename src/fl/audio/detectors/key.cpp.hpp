@@ -301,7 +301,7 @@ Key KeyDetector::detectKey(const float* chroma, u32 timestamp) {
     // Convert correlation to 0-1 confidence
     // Correlation ranges from -1 to 1, but we typically see 0.5-0.9 for good matches
     float confidence = (bestCorrelation + 1.0f) / 2.0f;  // Map [-1,1] to [0,1]
-    confidence = fl::fl_max(0.0f, fl::fl_min(1.0f, confidence));
+    confidence = fl::max(0.0f, fl::min(1.0f, confidence));
 
     return Key(bestRoot, bestIsMinor, confidence, timestamp);
 }

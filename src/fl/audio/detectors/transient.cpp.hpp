@@ -98,7 +98,7 @@ float TransientDetector::calculateHighFreqEnergy(const FFTBins& fft) {
 
 float TransientDetector::calculateEnergyFlux(float currentEnergy) {
     // Calculate positive energy flux (increase in energy)
-    float flux = fl::fl_max(0.0f, currentEnergy - mPreviousEnergy);
+    float flux = fl::max(0.0f, currentEnergy - mPreviousEnergy);
 
     // Normalize by previous energy to get relative change
     if (mPreviousEnergy > 1e-6f) {
@@ -138,9 +138,9 @@ bool TransientDetector::detectTransient(float flux, u32 timestamp) {
 
     // Calculate strength based on how much we exceeded threshold
     if (adaptiveThreshold > 0.0f) {
-        mStrength = fl::fl_min(1.0f, (flux - adaptiveThreshold) / adaptiveThreshold);
+        mStrength = fl::min(1.0f, (flux - adaptiveThreshold) / adaptiveThreshold);
     } else {
-        mStrength = fl::fl_min(1.0f, flux);
+        mStrength = fl::min(1.0f, flux);
     }
 
     return true;
@@ -154,7 +154,7 @@ void TransientDetector::updateAttackTime(float flux) {
     const float maxAttackTime = 20.0f; // ms
 
     // Inverse relationship: stronger flux = shorter attack time
-    float normalized = fl::fl_min(1.0f, flux / 10.0f);
+    float normalized = fl::min(1.0f, flux / 10.0f);
     mAttackTime = maxAttackTime - (normalized * (maxAttackTime - minAttackTime));
 }
 

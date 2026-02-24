@@ -225,7 +225,7 @@ float ChordDetector::matchChordPattern(const float* chroma, int root, ChordType 
     if (totalChroma > 1e-6f) {
         score = matchScore / totalChroma;
         score -= 0.3f * (nonChordEnergy / totalChroma);
-        score = fl::fl_max(0.0f, score);
+        score = fl::max(0.0f, score);
     }
 
     return score;

@@ -60,7 +60,7 @@ static bool canBeRepresentedAsFloat(double value) {
     // Check if the value is within reasonable float range
     // Reject values that are clearly beyond float precision (beyond 2^24 for integers)
     // or outside the float range
-    if (fl::fl_abs(value) > 16777216.0) { // 2^24 - beyond which floats lose integer precision
+    if (fl::abs(value) > 16777216.0) { // 2^24 - beyond which floats lose integer precision
         return false;
     }
     
@@ -477,7 +477,7 @@ private:
                     // Parse float value to check if it's beyond integer precision
                     // Note: fl::parseFloat may have precision loss for very large numbers
                     float f_val = fl::parseFloat(&mInput[num_start], mPos - num_start);
-                    if (fl::fl_abs(f_val) > 16777216.0f) {
+                    if (fl::abs(f_val) > 16777216.0f) {
                         has_float_beyond_precision = true;
                     }
                 } else {
@@ -941,7 +941,7 @@ ArrayType classify_array(const JsonArray& arr) {
             }
             // Check if float is beyond integer precision (>2^24 or <-2^24)
             float f = *val;
-            if (fl::fl_abs(f) > 16777216.0f) {
+            if (fl::abs(f) > 16777216.0f) {
                 has_float_beyond_precision = true;
             }
         } else {

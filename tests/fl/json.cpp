@@ -349,7 +349,7 @@ FL_TEST_CASE("Simple JSON test") {
     
     FL_CHECK(parsed.contains("key3"));
     FL_CHECK(parsed["key3"].is_float());
-    FL_CHECK(fl::fl_abs(parsed["key3"].as_or(0.0) - 3.14) < 0.001);  // Use tolerance for floating-point comparison
+    FL_CHECK(fl::abs(parsed["key3"].as_or(0.0) - 3.14) < 0.001);  // Use tolerance for floating-point comparison
 }
 
 
@@ -512,7 +512,7 @@ FL_TEST_CASE("FLArduinoJson Integration Tests") {
         
         auto floatElement = objJson["float"].as_double();
         FL_REQUIRE(floatElement.has_value());
-        FL_CHECK(fl::fl_abs(*floatElement - 3.14) < 0.001);  // Use tolerance for floating-point comparison
+        FL_CHECK(fl::abs(*floatElement - 3.14) < 0.001);  // Use tolerance for floating-point comparison
         
         auto stringElement = objJson["string"].as_string();
         FL_REQUIRE(stringElement.has_value());

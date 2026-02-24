@@ -695,7 +695,7 @@ FL_TEST_CASE("DownbeatDetector - No time-skipping comparison") {
             bool matchedGT = false;
             for (size i = 0; i < groundTruth.size(); i++) {
                 if (!gtMatched[i] && groundTruth[i].isDownbeat) {
-                    float timeDiff = fl::fl_abs(static_cast<float>(static_cast<int>(timestamp) - static_cast<int>(groundTruth[i].timestamp)));
+                    float timeDiff = fl::abs(static_cast<float>(static_cast<int>(timestamp) - static_cast<int>(groundTruth[i].timestamp)));
                     if (timeDiff <= groundTruth[i].tolerance_ms) {
                         metrics.truePositives++;
                         gtMatched[i] = true;

@@ -82,19 +82,19 @@ FL_TEST_CASE("Lane capacity - maximum lane determination") {
     FL_CHECK_EQ(maxLanes, 1);
 
     // One 4-lane config → K = 4
-    maxLanes = fl_max<uint8_t>(1, 4);
+    maxLanes = max<uint8_t>(1, 4);
     FL_CHECK_EQ(maxLanes, 4);
 
     // Multiple configs (2-lane and 4-lane) → K = 4 (max)
     maxLanes = 1;
-    maxLanes = fl_max(maxLanes, 2);
-    maxLanes = fl_max(maxLanes, 4);
+    maxLanes = max(maxLanes, 2);
+    maxLanes = max(maxLanes, 4);
     FL_CHECK_EQ(maxLanes, 4);
 
     // All 1-lane configs → K = 1
     maxLanes = 1;
-    maxLanes = fl_max(maxLanes, 1);
-    maxLanes = fl_max(maxLanes, 1);
+    maxLanes = max(maxLanes, 1);
+    maxLanes = max(maxLanes, 1);
     FL_CHECK_EQ(maxLanes, 1);
 }
 
@@ -128,21 +128,21 @@ FL_TEST_CASE("Batch index calculation - channel assignment") {
 
     // Batch 0: channels 0-3
     size_t batch0_start = 0 * K;
-    size_t batch0_end = fl_min(batch0_start + K, N);
+    size_t batch0_end = min(batch0_start + K, N);
     FL_CHECK_EQ(batch0_start, 0);
     FL_CHECK_EQ(batch0_end, 4);
     FL_CHECK_EQ(batch0_end - batch0_start, 4);  // 4 channels
 
     // Batch 1: channels 4-7
     size_t batch1_start = 1 * K;
-    size_t batch1_end = fl_min(batch1_start + K, N);
+    size_t batch1_end = min(batch1_start + K, N);
     FL_CHECK_EQ(batch1_start, 4);
     FL_CHECK_EQ(batch1_end, 8);
     FL_CHECK_EQ(batch1_end - batch1_start, 4);  // 4 channels
 
     // Batch 2: channels 8-9 (partial batch)
     size_t batch2_start = 2 * K;
-    size_t batch2_end = fl_min(batch2_start + K, N);
+    size_t batch2_end = min(batch2_start + K, N);
     FL_CHECK_EQ(batch2_start, 8);
     FL_CHECK_EQ(batch2_end, 10);
     FL_CHECK_EQ(batch2_end - batch2_start, 2);  // 2 channels (partial)
@@ -192,7 +192,7 @@ FL_TEST_CASE("Edge case - N much greater than K") {
 
     // Verify last batch is full
     size_t last_batch_start = 24 * K;
-    size_t last_batch_end = fl_min(last_batch_start + K, N);
+    size_t last_batch_end = min(last_batch_start + K, N);
     FL_CHECK_EQ(last_batch_end - last_batch_start, 4);  // Full batch
 }
 

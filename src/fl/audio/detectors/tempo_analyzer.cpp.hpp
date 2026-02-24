@@ -50,7 +50,7 @@ void TempoAnalyzer::update(shared_ptr<AudioContext> context) {
     mPreviousFlux = flux;
 
     // Update per-bin magnitudes for next frame's spectral flux calculation
-    size numBins = fl::fl_min(static_cast<size>(8), fft.raw().size());
+    size numBins = fl::min(static_cast<size>(8), fft.raw().size());
     for (size i = 0; i < numBins && i < mPreviousMagnitudes.size(); i++) {
         mPreviousMagnitudes[i] = fft.raw()[i];
     }
@@ -65,7 +65,7 @@ void TempoAnalyzer::update(shared_ptr<AudioContext> context) {
     updateStability();
 
     // Track state changes for fireCallbacks()
-    float bpmDiff = fl::fl_abs(mCurrentBPM - mPreviousBPM);
+    float bpmDiff = fl::abs(mCurrentBPM - mPreviousBPM);
     mBpmChanged = (bpmDiff > 5.0f);
     mPreviousBPM = mCurrentBPM;
 }
@@ -108,8 +108,8 @@ void TempoAnalyzer::reset() {
 float TempoAnalyzer::calculateSpectralFlux(const FFTBins& fft) {
     // Focus on low-to-mid frequencies for beat detection
     float flux = 0.0f;
-    size numBins = fl::fl_min(static_cast<size>(8), fft.raw().size());
-    numBins = fl::fl_min(numBins, mPreviousMagnitudes.size());
+    size numBins = fl::min(static_cast<size>(8), fft.raw().size());
+    numBins = fl::min(numBins, mPreviousMagnitudes.size());
 
     for (size i = 0; i < numBins; i++) {
         float diff = fft.raw()[i] - mPreviousMagnitudes[i];
@@ -166,7 +166,7 @@ void TempoAnalyzer::updateHypotheses(u32 timestamp) {
         // Check if we already have a similar hypothesis
         bool foundExisting = false;
         for (size j = 0; j < mHypotheses.size(); j++) {
-            float bpmDiff = fl::fl_abs(mHypotheses[j].bpm - bpm);
+            float bpmDiff = fl::abs(mHypotheses[j].bpm - bpm);
             if (bpmDiff < 3.0f) {  // Within 3 BPM tolerance
                 // Update existing hypothesis
                 mHypotheses[j].bpm = (mHypotheses[j].bpm + bpm) * 0.5f;
@@ -262,7 +262,7 @@ void TempoAnalyzer::updateStability() {
 
     // Convert variance to stability score (low variance = high stability)
     float stddev = fl::sqrt(variance);
-    mStability = fl::fl_max(0.0f, 1.0f - (stddev / 10.0f));
+    mStability = fl::max(0.0f, 1.0f - (stddev / 10.0f));
 
     // Check if stable
     if (mStability >= mStabilityThreshold) {
@@ -293,7 +293,7 @@ float TempoAnalyzer::calculateIntervalScore(u32 interval) {
     }
     float range = mMaxBPM - mMinBPM;
     float normalizedDist = distOutside / range;
-    return fl::fl_max(0.1f, 1.0f - normalizedDist);
+    return fl::max(0.1f, 1.0f - normalizedDist);
 }
 
 float TempoAnalyzer::calculateTempoConfidence(const TempoHypothesis& hyp) {
@@ -302,8 +302,8 @@ float TempoAnalyzer::calculateTempoConfidence(const TempoHypothesis& hyp) {
     // 2. Number of onsets supporting it
     // 3. Stability
 
-    float scoreComponent = fl::fl_min(1.0f, hyp.score);
-    float onsetComponent = fl::fl_min(1.0f, static_cast<float>(hyp.onsetCount) / 10.0f);
+    float scoreComponent = fl::min(1.0f, hyp.score);
+    float onsetComponent = fl::min(1.0f, static_cast<float>(hyp.onsetCount) / 10.0f);
     float stabilityComponent = mStability;
 
     return (scoreComponent * 0.4f + onsetComponent * 0.3f + stabilityComponent * 0.3f);

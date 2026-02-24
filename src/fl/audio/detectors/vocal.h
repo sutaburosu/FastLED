@@ -37,7 +37,7 @@ public:
     // State access
     bool isVocal() const { return mVocalActive; }
     float getConfidence() const { return mConfidenceSmoother.value(); }
-    void setThreshold(float threshold) { mOnThreshold = threshold; mOffThreshold = fl::fl_max(0.0f, threshold - 0.2f); }
+    void setThreshold(float threshold) { mOnThreshold = threshold; mOffThreshold = fl::max(0.0f, threshold - 0.2f); }
     void setSmoothingAlpha(float tau) { mConfidenceSmoother.setTau(tau); }
     int getNumBins() const { return mNumBins; }
 

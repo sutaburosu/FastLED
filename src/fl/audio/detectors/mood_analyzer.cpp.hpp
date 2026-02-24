@@ -168,13 +168,13 @@ float MoodAnalyzer::calculateValence(float centroid, float rolloff, float flux) 
     float brightness = normalizedCentroid * rolloff;
 
     // Stability score (lower flux = more positive/calm, higher = more negative/chaotic)
-    float stability = 1.0f - fl::fl_min(1.0f, flux / 10.0f);
+    float stability = 1.0f - fl::min(1.0f, flux / 10.0f);
 
     // Combine into valence (-1 to 1)
     float valence = (brightness * 0.6f + stability * 0.4f) * 2.0f - 1.0f;
 
     // Clamp to valid range
-    return fl::fl_max(-1.0f, fl::fl_min(1.0f, valence));
+    return fl::max(-1.0f, fl::min(1.0f, valence));
 }
 
 float MoodAnalyzer::calculateArousal(float rms, float zcr, float flux) {
@@ -183,19 +183,19 @@ float MoodAnalyzer::calculateArousal(float rms, float zcr, float flux) {
     // Lower energy and less change = lower arousal
 
     // Normalize RMS (assuming typical range 0-1)
-    float normalizedRMS = fl::fl_min(1.0f, rms);
+    float normalizedRMS = fl::min(1.0f, rms);
 
     // Normalize ZCR (assuming typical range 0-1)
-    float normalizedZCR = fl::fl_min(1.0f, zcr);
+    float normalizedZCR = fl::min(1.0f, zcr);
 
     // Normalize flux (assuming typical range 0-10)
-    float normalizedFlux = fl::fl_min(1.0f, flux / 10.0f);
+    float normalizedFlux = fl::min(1.0f, flux / 10.0f);
 
     // Combine into arousal (0 to 1)
     float arousal = normalizedRMS * 0.5f + normalizedZCR * 0.2f + normalizedFlux * 0.3f;
 
     // Clamp to valid range
-    return fl::fl_max(0.0f, fl::fl_min(1.0f, arousal));
+    return fl::max(0.0f, fl::min(1.0f, arousal));
 }
 
 float MoodAnalyzer::calculateConfidence(float valence, float arousal) {
@@ -210,7 +210,7 @@ float MoodAnalyzer::calculateConfidence(float valence, float arousal) {
     float normalizedDistance = distanceFromNeutral / 1.118f;
 
     // Clamp to valid range
-    return fl::fl_max(0.0f, fl::fl_min(1.0f, normalizedDistance));
+    return fl::max(0.0f, fl::min(1.0f, normalizedDistance));
 }
 
 bool MoodAnalyzer::shouldChangeMood(const Mood& newMood) {

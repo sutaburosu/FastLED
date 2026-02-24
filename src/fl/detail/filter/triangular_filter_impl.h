@@ -56,7 +56,7 @@ class TriangularFilterImpl {
         T weighted_sum = T(0);
         T weight_total = T(0);
         for (fl::size i = 0; i < n; ++i) {
-            fl::size w_int = fl::fl_min(i + 1, n - i);
+            fl::size w_int = fl::min(i + 1, n - i);
             T w = T(static_cast<float>(w_int));
             weighted_sum = weighted_sum + mBuf[i] * w;
             weight_total = weight_total + w;

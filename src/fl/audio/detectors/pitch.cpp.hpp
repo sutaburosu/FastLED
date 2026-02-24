@@ -175,11 +175,11 @@ float PitchDetector::calculateConfidence(const vector<float>& autocorr, int peak
 
     // Confidence is primarily based on peak strength
     // Autocorrelation ranges from -1 to 1, but we only care about positive peaks
-    float confidence = fl::fl_max(0.0f, fl::fl_min(1.0f, peakValue));
+    float confidence = fl::max(0.0f, fl::min(1.0f, peakValue));
 
     // Calculate clarity by comparing peak to surrounding values
     // Look at ±10% of the period
-    int windowSize = fl::fl_max(2, peakLag / 10);
+    int windowSize = fl::max(2, peakLag / 10);
     float neighborSum = 0.0f;
     int neighborCount = 0;
 
@@ -188,7 +188,7 @@ float PitchDetector::calculateConfidence(const vector<float>& autocorr, int peak
 
         int lag = peakLag + offset;
         if (lag >= mMinPeriod && lag <= mMaxPeriod && lag < static_cast<int>(autocorr.size())) {
-            neighborSum += fl::fl_max(0.0f, autocorr[static_cast<size>(lag)]);
+            neighborSum += fl::max(0.0f, autocorr[static_cast<size>(lag)]);
             neighborCount++;
         }
     }
@@ -199,7 +199,7 @@ float PitchDetector::calculateConfidence(const vector<float>& autocorr, int peak
         // Peak should be significantly higher than neighbors
         // If peak is 2x higher, that's good; if it's similar, reduce confidence
         if (neighborAvg > 1e-6f) {
-            float clarity = fl::fl_min(1.0f, (peakValue - neighborAvg) / neighborAvg);
+            float clarity = fl::min(1.0f, (peakValue - neighborAvg) / neighborAvg);
             confidence *= (0.7f + 0.3f * clarity);  // Weight clarity at 30%
         }
     }
@@ -235,7 +235,7 @@ bool PitchDetector::shouldReportPitchChange(float newPitch) const {
     }
 
     // Calculate absolute difference in Hz
-    float pitchDiff = fl::fl_abs(newPitch - mPreviousPitch);
+    float pitchDiff = fl::abs(newPitch - mPreviousPitch);
 
     // Report change if difference exceeds sensitivity threshold
     return pitchDiff >= mPitchChangeSensitivity;

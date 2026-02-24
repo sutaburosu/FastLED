@@ -85,7 +85,7 @@ inline void five_bit_bitshift(u16 r16, u16 g16, u16 b16,
         126480, 119040,  112427,  106509, 101184, 96366,  91985,  87986,
         84320,  80947,   77834,   74951,  72274,  69782,  67456,  65280};
 
-    auto max3 = [](u16 a, u16 b, u16 c) { return fl_max(fl_max(a, b), c); };
+    auto max3 = [](u16 a, u16 b, u16 c) { return max(max(a, b), c); };
 
 
     if (brightness == 0) {

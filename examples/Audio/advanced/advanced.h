@@ -511,7 +511,7 @@ void loop() {
         if (pitchDetectEnable && pitchEngine) {
             // Convert int16_t samples to float for pitch detection
             static float floatBuffer[FFT_SIZE];
-            size_t numSamples = fl::fl_min(sample.pcm().size(), (size_t)FFT_SIZE);
+            size_t numSamples = fl::min(sample.pcm().size(), (size_t)FFT_SIZE);
             for (size_t i = 0; i < numSamples; i++) {
                 floatBuffer[i] = sample.pcm()[i] / 32768.0f;
             }

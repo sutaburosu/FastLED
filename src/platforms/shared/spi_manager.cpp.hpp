@@ -15,7 +15,7 @@
 #include "fl/stl/math.h"
 
 // Arduino defines max/min as macros, which conflicts with fl::numeric_limits<T>::max()
-// Undefine them here since we use the FastLED fl:: equivalents (fl_min/fl_max)
+// Undefine them here since we use the FastLED fl:: equivalents (min/max)
 #ifdef max
 #undef max
 #endif
@@ -246,7 +246,7 @@ void SPIBusManager::finalizeTransmission(SPIBusHandle handle) {
         size_t max_size = 0;
         for (u8 i = 0; i < bus.num_devices && i < 2; i++) {
             if (bus.devices[i].is_enabled && i < bus.lane_buffers.size()) {
-                max_size = fl::fl_max(max_size, bus.lane_buffers[i].size());
+                max_size = fl::max(max_size, bus.lane_buffers[i].size());
             }
         }
 
@@ -320,7 +320,7 @@ void SPIBusManager::finalizeTransmission(SPIBusHandle handle) {
     size_t max_size = 0;
     for (u8 i = 0; i < bus.num_devices; i++) {
         if (bus.devices[i].is_enabled && i < bus.lane_buffers.size()) {
-            max_size = fl::fl_max(max_size, bus.lane_buffers[i].size());
+            max_size = fl::max(max_size, bus.lane_buffers[i].size());
         }
     }
 
@@ -911,7 +911,7 @@ u32 SPIBusManager::selectBusSpeed(const SPIBusInfo& bus) {
 
     for (u8 i = 0; i < bus.num_devices; i++) {
         if (bus.devices[i].is_allocated && bus.devices[i].requested_speed_hz > 0) {
-            min_speed = fl::fl_min(min_speed, bus.devices[i].requested_speed_hz);
+            min_speed = fl::min(min_speed, bus.devices[i].requested_speed_hz);
             devices_with_speed++;
         }
     }

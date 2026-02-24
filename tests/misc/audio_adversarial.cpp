@@ -116,7 +116,7 @@ FL_TEST_CASE("Adversarial - SignalConditioner with max DC offset") {
         sum += output.pcm()[i];
     }
     float meanDC = static_cast<float>(sum) / static_cast<float>(output.pcm().size());
-    FL_CHECK_LT(fl::fl_abs(meanDC), 16000.0f);
+    FL_CHECK_LT(fl::abs(meanDC), 16000.0f);
 }
 
 FL_TEST_CASE("Adversarial - SignalConditioner with alternating spikes") {

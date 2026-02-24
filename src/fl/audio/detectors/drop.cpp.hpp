@@ -105,7 +105,7 @@ void DropDetector::reset() {
 
 float DropDetector::getBassEnergy(const FFTBins& fft) const {
     // Bass = first 25% of bins (sub-bass and bass)
-    int endBin = fl::fl_max(1, static_cast<int>(fft.raw().size() / 4));
+    int endBin = fl::max(1, static_cast<int>(fft.raw().size() / 4));
     float energy = 0.0f;
 
     for (int i = 0; i < endBin; i++) {
@@ -146,15 +146,15 @@ float DropDetector::getTrebleEnergy(const FFTBins& fft) const {
 
 float DropDetector::calculateSpectralNovelty(float bass, float mid, float treble) const {
     // Calculate how much the spectrum changed from previous frame
-    float bassChange = fl::fl_abs(bass - mPrevBassEnergy);
-    float midChange = fl::fl_abs(mid - mPrevMidEnergy);
-    float trebleChange = fl::fl_abs(treble - mPrevTrebleEnergy);
+    float bassChange = fl::abs(bass - mPrevBassEnergy);
+    float midChange = fl::abs(mid - mPrevMidEnergy);
+    float trebleChange = fl::abs(treble - mPrevTrebleEnergy);
 
     // Weight bass changes more heavily (drops often emphasize bass)
     float novelty = bassChange * 0.5f + midChange * 0.3f + trebleChange * 0.2f;
 
     // Normalize (typical max change is ~2.0)
-    return fl::fl_min(1.0f, novelty / 2.0f);
+    return fl::min(1.0f, novelty / 2.0f);
 }
 
 float DropDetector::calculateEnergyFlux(float currentRMS) const {
@@ -167,7 +167,7 @@ float DropDetector::calculateEnergyFlux(float currentRMS) const {
     float ratio = increase / mEnergyBaseline;
 
     // Normalize to [0, 1] (2x increase = 1.0)
-    return fl::fl_max(0.0f, fl::fl_min(1.0f, ratio / 2.0f));
+    return fl::max(0.0f, fl::min(1.0f, ratio / 2.0f));
 }
 
 float DropDetector::calculateBassFlux(float currentBass) const {
@@ -180,7 +180,7 @@ float DropDetector::calculateBassFlux(float currentBass) const {
     float ratio = increase / mBassBaseline;
 
     // Normalize to [0, 1] (2x increase = 1.0)
-    return fl::fl_max(0.0f, fl::fl_min(1.0f, ratio / 2.0f));
+    return fl::max(0.0f, fl::min(1.0f, ratio / 2.0f));
 }
 
 float DropDetector::calculateDropImpact(float energyFlux, float bassFlux, float spectralNovelty, float rms) const {
@@ -190,14 +190,14 @@ float DropDetector::calculateDropImpact(float energyFlux, float bassFlux, float 
     // - Spectral novelty (15%) - dramatic change
     // - Overall energy (10%) - absolute energy level
 
-    float normalizedRMS = fl::fl_min(1.0f, rms);
+    float normalizedRMS = fl::min(1.0f, rms);
 
     float impact = energyFlux * 0.4f +
                    bassFlux * 0.35f +
                    spectralNovelty * 0.15f +
                    normalizedRMS * 0.1f;
 
-    return fl::fl_max(0.0f, fl::fl_min(1.0f, impact));
+    return fl::max(0.0f, fl::min(1.0f, impact));
 }
 
 bool DropDetector::shouldTriggerDrop(float impact, u32 timestamp) const {

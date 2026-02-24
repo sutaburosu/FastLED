@@ -224,9 +224,9 @@ MultibandAccent BackbeatDetector::calculateMultibandAccent(const FFTBins& fft) {
     float highEnergy = 0.0f;
 
     // Adjust band ranges based on actual bin count
-    size bassEnd = fl::fl_min(static_cast<size>(4), numBins);
+    size bassEnd = fl::min(static_cast<size>(4), numBins);
     size midStart = bassEnd;
-    size midEnd = fl::fl_min(static_cast<size>(11), numBins);
+    size midEnd = fl::min(static_cast<size>(11), numBins);
     size highStart = midEnd;
     size highEnd = numBins;
 
@@ -380,7 +380,7 @@ void BackbeatDetector::updateBackbeatProfile(const FFTBins& fft) {
     // Update spectral profile using exponential moving average
     // This learns the typical frequency content of backbeats
 
-    size profileSize = fl::fl_min(mBackbeatSpectralProfile.size(), fft.raw().size());
+    size profileSize = fl::min(mBackbeatSpectralProfile.size(), fft.raw().size());
 
     for (size i = 0; i < profileSize; i++) {
         // EMA: profile = alpha * new + (1 - alpha) * old
@@ -408,7 +408,7 @@ float BackbeatDetector::calculatePatternConfidence(const FFTBins& fft) {
     }
 
     // Calculate normalized correlation
-    size compareSize = fl::fl_min(mBackbeatSpectralProfile.size(), fft.raw().size());
+    size compareSize = fl::min(mBackbeatSpectralProfile.size(), fft.raw().size());
 
     float dotProduct = 0.0f;
     float profileMag = 0.0f;

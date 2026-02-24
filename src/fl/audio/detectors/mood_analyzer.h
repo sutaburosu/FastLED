@@ -35,7 +35,7 @@ struct Mood {
         const float NEUTRAL_THRESHOLD = 0.3f;
 
         // Near center = neutral
-        if (fl_abs(valence) < NEUTRAL_THRESHOLD && arousal < NEUTRAL_THRESHOLD + 0.2f) {
+        if (abs(valence) < NEUTRAL_THRESHOLD && arousal < NEUTRAL_THRESHOLD + 0.2f) {
             return NEUTRAL;
         }
 

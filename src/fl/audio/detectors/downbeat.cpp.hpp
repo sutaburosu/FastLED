@@ -55,7 +55,7 @@ void DownbeatDetector::update(shared_ptr<AudioContext> context) {
 
         // Calculate current energy (bass-weighted for accent detection)
         float bassEnergy = 0.0f;
-        for (size i = 0; i < fl::fl_min(static_cast<size>(4), fft.raw().size()); i++) {
+        for (size i = 0; i < fl::min(static_cast<size>(4), fft.raw().size()); i++) {
             bassEnergy += fft.raw()[i];
         }
         bassEnergy /= 4.0f;
@@ -253,7 +253,7 @@ bool DownbeatDetector::detectDownbeat(u32 timestamp, float accent) {
     float expectedMeasureDuration = beatInterval * static_cast<float>(mBeatsPerMeasure);
 
     // Check if we're near expected measure boundary
-    float timingError = fl::fl_abs(static_cast<float>(timeSinceDownbeat) - expectedMeasureDuration);
+    float timingError = fl::abs(static_cast<float>(timeSinceDownbeat) - expectedMeasureDuration);
     float maxTimingError = beatInterval * 0.4f;  // Allow 40% timing error
     bool nearMeasureBoundary = (timingError < maxTimingError);
 
@@ -289,7 +289,7 @@ bool DownbeatDetector::detectDownbeat(u32 timestamp, float accent) {
     // Additional confidence boost for structural downbeats (at beat boundary)
     // This compensates for timing uncertainties in the first few measures
     if (atBeatCounterBoundary && mConfidence < 0.6f) {
-        mConfidence = fl::fl_max(mConfidence, 0.55f);  // Ensure minimum confidence at boundaries
+        mConfidence = fl::max(mConfidence, 0.55f);  // Ensure minimum confidence at boundaries
     }
 
     // Determine if this is a downbeat

@@ -39,9 +39,9 @@ void PercussionDetector::update(shared_ptr<AudioContext> context) {
     float bassEnv = mBassEnvelope.update(bassEnergy, kFrameDt);
     float midEnv = mMidEnvelope.update(midEnergy, kFrameDt);
     float trebleEnv = mTrebleEnvelope.update(trebleEnergy, kFrameDt);
-    float bassFlux = fl::fl_max(0.0f, bassEnergy - bassEnv);
-    float midFlux = fl::fl_max(0.0f, midEnergy - midEnv);
-    float trebleFlux = fl::fl_max(0.0f, trebleEnergy - trebleEnv);
+    float bassFlux = fl::max(0.0f, bassEnergy - bassEnv);
+    float midFlux = fl::max(0.0f, midEnergy - midEnv);
+    float trebleFlux = fl::max(0.0f, trebleEnergy - trebleEnv);
 
     // Detect individual percussion types and store state for polling
     mKickDetected = detectKick(bassEnergy, bassFlux, timestamp);

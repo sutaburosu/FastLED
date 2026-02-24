@@ -34,7 +34,7 @@
 #include "fl/unused.h"
 #include "fl/codec/mpeg1.h"
 #include "fl/bytestream.h"
-#include "fl/math_macros.h" // for fl_min
+#include "fl/math_macros.h" // for min
 #include "fl/stl/cstring.h"
 
 namespace fl {
@@ -122,7 +122,7 @@ public:
                 remainingInFrame = mFrameSize - mCurrentPos;
             }
 
-            fl::size toRead = fl::fl_min(bytesToRead, remainingInFrame);
+            fl::size toRead = fl::min(bytesToRead, remainingInFrame);
             if (toRead > 0 && mCurrentFrame && mCurrentFrame->rgb()) {
                 fl::memcpy(dst + totalRead, (fl::u8*)mCurrentFrame->rgb() + mCurrentPos, toRead);
                 mCurrentPos += toRead;
@@ -424,7 +424,7 @@ FramePtr FileSystem::loadJpeg(const char *path, const JpegConfig &config,
 
     fl::size bytesRead = 0;
     while (bytesRead < fileSize && file->available()) {
-        fl::size chunkSize = fl_min<fl::size>(4096, fileSize - bytesRead);
+        fl::size chunkSize = min<fl::size>(4096, fileSize - bytesRead);
         fl::size n = file->read(buffer.data() + bytesRead, chunkSize);
         if (n == 0) {
             break; // No more data to read

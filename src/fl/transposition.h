@@ -562,7 +562,7 @@ inline void transpose_generic_inline(
 /// optional<SPITransposer::LaneData> lane1 = SPITransposer::LaneData{lane1_data, apa102_padding};
 ///
 /// // Allocate output buffer (caller manages memory)
-/// size_t max_size = fl::fl_max(lane0_data.size(), lane1_data.size());
+/// size_t max_size = fl::max(lane0_data.size(), lane1_data.size());
 /// vector<uint8_t> output(max_size * 2);  // 2× for 2-way, 4× for 4-way, 8× for 8-way
 ///
 /// // Perform transpose

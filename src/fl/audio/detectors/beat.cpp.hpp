@@ -67,7 +67,7 @@ void BeatDetector::reset() {
 
 float BeatDetector::calculateSpectralFlux(const FFTBins& fft) {
     float flux = 0.0f;
-    size numBins = fl::fl_min(fft.raw().size(), mPreviousMagnitudes.size());
+    size numBins = fl::min(fft.raw().size(), mPreviousMagnitudes.size());
 
     // Only consider the bass quarter of FFT bins for beat detection.
     // Musical beats (kick drums) are characterized by bass/low-mid energy.
@@ -97,7 +97,7 @@ bool BeatDetector::detectBeat(u32 timestamp) {
     // the silence-to-signal transition when adaptive threshold is near zero,
     // and prevents CQ spectral leakage from triggering false beats.
     static constexpr float MIN_FLUX_THRESHOLD = 50.0f;
-    float effectiveThreshold = fl::fl_max(mAdaptiveThreshold, MIN_FLUX_THRESHOLD);
+    float effectiveThreshold = fl::max(mAdaptiveThreshold, MIN_FLUX_THRESHOLD);
 
     // Check if flux exceeds effective threshold
     if (mSpectralFlux <= effectiveThreshold) {
@@ -112,7 +112,7 @@ bool BeatDetector::detectBeat(u32 timestamp) {
 
     // Calculate confidence based on how much we exceeded threshold
     if (mAdaptiveThreshold > 0.0f) {
-        mConfidence = fl::fl_min(1.0f, (mSpectralFlux - mAdaptiveThreshold) / mAdaptiveThreshold);
+        mConfidence = fl::min(1.0f, (mSpectralFlux - mAdaptiveThreshold) / mAdaptiveThreshold);
     } else {
         mConfidence = 1.0f;
     }
@@ -136,7 +136,7 @@ void BeatDetector::updateTempo(u32 timestamp) {
         float newBPM = 60000.0f / static_cast<float>(mBeatInterval);
 
         // Check if tempo changed significantly
-        float bpmDiff = fl::fl_abs(newBPM - mBPM);
+        float bpmDiff = fl::abs(newBPM - mBPM);
         mTempoChanged = (bpmDiff > 5.0f);
 
         mBPM = newBPM;

@@ -481,7 +481,7 @@ void ChannelEngineSpi::beginBatchedTransmission(
         //   READY → beginTransmission() → BUSY → DRAINING → READY
         for (size_t batchIdx = 0; batchIdx < numBatches; batchIdx++) {
             size_t batchStart = batchIdx * K;
-            size_t batchEnd = fl_min(batchStart + K, N);
+            size_t batchEnd = min(batchStart + K, N);
 
 
             // Create span for this batch (subset of groupChannels)
@@ -1286,7 +1286,7 @@ size_t ChannelEngineSpi::encodeChunk(SpiChannelState* channel, u8* output, size_
 
     // Single-lane wave8 encoding via LUT
     const size_t max_led_bytes = output_capacity / WAVE8_BYTES_PER_COLOR_BYTE;
-    const size_t bytes_to_encode = fl_min(channel->ledBytesRemaining, max_led_bytes);
+    const size_t bytes_to_encode = min(channel->ledBytesRemaining, max_led_bytes);
 
     size_t total_bytes_written = wave8EncodeSingleLane(
         fl::span<const u8>(channel->ledSource, bytes_to_encode),
@@ -1300,7 +1300,7 @@ size_t ChannelEngineSpi::encodeChunk(SpiChannelState* channel, u8* output, size_
     if (channel->ledBytesRemaining == 0) {
         constexpr size_t RESET_ZERO_BYTES = 50;
         const size_t available = output_capacity - total_bytes_written;
-        const size_t reset_bytes = fl_min(RESET_ZERO_BYTES, available);
+        const size_t reset_bytes = min(RESET_ZERO_BYTES, available);
         if (reset_bytes > 0) {
             fl::memset(output + total_bytes_written, 0, reset_bytes);
             total_bytes_written += reset_bytes;

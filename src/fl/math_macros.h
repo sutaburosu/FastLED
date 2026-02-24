@@ -3,11 +3,21 @@
 #include "fl/compiler_control.h"
 #include "fl/stl/type_traits.h"
 
+// Platform macros for min/max/abs must be undefined so we can define
+// proper template functions in the fl namespace.
+#ifdef min
+#undef min
+#endif
+#ifdef max
+#undef max
+#endif
+#ifdef abs
+#undef abs
+#endif
+
 namespace fl {
 
-// Fun fact, we can't define any function by the name of min,max,abs because
-// on some platforms these are macros. Therefore we can only use fl_min, fl_max, fl_abs.
-template <typename T> constexpr inline T fl_abs(T value) {
+template <typename T> constexpr inline T abs(T value) {
     return value < 0 ? -value : value;
 }
 
@@ -21,11 +31,11 @@ FL_DISABLE_WARNING_FLOAT_CONVERSION
 
 // Template functions for FL_MIN and FL_MAX to avoid statement repetition
 // Returns the most promotable type between the two arguments
-template <typename T, typename U> constexpr inline common_type_t<T, U> fl_min(T a, U b) {
+template <typename T, typename U> constexpr inline common_type_t<T, U> min(T a, U b) {
     return (a < b) ? a : b;
 }
 
-template <typename T, typename U> constexpr inline common_type_t<T, U> fl_max(T a, U b) {
+template <typename T, typename U> constexpr inline common_type_t<T, U> max(T a, U b) {
     return (a > b) ? a : b;
 }
 
@@ -33,15 +43,15 @@ FL_DISABLE_WARNING_POP
 } // namespace fl
 
 #ifndef FL_MAX
-#define FL_MAX(a, b) fl::fl_max(a, b)
+#define FL_MAX(a, b) fl::max(a, b)
 #endif
 
 #ifndef FL_MIN
-#define FL_MIN(a, b) fl::fl_min(a, b)
+#define FL_MIN(a, b) fl::min(a, b)
 #endif
 
 #ifndef FL_ABS
-#define FL_ABS(x) fl::fl_abs(x)
+#define FL_ABS(x) fl::abs(x)
 #endif
 
 #ifndef FL_EPSILON_F

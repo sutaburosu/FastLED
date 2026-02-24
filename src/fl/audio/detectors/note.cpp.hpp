@@ -237,7 +237,7 @@ bool NoteDetector::shouldTriggerNoteChange(u8 newNote, u8 currentNote) const {
     }
 
     // Calculate semitone difference
-    int semitoneDistance = fl::fl_abs(static_cast<int>(newNote) - static_cast<int>(currentNote));
+    int semitoneDistance = fl::abs(static_cast<int>(newNote) - static_cast<int>(currentNote));
 
     // Trigger note change if difference exceeds threshold
     return semitoneDistance >= mNoteChangeThreshold;

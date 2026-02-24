@@ -143,7 +143,7 @@ float DynamicsAnalyzer::calculateTrend() {
     float rawTrend = (recentAvg - olderAvg) / olderAvg;
 
     // Clamp to reasonable range
-    return fl::fl_max(-1.0f, fl::fl_min(1.0f, rawTrend * 5.0f));
+    return fl::max(-1.0f, fl::min(1.0f, rawTrend * 5.0f));
 }
 
 void DynamicsAnalyzer::updatePeak(float rms) {
@@ -170,7 +170,7 @@ void DynamicsAnalyzer::updateCompression() {
     mCompressionRatio = 1.0f - (dynamicRange / mPeakRMS);
 
     // Clamp to 0-1
-    mCompressionRatio = fl::fl_max(0.0f, fl::fl_min(1.0f, mCompressionRatio));
+    mCompressionRatio = fl::max(0.0f, fl::min(1.0f, mCompressionRatio));
 }
 
 void DynamicsAnalyzer::setHistorySize(fl::size size) {
@@ -186,7 +186,7 @@ void DynamicsAnalyzer::setTrendThreshold(float threshold) {
 
 void DynamicsAnalyzer::setSmoothingFactor(float alpha) {
     // Clamp to 0-1
-    mSmoothingFactor = fl::fl_max(0.0f, fl::fl_min(1.0f, alpha));
+    mSmoothingFactor = fl::max(0.0f, fl::min(1.0f, alpha));
 }
 
 }  // namespace fl

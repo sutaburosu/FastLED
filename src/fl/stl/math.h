@@ -186,23 +186,7 @@ inline double ldexp(double value, int exp) { return ldexp_impl_double(value, exp
 template<typename T> inline T ldexp(T value, int exp) { return ldexp_impl_float(static_cast<float>(value), exp); }
 
 // Arduino-compatible math functions (replacing problematic macros)
-
-// min/max - type-safe template functions (avoid Arduino macro issues)
-template<typename T>
-constexpr inline T min(T a, T b) {
-    return (a < b) ? a : b;
-}
-
-template<typename T>
-constexpr inline T max(T a, T b) {
-    return (a > b) ? a : b;
-}
-
-// abs - absolute value (avoid Arduino macro issues)
-template<typename T>
-constexpr inline T abs(T value) {
-    return value < 0 ? -value : value;
-}
+// min/max/abs are defined in fl/math_macros.h (included above)
 
 // radians - convert degrees to radians
 template<typename T>

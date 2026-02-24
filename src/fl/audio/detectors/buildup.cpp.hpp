@@ -81,7 +81,7 @@ void BuildupDetector::update(shared_ptr<AudioContext> context) {
 
         // Calculate progress (0.0 to 1.0)
         float normalizedDuration = static_cast<float>(mCurrentBuildup.duration) / static_cast<float>(mMaxDuration);
-        mCurrentBuildup.progress = fl::fl_min(1.0f, normalizedDuration);
+        mCurrentBuildup.progress = fl::min(1.0f, normalizedDuration);
 
         // Check if we've reached peak (just before drop)
         if (!mPeakFired && shouldPeak()) {
@@ -175,7 +175,7 @@ float BuildupDetector::calculateEnergyTrend() const {
     }
 
     float riseRate = (currentSmoothed - oldestValue) / oldestValue;
-    return fl::fl_max(0.0f, fl::fl_min(2.0f, riseRate));  // Clamp to [0, 2]
+    return fl::max(0.0f, fl::min(2.0f, riseRate));  // Clamp to [0, 2]
 }
 
 float BuildupDetector::calculateTrebleTrend() const {
@@ -193,7 +193,7 @@ float BuildupDetector::calculateTrebleTrend() const {
     }
 
     float riseRate = (currentSmoothed - oldestValue) / oldestValue;
-    return fl::fl_max(0.0f, fl::fl_min(2.0f, riseRate));  // Clamp to [0, 2]
+    return fl::max(0.0f, fl::min(2.0f, riseRate));  // Clamp to [0, 2]
 }
 
 float BuildupDetector::calculateBuildupIntensity(float energyTrend, float trebleTrend, float rms) const {
@@ -202,7 +202,7 @@ float BuildupDetector::calculateBuildupIntensity(float energyTrend, float treble
     // - Treble rise trend (30%)
     // - Overall energy level (20%)
 
-    float normalizedEnergy = fl::fl_min(1.0f, rms);
+    float normalizedEnergy = fl::min(1.0f, rms);
     float normalizedEnergyTrend = energyTrend / 2.0f;  // Normalize from [0, 2] to [0, 1]
     float normalizedTrebleTrend = trebleTrend / 2.0f;
 
@@ -210,7 +210,7 @@ float BuildupDetector::calculateBuildupIntensity(float energyTrend, float treble
                       normalizedTrebleTrend * 0.3f +
                       normalizedEnergy * 0.2f;
 
-    return fl::fl_max(0.0f, fl::fl_min(1.0f, intensity));
+    return fl::max(0.0f, fl::min(1.0f, intensity));
 }
 
 bool BuildupDetector::shouldStartBuildup(float intensity) const {

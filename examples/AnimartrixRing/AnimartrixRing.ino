@@ -51,7 +51,7 @@ fl::ScreenMap screenmap =
     fl::ScreenMap(NUM_LEDS, 0.15f, [](int index, fl::vec2f &pt_out) {
         float centerX = GRID_WIDTH / 2.0f;
         float centerY = GRID_HEIGHT / 2.0f;
-        float radius = fl::fl_min(GRID_WIDTH, GRID_HEIGHT) / 2.0f - 1;
+        float radius = fl::min(GRID_WIDTH, GRID_HEIGHT) / 2.0f - 1;
         float angle = (TWO_PI * index) / NUM_LEDS;
         pt_out.x = centerX + fl::cos(angle) * radius;
         pt_out.y = centerY + fl::sin(angle) * radius;
@@ -237,7 +237,7 @@ void loop() {
             // Map volume to brightness
             if (audioAffectsBrightness.value()) {
                 float normalizedVolume = audioData.volume / 255.0f;
-                audioBrightnessFactor = fl::fl_max(
+                audioBrightnessFactor = fl::max(
                     0.3f, normalizedVolume * audioBrightnessMultiplier.value());
             }
 
