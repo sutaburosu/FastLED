@@ -69,7 +69,7 @@ FL_TEST_CASE("Audio fix - DC offset removed by default") {
         static_cast<float>(sum) / static_cast<float>(processed.size());
 
     // DESIRED: DC offset should be removed — mean should be near zero
-    FL_CHECK_LT(fl::fl_abs(meanDC), 500.0f);
+    FL_CHECK_LT(fl::abs(meanDC), 500.0f);
 }
 
 FL_TEST_CASE("Audio fix - I2S spike filtered by default") {
@@ -84,7 +84,7 @@ FL_TEST_CASE("Audio fix - I2S spike filtered by default") {
 
     // DESIRED: spike should be filtered out (zeroed or clamped)
     const auto &processed = processor.getSample().pcm();
-    FL_CHECK_LT(fl::fl_abs(static_cast<i32>(processed[100])), 15000);
+    FL_CHECK_LT(fl::abs(static_cast<i32>(processed[100])), 15000);
 }
 
 // =============================================================================
@@ -201,21 +201,20 @@ FL_TEST_CASE("Audio fix - TempoAnalyzer scores all BPM values equally") {
 
 FL_TEST_CASE("Audio fix - VocalDetector F1 formant spans multiple FFT bins") {
     // The VocalDetector should request enough FFT bins so that the F1 vocal
-    // formant range (500-900 Hz) spans at least 3 bins for meaningful
-    // formant detection. With 128 bins at 44100 Hz:
-    //   nyquist = 22050, hzPerBin = 22050/128 = 172.3 Hz
-    //   F1 min bin = 500/172.3 = 2, F1 max bin = 900/172.3 = 5
-    //   Span = 5 - 2 + 1 = 4 bins (sufficient)
+    // formant range (500-900 Hz) spans at least 3 CQ log-spaced bins for
+    // meaningful formant detection. With 128 CQ bins:
+    //   F1 min bin = freqToBin(500), F1 max bin = freqToBin(900)
+    //   Span should be >= 3 bins (sufficient)
 
     VocalDetector detector;
     const int numBins = detector.getNumBins();
 
-    const float sampleRate = 44100.0f;
-    const float nyquist = sampleRate / 2.0f;
-    const float hzPerBin = nyquist / static_cast<float>(numBins);
+    // Create an FFTBins to use its freqToBin method
+    FFTBins fftBins(numBins);
+    for (int i = 0; i < numBins; ++i) fftBins.bins_raw.push_back(0.0f);
 
-    int f1MinBin = static_cast<int>(500.0f / hzPerBin);
-    int f1MaxBin = static_cast<int>(900.0f / hzPerBin);
+    int f1MinBin = fftBins.freqToBin(500.0f);
+    int f1MaxBin = fftBins.freqToBin(900.0f);
 
     // DESIRED: F1 formant should span at least 3 bins for meaningful detection
     int f1BinSpan = f1MaxBin - f1MinBin + 1;
@@ -263,8 +262,8 @@ FL_TEST_CASE(
     // DESIRED: For equal-energy input, band outputs should be comparable.
     // Allow 2x tolerance — they don't need to be identical, but should be
     // in the same ballpark. Without EQ, mid typically dominates 5-10x.
-    float maxBand = fl::fl_max(b, fl::fl_max(m, t));
-    float minBand = fl::fl_min(b, fl::fl_min(m, t));
+    float maxBand = fl::max(b, fl::max(m, t));
+    float minBand = fl::min(b, fl::min(m, t));
 
     // All bands should be non-zero
     FL_CHECK_GT(b, 0.0f);

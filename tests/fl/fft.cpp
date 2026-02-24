@@ -377,3 +377,149 @@ FL_TEST_CASE("fl::FFT_Args - equality operator") {
     fl::FFT_Args args3(256, 8, 100.0f, 5000.0f, 22050);
     FL_CHECK(args1 != args3);
 }
+
+FL_TEST_CASE("fl::FFT - sine wave maps to correct CQ bin") {
+    const int bands = 16;
+
+    float testFreqs[] = {300.0f, 440.0f, 1000.0f, 2000.0f};
+
+    for (float freq : testFreqs) {
+        auto samples = generateSine(freq);
+        fl::FFTBins bins(bands);
+        fl::FFT fft;
+        fft.run(fl::span<const fl::i16>(samples.data(), samples.size()), &bins);
+
+        int peakBin = 0;
+        float peakVal = 0.0f;
+        for (int i = 0; i < bands; ++i) {
+            if (bins.bins_raw[i] > peakVal) {
+                peakVal = bins.bins_raw[i];
+                peakBin = i;
+            }
+        }
+
+        int expectedBin = bins.freqToBin(freq);
+        int diff = peakBin - expectedBin;
+        if (diff < 0) diff = -diff;
+        FL_CHECK_LE(diff, 1);
+    }
+}
+
+FL_TEST_CASE("fl::FFTBins - binToFreq known values") {
+    fl::FFTBins bins(16);
+    bins.setParams(174.6f, 4698.3f, 44100);
+    for (int i = 0; i < 16; ++i) bins.bins_raw.push_back(0.0f);
+
+    // Bin 0 = fmin
+    FL_CHECK(FL_ALMOST_EQUAL(bins.binToFreq(0), 174.6f, 0.1f));
+
+    // Bin 15 = fmax (within 1% due to fl:: math precision)
+    float relError = fl::abs(bins.binToFreq(15) - 4698.3f) / 4698.3f;
+    FL_CHECK_LT(relError, 0.01f);
+}
+
+FL_TEST_CASE("fl::FFTBins - freqToBin is inverse of binToFreq") {
+    fl::FFTBins bins(16);
+    bins.setParams(174.6f, 4698.3f, 44100);
+    for (int i = 0; i < 16; ++i) bins.bins_raw.push_back(0.0f);
+
+    for (int i = 0; i < 16; ++i) {
+        float freq = bins.binToFreq(i);
+        FL_CHECK_EQ(bins.freqToBin(freq), i);
+    }
+}
+
+FL_TEST_CASE("fl::FFTBins - freqToBin clamps to valid range") {
+    fl::FFTBins bins(16);
+    bins.setParams(174.6f, 4698.3f, 44100);
+    for (int i = 0; i < 16; ++i) bins.bins_raw.push_back(0.0f);
+
+    FL_CHECK_EQ(bins.freqToBin(10.0f), 0);
+    FL_CHECK_EQ(bins.freqToBin(50000.0f), 15);
+}
+
+FL_TEST_CASE("fl::FFTBins - linear bins redistribute energy") {
+    const int bands = 16;
+    auto samples = generateSine(440.0f);
+    fl::FFTBins bins(bands);
+    fl::FFT fft;
+    fft.run(fl::span<const fl::i16>(samples.data(), samples.size()), &bins);
+
+    const fl::vector<float>& linear = bins.getLinearBins();
+    FL_CHECK_EQ(linear.size(), static_cast<fl::size>(bands));
+
+    // Find peak in linear bins
+    int linPeakBin = 0;
+    float linPeakVal = 0.0f;
+    for (int i = 0; i < bands; ++i) {
+        if (linear[i] > linPeakVal) {
+            linPeakVal = linear[i];
+            linPeakBin = i;
+        }
+    }
+
+    float linBinWidth = (bins.fmax() - bins.fmin()) / static_cast<float>(bands);
+    float linPeakFreq = bins.fmin() + (static_cast<float>(linPeakBin) + 0.5f) * linBinWidth;
+
+    // Peak should be near 440 Hz (within 1.5 bin widths)
+    FL_CHECK_LT(fl::abs(linPeakFreq - 440.0f), linBinWidth * 1.5f);
+    FL_CHECK_GT(linPeakVal, 0.0f);
+}
+
+FL_TEST_CASE("fl::FFTBins - multi-freq CQ and linear mapping") {
+    const int bands = 16;
+    float freqs[] = {440.0f, 900.0f, 1600.0f};
+
+    for (float freq : freqs) {
+        auto samples = generateSine(freq);
+        fl::FFTBins bins(bands);
+        fl::FFT fft;
+        fft.run(fl::span<const fl::i16>(samples.data(), samples.size()), &bins);
+
+        // CQ bin check
+        int expectedBin = bins.freqToBin(freq);
+        int peakBin = 0;
+        float peakVal = 0.0f;
+        for (int i = 0; i < bands; ++i) {
+            if (bins.bins_raw[i] > peakVal) {
+                peakVal = bins.bins_raw[i];
+                peakBin = i;
+            }
+        }
+        int diff = peakBin - expectedBin;
+        if (diff < 0) diff = -diff;
+        FL_CHECK_LE(diff, 1);
+
+        // Linear bin check
+        const fl::vector<float>& linear = bins.getLinearBins();
+        int linPeakBin = 0;
+        float linPeakVal = 0.0f;
+        for (int i = 0; i < bands; ++i) {
+            if (linear[i] > linPeakVal) {
+                linPeakVal = linear[i];
+                linPeakBin = i;
+            }
+        }
+        float linBinWidth = (bins.fmax() - bins.fmin()) / static_cast<float>(bands);
+        float linPeakFreq = bins.fmin() + (static_cast<float>(linPeakBin) + 0.5f) * linBinWidth;
+        FL_CHECK_LT(fl::abs(linPeakFreq - freq), linBinWidth * 1.5f);
+    }
+}
+
+FL_TEST_CASE("fl::FFTImpl - info reports log-spaced") {
+    fl::FFT_Args args;
+    fl::FFTImpl fft(args);
+    fl::string info = fft.info();
+
+    // Should contain "log-spaced" to indicate CQ layout
+    bool hasLogSpaced = false;
+    const char* p = info.c_str();
+    while (*p) {
+        if (p[0] == 'l' && p[1] == 'o' && p[2] == 'g') {
+            hasLogSpaced = true;
+            break;
+        }
+        ++p;
+    }
+    FL_CHECK(hasLogSpaced);
+}

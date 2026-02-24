@@ -207,11 +207,10 @@ void BackbeatDetector::updateBeatPosition() {
 MultibandAccent BackbeatDetector::calculateMultibandAccent(const FFTBins& fft) {
     MultibandAccent accent;
 
-    // Define band ranges for 16-bin FFT (~22kHz sample rate)
-    // Bin spacing: ~1.4kHz per bin
-    // Bass: bins 0-3 (~0-5.6kHz) - actually contains kick + low snare
-    // Mid: bins 4-10 (~5.6-15.4kHz) - snare fundamental and harmonics
-    // High: bins 11-15 (~15.4-22kHz) - hi-hats, cymbals
+    // Define band ranges for 16-bin CQ log-spaced FFT
+    // Bass: bins 0-3 (~175-400 Hz) - kick drum fundamentals
+    // Mid: bins 4-10 (~460-2100 Hz) - snare fundamental and harmonics
+    // High: bins 11-15 (~2450-4698 Hz) - hi-hats, cymbals
 
     size numBins = fft.bins_raw.size();
     if (numBins == 0) {

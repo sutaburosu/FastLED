@@ -96,7 +96,7 @@ void PercussionDetector::reset() {
 }
 
 float PercussionDetector::getBassEnergy(const FFTBins& fft) {
-    // Bass range: bins 0-2 (typically 0-300 Hz)
+    // Bass range: bins 0-2 (~175-290 Hz, CQ log-spaced)
     float energy = 0.0f;
     for (fl::size i = 0; i < 3 && i < fft.bins_raw.size(); i++) {
         energy += fft.bins_raw[i];
@@ -105,7 +105,7 @@ float PercussionDetector::getBassEnergy(const FFTBins& fft) {
 }
 
 float PercussionDetector::getMidEnergy(const FFTBins& fft) {
-    // Mid range: bins 3-7 (typically 300-2000 Hz)
+    // Mid range: bins 3-7 (~340-1050 Hz, CQ log-spaced)
     float energy = 0.0f;
     for (fl::size i = 3; i < 8 && i < fft.bins_raw.size(); i++) {
         energy += fft.bins_raw[i];
@@ -114,7 +114,7 @@ float PercussionDetector::getMidEnergy(const FFTBins& fft) {
 }
 
 float PercussionDetector::getTrebleEnergy(const FFTBins& fft) {
-    // Treble range: bins 8-15 (typically 2000+ Hz)
+    // Treble range: bins 8-15 (~1220-4698 Hz, CQ log-spaced)
     float energy = 0.0f;
     for (fl::size i = 8; i < 16 && i < fft.bins_raw.size(); i++) {
         energy += fft.bins_raw[i];

@@ -2,6 +2,7 @@
 
 #include "fl/audio/detectors/key.h"
 #include "fl/audio/audio_context.h"
+#include "fl/fft.h"
 #include "fl/stl/math.h"
 #include "fl/dbg.h"
 #include "fl/stl/stdio.h"
@@ -185,19 +186,21 @@ void KeyDetector::extractChroma(const FFTBins& fft, float* chroma) {
         chroma[i] = 0.0f;
     }
 
-    // Map FFT bins to pitch classes
-    // Assume 44100 Hz sample rate and 512-point FFT
-    const float sampleRate = 44100.0f;
-    const int fftSize = 512;
-    const float binWidth = sampleRate / fftSize;
+    // Map FFT bins to pitch classes using linearly-rebinned magnitudes.
+    // Linear bins give evenly-spaced frequency mapping: freq = fmin + bin * binWidth.
+    const fl::vector<float>& linearBins = fft.getLinearBins();
+    const int numBins = static_cast<int>(linearBins.size());
+    const float fmin = fft.fmin();
+    const float fmax = fft.fmax();
+    const float linearBinWidth = (numBins > 0) ? (fmax - fmin) / static_cast<float>(numBins) : 1.0f;
 
-    // Process each FFT bin
-    for (size_t bin = 0; bin < fft.bins_raw.size(); bin++) {
-        float magnitude = fft.bins_raw[bin];
+    // Process each linear bin
+    for (int bin = 0; bin < numBins; bin++) {
+        float magnitude = linearBins[bin];
         if (magnitude < 1e-6f) continue;
 
-        // Calculate frequency for this bin
-        float freq = bin * binWidth;
+        // Calculate frequency for this linearly-spaced bin
+        float freq = fmin + (static_cast<float>(bin) + 0.5f) * linearBinWidth;
 
         // Skip frequencies below 60 Hz (below C2)
         if (freq < 60.0f) continue;

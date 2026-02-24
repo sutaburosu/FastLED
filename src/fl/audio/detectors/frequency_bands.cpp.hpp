@@ -19,21 +19,6 @@ const int kNumBands = 64;
 const float kFFTMinFreq = 100.0f;
 const float kFFTMaxFreq = 10000.0f;
 
-// Compute the log-spaced center frequency for a CQ kernel bin.
-// The CQ kernel uses: freq[i] = fmin * exp(log(fmax/fmin) * i / (bands-1))
-float cqCenterFreq(int i, int bands, float fmin, float fmax) {
-    float m = fl::logf(fmax / fmin);
-    return fmin * fl::expf(m * static_cast<float>(i) / static_cast<float>(bands - 1));
-}
-
-// Compute the frequency boundary between adjacent CQ bins.
-// Uses the geometric mean of adjacent center frequencies.
-float cqBinBoundary(int i, int bands, float fmin, float fmax) {
-    float f_i = cqCenterFreq(i, bands, fmin, fmax);
-    float f_next = cqCenterFreq(i + 1, bands, fmin, fmax);
-    return fl::sqrtf(f_i * f_next);
-}
-
 } // namespace
 
 FrequencyBands::FrequencyBands()
@@ -118,12 +103,12 @@ float FrequencyBands::calculateBandEnergy(const FFTBins& fft, float minFreq, flo
         if (i == 0) {
             binLow = fftMinFreq;
         } else {
-            binLow = cqBinBoundary(i - 1, numBins, fftMinFreq, fftMaxFreq);
+            binLow = fft.binBoundary(i - 1);
         }
         if (i == numBins - 1) {
             binHigh = fftMaxFreq;
         } else {
-            binHigh = cqBinBoundary(i, numBins, fftMinFreq, fftMaxFreq);
+            binHigh = fft.binBoundary(i);
         }
 
         // Calculate fractional overlap between this bin and the target band

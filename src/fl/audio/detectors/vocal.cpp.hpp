@@ -3,6 +3,7 @@
 
 #include "fl/audio/detectors/vocal.h"
 #include "fl/audio/audio_context.h"
+#include "fl/fft.h"
 #include "fl/stl/math.h"
 #include "fl/stl/algorithm.h"
 
@@ -120,29 +121,27 @@ float VocalDetector::calculateSpectralRolloff(const FFTBins& fft) {
 float VocalDetector::estimateFormantRatio(const FFTBins& fft) {
     if (fft.bins_raw.size() < 8) return 0.0f;
 
-    // Calculate bin-to-frequency mapping from actual sample rate
-    const float nyquist = static_cast<float>(mSampleRate) / 2.0f;
+    // Use CQ log-spaced bin mapping via FFTBins methods
     const int numBins = static_cast<int>(fft.bins_raw.size());
-    const float hzPerBin = nyquist / static_cast<float>(numBins);
 
     // F1 range: 500-900 Hz (first vocal formant)
-    const int f1MinBin = fl::fl_max(0, static_cast<int>(500.0f / hzPerBin));
-    const int f1MaxBin = fl::fl_min(numBins - 1, static_cast<int>(900.0f / hzPerBin));
+    const int f1MinBin = fl::max(0, fft.freqToBin(500.0f));
+    const int f1MaxBin = fl::min(numBins - 1, fft.freqToBin(900.0f));
 
     // F2 range: 1200-2400 Hz (second vocal formant)
-    const int f2MinBin = fl::fl_max(0, static_cast<int>(1200.0f / hzPerBin));
-    const int f2MaxBin = fl::fl_min(numBins - 1, static_cast<int>(2400.0f / hzPerBin));
+    const int f2MinBin = fl::max(0, fft.freqToBin(1200.0f));
+    const int f2MaxBin = fl::min(numBins - 1, fft.freqToBin(2400.0f));
 
     // Find peak energy in F1 range
     float f1Energy = 0.0f;
     for (int i = f1MinBin; i <= f1MaxBin && i < numBins; i++) {
-        f1Energy = fl::fl_max(f1Energy, fft.bins_raw[i]);
+        f1Energy = fl::max(f1Energy, fft.bins_raw[i]);
     }
 
     // Find peak energy in F2 range
     float f2Energy = 0.0f;
     for (int i = f2MinBin; i <= f2MaxBin && i < numBins; i++) {
-        f2Energy = fl::fl_max(f2Energy, fft.bins_raw[i]);
+        f2Energy = fl::max(f2Energy, fft.bins_raw[i]);
     }
 
     return (f1Energy < 1e-6f) ? 0.0f : f2Energy / f1Energy;
@@ -156,14 +155,14 @@ float VocalDetector::calculateRawConfidence(float centroid, float rolloff, float
 
     // Centroid score: peak at 0.5 (mid-frequency), falls off toward edges
     // Human voice has centroid in ~0.3-0.7 range
-    float centroidScore = fl::fl_max(0.0f, 1.0f - fl::fl_abs(normalizedCentroid - 0.5f) * 2.5f);
+    float centroidScore = fl::max(0.0f, 1.0f - fl::abs(normalizedCentroid - 0.5f) * 2.5f);
 
     // Rolloff score: peak at 0.65 (energy concentrated in lower-mid frequencies)
-    float rolloffScore = fl::fl_max(0.0f, 1.0f - fl::fl_abs(rolloff - 0.65f) / 0.3f);
+    float rolloffScore = fl::max(0.0f, 1.0f - fl::abs(rolloff - 0.65f) / 0.3f);
 
     // Formant score: continuous, peaks at ideal F2/F1 ratio of ~1.4 for vowels
     // Falls off smoothly rather than binary 0/1
-    float formantScore = fl::fl_max(0.0f, 1.0f - fl::fl_abs(formantRatio - 1.4f) / 0.6f);
+    float formantScore = fl::max(0.0f, 1.0f - fl::abs(formantRatio - 1.4f) / 0.6f);
 
     // Overall confidence is weighted average
     mConfidence = (centroidScore + rolloffScore + formantScore) / 3.0f;

@@ -71,7 +71,7 @@ float BeatDetector::calculateSpectralFlux(const FFTBins& fft) {
 
     // Only consider the bass quarter of FFT bins for beat detection.
     // Musical beats (kick drums) are characterized by bass/low-mid energy.
-    // With 16 bins from 30-4698 Hz, bins 0-3 cover ~30-1200 Hz (bass + low-mid).
+    // With 16 CQ log-spaced bins from 30-4698 Hz, bins 0-3 cover ~30-200 Hz (bass).
     // Treble transients (hi-hats, cymbals) in higher bins are excluded.
     size bassBins = numBins / 4;
     if (bassBins < 1) bassBins = 1;

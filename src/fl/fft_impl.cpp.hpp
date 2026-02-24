@@ -97,16 +97,13 @@ class FFTContext {
         // FASTLED_ASSERT(512 == m_cq_cfg.samples, "FFTImpl samples mismatch and
         // are still hardcoded to 512");
         out->clear();
+        out->setParams(m_cq_cfg.fmin, m_cq_cfg.fmax, m_cq_cfg.fs);
         // allocate
         FASTLED_STACK_ARRAY(kiss_fft_cpx, fft, m_cq_cfg.samples);
         FASTLED_STACK_ARRAY(kiss_fft_cpx, cq, m_cq_cfg.bands);
         // initialize
         kiss_fftr(m_fftr_cfg, buffer.data(), fft);
         apply_kernels(fft, cq, m_kernels, m_cq_cfg);
-        const float maxf = m_cq_cfg.fmax;
-        const float minf = m_cq_cfg.fmin;
-        const float delta_f = (maxf - minf) / m_cq_cfg.bands;
-
         // begin transform
         for (int i = 0; i < m_cq_cfg.bands; ++i) {
             // Q15 fixed-point values from kiss_fft: int16_t where 32768 = 1.0
@@ -122,10 +119,6 @@ class FFTContext {
             // Test expectations have been updated to match this implementation.
 
             float magnitude_db = 20 * log10(magnitude);
-            float f_start = minf + i * delta_f;
-            float f_end = f_start + delta_f;
-            FASTLED_UNUSED(f_start);
-            FASTLED_UNUSED(f_end);
 
             if (magnitude <= 0.0f) {
                 magnitude_db = 0.0f;
@@ -140,17 +133,21 @@ class FFTContext {
     }
 
     fl::string info() const {
-        // Calculate frequency delta
-        float delta_f = (m_cq_cfg.fmax - m_cq_cfg.fmin) / m_cq_cfg.bands;
-        fl::sstream ss;
-        ss << "FFTImpl Frequency Bands: ";
-
+        // Build a temporary FFTBins to use its binBoundary/binToFreq methods
+        FFTBins tmp(m_cq_cfg.bands);
+        tmp.setParams(m_cq_cfg.fmin, m_cq_cfg.fmax, m_cq_cfg.fs);
+        // Populate bins_raw so binToFreq uses correct size
         for (int i = 0; i < m_cq_cfg.bands; ++i) {
-            float f_start = m_cq_cfg.fmin + i * delta_f;
-            float f_end = f_start + delta_f;
-            ss << f_start << "Hz-" << f_end << "Hz, ";
+            tmp.bins_raw.push_back(0.0f);
         }
 
+        fl::sstream ss;
+        ss << "FFTImpl Frequency Bands (CQ log-spaced): ";
+        for (int i = 0; i < m_cq_cfg.bands; ++i) {
+            float f_low = (i == 0) ? m_cq_cfg.fmin : tmp.binBoundary(i - 1);
+            float f_high = (i == m_cq_cfg.bands - 1) ? m_cq_cfg.fmax : tmp.binBoundary(i);
+            ss << f_low << "Hz-" << f_high << "Hz, ";
+        }
         return ss.str();
     }
 

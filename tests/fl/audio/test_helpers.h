@@ -146,7 +146,8 @@ inline void generateDC(vector<i16> &out, int count, i16 dcOffset) {
 // FFT Test Data Generators
 // ============================================================================
 
-/// Generate synthetic FFT bin data with a peak at specified frequency
+/// Generate synthetic FFT bin data with a peak at specified frequency.
+/// Uses linear bin spacing (for use with FrequencyBinMapper and raw FFT data).
 /// @param numBins Number of frequency bins
 /// @param peakFrequency Frequency where the peak should occur (Hz)
 /// @param sampleRate Sample rate in Hz
@@ -160,6 +161,29 @@ inline vector<float> generateSyntheticFFT(size numBins, float peakFrequency, u32
         // Gaussian-like peak centered at peakFrequency
         float distance = fl::abs(binFreq - peakFrequency) / binWidth;
         float magnitude = fl::exp(-distance * distance / 2.0f);
+        bins.push_back(magnitude);
+    }
+    return bins;
+}
+
+/// Generate synthetic CQ-spaced FFT bin data with a peak at specified frequency.
+/// Uses CQ log-spaced frequency layout matching the actual CQ kernel.
+/// @param numBins Number of CQ bins
+/// @param peakFrequency Frequency where the peak should occur (Hz)
+/// @param fmin CQ minimum frequency
+/// @param fmax CQ maximum frequency
+/// @return Vector of float magnitudes (one per bin)
+inline vector<float> generateSyntheticCQFFT(size numBins, float peakFrequency,
+                                             float fmin = 174.6f, float fmax = 4698.3f) {
+    vector<float> bins;
+    bins.reserve(numBins);
+    int bands = static_cast<int>(numBins);
+    float logRatio = fl::logf(fmax / fmin);
+    for (size i = 0; i < numBins; ++i) {
+        float binFreq = fmin * fl::expf(logRatio * static_cast<float>(i) / static_cast<float>(bands - 1));
+        // Gaussian-like peak in log-frequency space
+        float logDistance = fl::logf(binFreq / peakFrequency) / logRatio * static_cast<float>(bands);
+        float magnitude = fl::exp(-logDistance * logDistance / 2.0f);
         bins.push_back(magnitude);
     }
     return bins;

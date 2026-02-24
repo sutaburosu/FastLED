@@ -1,5 +1,6 @@
 #include "fl/audio/detectors/chord.h"
 #include "fl/audio/audio_context.h"
+#include "fl/fft.h"
 #include "fl/stl/math.h"
 #include "fl/dbg.h"
 
@@ -129,21 +130,20 @@ void ChordDetector::calculateChroma(const FFTBins& fft) {
         mChroma[i] = 0.0f;
     }
 
-    // Map FFT bins to pitch classes (chroma)
-    // Assuming 44100Hz sample rate and 512-1024 sample FFT
-    // Each FFT bin represents a frequency range
-    // We need to map frequencies to musical notes (12-tone equal temperament)
-
-    const float sampleRate = 44100.0f;
-    const int fftSize = 1024;  // Assumed FFT size
-    const fl::size numBins = fft.size();
+    // Map FFT bins to pitch classes (chroma) using linearly-rebinned magnitudes.
+    // Linear bins give evenly-spaced frequency mapping: freq = fmin + bin * binWidth.
+    const fl::vector<float>& linearBins = fft.getLinearBins();
+    const fl::size numBins = linearBins.size();
+    const float fmin = fft.fmin();
+    const float fmax = fft.fmax();
+    const float linearBinWidth = (numBins > 0) ? (fmax - fmin) / static_cast<float>(numBins) : 1.0f;
 
     for (fl::size binIdx = 0; binIdx < numBins; binIdx++) {
-        float magnitude = fft.bins_raw[binIdx];
+        float magnitude = linearBins[binIdx];
         if (magnitude < 1e-6f) continue;
 
-        // Calculate frequency of this bin
-        float freq = (static_cast<float>(binIdx) * sampleRate) / static_cast<float>(fftSize);
+        // Calculate frequency for this linearly-spaced bin
+        float freq = fmin + (static_cast<float>(binIdx) + 0.5f) * linearBinWidth;
 
         // Skip frequencies below 60Hz (too low for chord detection)
         if (freq < 60.0f) continue;
