@@ -134,7 +134,7 @@ FL_TEST_CASE("VocalDetector - onVocalStart and onVocalEnd callbacks") {
         // Silence to potentially trigger vocal end
         fl::vector<fl::i16> silence(512, 0);
         auto silentCtx = fl::make_shared<AudioContext>(
-            AudioSample(fl::span<const fl::i16>(silence.data(), silence.size()), round * 1000 + 500));
+            AudioSample(silence, round * 1000 + 500));
         silentCtx->setSampleRate(44100);
         silentCtx->getFFT(128);
         detector.update(silentCtx);

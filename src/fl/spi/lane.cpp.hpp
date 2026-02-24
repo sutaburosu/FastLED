@@ -32,11 +32,11 @@ fl::span<u8> Lane::getBuffer(size_t size) {
     mBuffer.resize(size);
 
     // Return span to buffer
-    return fl::span<u8>(mBuffer.data(), mBuffer.size());
+    return mBuffer;
 }
 
 fl::span<const u8> Lane::data() const {
-    return fl::span<const u8>(mBuffer.data(), mBuffer.size());
+    return mBuffer;
 }
 
 } // namespace spi

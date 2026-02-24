@@ -79,6 +79,6 @@ FL_TEST_CASE("SoundLevelMeter - span overload works") {
     for (int i = 0; i < 512; ++i) {
         signal.push_back(static_cast<fl::i16>(8000 * ((i % 2 == 0) ? 1 : -1)));
     }
-    meter.processBlock(fl::span<const fl::i16>(signal.data(), signal.size()));
+    meter.processBlock(signal);
     FL_CHECK_GT(meter.getDBFS(), -20.0);
 }

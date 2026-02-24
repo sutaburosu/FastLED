@@ -76,7 +76,7 @@ public:
         if (!mEnqueuedChannels.empty()) {
             mTransmittingChannels = fl::move(mEnqueuedChannels);
             mEnqueuedChannels.clear();
-            beginTransmission(fl::span<const ChannelDataPtr>(mTransmittingChannels.data(), mTransmittingChannels.size()));
+            beginTransmission(mTransmittingChannels);
         }
     }
 

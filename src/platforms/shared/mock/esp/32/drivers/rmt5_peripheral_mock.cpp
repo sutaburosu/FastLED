@@ -542,7 +542,7 @@ fl::span<const u8> Rmt5PeripheralMockImpl::getLastTransmissionData() const {
         return fl::span<const u8>();
     }
     const auto& last = mHistory.back();
-    return fl::span<const u8>(last.buffer_copy.data(), last.buffer_copy.size());
+    return last.buffer_copy;
 }
 
 size_t Rmt5PeripheralMockImpl::getChannelCount() const {

@@ -20,7 +20,7 @@ static AudioSample makeSineAudioSample(float freq, fl::u32 timestamp) {
         float phase = 2.0f * FL_M_PI * freq * i / 44100.0f;
         data.push_back(static_cast<fl::i16>(16000.0f * fl::sinf(phase)));
     }
-    return AudioSample(fl::span<const fl::i16>(data.data(), data.size()), timestamp);
+    return AudioSample(data, timestamp);
 }
 
 } // anonymous namespace

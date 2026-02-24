@@ -263,7 +263,7 @@ fl::span<const DriverInfo> ChannelManager::getDriverInfos() const {
         });
     }
 
-    return fl::span<const DriverInfo>(mCachedDriverInfo.data(), mCachedDriverInfo.size());
+    return mCachedDriverInfo;
 }
 
 fl::shared_ptr<IChannelDriver> ChannelManager::getDriverByName(const fl::string& name) const {

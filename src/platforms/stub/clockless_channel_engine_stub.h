@@ -42,7 +42,7 @@ public:
         const auto& data = channelData->getData();
         fl::stub::simulateWS2812Output(
             channelData->getPin(),
-            fl::span<const u8>(data.data(), data.size()),
+            data,
             timing
         );
     }

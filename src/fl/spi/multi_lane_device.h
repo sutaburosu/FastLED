@@ -179,7 +179,7 @@ public:
         }
 
         // Single atomic write operation
-        return writeImpl(fl::span<const fl::span<const u8>>(lane_vec.data(), lane_vec.size()));
+        return writeImpl(lane_vec);
     }
 
     // ========== Configuration ==========

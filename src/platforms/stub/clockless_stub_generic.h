@@ -31,7 +31,7 @@ protected:
 		pixels_rgb.disableColorAdjustment();
 		auto iterator = pixels_rgb.as_iterator(RgbwInvalid());
 		iterator.writeWS2812(&mRgb);
-		mTracker.update(fl::span<const u8>(mRgb.data(), mRgb.size()));
+		mTracker.update(mRgb);
 	}
 
 private:
@@ -54,7 +54,7 @@ protected:
 		pixels_rgb.disableColorAdjustment();
 		auto iterator = pixels_rgb.as_iterator(RgbwInvalid());
 		iterator.writeWS2812(&mRgb);
-		mTracker.update(fl::span<const u8>(mRgb.data(), mRgb.size()));
+		mTracker.update(mRgb);
 	}
 
 private:
@@ -78,7 +78,7 @@ protected:
 		pixels_rgb.disableColorAdjustment();
 		auto iterator = pixels_rgb.as_iterator(RgbwInvalid());
 		iterator.writeWS2812(&mRgb);
-		mTracker.update(fl::span<const u8>(mRgb.data(), mRgb.size()));
+		mTracker.update(mRgb);
 	}
 
 private:

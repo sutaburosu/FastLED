@@ -1256,7 +1256,7 @@ void ValidationRemoteControl::registerFunctions(fl::shared_ptr<ValidationState> 
         fl::ChannelConfig channel_config(
             mState->pin_tx,
             fl::makeTimingConfig<fl::TIMING_WS2812B_V5>(),
-            fl::span<CRGB>(leds.data(), leds.size()),
+            leds,
             RGB
         );
 

@@ -115,7 +115,7 @@ FL_TEST_CASE("TempoAnalyzer - periodic onsets converge to BPM") {
 
     // Create context with initial silence
     fl::vector<fl::i16> silenceData(512, 0);
-    AudioSample silence(fl::span<const fl::i16>(silenceData.data(), silenceData.size()), 0);
+    AudioSample silence(silenceData, 0);
     auto ctx = fl::make_shared<AudioContext>(silence);
     ctx->setSampleRate(44100);
 
@@ -136,10 +136,10 @@ FL_TEST_CASE("TempoAnalyzer - periodic onsets converge to BPM") {
                     float phase = 2.0f * FL_M_PI * 200.0f * s / 44100.0f;
                     bassData.push_back(static_cast<fl::i16>(20000.0f * fl::sinf(phase)));
                 }
-                ctx->setSample(AudioSample(fl::span<const fl::i16>(bassData.data(), bassData.size()), timestamp));
+                ctx->setSample(AudioSample(bassData, timestamp));
             } else {
                 // Silence between beats
-                ctx->setSample(AudioSample(fl::span<const fl::i16>(silenceData.data(), silenceData.size()), timestamp));
+                ctx->setSample(AudioSample(silenceData, timestamp));
             }
 
             ctx->getFFT(16);
@@ -171,7 +171,7 @@ FL_TEST_CASE("TempoAnalyzer - onTempo callback fires") {
     const u32 frameIntervalMs = 23;
 
     fl::vector<fl::i16> silenceData(512, 0);
-    AudioSample silence(fl::span<const fl::i16>(silenceData.data(), silenceData.size()), 0);
+    AudioSample silence(silenceData, 0);
     auto ctx = fl::make_shared<AudioContext>(silence);
     ctx->setSampleRate(44100);
     ctx->getFFT(16);
@@ -188,9 +188,9 @@ FL_TEST_CASE("TempoAnalyzer - onTempo callback fires") {
                     float phase = 2.0f * FL_M_PI * 200.0f * s / 44100.0f;
                     bassData.push_back(static_cast<fl::i16>(20000.0f * fl::sinf(phase)));
                 }
-                ctx->setSample(AudioSample(fl::span<const fl::i16>(bassData.data(), bassData.size()), timestamp));
+                ctx->setSample(AudioSample(bassData, timestamp));
             } else {
-                ctx->setSample(AudioSample(fl::span<const fl::i16>(silenceData.data(), silenceData.size()), timestamp));
+                ctx->setSample(AudioSample(silenceData, timestamp));
             }
             ctx->getFFT(16);
             analyzer.update(ctx);
@@ -212,7 +212,7 @@ FL_TEST_CASE("TempoAnalyzer - onTempoChange callback fires on BPM shift") {
     analyzer.onTempoChange.add([&lastChangedBPM](float bpm) { lastChangedBPM = bpm; });
 
     fl::vector<fl::i16> silenceData(512, 0);
-    AudioSample silence(fl::span<const fl::i16>(silenceData.data(), silenceData.size()), 0);
+    AudioSample silence(silenceData, 0);
     auto ctx = fl::make_shared<AudioContext>(silence);
     ctx->setSampleRate(44100);
     ctx->getFFT(16);
@@ -231,9 +231,9 @@ FL_TEST_CASE("TempoAnalyzer - onTempoChange callback fires on BPM shift") {
                     float phase = 2.0f * FL_M_PI * 200.0f * s / 44100.0f;
                     bassData.push_back(static_cast<fl::i16>(20000.0f * fl::sinf(phase)));
                 }
-                ctx->setSample(AudioSample(fl::span<const fl::i16>(bassData.data(), bassData.size()), timestamp));
+                ctx->setSample(AudioSample(bassData, timestamp));
             } else {
-                ctx->setSample(AudioSample(fl::span<const fl::i16>(silenceData.data(), silenceData.size()), timestamp));
+                ctx->setSample(AudioSample(silenceData, timestamp));
             }
             ctx->getFFT(16);
             analyzer.update(ctx);
@@ -252,9 +252,9 @@ FL_TEST_CASE("TempoAnalyzer - onTempoChange callback fires on BPM shift") {
                     float phase = 2.0f * FL_M_PI * 200.0f * s / 44100.0f;
                     bassData.push_back(static_cast<fl::i16>(20000.0f * fl::sinf(phase)));
                 }
-                ctx->setSample(AudioSample(fl::span<const fl::i16>(bassData.data(), bassData.size()), timestamp));
+                ctx->setSample(AudioSample(bassData, timestamp));
             } else {
-                ctx->setSample(AudioSample(fl::span<const fl::i16>(silenceData.data(), silenceData.size()), timestamp));
+                ctx->setSample(AudioSample(silenceData, timestamp));
             }
             ctx->getFFT(16);
             analyzer.update(ctx);
@@ -275,7 +275,7 @@ FL_TEST_CASE("TempoAnalyzer - isStable becomes true with consistent tempo") {
     analyzer.setStabilityThreshold(5.0f);  // 5 BPM tolerance for stability
 
     fl::vector<fl::i16> silenceData(512, 0);
-    AudioSample silence(fl::span<const fl::i16>(silenceData.data(), silenceData.size()), 0);
+    AudioSample silence(silenceData, 0);
     auto ctx = fl::make_shared<AudioContext>(silence);
     ctx->setSampleRate(44100);
     ctx->getFFT(16);
@@ -294,9 +294,9 @@ FL_TEST_CASE("TempoAnalyzer - isStable becomes true with consistent tempo") {
                     float phase = 2.0f * FL_M_PI * 200.0f * s / 44100.0f;
                     bassData.push_back(static_cast<fl::i16>(20000.0f * fl::sinf(phase)));
                 }
-                ctx->setSample(AudioSample(fl::span<const fl::i16>(bassData.data(), bassData.size()), timestamp));
+                ctx->setSample(AudioSample(bassData, timestamp));
             } else {
-                ctx->setSample(AudioSample(fl::span<const fl::i16>(silenceData.data(), silenceData.size()), timestamp));
+                ctx->setSample(AudioSample(silenceData, timestamp));
             }
             ctx->getFFT(16);
             analyzer.update(ctx);

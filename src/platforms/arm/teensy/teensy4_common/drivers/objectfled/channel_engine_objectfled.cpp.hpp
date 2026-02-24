@@ -210,11 +210,13 @@ void ChannelEngineObjectFLED::show() {
 
         // Copy draw buffer into instance's frame buffer
         u32 totalBytes = drawBuf.getTotalBytes();
-        if (totalBytes > 0) {
+        u32 frameBufferSize = group->instance->getFrameBufferSize();
+        u32 copyBytes = totalBytes < frameBufferSize ? totalBytes : frameBufferSize;
+        if (copyBytes > 0) {
             fl::memcpy(
                 group->instance->getFrameBuffer(),
                 drawBuf.mAllLedsBufferUint8.get(),
-                totalBytes
+                copyBytes
             );
         }
 

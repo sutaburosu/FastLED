@@ -34,7 +34,7 @@ inline AudioSample makeSample(float freq, fl::u32 timestamp, float amplitude = 1
         float phase = 2.0f * FL_M_PI * freq * i / sampleRate;
         data.push_back(static_cast<fl::i16>(amplitude * fl::sinf(phase)));
     }
-    return AudioSample(fl::span<const fl::i16>(data.data(), data.size()), timestamp);
+    return AudioSample(data, timestamp);
 }
 
 /// Generate a silence audio sample (all zeros)
@@ -43,7 +43,7 @@ inline AudioSample makeSample(float freq, fl::u32 timestamp, float amplitude = 1
 /// @return AudioSample containing silence
 inline AudioSample makeSilence(fl::u32 timestamp, int count = 512) {
     fl::vector<fl::i16> data(count, 0);
-    return AudioSample(fl::span<const fl::i16>(data.data(), data.size()), timestamp);
+    return AudioSample(data, timestamp);
 }
 
 /// Generate a DC offset audio sample (constant value)
@@ -53,7 +53,7 @@ inline AudioSample makeSilence(fl::u32 timestamp, int count = 512) {
 /// @return AudioSample containing DC offset
 inline AudioSample makeDC(fl::i16 dcValue, fl::u32 timestamp, int count = 512) {
     fl::vector<fl::i16> data(count, dcValue);
-    return AudioSample(fl::span<const fl::i16>(data.data(), data.size()), timestamp);
+    return AudioSample(data, timestamp);
 }
 
 /// Generate a maximum amplitude audio sample (saturated signal)
@@ -62,7 +62,7 @@ inline AudioSample makeDC(fl::i16 dcValue, fl::u32 timestamp, int count = 512) {
 /// @return AudioSample with maximum i16 amplitude
 inline AudioSample makeMaxAmplitude(fl::u32 timestamp, int count = 512) {
     fl::vector<fl::i16> data(count, 32767);
-    return AudioSample(fl::span<const fl::i16>(data.data(), data.size()), timestamp);
+    return AudioSample(data, timestamp);
 }
 
 /// Generate audio sample from PCM data
@@ -70,7 +70,7 @@ inline AudioSample makeMaxAmplitude(fl::u32 timestamp, int count = 512) {
 /// @param timestamp Sample timestamp in milliseconds (default: 0)
 /// @return AudioSample wrapping the PCM data
 inline AudioSample makeSample(const vector<i16> &pcm, u32 timestamp = 0) {
-    return AudioSample(fl::span<const fl::i16>(pcm.data(), pcm.size()), timestamp);
+    return AudioSample(pcm, timestamp);
 }
 
 // ============================================================================

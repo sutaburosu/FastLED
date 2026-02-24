@@ -63,7 +63,7 @@ FL_TEST_CASE("AudioProcessor - onBass/onMid/onTreble callbacks fire") {
         if (combined < -32768) combined = -32768;
         data.push_back(static_cast<fl::i16>(combined));
     }
-    AudioSample sample(fl::span<const fl::i16>(data.data(), data.size()), 1000);
+    AudioSample sample(data, 1000);
     processor.update(sample);
 
     // The signal contains explicit 200Hz bass + 1000Hz mid + 4000Hz treble energy.
@@ -122,7 +122,7 @@ FL_TEST_CASE("AudioProcessor - onBeat callback fires with periodic bass") {
     // Feed silence to establish baseline
     fl::vector<fl::i16> silenceData(512, 0);
     for (int i = 0; i < 20; ++i) {
-        AudioSample silence(fl::span<const fl::i16>(silenceData.data(), silenceData.size()), i * 23);
+        AudioSample silence(silenceData, i * 23);
         processor.update(silence);
     }
 
@@ -136,13 +136,13 @@ FL_TEST_CASE("AudioProcessor - onBeat callback fires with periodic bass") {
             float phase = 2.0f * FL_M_PI * 200.0f * s / 44100.0f;
             bassData.push_back(static_cast<fl::i16>(20000.0f * fl::sinf(phase)));
         }
-        AudioSample bassSample(fl::span<const fl::i16>(bassData.data(), bassData.size()), timestamp);
+        AudioSample bassSample(bassData, timestamp);
         processor.update(bassSample);
 
         // Silence between beats
         for (int frame = 1; frame < 22; ++frame) {
             timestamp += 23;
-            AudioSample silence(fl::span<const fl::i16>(silenceData.data(), silenceData.size()), timestamp);
+            AudioSample silence(silenceData, timestamp);
             processor.update(silence);
         }
         timestamp += 23;

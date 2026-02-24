@@ -100,7 +100,7 @@ FL_TEST_CASE("BackbeatDetector - Callbacks") {
         samples[i] = static_cast<i16>(0.5f * fl::sinf(phase) * 32767.0f);
     }
 
-    AudioSample sample(fl::span<const i16>(samples.data(), samples.size()));
+    AudioSample sample(samples);
     auto context = make_shared<AudioContext>(sample);
 
     // Update detector
@@ -150,7 +150,7 @@ FL_TEST_CASE("BackbeatDetector - Detector dependencies") {
 
     // Create audio context
     vector<i16> samples(512, 0);
-    AudioSample sample(fl::span<const i16>(samples.data(), samples.size()));
+    AudioSample sample(samples);
     auto context = make_shared<AudioContext>(sample);
 
     // Should not crash with shared detectors
@@ -181,7 +181,7 @@ FL_TEST_CASE("BackbeatDetector - Multiple update cycles") {
     vector<i16> samples(512, 0);
 
     // Generate silence
-    AudioSample sample1(fl::span<const i16>(samples.data(), samples.size()));
+    AudioSample sample1(samples);
     auto context1 = make_shared<AudioContext>(sample1);
     detector.update(context1);
 
@@ -191,7 +191,7 @@ FL_TEST_CASE("BackbeatDetector - Multiple update cycles") {
         samples[i] = static_cast<i16>(0.5f * fl::sinf(phase) * 32767.0f);
     }
 
-    AudioSample sample2(fl::span<const i16>(samples.data(), samples.size()));
+    AudioSample sample2(samples);
     auto context2 = make_shared<AudioContext>(sample2);
     detector.update(context2);
 
@@ -201,7 +201,7 @@ FL_TEST_CASE("BackbeatDetector - Multiple update cycles") {
         samples[i] = static_cast<i16>(0.8f * fl::sinf(phase) * 32767.0f);
     }
 
-    AudioSample sample3(fl::span<const i16>(samples.data(), samples.size()));
+    AudioSample sample3(samples);
     auto context3 = make_shared<AudioContext>(sample3);
     detector.update(context3);
 

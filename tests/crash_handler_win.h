@@ -316,7 +316,38 @@ inline void print_stacktrace_windows() {
     printf("\n");
 }
 
+// Helper: returns true for exception codes that are fatal/actionable
+inline bool is_fatal_exception(DWORD code) {
+    switch (code) {
+        case EXCEPTION_ACCESS_VIOLATION:
+        case EXCEPTION_STACK_OVERFLOW:
+        case EXCEPTION_ILLEGAL_INSTRUCTION:
+        case EXCEPTION_PRIV_INSTRUCTION:
+        case EXCEPTION_NONCONTINUABLE_EXCEPTION:
+        case EXCEPTION_ARRAY_BOUNDS_EXCEEDED:
+        case EXCEPTION_FLT_DIVIDE_BY_ZERO:
+        case EXCEPTION_FLT_INVALID_OPERATION:
+        case EXCEPTION_FLT_OVERFLOW:
+        case EXCEPTION_FLT_STACK_CHECK:
+        case EXCEPTION_FLT_UNDERFLOW:
+        case EXCEPTION_INT_DIVIDE_BY_ZERO:
+        case EXCEPTION_INT_OVERFLOW:
+        case 0xC0000374: // STATUS_HEAP_CORRUPTION
+            return true;
+        default:
+            return false;
+    }
+}
+
 inline LONG WINAPI windows_exception_handler(EXCEPTION_POINTERS* ExceptionInfo) {
+    DWORD code = ExceptionInfo->ExceptionRecord->ExceptionCode;
+
+    // Skip non-fatal exceptions (e.g., debug breakpoints, C++ exceptions)
+    // This is important because AddVectoredExceptionHandler sees ALL exceptions
+    if (!is_fatal_exception(code)) {
+        return EXCEPTION_CONTINUE_SEARCH;
+    }
+
     // Prevent recursion if handler crashes
     static volatile LONG already_dumping = 0;
     if (InterlockedExchange(&already_dumping, 1) != 0) {
@@ -378,6 +409,11 @@ inline LONG WINAPI windows_exception_handler(EXCEPTION_POINTERS* ExceptionInfo) 
             break;
         case EXCEPTION_INT_OVERFLOW:
             printf("Exception type: Integer Overflow\n");
+            break;
+        case 0xC0000374: // STATUS_HEAP_CORRUPTION
+            printf("Exception type: Heap Corruption\n");
+            printf("This typically indicates a buffer overflow, use-after-free, or double-free.\n");
+            printf("Run with --debug (ASAN) to get detailed allocation/deallocation traces.\n");
             break;
         default:
             printf("Exception type: Unknown (0x%08lx)\n",
@@ -474,7 +510,12 @@ inline void setup_crash_handler() {
 
     printf("Setting up Windows crash handler...\n");
 
-    // Set up Windows structured exception handling
+    // Add vectored exception handler (first chance) to catch heap corruption
+    // and other fatal exceptions before Windows terminates the process.
+    // The '1' parameter makes this handler run FIRST, before other handlers.
+    AddVectoredExceptionHandler(1, windows_exception_handler);
+
+    // Set up Windows structured exception handling (second chance)
     SetUnhandledExceptionFilter(windows_exception_handler);
 
     // Also handle standard C signals on Windows

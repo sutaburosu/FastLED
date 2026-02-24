@@ -270,13 +270,13 @@ void SPIBusManager::finalizeTransmission(SPIBusHandle handle) {
         fl::optional<SPITransposer::LaneData> lane0, lane1;
         if (bus.num_devices > 0 && bus.devices[0].is_enabled && 0 < bus.lane_buffers.size()) {
             lane0 = SPITransposer::LaneData{
-                fl::span<const u8>(bus.lane_buffers[0].data(), bus.lane_buffers[0].size()),
+                bus.lane_buffers[0],
                 fl::span<const u8>()  // No padding frame yet
             };
         }
         if (bus.num_devices > 1 && bus.devices[1].is_enabled && 1 < bus.lane_buffers.size()) {
             lane1 = SPITransposer::LaneData{
-                fl::span<const u8>(bus.lane_buffers[1].data(), bus.lane_buffers[1].size()),
+                bus.lane_buffers[1],
                 fl::span<const u8>()  // No padding frame yet
             };
         }
@@ -380,7 +380,7 @@ void SPIBusManager::finalizeTransmission(SPIBusHandle handle) {
         for (u8 i = 0; i < bus.num_devices && i < 16; i++) {
             if (bus.devices[i].is_enabled && i < bus.lane_buffers.size()) {
                 lanes[i] = SPITransposer::LaneData{
-                    fl::span<const u8>(bus.lane_buffers[i].data(), bus.lane_buffers[i].size()),
+                    bus.lane_buffers[i],
                     fl::span<const u8>()  // Zero-padding (universal fallback)
                 };
             }
@@ -414,7 +414,7 @@ void SPIBusManager::finalizeTransmission(SPIBusHandle handle) {
                 // 2. Padding frame passed during device registration (requires user management)
                 // 3. Ensure all strips in parallel group have identical LED counts (current best practice)
                 lanes[i] = SPITransposer::LaneData{
-                    fl::span<const u8>(bus.lane_buffers[i].data(), bus.lane_buffers[i].size()),
+                    bus.lane_buffers[i],
                     fl::span<const u8>()  // Zero-padding (universal fallback)
                 };
             }
@@ -448,7 +448,7 @@ void SPIBusManager::finalizeTransmission(SPIBusHandle handle) {
                 // 2. Padding frame passed during device registration (requires user management)
                 // 3. Ensure all strips in parallel group have identical LED counts (current best practice)
                 lanes[i] = SPITransposer::LaneData{
-                    fl::span<const u8>(bus.lane_buffers[i].data(), bus.lane_buffers[i].size()),
+                    bus.lane_buffers[i],
                     fl::span<const u8>()  // Zero-padding (universal fallback)
                 };
             }

@@ -112,6 +112,12 @@ public:
         update(fl::span<const u8>(data, size));
     }
 
+    /// @brief Update from a fl::vector<u8> (resolves ambiguity with CRGB overload)
+    template <typename Alloc>
+    void update(const fl::vector<u8, Alloc>& container) {
+        update(fl::span<const u8>(container.data(), container.size())); // ok span from pointer
+    }
+
     /// @brief Get the strip ID for this tracker
     /// @return The strip ID assigned to this controller
     int getId() const { return mId; }

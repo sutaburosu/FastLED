@@ -39,11 +39,11 @@ struct ConstSpanWrapper {
     ConstSpanWrapper(const fl::vector<T>& v) : value(v) {}
 
     operator fl::span<const T>() const {
-        return fl::span<const T>(value.data(), value.size());
+        return value;
     }
 
     fl::span<const T> get() const {
-        return fl::span<const T>(value.data(), value.size());
+        return value;
     }
 };
 

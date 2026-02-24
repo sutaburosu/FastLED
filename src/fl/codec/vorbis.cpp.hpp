@@ -232,7 +232,7 @@ bool VorbisDecoderImpl::decodeNextFrame(AudioSample* outSample) {
             fl::i32 right = mPcmBuffer[i * 2 + 1];
             mono.push_back(static_cast<fl::i16>((left + right) / 2));
         }
-        *outSample = AudioSample(fl::span<const fl::i16>(mono.data(), mono.size()));
+        *outSample = AudioSample(mono);
     } else {
         *outSample = AudioSample(fl::span<const fl::i16>(mPcmBuffer.data(), samplesDecoded));
     }
@@ -310,7 +310,7 @@ fl::vector<AudioSample> Vorbis::decodeAll(fl::span<const fl::u8> data, fl::strin
                 fl::i32 right = buffer[i * 2 + 1];
                 mono.push_back(static_cast<fl::i16>((left + right) / 2));
             }
-            samples.push_back(AudioSample(fl::span<const fl::i16>(mono.data(), mono.size())));
+            samples.push_back(AudioSample(mono));
         } else {
             samples.push_back(AudioSample(fl::span<const fl::i16>(buffer.data(), samplesDecoded)));
         }

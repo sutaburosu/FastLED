@@ -111,7 +111,7 @@ fl::vector<AudioSample> Mp3HelixDecoder::decodeToAudioSamples(const fl::u8* data
                 mono_pcm.push_back(static_cast<fl::i16>(avg));
             }
 
-            AudioSample sample(fl::span<const fl::i16>(mono_pcm.data(), mono_pcm.size()));
+            AudioSample sample(mono_pcm);
             samples.push_back(sample);
         } else {
             // Mono audio - use directly
@@ -323,7 +323,7 @@ bool Mp3StreamDecoderImpl::findAndDecodeFrame(AudioSample* out_sample) {
                 mono_pcm.push_back(static_cast<fl::i16>(avg));
             }
 
-            *out_sample = AudioSample(fl::span<const fl::i16>(mono_pcm.data(), mono_pcm.size()));
+            *out_sample = AudioSample(mono_pcm);
         } else {
             // Mono audio - use directly
             *out_sample = AudioSample(fl::span<const fl::i16>(frame.pcm, frame.samples));

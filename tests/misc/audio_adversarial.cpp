@@ -47,7 +47,7 @@ FL_TEST_CASE("Adversarial - FFT with DC-only input produces no spectral peaks") 
     FFT fft;
     fl::vector<fl::i16> dcSignal(512, 10000);  // Pure DC
     FFTBins bins(16);
-    fft.run(fl::span<const fl::i16>(dcSignal.data(), dcSignal.size()), &bins);
+    fft.run(dcSignal, &bins);
 
     // DC should not produce significant energy in frequency bins
     // (CQ transform starts at ~175 Hz, DC is 0 Hz)
@@ -67,7 +67,7 @@ FL_TEST_CASE("Adversarial - FFT with alternating max samples") {
         alternating.push_back((i % 2 == 0) ? 32767 : -32768);
     }
     FFTBins bins(16);
-    fft.run(fl::span<const fl::i16>(alternating.data(), alternating.size()), &bins);
+    fft.run(alternating, &bins);
 
     // Should not crash, bins should have values
     FL_CHECK_GT(bins.bins_raw.size(), 0u);
@@ -85,7 +85,7 @@ FL_TEST_CASE("Adversarial - FFT with single impulse") {
     fl::vector<fl::i16> impulse(512, 0);
     impulse[0] = 32767;
     FFTBins bins(16);
-    fft.run(fl::span<const fl::i16>(impulse.data(), impulse.size()), &bins);
+    fft.run(impulse, &bins);
 
     // Impulse should distribute energy across all frequency bins
     FL_CHECK_GT(bins.bins_raw.size(), 0u);
@@ -107,7 +107,7 @@ FL_TEST_CASE("Adversarial - SignalConditioner with max DC offset") {
 
     // Feed constant max positive value
     fl::vector<fl::i16> maxDC(512, 32767);
-    AudioSample inputSample(fl::span<const fl::i16>(maxDC.data(), maxDC.size()), 0);
+    AudioSample inputSample(maxDC, 0);
     AudioSample output = conditioner.processSample(inputSample);
 
     // After DC removal, output should be near zero (or at least reduced)
@@ -130,7 +130,7 @@ FL_TEST_CASE("Adversarial - SignalConditioner with alternating spikes") {
     for (int i = 0; i < 512; ++i) {
         spiky[i] = (i % 2 == 0) ? 30000 : 0;
     }
-    AudioSample inputSample(fl::span<const fl::i16>(spiky.data(), spiky.size()), 0);
+    AudioSample inputSample(spiky, 0);
     AudioSample output = conditioner.processSample(inputSample);
 
     fl::i16 maxVal = 0;
@@ -149,7 +149,7 @@ FL_TEST_CASE("Adversarial - AutoGain with silence doesn't produce NaN") {
     gain.configure(config);
 
     fl::vector<fl::i16> silence(512, 0);
-    AudioSample inputSample(fl::span<const fl::i16>(silence.data(), silence.size()), 0);
+    AudioSample inputSample(silence, 0);
 
     // Feed many frames of silence
     AudioSample output = inputSample;
@@ -180,7 +180,7 @@ FL_TEST_CASE("Adversarial - AutoGain with max amplitude clipping") {
         float phase = 2.0f * FL_M_PI * 440.0f * i / 44100.0f;
         loud.push_back(static_cast<fl::i16>(20000.0f * fl::sinf(phase)));
     }
-    AudioSample inputSample(fl::span<const fl::i16>(loud.data(), loud.size()), 0);
+    AudioSample inputSample(loud, 0);
 
     AudioSample output = inputSample;
     for (int iter = 0; iter < 20; ++iter) {
@@ -382,7 +382,7 @@ FL_TEST_CASE("Adversarial - AudioProcessor full pipeline with silence") {
     // Feed only silence through full pipeline
     for (int i = 0; i < 50; ++i) {
         fl::vector<fl::i16> silence(512, 0);
-        AudioSample sample(fl::span<const fl::i16>(silence.data(), silence.size()), i * 23);
+        AudioSample sample(silence, i * 23);
         processor.update(sample);
     }
 
@@ -452,7 +452,7 @@ FL_TEST_CASE("Adversarial - FrequencyBands with sub-bass frequency") {
     }
 
     auto ctx = fl::make_shared<AudioContext>(
-        AudioSample(fl::span<const fl::i16>(subBass.data(), subBass.size()), 0));
+        AudioSample(subBass, 0));
     ctx->setSampleRate(44100);
     bands.update(ctx);
 
@@ -474,7 +474,7 @@ FL_TEST_CASE("Adversarial - FrequencyBands with Nyquist frequency") {
     }
 
     auto ctx = fl::make_shared<AudioContext>(
-        AudioSample(fl::span<const fl::i16>(nyquist.data(), nyquist.size()), 0));
+        AudioSample(nyquist, 0));
     ctx->setSampleRate(44100);
     bands.update(ctx);
 
@@ -525,7 +525,7 @@ FL_TEST_CASE("Adversarial - single sample buffer") {
 
     // Create a buffer with exactly 1 sample
     fl::vector<fl::i16> single(1, 5000);
-    AudioSample singleSample(fl::span<const fl::i16>(single.data(), single.size()), 2000);
+    AudioSample singleSample(single, 2000);
     AudioSample result = conditioner.processSample(singleSample);
 
     // Should not crash
@@ -538,7 +538,7 @@ FL_TEST_CASE("Adversarial - rapid config switching") {
     SignalConditioner conditioner;
 
     fl::vector<fl::i16> samples(512, 5000);
-    AudioSample audio(fl::span<const fl::i16>(samples.data(), samples.size()), 0);
+    AudioSample audio(samples, 0);
 
     // Switch configs every frame for 100 frames
     for (int i = 0; i < 100; ++i) {
@@ -561,7 +561,7 @@ FL_TEST_CASE("Adversarial - monotonic signal no false beats") {
         // Linear ramp from 0 to 32767
         ramp.push_back(static_cast<fl::i16>((static_cast<fl::i32>(i) * 32767) / 511));
     }
-    AudioSample rampSample(fl::span<const fl::i16>(ramp.data(), ramp.size()), 3000);
+    AudioSample rampSample(ramp, 3000);
 
     // Process through signal conditioner
     SignalConditioner conditioner;

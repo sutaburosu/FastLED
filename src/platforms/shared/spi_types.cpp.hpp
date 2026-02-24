@@ -56,7 +56,7 @@ fl::span<u8> DMABuffer::data() const {
     if (!ok()) {
         return fl::span<u8>();
     }
-    return fl::span<u8>(m_internal->buffer.data(), m_internal->buffer.size());
+    return m_internal->buffer;
 }
 
 SPIError DMABuffer::error() const {

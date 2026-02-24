@@ -44,7 +44,7 @@ FL_TEST_CASE("ActiveStripData JSON Round-Trip Test") {
             auto iterator = pixels.as_iterator(RgbwInvalid());
             iterator.writeWS2812(&rgbBuffer);
             
-            data.update(mStripId, 1000, fl::span<const uint8_t>(rgbBuffer.data(), rgbBuffer.size()));
+            data.update(mStripId, 1000, rgbBuffer);
         }
         
         uint16_t getMaxRefreshRate() const override { return 60; }

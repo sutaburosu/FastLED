@@ -290,7 +290,7 @@ void setup() {
     g_validation_state->pin_rx = DEFAULT_PIN_RX;
     g_validation_state->default_pin_tx = DEFAULT_PIN_TX;
     g_validation_state->default_pin_rx = DEFAULT_PIN_RX;
-    g_validation_state->rx_buffer = fl::span<uint8_t>(g_rx_buffer_storage.data(), g_rx_buffer_storage.size());
+    g_validation_state->rx_buffer = g_rx_buffer_storage;
     g_validation_state->rx_factory = createRxDevice;
 
     const char* loop_back_mode = PIN_TX == PIN_RX ? "INTERNAL" : "JUMPER WIRE";

@@ -370,7 +370,7 @@ FL_TEST_CASE("AudioSample - span constructor") {
         float phase = 2.0f * 3.14159265f * 440.0f * i / 44100.0f;
         data.push_back(static_cast<fl::i16>(16000.0f * fl::sinf(phase)));
     }
-    AudioSample sample(fl::span<const fl::i16>(data.data(), data.size()), 12345);
+    AudioSample sample(data, 12345);
     FL_CHECK(sample.isValid());
     FL_CHECK_EQ(sample.size(), 512u);
     FL_CHECK_EQ(sample.timestamp(), 12345u);
@@ -385,7 +385,7 @@ FL_TEST_CASE("AudioSample - zcf for sine wave vs noise") {
         float phase = 2.0f * 3.14159265f * 440.0f * i / 44100.0f;
         sineSamples.push_back(static_cast<fl::i16>(16000.0f * fl::sinf(phase)));
     }
-    AudioSample sineSample(fl::span<const fl::i16>(sineSamples.data(), sineSamples.size()), 0);
+    AudioSample sineSample(sineSamples, 0);
     float sineZcf = sineSample.zcf();
     FL_CHECK_GE(sineZcf, 0.0f);
     FL_CHECK_LT(sineZcf, 0.1f);
@@ -396,7 +396,7 @@ FL_TEST_CASE("AudioSample - zcf for sine wave vs noise") {
     for (int i = 0; i < 512; ++i) {
         noiseSamples.push_back(static_cast<fl::i16>((i % 2 == 0) ? 10000 : -10000));
     }
-    AudioSample noiseSample(fl::span<const fl::i16>(noiseSamples.data(), noiseSamples.size()), 0);
+    AudioSample noiseSample(noiseSamples, 0);
     float noiseZcf = noiseSample.zcf();
     FL_CHECK_GT(noiseZcf, 0.3f);
 }
@@ -404,7 +404,7 @@ FL_TEST_CASE("AudioSample - zcf for sine wave vs noise") {
 FL_TEST_CASE("AudioSample - rms for known signal") {
     // Silence → RMS = 0
     fl::vector<fl::i16> silence(512, 0);
-    AudioSample silentSample(fl::span<const fl::i16>(silence.data(), silence.size()), 0);
+    AudioSample silentSample(silence, 0);
     FL_CHECK_EQ(silentSample.rms(), 0.0f);
 
     // Constant amplitude ±8000 → RMS = 8000
@@ -413,7 +413,7 @@ FL_TEST_CASE("AudioSample - rms for known signal") {
     for (int i = 0; i < 512; ++i) {
         constant.push_back(static_cast<fl::i16>((i % 2 == 0) ? 8000 : -8000));
     }
-    AudioSample constSample(fl::span<const fl::i16>(constant.data(), constant.size()), 0);
+    AudioSample constSample(constant, 0);
     float rms = constSample.rms();
     FL_CHECK_GT(rms, 7000.0f);
     FL_CHECK_LT(rms, 9000.0f);
@@ -426,7 +426,7 @@ FL_TEST_CASE("AudioSample - fft produces output") {
         float phase = 2.0f * 3.14159265f * 1000.0f * i / 44100.0f;
         data.push_back(static_cast<fl::i16>(16000.0f * fl::sinf(phase)));
     }
-    AudioSample sample(fl::span<const fl::i16>(data.data(), data.size()), 0);
+    AudioSample sample(data, 0);
     FFTBins bins(16);
     sample.fft(&bins);
     FL_CHECK_GT(bins.bins_raw.size(), 0u);
@@ -438,7 +438,7 @@ FL_TEST_CASE("AudioSample - copy and equality") {
     for (int i = 0; i < 100; ++i) {
         data.push_back(static_cast<fl::i16>(i * 100));
     }
-    AudioSample original(fl::span<const fl::i16>(data.data(), data.size()), 999);
+    AudioSample original(data, 999);
     AudioSample copy(original);
     FL_CHECK(copy.isValid());
     FL_CHECK(original == copy);

@@ -283,7 +283,7 @@ FL_TEST_CASE("fl::FFT - run with sine wave concentrates energy") {
     fl::FFT fft;
     auto samples = generateSine(1000.0f);  // 1kHz sine, within CQ range 174.6-4698.3 Hz
     fl::FFTBins bins(16);
-    fft.run(fl::span<const fl::i16>(samples.data(), samples.size()), &bins);
+    fft.run(samples, &bins);
 
     FL_REQUIRE_GT(bins.bins_raw.size(), 0u);
 
@@ -322,8 +322,8 @@ FL_TEST_CASE("fl::FFT - different frequencies produce different peak bins") {
     fl::FFTBins bassBins(16);
     fl::FFTBins trebleBins(16);
 
-    fft.run(fl::span<const fl::i16>(bassSignal.data(), bassSignal.size()), &bassBins);
-    fft.run(fl::span<const fl::i16>(trebleSignal.data(), trebleSignal.size()), &trebleBins);
+    fft.run(bassSignal, &bassBins);
+    fft.run(trebleSignal, &trebleBins);
 
     FL_REQUIRE_GT(bassBins.bins_raw.size(), 0u);
     FL_REQUIRE_GT(trebleBins.bins_raw.size(), 0u);
@@ -360,7 +360,7 @@ FL_TEST_CASE("fl::FFT - silence produces near-zero bins") {
     fl::FFT fft;
     fl::vector<fl::i16> silence(512, 0);
     fl::FFTBins bins(16);
-    fft.run(fl::span<const fl::i16>(silence.data(), silence.size()), &bins);
+    fft.run(silence, &bins);
 
     // All bins should be near zero
     for (fl::size i = 0; i < bins.bins_raw.size(); ++i) {
@@ -387,7 +387,7 @@ FL_TEST_CASE("fl::FFT - sine wave maps to correct CQ bin") {
         auto samples = generateSine(freq);
         fl::FFTBins bins(bands);
         fl::FFT fft;
-        fft.run(fl::span<const fl::i16>(samples.data(), samples.size()), &bins);
+        fft.run(samples, &bins);
 
         int peakBin = 0;
         float peakVal = 0.0f;
@@ -443,7 +443,7 @@ FL_TEST_CASE("fl::FFTBins - linear bins redistribute energy") {
     auto samples = generateSine(440.0f);
     fl::FFTBins bins(bands);
     fl::FFT fft;
-    fft.run(fl::span<const fl::i16>(samples.data(), samples.size()), &bins);
+    fft.run(samples, &bins);
 
     fl::span<const float> linear = bins.getLinearBins();
     FL_CHECK_EQ(linear.size(), static_cast<fl::size>(bands));
@@ -474,7 +474,7 @@ FL_TEST_CASE("fl::FFTBins - multi-freq CQ and linear mapping") {
         auto samples = generateSine(freq);
         fl::FFTBins bins(bands);
         fl::FFT fft;
-        fft.run(fl::span<const fl::i16>(samples.data(), samples.size()), &bins);
+        fft.run(samples, &bins);
 
         // CQ bin check
         int expectedBin = bins.freqToBin(freq);

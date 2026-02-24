@@ -238,7 +238,7 @@ fl::span<CRGB> Corkscrew::data() {
             return mPixelStorage.template get<fl::span<CRGB>>();
         } else if (mPixelStorage.template is<fl::vector<CRGB, fl::allocator_psram<CRGB>>>()) {
             auto& vec = mPixelStorage.template get<fl::vector<CRGB, fl::allocator_psram<CRGB>>>();
-            return fl::span<CRGB>(vec.data(), vec.size());
+            return vec;
         }
     }
     

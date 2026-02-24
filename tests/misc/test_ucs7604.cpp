@@ -146,7 +146,7 @@ public:
     virtual void init() override {}
 
     fl::span<const uint8_t> data() const override {
-        return fl::span<const uint8_t>(capturedBytes.data(), capturedBytes.size());
+        return capturedBytes;
     }
 
     // Made public for testing with UCS7604Controller which uses composition

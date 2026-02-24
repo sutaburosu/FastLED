@@ -17,7 +17,7 @@ StubSPIOutput::~StubSPIOutput() { EngineEvents::removeListener(this); }
 void StubSPIOutput::onEndShowLeds() {
     // Simply push the captured SPI transmission bytes through the tracker
     // The mBytes buffer is populated by writeByte() calls during LED transmission
-    mTracker.update(fl::span<const u8>(mBytes.data(), mBytes.size()));
+    mTracker.update(mBytes);
 }
 
 void StubSPIOutput::select() { mBytes.clear(); }

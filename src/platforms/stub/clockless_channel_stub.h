@@ -97,7 +97,7 @@ protected:
         pixels_rgb.disableColorAdjustment();
         auto capture_iterator = pixels_rgb.as_iterator(RgbwInvalid());
         capture_iterator.writeWS2812(&mCaptureData);
-        mTracker.update(fl::span<const u8>(mCaptureData.data(), mCaptureData.size()));
+        mTracker.update(mCaptureData);
 
         // Convert pixels to encoded byte data for transmission
         fl::PixelIterator iterator = pixels.as_iterator(this->getRgbw());
