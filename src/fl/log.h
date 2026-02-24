@@ -316,6 +316,22 @@ const char *fastled_file_offset(const char *file);
     #define FL_LOG_INTERRUPT(X) FL_DBG_NO_OP(X)
 #endif
 
+/// @brief FlexIO logging (Teensy 4.x)
+/// Logs FlexIO configuration, pin setup, DMA, and signal generation
+#ifdef FASTLED_LOG_FLEXIO_ENABLED
+    #define FL_LOG_FLEXIO(X) FL_WARN(X)
+#else
+    #define FL_LOG_FLEXIO(X) FL_DBG_NO_OP(X)
+#endif
+
+/// @brief ObjectFLED logging (Teensy 4.x)
+/// Logs ObjectFLED configuration, pin mapping, and DMA transfers
+#ifdef FASTLED_LOG_OBJECTFLED_ENABLED
+    #define FL_LOG_OBJECTFLED(X) FL_WARN(X)
+#else
+    #define FL_LOG_OBJECTFLED(X) FL_DBG_NO_OP(X)
+#endif
+
 /// @}
 
 // =============================================================================
@@ -479,6 +495,40 @@ const char *fastled_file_offset(const char *file);
     #define FL_LOG_INTERRUPT_ASYNC_ISR(X) FL_DBG_NO_OP(X)
     #define FL_LOG_INTERRUPT_ASYNC_MAIN(X) FL_DBG_NO_OP(X)
     #define FL_LOG_INTERRUPT_ASYNC_FLUSH() do {} while(0)
+#endif
+
+// -----------------------------------------------------------------------------
+// FLEXIO Async Logging
+// -----------------------------------------------------------------------------
+
+#ifdef FASTLED_LOG_FLEXIO_ENABLED
+    #define FL_LOG_FLEXIO_ASYNC_ISR(X) FL_LOG_ASYNC_ISR(fl::get_flexio_async_logger_isr(), X)
+    #define FL_LOG_FLEXIO_ASYNC_MAIN(X) FL_LOG_ASYNC(fl::get_flexio_async_logger_main(), X)
+    #define FL_LOG_FLEXIO_ASYNC_FLUSH() do { \
+        fl::get_flexio_async_logger_isr().flush(); \
+        fl::get_flexio_async_logger_main().flush(); \
+    } while(0)
+#else
+    #define FL_LOG_FLEXIO_ASYNC_ISR(X) FL_DBG_NO_OP(X)
+    #define FL_LOG_FLEXIO_ASYNC_MAIN(X) FL_DBG_NO_OP(X)
+    #define FL_LOG_FLEXIO_ASYNC_FLUSH() do {} while(0)
+#endif
+
+// -----------------------------------------------------------------------------
+// OBJECTFLED Async Logging
+// -----------------------------------------------------------------------------
+
+#ifdef FASTLED_LOG_OBJECTFLED_ENABLED
+    #define FL_LOG_OBJECTFLED_ASYNC_ISR(X) FL_LOG_ASYNC_ISR(fl::get_objectfled_async_logger_isr(), X)
+    #define FL_LOG_OBJECTFLED_ASYNC_MAIN(X) FL_LOG_ASYNC(fl::get_objectfled_async_logger_main(), X)
+    #define FL_LOG_OBJECTFLED_ASYNC_FLUSH() do { \
+        fl::get_objectfled_async_logger_isr().flush(); \
+        fl::get_objectfled_async_logger_main().flush(); \
+    } while(0)
+#else
+    #define FL_LOG_OBJECTFLED_ASYNC_ISR(X) FL_DBG_NO_OP(X)
+    #define FL_LOG_OBJECTFLED_ASYNC_MAIN(X) FL_DBG_NO_OP(X)
+    #define FL_LOG_OBJECTFLED_ASYNC_FLUSH() do {} while(0)
 #endif
 
 // -----------------------------------------------------------------------------

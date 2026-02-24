@@ -7,6 +7,7 @@
 #include "fl/pin.h"
 #include "fl/log.h"
 #include "fl/delay.h"
+#include "fl/stl/vector.h"
 
 namespace fl {
 namespace validation {
@@ -69,7 +70,17 @@ inline bool testRxChannel(
         return false;
     }
 
-    FL_WARN("[RX TEST] ✓ RX channel captured data from " << num_toggles << " toggles");
+    // Verify actual edge capture (wait() can succeed on timeout with 0 edges)
+    fl::FixedVector<fl::EdgeTime, 4> check_edges;
+    check_edges.resize(4);
+    size_t edge_count = rx_channel->getRawEdgeTimes(check_edges, 0);
+    if (edge_count == 0) {
+        FL_ERROR("[RX TEST]: wait() succeeded but 0 edges captured - DMA trigger may be misconfigured");
+        FL_ERROR("[RX TEST]: Check DMAMUX source number for PIN_RX (" << pin_rx << ")");
+        return false;
+    }
+
+    FL_WARN("[RX TEST] ✓ RX channel captured " << edge_count << " edges from " << num_toggles << " toggles");
     FL_WARN("[RX TEST] ✓ RX channel is functioning correctly");
 
     return true;

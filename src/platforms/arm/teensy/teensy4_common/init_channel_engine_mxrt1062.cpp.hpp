@@ -30,6 +30,8 @@
 #include "platforms/shared/spi_hw_2.h"
 #include "platforms/shared/spi_hw_4.h"
 #include "platforms/arm/teensy/teensy4_common/init_channel_engine.h"
+#include "platforms/arm/teensy/teensy4_common/drivers/flexio/channel_engine_flexio.h"
+#include "platforms/arm/teensy/teensy4_common/drivers/objectfled/channel_engine_objectfled.h"
 namespace fl {
 
 namespace detail {
@@ -103,6 +105,26 @@ static void addSpiHardwareIfPossible(ChannelBusManager& manager) {
     }
 }
 
+/// @brief Add FlexIO2 engine for clockless LED strips on FlexIO-capable pins
+static void addFlexIOIfPossible(ChannelBusManager& manager) {
+    FL_DBG("Teensy 4.x: Registering FlexIO channel engine");
+
+    auto engine = fl::make_shared<ChannelEngineFlexIO>();
+    manager.addEngine(8, engine);
+
+    FL_DBG("Teensy 4.x: Registered FlexIO engine (priority 8)");
+}
+
+/// @brief Add ObjectFLED DMA engine for clockless LED strips
+static void addObjectFLEDIfPossible(ChannelBusManager& manager) {
+    FL_DBG("Teensy 4.x: Registering ObjectFLED channel engine");
+
+    auto engine = fl::make_shared<ChannelEngineObjectFLED>();
+    manager.addEngine(5, engine);
+
+    FL_DBG("Teensy 4.x: Registered ObjectFLED engine (priority 5)");
+}
+
 } // namespace detail
 
 namespace platforms {
@@ -110,11 +132,17 @@ namespace platforms {
 /// @brief Initialize channel engines for Teensy 4.x
 ///
 /// Called lazily on first access to ChannelBusManager::instance().
-/// Registers platform-specific engines (SPI hardware) with the bus manager.
+/// Registers platform-specific engines (SPI hardware, ObjectFLED DMA) with the bus manager.
 void initChannelEngines() {
     FL_DBG("Teensy 4.x: Lazy initialization of channel engines");
 
     auto& manager = channelBusManager();
+
+    // Register FlexIO engine for clockless strips on FlexIO-capable pins (priority 8)
+    detail::addFlexIOIfPossible(manager);
+
+    // Register ObjectFLED DMA engine for clockless strips (priority 5, fallback)
+    detail::addObjectFLEDIfPossible(manager);
 
     // Register true SPI hardware (priority 6-7)
     detail::addSpiHardwareIfPossible(manager);

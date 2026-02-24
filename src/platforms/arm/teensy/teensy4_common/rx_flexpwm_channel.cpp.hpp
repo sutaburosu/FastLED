@@ -4,10 +4,10 @@
 /// Hardware pipeline (based on Paul Stoffregen's WS2812Capture):
 ///   1. FlexPWM submodule runs a free-running 16-bit counter at F_BUS_ACTUAL
 ///      (150 MHz on Teensy 4.x, giving ~6.67 ns per tick).
-///   2. Dual-edge capture mode latches the counter value on both rising and
-///      falling edges of the input pin into CVAL2 (rising) and CVAL4 (falling).
-///   3. Each capture event triggers a DMA request. A Teensy DMAChannel copies
-///      the 16-bit capture value from the FlexPWM FIFO into a RAM buffer.
+///   2. Single-circuit any-edge capture (EDGA0=3) latches the counter value
+///      into CVAL2 (channel A) or CVAL4 (channel B) on every edge.
+///   3. Each capture event triggers a DMA request (CA0DE or CB0DE). A Teensy
+///      DMAChannel copies the 16-bit capture value into a RAM buffer.
 ///   4. After the DMA transfer completes (buffer full or auto-disable), an ISR
 ///      sets a completion flag.
 ///   5. Software computes pulse widths as 16-bit deltas between consecutive
@@ -49,8 +49,8 @@ namespace fl {
 // needed to route the pin to the FlexPWM capture input.
 //
 // The capture values come from the FlexPWM CVAL registers:
-//   Channel A capture: CVAL2 (rising edge) and CVAL3 (falling edge)
-//   Channel B capture: CVAL4 (rising edge) and CVAL5 (falling edge)
+//   Channel A capture: CVAL2 (any edge, single-circuit mode EDGA0=3)
+//   Channel B capture: CVAL4 (any edge, single-circuit mode EDGB0=3)
 //
 // DMA trigger sources are from the i.MXRT1062 reference manual Table 4-3.
 
@@ -71,50 +71,50 @@ namespace {
 // Pin mapping derived from i.MXRT1062 reference manual and Teensy 4.x
 // schematic. Pins listed for Teensy 4.0 + 4.1 unless noted.
 //
-// FlexPWM DMA sources (from i.MXRT1062 RM Table 4-3):
-//   FLEXPWM1: SM0=64, SM1=66, SM2=68, SM3=70  (capture/compare)
-//   FLEXPWM2: SM0=72, SM1=74, SM2=76, SM3=78
-//   FLEXPWM3: SM0=80, SM1=82, SM2=84, SM3=86
-//   FLEXPWM4: SM0=88, SM1=90, SM2=92, SM3=94
+// FlexPWM DMAMUX capture-read sources (from imxrt.h DMAMUX_SOURCE_FLEXPWMn_READm):
+//   FLEXPWM1: SM0=32, SM1=33, SM2=34, SM3=35
+//   FLEXPWM2: SM0=96, SM1=97, SM2=98, SM3=99
+//   FLEXPWM3: SM0=40, SM1=41, SM2=42, SM3=43
+//   FLEXPWM4: SM0=104, SM1=105, SM2=106, SM3=107
 
 static const FlexPwmPinInfo kPinMap[] = {
     // Pin 2: FlexPWM4_SM2_A (GPIO_EMC_04, ALT1)
-    {2, &IMXRT_FLEXPWM4, 2, false, 92,
+    {2, &IMXRT_FLEXPWM4, 2, false, DMAMUX_SOURCE_FLEXPWM4_READ2,
      &IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_04, 1,
      &IOMUXC_FLEXPWM4_PWMA2_SELECT_INPUT, 0},
 
     // Pin 4: FlexPWM2_SM0_A (GPIO_EMC_06, ALT1)
-    {4, &IMXRT_FLEXPWM2, 0, false, 72,
+    {4, &IMXRT_FLEXPWM2, 0, false, DMAMUX_SOURCE_FLEXPWM2_READ0,
      &IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_06, 1,
      &IOMUXC_FLEXPWM2_PWMA0_SELECT_INPUT, 0},
 
     // Pin 5: FlexPWM2_SM1_A (GPIO_EMC_08, ALT1)
-    {5, &IMXRT_FLEXPWM2, 1, false, 74,
+    {5, &IMXRT_FLEXPWM2, 1, false, DMAMUX_SOURCE_FLEXPWM2_READ1,
      &IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_08, 1,
      &IOMUXC_FLEXPWM2_PWMA1_SELECT_INPUT, 0},
 
     // Pin 6: FlexPWM2_SM2_A (GPIO_B0_10, ALT2)
-    {6, &IMXRT_FLEXPWM2, 2, false, 76,
+    {6, &IMXRT_FLEXPWM2, 2, false, DMAMUX_SOURCE_FLEXPWM2_READ2,
      &IOMUXC_SW_MUX_CTL_PAD_GPIO_B0_10, 2,
      &IOMUXC_FLEXPWM2_PWMA2_SELECT_INPUT, 1},
 
     // Pin 8: FlexPWM1_SM3_A (GPIO_B1_00, ALT6)
-    {8, &IMXRT_FLEXPWM1, 3, false, 70,
+    {8, &IMXRT_FLEXPWM1, 3, false, DMAMUX_SOURCE_FLEXPWM1_READ3,
      &IOMUXC_SW_MUX_CTL_PAD_GPIO_B1_00, 6,
      &IOMUXC_FLEXPWM1_PWMA3_SELECT_INPUT, 0},
 
     // Pin 22: FlexPWM4_SM0_A (GPIO_AD_B1_08, ALT1)
-    {22, &IMXRT_FLEXPWM4, 0, false, 88,
+    {22, &IMXRT_FLEXPWM4, 0, false, DMAMUX_SOURCE_FLEXPWM4_READ0,
      &IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_B1_08, 1,
      &IOMUXC_FLEXPWM4_PWMA0_SELECT_INPUT, 0},
 
     // Pin 23: FlexPWM4_SM1_A (GPIO_AD_B1_09, ALT1)
-    {23, &IMXRT_FLEXPWM4, 1, false, 90,
+    {23, &IMXRT_FLEXPWM4, 1, false, DMAMUX_SOURCE_FLEXPWM4_READ1,
      &IOMUXC_SW_MUX_CTL_PAD_GPIO_AD_B1_09, 1,
      &IOMUXC_FLEXPWM4_PWMA1_SELECT_INPUT, 0},
 
     // Pin 29: FlexPWM3_SM1_B (GPIO_EMC_31, ALT1)
-    {29, &IMXRT_FLEXPWM3, 1, true, 82,
+    {29, &IMXRT_FLEXPWM3, 1, true, DMAMUX_SOURCE_FLEXPWM3_READ1,
      &IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_31, 1,
      nullptr, 0},
 
@@ -122,24 +122,24 @@ static const FlexPwmPinInfo kPinMap[] = {
     // Teensy 4.1 only pins
 
     // Pin 36: FlexPWM2_SM3_A (GPIO_B1_02, ALT6)
-    {36, &IMXRT_FLEXPWM2, 3, false, 78,
+    {36, &IMXRT_FLEXPWM2, 3, false, DMAMUX_SOURCE_FLEXPWM2_READ3,
      &IOMUXC_SW_MUX_CTL_PAD_GPIO_B1_02, 6,
      &IOMUXC_FLEXPWM2_PWMA3_SELECT_INPUT, 1},
 
     // Pin 49: FlexPWM1_SM2_A (GPIO_EMC_23, ALT1) [bottom pads]
-    {49, &IMXRT_FLEXPWM1, 2, false, 68,
+    {49, &IMXRT_FLEXPWM1, 2, false, DMAMUX_SOURCE_FLEXPWM1_READ2,
      &IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_23, 1,
      &IOMUXC_FLEXPWM1_PWMA2_SELECT_INPUT, 0},
 
     // Pin 53: FlexPWM3_SM0_A (GPIO_EMC_29, ALT1) [bottom pads]
     // No select_input register: FlexPWM3_PWMA0 has only one pad option on IMXRT1062
-    {53, &IMXRT_FLEXPWM3, 0, false, 80,
+    {53, &IMXRT_FLEXPWM3, 0, false, DMAMUX_SOURCE_FLEXPWM3_READ0,
      &IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_29, 1,
      nullptr, 0},
 
     // Pin 54: FlexPWM3_SM2_A (GPIO_EMC_33, ALT1) [bottom pads]
     // No select_input register: FlexPWM3_PWMA2 has only one pad option on IMXRT1062
-    {54, &IMXRT_FLEXPWM3, 2, false, 84,
+    {54, &IMXRT_FLEXPWM3, 2, false, DMAMUX_SOURCE_FLEXPWM3_READ2,
      &IOMUXC_SW_MUX_CTL_PAD_GPIO_EMC_33, 1,
      nullptr, 0},
 #endif // ARDUINO_TEENSY41
@@ -192,18 +192,27 @@ static inline bool isResetPulse(u32 low_ns,
 }
 
 /// Check if a pulse is a gap to tolerate (longer than normal but shorter
-/// than reset).
+/// than reset). A gap must be LONGER than any valid bit LOW pulse to avoid
+/// incorrectly skipping normal protocol data.
 static inline bool isGapPulse(u32 low_ns,
                               const ChipsetTiming4Phase &timing) {
     if (timing.gap_tolerance_ns == 0) {
         return false;
     }
     u32 reset_ns = static_cast<u32>(timing.reset_min_us) * 1000u;
-    return low_ns < reset_ns && low_ns <= timing.gap_tolerance_ns;
+    // Gap must be longer than the longest valid bit LOW pulse
+    u32 max_valid_low = (timing.t0l_max_ns > timing.t1l_max_ns)
+                            ? timing.t0l_max_ns
+                            : timing.t1l_max_ns;
+    return low_ns > max_valid_low && low_ns < reset_ns &&
+           low_ns <= timing.gap_tolerance_ns;
 }
 
 /// Decode an EdgeTime buffer into bytes (MSB-first).
-/// This mirrors the ESP32 RMT decode logic.
+///
+/// Polarity-aware decoder: uses the HIGH/LOW labels from the gap-aware
+/// edge builder. Edges come in HIGH/LOW pairs representing one bit each.
+/// If polarity is wrong (noise), skip and resync on the next HIGH edge.
 static fl::Result<u32, DecodeError>
 decodeEdges(const ChipsetTiming4Phase &timing,
             fl::span<const EdgeTime> edges, fl::span<u8> bytes_out) {
@@ -216,30 +225,21 @@ decodeEdges(const ChipsetTiming4Phase &timing,
     u8 bit_count = 0;
     u32 error_count = 0;
     u32 total_bits = 0;
+    u32 resync_count = 0;
 
-    // Edges come in pairs: HIGH then LOW
-    for (size_t i = 0; i + 1 < edges.size(); i += 2) {
-        const EdgeTime &high_edge = edges[i];
-        const EdgeTime &low_edge = edges[i + 1];
-
-        // Validate edge polarity
-        if (!high_edge.high || low_edge.high) {
-            ++error_count;
+    size_t i = 0;
+    while (i + 1 < edges.size()) {
+        // Expect edges[i] = HIGH, edges[i+1] = LOW
+        if (!edges[i].high) {
+            // Polarity error: skip this edge and resync on next HIGH
+            ++resync_count;
+            ++i;
             continue;
         }
 
-        u32 high_ns = high_edge.ns;
-        u32 low_ns = low_edge.ns;
-
-        // Check for reset pulse -- end of frame
-        if (isResetPulse(low_ns, timing)) {
-            break;
-        }
-
-        // Skip gap pulses (e.g., PARLIO DMA gaps)
-        if (isGapPulse(low_ns, timing)) {
-            continue;
-        }
+        u32 high_ns = edges[i].ns;
+        u32 low_ns = edges[i + 1].ns;
+        i += 2;
 
         int bit = decodeBit(high_ns, low_ns, timing);
         ++total_bits;
@@ -268,6 +268,20 @@ decodeEdges(const ChipsetTiming4Phase &timing,
         bytes_out[byte_index++] =
             static_cast<u8>(current_byte << (8 - bit_count));
     }
+
+#ifdef FL_DEBUG
+    FL_WARN("[FlexPWM DECODE] bytes=" << byte_index
+            << " total_bits=" << total_bits
+            << " errors=" << error_count
+            << " resyncs=" << resync_count
+            << " edges=" << edges.size());
+    if (edges.size() >= 4) {
+        FL_WARN("[FlexPWM DECODE] e[0]=" << (edges[0].high?"H":"L") << edges[0].ns
+                << " e[1]=" << (edges[1].high?"H":"L") << edges[1].ns
+                << " e[2]=" << (edges[2].high?"H":"L") << edges[2].ns
+                << " e[3]=" << (edges[3].high?"H":"L") << edges[3].ns);
+    }
+#endif
 
     // Check error rate (>10% is considered too high)
     if (total_bits > 0 &&
@@ -351,8 +365,13 @@ bool FlexPwmRxChannelImpl::begin(const RxConfig &config) {
     mEdgesValid = false;
     mEdges.clear();
 
-    // Allocate capture buffer: 2 captures per bit (rising + falling)
+    // Allocate capture buffer: 2 captures per bit (rising + falling).
+    // Cap to 8192 captures to avoid exhausting Teensy RAM (~16KB buffer).
+    // For 100 LEDs × 24 bits = 2400 bits, we need ~4800 captures.
     size_t cap_count = mBufferSize * 2;
+    if (cap_count > 8192) {
+        cap_count = 8192;
+    }
     mCaptureBuffer.clear();
     mCaptureBuffer.reserve(cap_count);
     for (size_t i = 0; i < cap_count; ++i) {
@@ -373,12 +392,17 @@ void FlexPwmRxChannelImpl::configureFlexPwm() {
     IMXRT_FLEXPWM_t *pwm = mPinInfo->pwm;
     u8 sm = mPinInfo->submodule;
 
-    // Enable clock to FlexPWM module (already enabled by Teensy core for
-    // analogWrite, but ensure it's on).
-    // The CCM clock gates are handled by Teensy core startup.
+    // Enable clock gates for all FlexPWM modules.
+    // Teensy core may not enable all modules at startup.
+    CCM_CCGR4 |= CCM_CCGR4_PWM1(CCM_CCGR_ON) |
+                  CCM_CCGR4_PWM2(CCM_CCGR_ON) |
+                  CCM_CCGR4_PWM3(CCM_CCGR_ON) |
+                  CCM_CCGR4_PWM4(CCM_CCGR_ON);
 
-    // Configure pin mux to route the pin to FlexPWM input
-    *(mPinInfo->mux_register) = mPinInfo->mux_value;
+    // Configure pin mux to route the pin to FlexPWM input.
+    // Set SION (bit 4) to force input path through IOMUXC — required
+    // for peripheral input capture when the pad is muxed to an alt function.
+    *(mPinInfo->mux_register) = mPinInfo->mux_value | 0x10; // SION bit
     if (mPinInfo->select_register) {
         *(mPinInfo->select_register) = mPinInfo->select_value;
     }
@@ -404,27 +428,51 @@ void FlexPwmRxChannelImpl::configureFlexPwm() {
 
     if (!mPinInfo->channel_b) {
         // Channel A capture configuration (CAPTCTRLA / CAPTCOMPA)
-        // EDGA0 = 2 (rising edge), EDGA1 = 1 (falling edge)
+        // EDGA0 = 3 (any edge on circuit 0), captures to CVAL2
+        // Using single circuit ensures DMA always reads the correct register.
+        // CFAWM = 0 (FIFO watermark = 1 entry → DMA fires on each capture)
         // ARM = 1 (arm capture), ONESHOTA = 0 (free-running)
-        pwm->SM[sm].CAPTCTRLA = FLEXPWM_SMCAPTCTRLA_EDGA0(2) |
-                                 FLEXPWM_SMCAPTCTRLA_EDGA1(1) |
+        pwm->SM[sm].CAPTCTRLA = FLEXPWM_SMCAPTCTRLA_EDGA0(3) |
+                                 FLEXPWM_SMCAPTCTRLA_CFAWM(0) |
                                  FLEXPWM_SMCAPTCTRLA_ARMA;
         pwm->SM[sm].CAPTCOMPA = 0;
 
-        // Enable DMA request on channel A capture: CAPTDE = 1, CA0DE, CA1DE
-        pwm->SM[sm].DMAEN = FLEXPWM_SMDMAEN_CA0DE | FLEXPWM_SMDMAEN_CA1DE;
+        // Enable both per-event DMA (CA0DE) and FIFO watermark DMA (CAPTDE=1)
+        // to ensure the DMAMUX_SOURCE_FLEXPWMn_READm trigger fires.
+        pwm->SM[sm].DMAEN = FLEXPWM_SMDMAEN_CA0DE | FLEXPWM_SMDMAEN_CAPTDE(1);
     } else {
         // Channel B capture configuration (CAPTCTRLB / CAPTCOMPB)
-        pwm->SM[sm].CAPTCTRLB = FLEXPWM_SMCAPTCTRLB_EDGB0(2) |
-                                 FLEXPWM_SMCAPTCTRLB_EDGB1(1) |
+        // EDGB0 = 3 (any edge on circuit 0), captures to CVAL4
+        pwm->SM[sm].CAPTCTRLB = FLEXPWM_SMCAPTCTRLB_EDGB0(3) |
                                  FLEXPWM_SMCAPTCTRLB_ARMB;
         pwm->SM[sm].CAPTCOMPB = 0;
 
-        pwm->SM[sm].DMAEN = FLEXPWM_SMDMAEN_CB0DE | FLEXPWM_SMDMAEN_CB1DE;
+        // Enable both per-event DMA (CB0DE) and FIFO watermark DMA (CAPTDE=2)
+        pwm->SM[sm].DMAEN = FLEXPWM_SMDMAEN_CB0DE | FLEXPWM_SMDMAEN_CAPTDE(2);
     }
 
     // Start the submodule counter
     pwm->MCTRL |= FLEXPWM_MCTRL_RUN(1 << sm);
+
+#ifdef FL_DEBUG
+    FL_WARN("[FlexPWM CFG] pin=" << static_cast<int>(mPinInfo->pin)
+            << " pwm" << (pwm == &IMXRT_FLEXPWM1 ? 1 : pwm == &IMXRT_FLEXPWM2 ? 2 : pwm == &IMXRT_FLEXPWM3 ? 3 : 4)
+            << " sm=" << static_cast<int>(sm)
+            << " chB=" << mPinInfo->channel_b);
+    FL_WARN("[FlexPWM CFG] MCTRL=0x" << fl::hex << pwm->MCTRL
+            << " CTRL2=0x" << pwm->SM[sm].CTRL2
+            << " CTRL=0x" << pwm->SM[sm].CTRL << fl::dec);
+    if (!mPinInfo->channel_b) {
+        FL_WARN("[FlexPWM CFG] CAPTCTRLA=0x" << fl::hex << pwm->SM[sm].CAPTCTRLA
+                << " DMAEN=0x" << pwm->SM[sm].DMAEN
+                << " STS=0x" << pwm->SM[sm].STS << fl::dec);
+    } else {
+        FL_WARN("[FlexPWM CFG] CAPTCTRLB=0x" << fl::hex << pwm->SM[sm].CAPTCTRLB
+                << " DMAEN=0x" << pwm->SM[sm].DMAEN
+                << " STS=0x" << pwm->SM[sm].STS << fl::dec);
+    }
+    FL_WARN("[FlexPWM CFG] MUX=0x" << fl::hex << *(mPinInfo->mux_register) << fl::dec);
+#endif
 }
 
 // ---------------------------------------------------------------------------
@@ -434,9 +482,9 @@ void FlexPwmRxChannelImpl::configureFlexPwm() {
 void FlexPwmRxChannelImpl::configureDma() {
     sActiveInstance = this;
 
-    // Source: FlexPWM capture value register
-    // Channel A: CVAL2 for rising, CVAL3 for falling (interleaved by HW)
-    // Channel B: CVAL4 for rising, CVAL5 for falling
+    // Source: FlexPWM capture value register (single-circuit any-edge mode)
+    // Channel A: CVAL2 (all edges captured to circuit 0)
+    // Channel B: CVAL4 (all edges captured to circuit 0)
     volatile u16 *capture_reg;
     if (!mPinInfo->channel_b) {
         capture_reg = &(mPinInfo->pwm->SM[mPinInfo->submodule].CVAL2);
@@ -457,6 +505,19 @@ void FlexPwmRxChannelImpl::configureDma() {
     mDma.interruptAtCompletion();
     mDma.attachInterrupt(dmaIsr);
     mDma.enable();
+
+#ifdef FL_DEBUG
+    // Debug: dump DMA channel and DMAMUX state
+    volatile u32 *dmamux_reg = &DMAMUX_CHCFG0 + mDma.channel;
+    uintptr_t dma_daddr = mDma.TCD->DADDR; // ok reading register
+    uintptr_t buf_addr = reinterpret_cast<uintptr_t>(mCaptureBuffer.data()); // ok reinterpret cast
+    FL_WARN("[FlexPWM DMA] ch=" << mDma.channel
+            << " src=" << static_cast<int>(mPinInfo->dma_source)
+            << " DMAMUX=0x" << fl::hex << *dmamux_reg << fl::dec
+            << " CITER=" << static_cast<int>(mDma.TCD->CITER)
+            << " ERQ=" << (DMA_ERQ & (1 << mDma.channel) ? 1 : 0)
+            << " DADDR_match=" << (dma_daddr == buf_addr ? "YES" : "NO"));
+#endif
 }
 
 // ---------------------------------------------------------------------------
@@ -492,7 +553,7 @@ bool FlexPwmRxChannelImpl::finished() const {
 
 RxWaitResult FlexPwmRxChannelImpl::wait(u32 timeout_ms) {
     u32 start = millis();
-    uintptr_t last_daddr = 0;
+    u16 last_citer = mDma.TCD->CITER;
     u32 last_change_time = micros();
 
     while (!mReceiveDone) {
@@ -503,13 +564,14 @@ RxWaitResult FlexPwmRxChannelImpl::wait(u32 timeout_ms) {
             break;
         }
 
-        // Check DMA progress for inactivity-based frame detection
-        uintptr_t current_daddr =
-            reinterpret_cast<uintptr_t>(mDma.destinationAddress()); // ok reinterpret cast
+        // Check DMA progress for inactivity-based frame detection.
+        // Use CITER (remaining iterations) instead of DADDR, because
+        // destinationBuffer() creates circular DMA that wraps DADDR.
+        u16 current_citer = mDma.TCD->CITER;
         u32 now_us = micros();
 
-        if (current_daddr != last_daddr) {
-            last_daddr = current_daddr;
+        if (current_citer != last_citer) {
+            last_citer = current_citer;
             last_change_time = now_us;
         } else {
             // No progress -- check if idle long enough to declare frame done
@@ -539,48 +601,105 @@ void FlexPwmRxChannelImpl::buildEdgeTimesFromCaptures() {
     }
     mEdges.clear();
 
-    // Determine how many captures the DMA actually wrote by checking
-    // the DMA destination address relative to the buffer start.
-    uintptr_t buf_start =
-        reinterpret_cast<uintptr_t>(mCaptureBuffer.data()); // ok reinterpret cast
-    uintptr_t buf_current =
-        reinterpret_cast<uintptr_t>(mDma.destinationAddress()); // ok reinterpret cast
-
+    // Determine how many captures the DMA actually wrote.
+    //
+    // Two methods, depending on whether the DMA completed its major loop:
+    //   1. If DMA completion ISR fired (mReceiveDone=true), the entire buffer
+    //      was filled. CITER has already reloaded from BITER, so BITER-CITER=0
+    //      is misleading — we actually have a full buffer.
+    //   2. If DMA is still running or timed out, BITER-CITER gives the number
+    //      of completed transfers.
+    //
+    // We also check the DONE bit in TCD->CSR as a secondary indicator.
+    u16 biter = mDma.TCD->BITER;
+    u16 citer = mDma.TCD->CITER;
+    bool dma_done = mReceiveDone || (mDma.TCD->CSR & DMA_TCD_CSR_DONE);
     size_t captures_written = 0;
-    if (buf_current >= buf_start) {
-        captures_written = (buf_current - buf_start) / sizeof(u16);
+
+    if (dma_done && (biter == citer)) {
+        // DMA completed a full major loop — entire buffer is valid
+        captures_written = mCaptureBuffer.size();
+    } else if (biter >= citer) {
+        captures_written = biter - citer;
     }
     if (captures_written > mCaptureBuffer.size()) {
         captures_written = mCaptureBuffer.size();
     }
+
+#ifdef FL_DEBUG
+    FL_WARN("[FlexPWM RX] DMA captures_written=" << captures_written
+            << " BITER=" << biter << " CITER=" << citer
+            << " done=" << (dma_done ? 1 : 0)
+            << " mReceiveDone=" << (mReceiveDone ? 1 : 0)
+            << " ch=" << mDma.channel
+            << " pin=" << static_cast<int>(mPinInfo->pin));
+#endif
+
+    // CRITICAL: Invalidate D-cache for the capture buffer region.
+    // DMA writes bypass the CPU cache, so we must invalidate to see
+    // the data DMA actually wrote. Without this, the CPU reads stale
+    // cache lines and gets all-zero capture values.
+    if (captures_written > 0) {
+        arm_dcache_delete(mCaptureBuffer.data(),
+                          captures_written * sizeof(u16));
+    }
+
+#ifdef FL_DEBUG
+    if (captures_written >= 8) {
+        FL_WARN("[FlexPWM RAW] first: " << mCaptureBuffer[0] << " " << mCaptureBuffer[1]
+                << " " << mCaptureBuffer[2] << " " << mCaptureBuffer[3]);
+        size_t mid = captures_written / 2;
+        FL_WARN("[FlexPWM RAW] mid[" << mid << "]: " << mCaptureBuffer[mid] << " " << mCaptureBuffer[mid+1]
+                << " " << mCaptureBuffer[mid+2] << " " << mCaptureBuffer[mid+3]);
+    }
+#endif
+
     if (captures_written < 2) {
         mEdgesValid = true;
         return;
     }
 
     // Build EdgeTime pairs from consecutive capture deltas.
-    // Captures alternate: rising edge, falling edge, rising edge, ...
-    // So: capture[0] = first rising, capture[1] = first falling,
-    //     capture[2] = second rising, etc.
-    //
-    // HIGH duration = falling_capture - rising_capture
-    // LOW duration  = next_rising_capture - falling_capture
-    //
-    // If start_low is true (default), the first edge should be rising.
-    // The FlexPWM capture is configured for rising-first (EDGA0=rising).
+    // Gap-aware polarity tracker: ObjectFLED transmits in DMA blocks
+    // with ~300µs LOW gaps between them. These gaps shift even/odd
+    // polarity alignment. We detect gaps (>5µs) and reset polarity
+    // since the signal idles LOW during gaps, so the first edge
+    // after a gap is always rising (HIGH).
 
     mEdges.reserve(captures_written);
 
+    bool next_is_high = true; // First edge after idle/start is rising = HIGH
     for (size_t i = 0; i + 1 < captures_written; ++i) {
         u16 t0 = mCaptureBuffer[i];
         u16 t1 = mCaptureBuffer[i + 1];
         u32 ns = tickDeltaNs(t0, t1);
 
-        // Even indices (0, 2, 4, ...) are rising->falling = HIGH pulse
-        // Odd indices (1, 3, 5, ...) are falling->rising = LOW pulse
-        bool is_high = ((i % 2) == 0);
-        mEdges.push_back(EdgeTime(is_high, ns));
+        // Skip gaps (ObjectFLED DMA block boundaries, ~300µs)
+        // and reset polarity since signal returns to LOW during gap
+        if (ns > 5000) { // 5µs threshold
+            next_is_high = true; // After gap, next edge is rising
+            continue;
+        }
+
+        mEdges.push_back(EdgeTime(next_is_high, ns));
+        next_is_high = !next_is_high;
     }
+
+#ifdef FL_DEBUG
+    FL_WARN("[FlexPWM EDGE] total=" << mEdges.size());
+    if (mEdges.size() >= 8) {
+        FL_WARN("[FlexPWM E] 0:" << (mEdges[0].high?"H":"L") << mEdges[0].ns
+                << " 1:" << (mEdges[1].high?"H":"L") << mEdges[1].ns
+                << " 2:" << (mEdges[2].high?"H":"L") << mEdges[2].ns
+                << " 3:" << (mEdges[3].high?"H":"L") << mEdges[3].ns);
+        size_t mid = mEdges.size() / 2;
+        FL_WARN("[FlexPWM E@" << mid << "] "
+                << (mEdges[mid].high?"H":"L") << mEdges[mid].ns
+                << " " << (mEdges[mid+1].high?"H":"L") << mEdges[mid+1].ns
+                << " " << (mEdges[mid+2].high?"H":"L") << mEdges[mid+2].ns
+                << " " << (mEdges[mid+3].high?"H":"L") << mEdges[mid+3].ns);
+    }
+#endif
 
     mEdgesValid = true;
 }

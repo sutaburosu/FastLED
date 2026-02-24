@@ -5,4 +5,5 @@
 /// Includes all implementation files
 
 // Subdirectory implementations (alphabetical order)
+#include "platforms/shared/mock/arm/_build.cpp.hpp"
 #include "platforms/shared/mock/esp/_build.cpp.hpp"

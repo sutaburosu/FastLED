@@ -231,13 +231,18 @@ size_t capture(fl::shared_ptr<fl::RxDevice> rx_channel, fl::span<uint8_t> rx_buf
     } else {
         // Non-RMT (PARLIO, SPI, etc.): Single-TX approach
         if (!rx_channel->begin(rx_config)) {
+            FL_WARN("[CAPTURE] RX begin() failed for pin " << rx_channel->getPin());
             return 0;
         }
+        FL_WARN("[CAPTURE] RX armed, calling FastLED.show()...");
 
         FastLED.show();
+        FL_WARN("[CAPTURE] FastLED.show() returned, calling wait...");
         if (!FastLED.wait(TX_WAIT_TIMEOUT_MS)) {
+            FL_WARN("[CAPTURE] FastLED.wait() timed out");
             return 0;
         }
+        FL_WARN("[CAPTURE] FastLED.wait() done");
     }
 
 
@@ -245,7 +250,9 @@ size_t capture(fl::shared_ptr<fl::RxDevice> rx_channel, fl::span<uint8_t> rx_buf
 
     // Wait for RX completion (150ms timeout for 3000 LEDs @ WS2812B timing)
     // WS2812B: ~30μs per LED → 3000 LEDs = 90ms minimum, use 150ms for safety
+    FL_WARN("[CAPTURE] Waiting for RX completion...");
     auto wait_result = rx_channel->wait(150);
+    FL_WARN("[CAPTURE] RX wait returned: " << static_cast<int>(wait_result));
 
     if (wait_result != fl::RxWaitResult::SUCCESS) {
         FL_ERROR("RX wait failed (timeout or no data received)");
@@ -309,6 +316,7 @@ size_t capture(fl::shared_ptr<fl::RxDevice> rx_channel, fl::span<uint8_t> rx_buf
     // Increased to 100µs to accommodate SPI driver timing variations
     rx_timing.gap_tolerance_ns = 100000; // 100µs (was 30µs)
 
+    FL_WARN("[CAPTURE] Decoding...");
     auto decode_result = rx_channel->decode(rx_timing, rx_buffer);
 
     if (!decode_result.ok()) {
@@ -320,6 +328,7 @@ size_t capture(fl::shared_ptr<fl::RxDevice> rx_channel, fl::span<uint8_t> rx_buf
         return 0;
     }
 
+    FL_WARN("[CAPTURE] Decoded " << decode_result.value() << " bytes");
     return decode_result.value();
 }
 
@@ -792,7 +801,7 @@ void validateChipsetTiming(fl::ValidationConfig& config,
                 pattern_id
             );
         }
-        runMultiTest(getBitPatternName(pattern_id), config, multi_config, total, passed);
+        runMultiTest(getBitPatternName(pattern_id), config, multi_config, total, passed, out_results);
     }
 
     out_show_duration_ms += millis() - show_start_ms;

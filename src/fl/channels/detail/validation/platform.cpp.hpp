@@ -33,7 +33,9 @@ inline vector<string> getExpectedEngines() {
     expected.push_back("RMT");
     // expected.push_back("I2S");  // I2S support varies
 #elif defined(FL_IS_TEENSY_4X)
-    // Teensy 4.x: ObjectFLED (DMA-based), skip engine validation for now
+    // Teensy 4.x: FlexIO and ObjectFLED DMA engines for clockless strips
+    expected.push_back("FLEXIO");
+    expected.push_back("OBJECTFLED");
 #endif
 
     return expected;

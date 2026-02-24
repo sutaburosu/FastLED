@@ -569,6 +569,8 @@ Hardware interfaces:
 - `FL_LOG_SPI` - Serial Peripheral Interface operations
 - `FL_LOG_RMT` - ESP32 RMT peripheral
 - `FL_LOG_PARLIO` - ESP32-P4 parallel I/O
+- `FL_LOG_FLEXIO` - Teensy 4.x FlexIO peripheral
+- `FL_LOG_OBJECTFLED` - Teensy 4.x ObjectFLED DMA
 
 
 **Comparison with alternatives:**

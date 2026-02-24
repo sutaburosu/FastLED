@@ -187,6 +187,18 @@
 #include "ValidationPlatform.h"
 
 // ============================================================================
+// Teensy Hardware Watchdog (crash recovery) - DISABLED
+// ============================================================================
+// TODO: WDOG3 (RTWDOG) initialization causes immediate reset loop on
+// iMXRT1062, bricking the Teensy. Needs investigation into correct
+// unlock/configure sequence before enabling. The Teensy core does not
+// touch WDOG3 at startup, so the issue is in our init code.
+//
+// For now, watchdog is disabled. The primary fix is the FlexPWM RX
+// gap-aware decoder which should prevent the crash that motivated
+// the watchdog in the first place.
+
+// ============================================================================
 // Configuration
 // ============================================================================
 
@@ -265,7 +277,6 @@ void setup() {
     // Must be called BEFORE Serial.begin()
     init_serial_buffers();
     Serial.begin(115200);
-    // Watchdog disabled — investigating if it causes crash at 7.69s
     while (!Serial && millis() < SERIAL_TIMEOUT_MS);  // Wait for serial monitor (early exits when connected)
 
     FL_WARN("[SETUP] Validation sketch starting - serial output active");

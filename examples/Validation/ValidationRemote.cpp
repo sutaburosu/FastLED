@@ -327,7 +327,7 @@ fl::Json ValidationRemoteControl::runSingleTestImpl(const fl::Json& args) {
     fl::vector<fl::RunResult> run_results;
 
     {
-        fl::ScopedLogDisable logGuard;  // Suppress FL_DBG/FL_PRINT during test
+        fl::ScopedLogDisable logGuard;  // Suppress debug noise during test execution
 
         if (use_legacy_api) {
             // Legacy API path: WS2812B<PIN> template instantiation

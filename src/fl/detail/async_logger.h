@@ -150,6 +150,30 @@ namespace detail {
         }
     };
 
+    struct FlexIOLoggerInfo {
+        static const char* categoryName() { return "FLEXIO"; }
+        static const char* defineName() { return "FASTLED_LOG_FLEXIO_ENABLED"; }
+        static bool isEnabled() {
+            #ifdef FASTLED_LOG_FLEXIO_ENABLED
+            return true;
+            #else
+            return false;
+            #endif
+        }
+    };
+
+    struct ObjectFLEDLoggerInfo {
+        static const char* categoryName() { return "OBJECTFLED"; }
+        static const char* defineName() { return "FASTLED_LOG_OBJECTFLED_ENABLED"; }
+        static bool isEnabled() {
+            #ifdef FASTLED_LOG_OBJECTFLED_ENABLED
+            return true;
+            #else
+            return false;
+            #endif
+        }
+    };
+
     /// @brief Active logger registry for iteration (flush operations)
     /// Only tracks loggers that have been instantiated via template access
     struct ActiveLoggerRegistry {
@@ -285,6 +309,22 @@ inline AsyncLogger& get_interrupt_async_logger_isr() {
 
 inline AsyncLogger& get_interrupt_async_logger_main() {
     return get_async_logger_by_index<9, detail::InterruptLoggerInfo>();
+}
+
+inline AsyncLogger& get_flexio_async_logger_isr() {
+    return get_async_logger_by_index<10, detail::FlexIOLoggerInfo>();
+}
+
+inline AsyncLogger& get_flexio_async_logger_main() {
+    return get_async_logger_by_index<11, detail::FlexIOLoggerInfo>();
+}
+
+inline AsyncLogger& get_objectfled_async_logger_isr() {
+    return get_async_logger_by_index<12, detail::ObjectFLEDLoggerInfo>();
+}
+
+inline AsyncLogger& get_objectfled_async_logger_main() {
+    return get_async_logger_by_index<13, detail::ObjectFLEDLoggerInfo>();
 }
 
 } // namespace fl

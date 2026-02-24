@@ -53,6 +53,7 @@ Architecture:
 import argparse
 import asyncio
 import json
+import subprocess
 import sys
 import time
 from dataclasses import dataclass
@@ -532,6 +533,7 @@ class Args:
     spi: bool
     uart: bool
     i2s: bool
+    object_fled: bool
     all: bool
     simd: bool
 
@@ -602,11 +604,12 @@ Driver Selection (JSON-RPC):
   You can instantly switch between drivers without rebuilding firmware.
 
   MANDATORY: You MUST specify at least one driver flag:
-    --parlio    Test only PARLIO driver
-    --rmt       Test only RMT driver
-    --spi       Test only SPI driver
-    --uart      Test only UART driver
-    --all       Test all drivers (equivalent to --parlio --rmt --spi --uart)
+    --parlio      Test only PARLIO driver
+    --rmt         Test only RMT driver
+    --spi         Test only SPI driver
+    --uart        Test only UART driver
+    --object-fled Test only ObjectFLED DMA driver (Teensy 4.x)
+    --all         Test all drivers
 
 Strip Size Configuration:
   Configure LED strip sizes for validation testing via JSON-RPC:
@@ -691,9 +694,14 @@ See Also:
             help="Test only I2S LCD_CAM driver (ESP32-S3 only)",
         )
         driver_group.add_argument(
+            "--object-fled",
+            action="store_true",
+            help="Test only ObjectFLED DMA driver (Teensy 4.x only)",
+        )
+        driver_group.add_argument(
             "--all",
             action="store_true",
-            help="Test all drivers (equivalent to --parlio --rmt --spi --uart --i2s)",
+            help="Test all drivers (equivalent to --parlio --rmt --spi --uart --i2s --object-fled)",
         )
         driver_group.add_argument(
             "--simd",
@@ -875,6 +883,7 @@ See Also:
             spi=parsed.spi,
             uart=parsed.uart,
             i2s=parsed.i2s,
+            object_fled=parsed.object_fled,
             all=parsed.all,
             simd=parsed.simd,
             environment=parsed.environment,
@@ -1002,6 +1011,69 @@ async def _run_native_validation(args: Args, build_mode: str = "quick") -> int:
     return 0 if result.success else 1
 
 
+def _try_teensy_bootloader_upload(build_dir: Path, environment: str | None) -> bool:
+    """Try to detect Teensy in HalfKay bootloader mode and upload firmware.
+
+    Teensy uses HID (not serial) for bootloader uploads. When the device is in
+    bootloader mode (program button pressed), teensy_loader_cli can flash it
+    even though no serial port is visible.
+
+    Returns True if firmware was successfully uploaded.
+    """
+    if not environment:
+        return False
+
+    # Find teensy_loader_cli
+    loader_paths = [
+        Path.home()
+        / ".platformio"
+        / "packages"
+        / "tool-teensy"
+        / "teensy_loader_cli.exe",
+        Path.home() / ".platformio" / "packages" / "tool-teensy" / "teensy_loader_cli",
+    ]
+    loader = None
+    for p in loader_paths:
+        if p.exists():
+            loader = p
+            break
+    if not loader:
+        return False
+
+    # Find the firmware hex
+    hex_path = build_dir / ".pio" / "build" / environment / "firmware.hex"
+    if not hex_path.exists():
+        return False
+
+    # Map environment to MCU name for teensy_loader_cli
+    mcu_map = {
+        "teensy41": "TEENSY41",
+        "teensy40": "TEENSY40",
+        "teensylc": "TEENSYLC",
+        "teensy36": "TEENSY36",
+        "teensy35": "TEENSY35",
+        "teensy31": "TEENSY31",
+    }
+    mcu = mcu_map.get(environment.lower())
+    if not mcu:
+        return False
+
+    # Try a non-blocking check (no -w flag) to see if bootloader is present
+    try:
+        result = subprocess.run(
+            [str(loader), f"--mcu={mcu}", "-v", str(hex_path)],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        if result.returncode == 0 and "Programming" in result.stdout:
+            return True
+    except (subprocess.TimeoutExpired, OSError):
+        pass
+
+    return False
+
+
 # ============================================================
 # Main Entry Point
 # ============================================================
@@ -1037,7 +1109,7 @@ async def run(args: Args | None = None) -> int:  # pyright: ignore[reportGeneral
 
     # Check if any driver flags were specified
     if args.all:
-        drivers = ["PARLIO", "RMT", "SPI", "UART", "I2S"]
+        drivers = ["PARLIO", "RMT", "SPI", "UART", "I2S", "OBJECTFLED"]
     else:
         if args.parlio:
             drivers.append("PARLIO")
@@ -1049,6 +1121,8 @@ async def run(args: Args | None = None) -> int:  # pyright: ignore[reportGeneral
             drivers.append("UART")
         if args.i2s:
             drivers.append("I2S")
+        if args.object_fled:
+            drivers.append("OBJECTFLED")
 
     # GPIO-only mode: no drivers and not SIMD — just run GPIO pre-test
     gpio_only_mode = not drivers and not simd_test_mode
@@ -1347,11 +1421,68 @@ async def run(args: Args | None = None) -> int:  # pyright: ignore[reportGeneral
     # ============================================================
     # Port Detection
     # ============================================================
+    is_teensy = final_environment is not None and "teensy" in final_environment.lower()
     upload_port = args.upload_port
     if not upload_port:
+        # Wait up to 60 seconds for a USB serial port to appear.
+        # Devices like Teensy may take time to enumerate after power-cycle or
+        # firmware upload, so poll with a fast exit on first detection.
+        max_wait_s = 60
+        poll_interval_s = 1.0
         result = auto_detect_upload_port()
         if not result.ok:
-            # Port detection failed - display detailed error and exit
+            if is_teensy:
+                print(f"\n{Fore.YELLOW}{'=' * 60}")
+                print(f"  Teensy not detected on USB.")
+                print(f"  Press the PROGRAM button on the Teensy to enter bootloader.")
+                print(f"{'=' * 60}{Style.RESET_ALL}\n")
+            print(
+                f"⏳ No USB serial port found yet. Waiting up to {max_wait_s}s for device..."
+            )
+            deadline = time.monotonic() + max_wait_s
+            last_msg_at = 0.0
+            while time.monotonic() < deadline:
+                time.sleep(poll_interval_s)
+                result = auto_detect_upload_port()
+                if result.ok:
+                    elapsed = max_wait_s - (deadline - time.monotonic())
+                    print(
+                        f"✅ USB serial port detected after {elapsed:.1f}s: {result.selected_port}"
+                    )
+                    break
+                # For Teensy: also try to detect HalfKay bootloader and upload
+                # firmware directly via teensy_loader_cli (uses HID, not serial)
+                if is_teensy:
+                    teensy_result = _try_teensy_bootloader_upload(
+                        build_dir, final_environment
+                    )
+                    if teensy_result:
+                        # Teensy was programmed via bootloader, wait for serial
+                        print(
+                            "✅ Firmware uploaded via Teensy bootloader, waiting for serial port..."
+                        )
+                        serial_deadline = time.monotonic() + 15
+                        while time.monotonic() < serial_deadline:
+                            time.sleep(1.0)
+                            result = auto_detect_upload_port()
+                            if result.ok:
+                                print(
+                                    f"✅ Teensy serial port detected: {result.selected_port}"
+                                )
+                                break
+                        break
+                # Print progress every 5 seconds
+                now = time.monotonic()
+                if now - last_msg_at >= 5.0:
+                    remaining = deadline - now
+                    print(
+                        f"   Still waiting... {int(remaining)}s remaining",
+                        flush=True,
+                    )
+                    last_msg_at = now
+
+        if not result.ok:
+            # Port detection failed after waiting - display detailed error and exit
             print(f"{Fore.RED}{'=' * 60}")
             print(f"{Fore.RED}⚠️  FATAL ERROR: PORT DETECTION FAILED")
             print(f"{Fore.RED}{'=' * 60}")
@@ -1369,6 +1500,10 @@ async def run(args: Args | None = None) -> int:  # pyright: ignore[reportGeneral
             print(
                 f"\n{Fore.RED}Only USB devices are supported. Please connect a USB device and try again.{Style.RESET_ALL}"
             )
+            if is_teensy:
+                print(
+                    f"{Fore.YELLOW}Teensy hint: Hold the PROGRAM button while plugging in USB to force bootloader mode.{Style.RESET_ALL}"
+                )
             print(
                 f"{Fore.RED}Note: Bluetooth serial ports (BTHENUM) are not supported.{Style.RESET_ALL}\n"
             )

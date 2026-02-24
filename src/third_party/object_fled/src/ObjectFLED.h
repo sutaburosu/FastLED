@@ -179,7 +179,9 @@ private:
 	uint32_t rLevel = 65025;
 	uint32_t gLevel = 65025;
 	uint32_t bLevel = 65025;
+public:
 	void* drawBuffer;
+private:
 	uint16_t stripLen;
 	uint8_t params;
 	uint8_t pinlist[NUM_DIGITAL_PINS];
