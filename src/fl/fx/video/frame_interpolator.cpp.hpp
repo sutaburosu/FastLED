@@ -1,5 +1,5 @@
 #include "fl/fx/video/frame_interpolator.h"
-#include "fl/circular_buffer.h"
+#include "fl/stl/circular_buffer.h"
 #include "fl/math_macros.h"
 #include "fl/fx/video/pixel_stream.h"
 

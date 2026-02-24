@@ -23,7 +23,7 @@
 #include "fl/stl/not_null.h"
 #include "fl/stl/string.h"
 #include "fl/stl/function.h"
-#include "fl/circular_buffer.h"
+#include "fl/stl/circular_buffer.h"
 #include "fl/hash_map_lru.h"
 #include "fl/bitset_dynamic.h"
 #include "fl/stl/bitset.h"
@@ -792,16 +792,16 @@ FL_TEST_CASE("Container move semantics with shared_ptr") {
     }
 
     // Buffer types
-    FL_SUBCASE("fl::CircularBuffer") {
+    FL_SUBCASE("fl::circular_buffer") {
         auto ptr = make_shared_int(42);
 
-        fl::CircularBuffer<fl::shared_ptr<int>, 10> source;
+        fl::circular_buffer<fl::shared_ptr<int>, 10> source;
         populate(source, ptr);
 
         FL_REQUIRE(ptr.use_count() == 2);
         FL_REQUIRE(source.size() == 1);
 
-        fl::CircularBuffer<fl::shared_ptr<int>, 10> destination;
+        fl::circular_buffer<fl::shared_ptr<int>, 10> destination;
         destination = fl::move(source);
 
         FL_CHECK(source.size() == 0);
@@ -819,16 +819,16 @@ FL_TEST_CASE("Container move semantics with shared_ptr") {
         FL_CHECK(ptr.use_count() == 1);
     }
 
-    FL_SUBCASE("fl::CircularBuffer") {
+    FL_SUBCASE("fl::circular_buffer") {
         auto ptr = make_shared_int(42);
 
-        fl::CircularBuffer<fl::shared_ptr<int>> source(10);
+        fl::circular_buffer<fl::shared_ptr<int>> source(10);
         populate(source, ptr);
 
         FL_REQUIRE(ptr.use_count() == 2);
         FL_REQUIRE(source.size() == 1);
 
-        fl::CircularBuffer<fl::shared_ptr<int>> destination(5);
+        fl::circular_buffer<fl::shared_ptr<int>> destination(5);
         destination = fl::move(source);
 
         FL_CHECK(source.size() == 0);

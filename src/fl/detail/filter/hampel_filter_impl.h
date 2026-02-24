@@ -1,6 +1,6 @@
 #pragma once
 
-#include "fl/circular_buffer.h"
+#include "fl/stl/circular_buffer.h"
 #include "fl/log.h"
 #include "fl/math.h"
 #include "fl/stl/algorithm.h"
@@ -22,8 +22,8 @@ class HampelFilterImpl {
           mSortedCount(0), mThreshold(threshold), mLastValue(T(0)) {
         if (capacity % 2 == 0) {
             FL_ERROR("HampelFilter: capacity should be odd, adding 1");
-            mRing = CircularBuffer<T, N>(capacity + 1);
-            mSorted = CircularBuffer<T, N>(capacity + 1);
+            mRing = circular_buffer<T, N>(capacity + 1);
+            mSorted = circular_buffer<T, N>(capacity + 1);
         }
     }
 
@@ -102,15 +102,15 @@ class HampelFilterImpl {
             FL_ERROR("HampelFilter: capacity should be odd, adding 1");
             new_capacity += 1;
         }
-        mRing = CircularBuffer<T, N>(new_capacity);
-        mSorted = CircularBuffer<T, N>(new_capacity);
+        mRing = circular_buffer<T, N>(new_capacity);
+        mSorted = circular_buffer<T, N>(new_capacity);
         mSortedCount = 0;
         mLastValue = T(0);
     }
 
   private:
-    CircularBuffer<T, N> mRing;
-    CircularBuffer<T, N> mSorted;
+    circular_buffer<T, N> mRing;
+    circular_buffer<T, N> mSorted;
     fl::size mSortedCount;
     T mThreshold;
     T mLastValue;

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "fl/circular_buffer.h"
+#include "fl/stl/circular_buffer.h"
 #include "fl/math.h"
 #include "fl/stl/span.h"
 
@@ -35,7 +35,7 @@ class BilateralFilterImpl {
     fl::size capacity() const { return mBuf.capacity(); }
 
     void resize(fl::size new_capacity) {
-        mBuf = CircularBuffer<T, N>(new_capacity);
+        mBuf = circular_buffer<T, N>(new_capacity);
         mLastValue = T(0);
     }
 
@@ -68,7 +68,7 @@ class BilateralFilterImpl {
         return mLastValue;
     }
 
-    CircularBuffer<T, N> mBuf;
+    circular_buffer<T, N> mBuf;
     T mSigmaRange;
     T mLastValue;
 };

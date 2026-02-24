@@ -131,7 +131,7 @@
 //   LeakyIntegrator<int, K> — one right-shift and one add. No division,
 //     no multiplication, no buffer. K=2 (alpha=1/4) or K=3 (alpha=1/8).
 
-#include "fl/circular_buffer.h"
+#include "fl/stl/circular_buffer.h"
 #include "fl/force_inline.h"
 #include "fl/math.h"
 #include "fl/math_macros.h"

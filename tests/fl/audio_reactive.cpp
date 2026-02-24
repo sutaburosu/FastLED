@@ -2,7 +2,7 @@
 #include "fl/audio/audio_processor.h"
 #include "audio/test_helpers.hpp"
 #include "fl/audio.h"
-#include "fl/circular_buffer.h"
+#include "fl/stl/circular_buffer.h"
 #include "fl/math_macros.h"
 #include "fl/stl/math.h"
 #include "fl/stl/shared_ptr.h"
@@ -314,9 +314,9 @@ FL_TEST_CASE("AudioReactive configuration validation") {
     FL_CHECK_FALSE(audio.isTrebleBeat());
 }
 
-FL_TEST_CASE("AudioReactive CircularBuffer functionality") {
-    // Test the CircularBuffer template directly
-    CircularBuffer<float, 8> buffer;
+FL_TEST_CASE("AudioReactive circular_buffer functionality") {
+    // Test the circular_buffer template directly
+    circular_buffer<float, 8> buffer;
     
     FL_CHECK(buffer.empty());
     FL_CHECK_FALSE(buffer.full());

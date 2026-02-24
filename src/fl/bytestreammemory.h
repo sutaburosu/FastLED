@@ -5,7 +5,7 @@
 #include "fl/stl/shared_ptr.h"         // For FASTLED_SHARED_PTR macros
 
 #include "fl/bytestream.h"
-#include "fl/circular_buffer.h"
+#include "fl/stl/circular_buffer.h"
 #include "fl/int.h"
 
 namespace fl {
@@ -24,7 +24,7 @@ class ByteStreamMemory : public ByteStream {
     fl::size writeCRGB(const CRGB *src, fl::size n);
 
   private:
-    CircularBuffer<fl::u8> mReadBuffer;
+    circular_buffer<fl::u8> mReadBuffer;
 };
 
 } // namespace fl

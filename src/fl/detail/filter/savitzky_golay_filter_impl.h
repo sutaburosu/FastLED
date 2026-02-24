@@ -1,6 +1,6 @@
 #pragma once
 
-#include "fl/circular_buffer.h"
+#include "fl/stl/circular_buffer.h"
 #include "fl/log.h"
 #include "fl/detail/filter/div_by_count.h"
 #include "fl/stl/span.h"
@@ -18,7 +18,7 @@ class SavitzkyGolayFilterImpl {
         : mBuf(capacity), mLastValue(T(0)) {
         if (capacity % 2 == 0) {
             FL_ERROR("SavitzkyGolayFilter: capacity should be odd, adding 1");
-            mBuf = CircularBuffer<T, N>(capacity + 1);
+            mBuf = circular_buffer<T, N>(capacity + 1);
         }
     }
 
@@ -46,7 +46,7 @@ class SavitzkyGolayFilterImpl {
             FL_ERROR("SavitzkyGolayFilter: capacity should be odd, adding 1");
             new_capacity += 1;
         }
-        mBuf = CircularBuffer<T, N>(new_capacity);
+        mBuf = circular_buffer<T, N>(new_capacity);
         mLastValue = T(0);
     }
 
@@ -82,7 +82,7 @@ class SavitzkyGolayFilterImpl {
         return mLastValue;
     }
 
-    CircularBuffer<T, N> mBuf;
+    circular_buffer<T, N> mBuf;
     T mLastValue;
 };
 

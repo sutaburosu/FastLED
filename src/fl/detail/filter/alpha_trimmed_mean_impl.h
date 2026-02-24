@@ -1,6 +1,6 @@
 #pragma once
 
-#include "fl/circular_buffer.h"
+#include "fl/stl/circular_buffer.h"
 #include "fl/stl/algorithm.h"
 #include "fl/stl/span.h"
 #include "fl/detail/filter/div_by_count.h"
@@ -96,16 +96,16 @@ class AlphaTrimmedMeanImpl {
     fl::size capacity() const { return mRing.capacity(); }
 
     void resize(fl::size new_capacity, fl::size trim_count) {
-        mRing = CircularBuffer<T, N>(new_capacity);
-        mSorted = CircularBuffer<T, N>(new_capacity);
+        mRing = circular_buffer<T, N>(new_capacity);
+        mSorted = circular_buffer<T, N>(new_capacity);
         mSortedCount = 0;
         mTrimCount = trim_count;
         mLastValue = T(0);
     }
 
   private:
-    CircularBuffer<T, N> mRing;
-    CircularBuffer<T, N> mSorted;
+    circular_buffer<T, N> mRing;
+    circular_buffer<T, N> mSorted;
     fl::size mSortedCount;
     fl::size mTrimCount;
     T mLastValue;
