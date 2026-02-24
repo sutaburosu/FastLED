@@ -13,7 +13,7 @@ namespace fl {
 
 struct perlin_i16_optimized {
     static constexpr int HP_BITS = 16;
-    static constexpr fl::i32 HP_ONE = 1 << HP_BITS;
+    static constexpr fl::i32 HP_ONE = static_cast<fl::i32>(1) << HP_BITS;
 
     // Build fade LUT - still i32 for API compatibility
     static void init_fade_lut(fl::i32 *table);
@@ -30,7 +30,7 @@ struct perlin_i16_optimized {
 
   private:
     static constexpr int FP_BITS = fl::s16x16::FRAC_BITS;
-    static constexpr fl::i32 FP_ONE = 1 << FP_BITS;
+    static constexpr fl::i32 FP_ONE = static_cast<fl::i32>(1) << FP_BITS;
     // For i16 coordinates: use full 16-bit value (no room for 1.0 in i16)
     // Coordinates are fractional parts only (0-65535), HP_ONE stays as i32
     static constexpr fl::i32 HP_ONE_I16 = HP_ONE;

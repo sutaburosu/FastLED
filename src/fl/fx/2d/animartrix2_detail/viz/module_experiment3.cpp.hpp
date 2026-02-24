@@ -71,7 +71,7 @@ void Module_Experiment3_FP::draw(Context &ctx) {
     const int total_pixels = mState.count;
 
     // Per-frame constants converted to s16x16 raw once
-    constexpr fl::i32 FP_ONE = 1 << FP::FRAC_BITS;
+    constexpr fl::i32 FP_ONE = static_cast<fl::i32>(1) << FP::FRAC_BITS;
     constexpr fl::i32 scale_xy_raw = FP(0.1f).raw();
     const fl::i32 cx_raw = FP(e->animation.center_x).raw();
     const fl::i32 cy_raw = FP(e->animation.center_y).raw();

@@ -138,7 +138,7 @@ void Module_Experiment10_FP::draw(Context &ctx) {
     e->calculate_oscillators(e->timings);
 
     const int total_pixels = mState.count;
-    constexpr fl::i32 FP_ONE = 1 << FP::FRAC_BITS;
+    constexpr fl::i32 FP_ONE = static_cast<fl::i32>(1) << FP::FRAC_BITS;
     constexpr float r_factor = 1.5f;
 
     const fl::i32 cx_raw = FP(e->animation.center_x).raw();

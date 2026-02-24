@@ -31,7 +31,7 @@ struct perlin_s8x8 {
 
   private:
     static constexpr int FP_BITS = fl::s16x16::FRAC_BITS;
-    static constexpr fl::i32 FP_ONE = 1 << FP_BITS;
+    static constexpr fl::i32 FP_ONE = static_cast<fl::i32>(1) << FP_BITS;
 
     // Decompose s16x16 raw value into integer floor and Q8 fractional part.
     static FASTLED_FORCE_INLINE void floor_frac(fl::i32 fp16, int &ifloor,

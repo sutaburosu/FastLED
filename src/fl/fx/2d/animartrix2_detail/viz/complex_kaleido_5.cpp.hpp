@@ -82,7 +82,7 @@ void Complex_Kaleido_5_FP::draw(Context &ctx) {
     e->calculate_oscillators(e->timings);
 
     const int total_pixels = mState.count;
-    constexpr fl::i32 FP_ONE = 1 << FP::FRAC_BITS;
+    constexpr fl::i32 FP_ONE = static_cast<fl::i32>(1) << FP::FRAC_BITS;
     constexpr float size = 0.6f;
 
     // Per-frame constants

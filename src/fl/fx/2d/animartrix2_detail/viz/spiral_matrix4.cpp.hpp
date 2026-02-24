@@ -87,7 +87,7 @@ void SpiralMatrix4_FP::draw(Context &ctx) {
 
     const int total_pixels = mState.count;
 
-    constexpr fl::i32 FP_ONE = 1 << FP::FRAC_BITS;
+    constexpr fl::i32 FP_ONE = static_cast<fl::i32>(1) << FP::FRAC_BITS;
     constexpr fl::i32 scale_xy_raw = FP(0.09f).raw();
     const fl::i32 cx_raw = FP(e->animation.center_x).raw();
     const fl::i32 cy_raw = FP(e->animation.center_y).raw();

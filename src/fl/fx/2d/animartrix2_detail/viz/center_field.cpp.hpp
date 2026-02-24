@@ -65,7 +65,6 @@ void Center_Field::draw(Context &ctx) {
 
 void Center_Field_FP::draw(Context &ctx) {
     using FP = fl::s16x16;
-    using Perlin = perlin_s16x16;
 
     auto *e = ctx.mEngine;
     e->get_ready();
@@ -108,7 +107,7 @@ void Center_Field_FP::draw(Context &ctx) {
     const fl::i32 four_raw = four.raw();
 
     // low_limit=0, high_limit=1 (default render_parameters)
-    constexpr fl::i32 FP_ONE = 1 << FP::FRAC_BITS;
+    constexpr fl::i32 FP_ONE = static_cast<fl::i32>(1) << FP::FRAC_BITS;
 
     render_parameters_fp p = {};
     p.scale_x_raw = scale_xy_raw;

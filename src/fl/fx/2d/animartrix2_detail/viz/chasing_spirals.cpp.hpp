@@ -67,7 +67,7 @@ FASTLED_FORCE_INLINE i32 perlinCoord(i32 sc_val, i32 dist_raw, i32 offset) {
 
 // Clamp s16x16 value to [0, 1] and scale to [0, 255]
 FASTLED_FORCE_INLINE i32 clampAndScale255(i32 raw_s16x16) {
-    constexpr i32 FP_ONE = 1 << FP::FRAC_BITS;
+    constexpr i32 FP_ONE = static_cast<i32>(1) << FP::FRAC_BITS;
     if (raw_s16x16 < 0) raw_s16x16 = 0;
     if (raw_s16x16 > FP_ONE) raw_s16x16 = FP_ONE;
     return (raw_s16x16 << 8) - raw_s16x16;
@@ -134,7 +134,7 @@ simd::simd_u32x4 simd4_processChannel(
 
     // Clamp [0, FP_ONE], scale ×255, apply radial filter, clamp [0, 255]
     auto zero   = simd::set1_u32_4(0u);
-    auto fp_one = simd::set1_u32_4(static_cast<u32>(1 << FP::FRAC_BITS));
+    auto fp_one = simd::set1_u32_4(static_cast<u32>(static_cast<i32>(1) << FP::FRAC_BITS));
     auto clamped = simd::min_i32_4(simd::max_i32_4(raw_vec, zero), fp_one);
     auto noise_scaled = simd::sub_i32_4(simd::sll_u32_4(clamped, 8), clamped);
 

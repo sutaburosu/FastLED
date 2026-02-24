@@ -16,7 +16,7 @@ struct perlin_s16x16_simd {
     static constexpr int HP_BITS = perlin_s16x16::HP_BITS;
     static constexpr fl::i32 HP_ONE = perlin_s16x16::HP_ONE;
     static constexpr int FP_BITS = fl::s16x16::FRAC_BITS;
-    static constexpr fl::i32 FP_ONE = 1 << FP_BITS;
+    static constexpr fl::i32 FP_ONE = static_cast<fl::i32>(1) << FP_BITS;
 
     // SIMD batch version: Process 4 Perlin evaluations in parallel.
     // Takes SIMD registers directly — the caller loads/stores as needed.

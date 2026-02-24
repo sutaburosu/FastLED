@@ -24,7 +24,7 @@ void Distance_Experiment::draw(Context &ctx) {
 
     for (int x = 0; x < e->num_x; x++) {
         for (int y = 0; y < e->num_y; y++) {
-            e->animation.dist = fl::powf(e->distance[x][y], 0.5);
+            e->animation.dist = fl::powf(e->distance[x][y], 0.5f);
             e->animation.angle = e->polar_theta[x][y] + e->move.radial[0];
             e->animation.scale_x = 0.07;
             e->animation.scale_y = 0.07;
@@ -35,7 +35,7 @@ void Distance_Experiment::draw(Context &ctx) {
             e->animation.z = 0;
             float show1 = e->render_value(e->animation);
 
-            e->animation.dist = fl::powf(e->distance[x][y], 0.6);
+            e->animation.dist = fl::powf(e->distance[x][y], 0.6f);
             e->animation.angle = e->polar_theta[x][y] + e->move.noise_angle[2];
             e->animation.scale_x = 0.07;
             e->animation.scale_y = 0.07;
@@ -81,7 +81,7 @@ void Distance_Experiment_FP::draw(Context &ctx) {
 
     for (int x = 0; x < e->num_x; x++) {
         for (int y = 0; y < e->num_y; y++) {
-            e->animation.dist = fl::powf(e->distance[x][y], 0.5);
+            e->animation.dist = fl::powf(e->distance[x][y], 0.5f);
             e->animation.angle = e->polar_theta[x][y] + e->move.radial[0];
             e->animation.scale_x = 0.07;
             e->animation.scale_y = 0.07;
@@ -92,7 +92,7 @@ void Distance_Experiment_FP::draw(Context &ctx) {
             e->animation.z = 0;
             float show1 = render_value_fp_from_float(e->animation, fade_lut, perm);
 
-            e->animation.dist = fl::powf(e->distance[x][y], 0.6);
+            e->animation.dist = fl::powf(e->distance[x][y], 0.6f);
             e->animation.angle = e->polar_theta[x][y] + e->move.noise_angle[2];
             e->animation.scale_x = 0.07;
             e->animation.scale_y = 0.07;

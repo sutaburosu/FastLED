@@ -57,7 +57,7 @@ FASTLED_FORCE_INLINE fl::i32 render_value_fp(
         const fl::u8 *perm) {
 
     using FP = fl::s16x16;
-    constexpr fl::i32 FP_ONE = 1 << FP::FRAC_BITS;
+    constexpr fl::i32 FP_ONE = static_cast<fl::i32>(1) << FP::FRAC_BITS;
 
     // sincos32 for angle
     fl::u32 a24 = radiansToA24_fp(p.angle_raw);
@@ -165,9 +165,12 @@ FASTLED_FORCE_INLINE fl::i32 add_fp(fl::i32 a, fl::i32 b) {
 
 // Clamp RGB triple to [0, 255]
 FASTLED_FORCE_INLINE void rgb_sanity_check_fp(fl::i32 &r, fl::i32 &g, fl::i32 &b) {
-    if (r < 0) r = 0; if (r > 255) r = 255;
-    if (g < 0) g = 0; if (g > 255) g = 255;
-    if (b < 0) b = 0; if (b > 255) b = 255;
+    if (r < 0) r = 0;
+    if (r > 255) r = 255;
+    if (g < 0) g = 0;
+    if (g > 255) g = 255;
+    if (b < 0) b = 0;
+    if (b > 255) b = 255;
 }
 
 // Hybrid helper: takes float render_parameters (same struct the float path uses),

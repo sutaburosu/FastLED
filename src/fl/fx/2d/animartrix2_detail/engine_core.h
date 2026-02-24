@@ -46,7 +46,7 @@ inline void calculate_oscillators(oscillators &timings, modulators &move,
 
     for (int i = 0; i < num_oscillators; i++) {
         move.linear[i] = (runtime + timings.offset[i]) * timings.ratio[i];
-        move.radial[i] = fl::fmodf(move.linear[i], 2 * PI);
+        move.radial[i] = fl::fmodf(move.linear[i], 2.0f * static_cast<float>(PI));
         move.directional[i] = FL_SIN_F(move.radial[i]);
         move.noise_angle[i] = PI * (1 + pnoise(move.linear[i], 0, 0));
     }

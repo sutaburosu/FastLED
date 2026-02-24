@@ -15,7 +15,7 @@ namespace fl {
 
 struct perlin_s16x16 {
     static constexpr int HP_BITS = 24;
-    static constexpr fl::i32 HP_ONE = 1 << HP_BITS; // 16777216 = 1.0
+    static constexpr fl::i32 HP_ONE = static_cast<fl::i32>(1) << HP_BITS; // 16777216 = 1.0
 
     // Build 257-entry Perlin fade LUT in Q8.24 format.
     static void init_fade_lut(fl::i32 *table);
@@ -33,7 +33,7 @@ struct perlin_s16x16 {
                                         const fl::u8 *perm);
 
     static constexpr int FP_BITS = fl::s16x16::FRAC_BITS;
-    static constexpr fl::i32 FP_ONE = 1 << FP_BITS;
+    static constexpr fl::i32 FP_ONE = static_cast<fl::i32>(1) << FP_BITS;
 
     // Decompose s16x16 raw value into integer floor and Q8.24 fractional part.
     static void floor_frac(fl::i32 fp16, int &ifloor,
