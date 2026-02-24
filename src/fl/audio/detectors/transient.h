@@ -2,6 +2,7 @@
 
 #include "fl/audio/audio_detector.h"
 #include "fl/audio/audio_context.h"
+#include "fl/filter.h"
 #include "fl/stl/function.h"
 #include "fl/stl/vector.h"
 
@@ -57,6 +58,9 @@ private:
     vector<float> mPreviousHighFreq;
     vector<float> mEnergyHistory;
     static constexpr size ENERGY_HISTORY_SIZE = 5;
+
+    // Adaptive outlier rejection for energy before history
+    HampelFilter<float, 7> mEnergyOutlierFilter{2.5f};
 
     shared_ptr<const FFTBins> mRetainedFFT;
 

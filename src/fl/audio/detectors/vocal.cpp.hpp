@@ -30,16 +30,17 @@ void VocalDetector::update(shared_ptr<AudioContext> context) {
     mSpectralRolloff = calculateSpectralRolloff(fft);
     mFormantRatio = estimateFormantRatio(fft);
 
-    // Calculate raw confidence and apply EMA smoothing
+    // Calculate raw confidence and apply time-aware smoothing
     float rawConfidence = calculateRawConfidence(mSpectralCentroid, mSpectralRolloff, mFormantRatio);
-    mSmoothedConfidence = mSmoothingAlpha * mSmoothedConfidence + (1.0f - mSmoothingAlpha) * rawConfidence;
+    static constexpr float kFrameDt = 0.023f;
+    float smoothedConfidence = mConfidenceSmoother.update(rawConfidence, kFrameDt);
 
     // Hysteresis: use separate on/off thresholds to prevent chattering
     bool wantActive;
     if (mVocalActive) {
-        wantActive = (mSmoothedConfidence >= mOffThreshold);
+        wantActive = (smoothedConfidence >= mOffThreshold);
     } else {
-        wantActive = (mSmoothedConfidence >= mOnThreshold);
+        wantActive = (smoothedConfidence >= mOnThreshold);
     }
 
     // Debounce: require state to persist for MIN_FRAMES_TO_TRANSITION frames
@@ -59,7 +60,7 @@ void VocalDetector::update(shared_ptr<AudioContext> context) {
 
 void VocalDetector::fireCallbacks() {
     if (mStateChanged) {
-        if (onVocal) onVocal(static_cast<u8>(mSmoothedConfidence * 255.0f));
+        if (onVocal) onVocal(static_cast<u8>(mConfidenceSmoother.value() * 255.0f));
         if (mVocalActive && onVocalStart) onVocalStart();
         if (!mVocalActive && onVocalEnd) onVocalEnd();
         mPreviousVocalActive = mVocalActive;
@@ -71,7 +72,7 @@ void VocalDetector::reset() {
     mVocalActive = false;
     mPreviousVocalActive = false;
     mConfidence = 0.0f;
-    mSmoothedConfidence = 0.0f;
+    mConfidenceSmoother.reset();
     mSpectralCentroid = 0.0f;
     mSpectralRolloff = 0.0f;
     mFormantRatio = 0.0f;

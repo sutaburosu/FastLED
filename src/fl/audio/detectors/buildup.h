@@ -5,6 +5,7 @@
 
 #include "fl/audio/audio_detector.h"
 #include "fl/audio/audio_context.h"
+#include "fl/filter.h"
 #include "fl/stl/function.h"
 
 namespace fl {
@@ -92,6 +93,10 @@ private:
     float mTrebleHistory[16];  // Last 16 frames (~0.35s)
     int mTrebleHistoryIndex;
     int mTrebleHistorySize;
+
+    // SavitzkyGolay filters for smooth trend estimation (preserves peaks)
+    SavitzkyGolayFilter<float, 7> mEnergySG;
+    SavitzkyGolayFilter<float, 7> mTrebleSG;
 
     // Previous frame state
     float mPrevEnergy;

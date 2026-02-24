@@ -46,9 +46,11 @@ void BuildupDetector::update(shared_ptr<AudioContext> context) {
     float treble = getTrebleEnergy(fft);
     u32 timestamp = context->getTimestamp();
 
-    // Update history
+    // Update history and SG filters
     updateEnergyHistory(rms);
     updateTrebleHistory(treble);
+    mEnergySG.update(rms);
+    mTrebleSG.update(treble);
 
     // Calculate trends
     float energyTrend = calculateEnergyTrend();
@@ -151,66 +153,46 @@ void BuildupDetector::reset() {
     for (int i = 0; i < 16; i++) {
         mTrebleHistory[i] = 0.0f;
     }
+    mEnergySG.reset();
+    mTrebleSG.reset();
 
     mCurrentBuildup = Buildup();
 }
 
 float BuildupDetector::calculateEnergyTrend() const {
-    if (mEnergyHistorySize < 8) {
+    if (mEnergyHistorySize < 8 || !mEnergySG.full()) {
         return 0.0f;  // Not enough data
     }
 
-    // Calculate linear regression slope (simplified)
-    // Compare first half vs. second half of history
-    int halfSize = mEnergyHistorySize / 2;
-    float firstHalfSum = 0.0f;
-    float secondHalfSum = 0.0f;
+    // Use SG-smoothed current value vs oldest history entry for trend
+    float currentSmoothed = mEnergySG.value();
+    // Get the oldest entry in the circular buffer
+    int oldestIdx = (mEnergyHistorySize < 32) ? 0 : mEnergyHistoryIndex;
+    float oldestValue = mEnergyHistory[oldestIdx];
 
-    for (int i = 0; i < halfSize; i++) {
-        firstHalfSum += mEnergyHistory[i];
-    }
-    for (int i = halfSize; i < mEnergyHistorySize; i++) {
-        secondHalfSum += mEnergyHistory[i];
-    }
-
-    float firstHalfAvg = firstHalfSum / static_cast<float>(halfSize);
-    float secondHalfAvg = secondHalfSum / static_cast<float>(mEnergyHistorySize - halfSize);
-
-    // Calculate rise rate (normalized)
-    if (firstHalfAvg < 1e-6f) {
+    if (oldestValue < 1e-6f) {
         return 0.0f;
     }
 
-    float riseRate = (secondHalfAvg - firstHalfAvg) / firstHalfAvg;
+    float riseRate = (currentSmoothed - oldestValue) / oldestValue;
     return fl::fl_max(0.0f, fl::fl_min(2.0f, riseRate));  // Clamp to [0, 2]
 }
 
 float BuildupDetector::calculateTrebleTrend() const {
-    if (mTrebleHistorySize < 4) {
+    if (mTrebleHistorySize < 4 || !mTrebleSG.full()) {
         return 0.0f;  // Not enough data
     }
 
-    // Calculate treble rise trend
-    int halfSize = mTrebleHistorySize / 2;
-    float firstHalfSum = 0.0f;
-    float secondHalfSum = 0.0f;
+    // Use SG-smoothed current value vs oldest history entry for trend
+    float currentSmoothed = mTrebleSG.value();
+    int oldestIdx = (mTrebleHistorySize < 16) ? 0 : mTrebleHistoryIndex;
+    float oldestValue = mTrebleHistory[oldestIdx];
 
-    for (int i = 0; i < halfSize; i++) {
-        firstHalfSum += mTrebleHistory[i];
-    }
-    for (int i = halfSize; i < mTrebleHistorySize; i++) {
-        secondHalfSum += mTrebleHistory[i];
-    }
-
-    float firstHalfAvg = firstHalfSum / static_cast<float>(halfSize);
-    float secondHalfAvg = secondHalfSum / static_cast<float>(mTrebleHistorySize - halfSize);
-
-    // Calculate rise rate
-    if (firstHalfAvg < 1e-6f) {
+    if (oldestValue < 1e-6f) {
         return 0.0f;
     }
 
-    float riseRate = (secondHalfAvg - firstHalfAvg) / firstHalfAvg;
+    float riseRate = (currentSmoothed - oldestValue) / oldestValue;
     return fl::fl_max(0.0f, fl::fl_min(2.0f, riseRate));  // Clamp to [0, 2]
 }
 

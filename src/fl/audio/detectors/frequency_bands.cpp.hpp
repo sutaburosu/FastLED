@@ -46,7 +46,6 @@ FrequencyBands::FrequencyBands()
     , mMidMax(4000.0f)
     , mTrebleMin(4000.0f)
     , mTrebleMax(20000.0f)
-    , mSmoothing(0.7f)
     , mFFTBins(kNumBands)
 {}
 
@@ -70,10 +69,11 @@ void FrequencyBands::update(shared_ptr<AudioContext> context) {
     float midEnergy = calculateBandEnergy(mFFTBins, mMidMin, mMidMax, fftMin, fftMax);
     float trebleEnergy = calculateBandEnergy(mFFTBins, mTrebleMin, mTrebleMax, fftMin, fftMax);
 
-    // Apply smoothing
-    mBass = mSmoothing * mBass + (1.0f - mSmoothing) * bassEnergy;
-    mMid = mSmoothing * mMid + (1.0f - mSmoothing) * midEnergy;
-    mTreble = mSmoothing * mTreble + (1.0f - mSmoothing) * trebleEnergy;
+    // Apply time-aware smoothing (~23ms per frame at 43fps)
+    static constexpr float kFrameDt = 0.023f;
+    mBass = mBassSmoother.update(bassEnergy, kFrameDt);
+    mMid = mMidSmoother.update(midEnergy, kFrameDt);
+    mTreble = mTrebleSmoother.update(trebleEnergy, kFrameDt);
 }
 
 void FrequencyBands::fireCallbacks() {
@@ -95,6 +95,9 @@ void FrequencyBands::reset() {
     mBass = 0.0f;
     mMid = 0.0f;
     mTreble = 0.0f;
+    mBassSmoother.reset();
+    mMidSmoother.reset();
+    mTrebleSmoother.reset();
 }
 
 float FrequencyBands::calculateBandEnergy(const FFTBins& fft, float minFreq, float maxFreq,

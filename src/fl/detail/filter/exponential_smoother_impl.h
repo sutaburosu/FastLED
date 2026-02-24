@@ -12,6 +12,10 @@ class ExponentialSmootherImpl {
         : mTau(tau_seconds), mY(initial) {}
 
     T update(T input, T dt_seconds) {
+        if (mTau <= T(0)) {
+            mY = input;  // No smoothing when tau <= 0
+            return mY;
+        }
         T decay = fl::exp(-(dt_seconds / mTau));
         mY = input + (mY - input) * decay;
         return mY;

@@ -18,7 +18,6 @@ BeatDetector::BeatDetector()
     , mAdaptiveThreshold(0.0f)
 {
     mPreviousMagnitudes.resize(16, 0.0f);
-    mFluxHistory.reserve(FLUX_HISTORY_SIZE);
 }
 
 BeatDetector::~BeatDetector() = default;
@@ -63,7 +62,7 @@ void BeatDetector::reset() {
     mBeatInterval = 500;
     mAdaptiveThreshold = 0.0f;
     fl::fill(mPreviousMagnitudes.begin(), mPreviousMagnitudes.end(), 0.0f);
-    mFluxHistory.clear();
+    mFluxAvg.reset();
 }
 
 float BeatDetector::calculateSpectralFlux(const FFTBins& fft) {
@@ -88,22 +87,9 @@ float BeatDetector::calculateSpectralFlux(const FFTBins& fft) {
 }
 
 void BeatDetector::updateAdaptiveThreshold() {
-    // Add current flux to history
-    if (mFluxHistory.size() >= FLUX_HISTORY_SIZE) {
-        // Remove oldest
-        mFluxHistory.erase(mFluxHistory.begin());
-    }
-    mFluxHistory.push_back(mSpectralFlux);
-
-    // Calculate mean of flux history
-    if (!mFluxHistory.empty()) {
-        float sum = 0.0f;
-        for (size i = 0; i < mFluxHistory.size(); i++) {
-            sum += mFluxHistory[i];
-        }
-        float mean = sum / static_cast<float>(mFluxHistory.size());
-        mAdaptiveThreshold = mean * mThreshold * mSensitivity;
-    }
+    // O(1) running average via MovingAverage filter
+    float mean = mFluxAvg.update(mSpectralFlux);
+    mAdaptiveThreshold = mean * mThreshold * mSensitivity;
 }
 
 bool BeatDetector::detectBeat(u32 timestamp) {

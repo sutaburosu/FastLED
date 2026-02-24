@@ -2,6 +2,7 @@
 
 #include "fl/audio/audio_detector.h"
 #include "fl/audio/audio_context.h"
+#include "fl/filter.h"
 #include "fl/stl/function.h"
 #include "fl/stl/vector.h"
 
@@ -54,7 +55,7 @@ public:
     void setMinFrequency(float hz) { mMinFrequency = hz; updatePeriodRange(); }
     void setMaxFrequency(float hz) { mMaxFrequency = hz; updatePeriodRange(); }
     void setConfidenceThreshold(float threshold) { mConfidenceThreshold = threshold; }
-    void setSmoothingFactor(float alpha) { mSmoothingFactor = alpha; }
+    void setSmoothingFactor(float) { /* OneEuroFilter adapts automatically */ }
     void setPitchChangeSensitivity(float sensitivity) { mPitchChangeSensitivity = sensitivity; }
 
 private:
@@ -73,8 +74,10 @@ private:
     float mMinFrequency;      // Minimum detectable frequency (Hz)
     float mMaxFrequency;      // Maximum detectable frequency (Hz)
     float mConfidenceThreshold;  // Minimum confidence to report pitch
-    float mSmoothingFactor;   // Exponential smoothing alpha (0-1)
     float mPitchChangeSensitivity;  // Sensitivity for pitch change detection (Hz)
+
+    // Adaptive pitch smoothing: low jitter when stable, low lag on changes
+    OneEuroFilter<float> mPitchSmoother{1.0f, 0.5f};
 
     // Autocorrelation parameters
     int mMinPeriod;           // Minimum period in samples

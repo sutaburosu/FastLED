@@ -2,6 +2,7 @@
 
 #include "fl/audio/audio_detector.h"
 #include "fl/audio/audio_context.h"
+#include "fl/filter.h"
 #include "fl/int.h"
 #include "fl/stl/function.h"
 
@@ -54,9 +55,11 @@ private:
     float mKickThreshold;
     float mSnareThreshold;
     float mHiHatThreshold;
-    float mPrevBassEnergy;
-    float mPrevMidEnergy;
-    float mPrevTrebleEnergy;
+    // Envelope followers: slow attack (lags behind onsets to produce flux),
+    // fast decay (recovers quickly after transient)
+    AttackDecayFilter<float> mBassEnvelope{0.15f, 0.005f};
+    AttackDecayFilter<float> mMidEnvelope{0.15f, 0.005f};
+    AttackDecayFilter<float> mTrebleEnvelope{0.15f, 0.005f};
     u32 mLastKickTime;
     u32 mLastSnareTime;
     u32 mLastHiHatTime;

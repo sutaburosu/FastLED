@@ -44,11 +44,14 @@ void TransientDetector::update(shared_ptr<AudioContext> context) {
     // Update previous energy for next frame
     mPreviousEnergy = mCurrentEnergy;
 
-    // Update energy history
+    // Filter energy through HampelFilter to reject outliers before history
+    float filteredEnergy = mEnergyOutlierFilter.update(mCurrentEnergy);
+
+    // Update energy history with outlier-rejected values
     if (mEnergyHistory.size() >= ENERGY_HISTORY_SIZE) {
         mEnergyHistory.erase(mEnergyHistory.begin());
     }
-    mEnergyHistory.push_back(mCurrentEnergy);
+    mEnergyHistory.push_back(filteredEnergy);
 }
 
 void TransientDetector::fireCallbacks() {
@@ -74,6 +77,7 @@ void TransientDetector::reset() {
     mAttackTime = 0.0f;
     fl::fill(mPreviousHighFreq.begin(), mPreviousHighFreq.end(), 0.0f);
     mEnergyHistory.clear();
+    mEnergyOutlierFilter.reset();
 }
 
 float TransientDetector::calculateHighFreqEnergy(const FFTBins& fft) {

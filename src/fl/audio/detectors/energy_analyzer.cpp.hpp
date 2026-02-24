@@ -12,10 +12,7 @@ EnergyAnalyzer::EnergyAnalyzer()
     , mMaxEnergy(0.0f)
     , mPeakDecay(0.95f)
     , mLastPeakTime(0)
-    , mHistorySize(43)  // ~1 second at 43fps
-    , mHistoryIndex(0)
 {
-    mEnergyHistory.reserve(mHistorySize);
 }
 
 EnergyAnalyzer::~EnergyAnalyzer() = default;
@@ -37,17 +34,15 @@ void EnergyAnalyzer::update(shared_ptr<AudioContext> context) {
         mMaxEnergy = fl::fl_max(mMaxEnergy, mCurrentRMS);
     }
 
-    // Compute normalized 0-1 RMS using adaptive range tracking
-    if (mCurrentRMS > mRunningMax) {
-        mRunningMax = mCurrentRMS;  // Instant attack
-    } else {
-        mRunningMax *= MAX_DECAY;   // Slow decay
-        // Ensure running max doesn't decay below a minimum threshold
-        if (mRunningMax < 1.0f) {
-            mRunningMax = 1.0f;
-        }
+    // Compute normalized 0-1 RMS using adaptive range tracking.
+    // AttackDecayFilter: instant attack (0.001s), slow decay (2.0s).
+    // dt is approximate frame interval (~23ms at 43fps).
+    float runningMax = mRunningMaxFilter.update(mCurrentRMS, 0.023f);
+    // Ensure running max doesn't decay below a minimum threshold
+    if (runningMax < 1.0f) {
+        runningMax = 1.0f;
     }
-    mNormalizedRMS = fl::fl_min(1.0f, mCurrentRMS / mRunningMax);
+    mNormalizedRMS = fl::fl_min(1.0f, mCurrentRMS / runningMax);
 }
 
 void EnergyAnalyzer::fireCallbacks() {
@@ -72,19 +67,13 @@ void EnergyAnalyzer::reset() {
     mMinEnergy = 1e6f;
     mMaxEnergy = 0.0f;
     mNormalizedRMS = 0.0f;
-    mRunningMax = 1.0f;
+    mRunningMaxFilter.reset(1.0f);
     mLastPeakTime = 0;
-    mEnergyHistory.clear();
-    mHistoryIndex = 0;
+    mEnergyAvg.reset();
 }
 
 void EnergyAnalyzer::setHistorySize(int size) {
-    if (size != mHistorySize) {
-        mHistorySize = size;
-        mEnergyHistory.clear();
-        mEnergyHistory.reserve(size);
-        mHistoryIndex = 0;
-    }
+    mEnergyAvg.resize(static_cast<fl::size>(size));
 }
 
 void EnergyAnalyzer::updatePeak(float energy, u32 timestamp) {
@@ -108,21 +97,8 @@ void EnergyAnalyzer::updatePeak(float energy, u32 timestamp) {
 }
 
 void EnergyAnalyzer::updateAverage(float energy) {
-    if (static_cast<int>(mEnergyHistory.size()) < mHistorySize) {
-        // Still building up history
-        mEnergyHistory.push_back(energy);
-    } else {
-        // Ring buffer mode
-        mEnergyHistory[mHistoryIndex] = energy;
-        mHistoryIndex = (mHistoryIndex + 1) % mHistorySize;
-    }
-
-    // Calculate average
-    float sum = 0.0f;
-    for (size i = 0; i < mEnergyHistory.size(); i++) {
-        sum += mEnergyHistory[i];
-    }
-    mAverageEnergy = sum / static_cast<float>(mEnergyHistory.size());
+    mEnergyAvg.update(energy);
+    mAverageEnergy = mEnergyAvg.value();
 }
 
 } // namespace fl

@@ -20,7 +20,6 @@ TempoAnalyzer::TempoAnalyzer()
     mPreviousMagnitudes.resize(8, 0.0f);  // Track first 8 bins for spectral flux
     mHypotheses.reserve(MAX_HYPOTHESES);
     mOnsetTimes.reserve(MAX_ONSET_HISTORY);
-    mFluxHistory.reserve(FLUX_HISTORY_SIZE);
     mBPMHistory.reserve(BPM_HISTORY_SIZE);
 }
 
@@ -101,7 +100,8 @@ void TempoAnalyzer::reset() {
     fl::fill(mPreviousMagnitudes.begin(), mPreviousMagnitudes.end(), 0.0f);
     mHypotheses.clear();
     mOnsetTimes.clear();
-    mFluxHistory.clear();
+    mFluxAvg.reset();
+    mBPMMedian.reset();
     mBPMHistory.clear();
 }
 
@@ -122,21 +122,9 @@ float TempoAnalyzer::calculateSpectralFlux(const FFTBins& fft) {
 }
 
 void TempoAnalyzer::updateAdaptiveThreshold() {
-    // Add current flux to history
-    if (mFluxHistory.size() >= FLUX_HISTORY_SIZE) {
-        mFluxHistory.erase(mFluxHistory.begin());
-    }
-    mFluxHistory.push_back(mPreviousFlux);
-
-    // Calculate adaptive threshold
-    if (!mFluxHistory.empty()) {
-        float sum = 0.0f;
-        for (size i = 0; i < mFluxHistory.size(); i++) {
-            sum += mFluxHistory[i];
-        }
-        float mean = sum / static_cast<float>(mFluxHistory.size());
-        mAdaptiveThreshold = mean * 1.5f;
-    }
+    // O(1) running average via MovingAverage filter
+    float mean = mFluxAvg.update(mPreviousFlux);
+    mAdaptiveThreshold = mean * 1.5f;
 }
 
 bool TempoAnalyzer::detectOnset(u32 timestamp) {
@@ -238,12 +226,12 @@ void TempoAnalyzer::updateCurrentTempo() {
         return;
     }
 
-    // Use the best hypothesis
+    // Use the best hypothesis, filtered through median for outlier rejection
     const TempoHypothesis& best = mHypotheses[0];
-    mCurrentBPM = best.bpm;
+    mCurrentBPM = mBPMMedian.update(best.bpm);
     mConfidence = calculateTempoConfidence(best);
 
-    // Add to BPM history
+    // Add to BPM history for stability analysis
     mBPMHistory.push_back(mCurrentBPM);
     if (mBPMHistory.size() > BPM_HISTORY_SIZE) {
         mBPMHistory.erase(mBPMHistory.begin());

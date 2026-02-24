@@ -2,6 +2,7 @@
 
 #include "fl/audio/audio_detector.h"
 #include "fl/audio/audio_context.h"
+#include "fl/filter.h"
 #include "fl/stl/function.h"
 #include "fl/stl/vector.h"
 
@@ -66,7 +67,7 @@ private:
     vector<float> mPreviousMagnitudes;  // Per-bin magnitudes for spectral flux
     float mPreviousFlux;                // Previous frame's total flux (for threshold)
     float mAdaptiveThreshold;
-    vector<float> mFluxHistory;
+    MovingAverage<float, 43> mFluxAvg;
     static constexpr size FLUX_HISTORY_SIZE = 43;  // ~1 second at 43fps
 
     // Callback state tracking
@@ -74,7 +75,8 @@ private:
     bool mBpmChanged = false;
     float mPreviousBPM = 120.0f;
 
-    // Stability tracking
+    // Stability tracking (MedianFilter rejects half/double-tempo outliers)
+    MedianFilter<float, 21> mBPMMedian;
     vector<float> mBPMHistory;
     static constexpr size BPM_HISTORY_SIZE = 20;
     u32 mStableFrameCount;

@@ -22,7 +22,7 @@ void AutoGain::configure(const AutoGainConfig& config) {
 
 void AutoGain::reset() {
     mPercentileEstimate = 1000.0f;  // Reset to initial estimate
-    mSmoothedGain = 1.0f;
+    mGainFilter.reset(1.0f);
     mStats.currentGain = 1.0f;
     mStats.percentileEstimate = 0.0f;
     mStats.inputRMS = 0.0f;
@@ -51,13 +51,14 @@ AudioSample AutoGain::process(const AudioSample& sample) {
     // Calculate gain from percentile estimate
     const float targetGain = calculateGain();
 
-    // Apply smoothing to gain to prevent abrupt changes
-    const float alpha = mConfig.gainSmoothing;
-    mSmoothedGain = alpha * mSmoothedGain + (1.0f - alpha) * targetGain;
+    // Apply asymmetric smoothing: fast attack (reduce gain quickly on loud),
+    // slow release (prevent gain pumping on quiet)
+    static constexpr float kFrameDt = 0.023f;
+    float smoothedGain = mGainFilter.update(targetGain, kFrameDt);
 
     // Clamp to configured range
     const float clampedGain = fl::max(mConfig.minGain,
-                                       fl::min(mConfig.maxGain, mSmoothedGain));
+                                       fl::min(mConfig.maxGain, smoothedGain));
 
     mStats.currentGain = clampedGain;
 

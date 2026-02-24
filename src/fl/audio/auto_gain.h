@@ -1,6 +1,7 @@
 #pragma once
 
 #include "fl/audio.h"
+#include "fl/filter.h"
 #include "fl/int.h"
 #include "fl/stl/vector.h"
 
@@ -31,9 +32,8 @@ struct AutoGainConfig {
     /// The AGC will adjust gain to maintain this average level
     float targetRMSLevel = 8000.0f;
 
-    /// Smoothing factor for gain changes (0.0-1.0)
-    /// Higher = smoother but slower gain adjustments
-    float gainSmoothing = 0.95f;
+    // Gain smoothing is handled internally by AttackDecayFilter
+    // (fast attack 10ms, slow release 300ms)
 };
 
 /// AutoGain implements adaptive gain control using Robbins-Monro percentile
@@ -114,8 +114,8 @@ private:
     /// Robbins-Monro percentile estimate (running estimate of target percentile RMS)
     float mPercentileEstimate = 1000.0f;  // Initial estimate
 
-    /// Smoothed gain (to prevent abrupt changes)
-    float mSmoothedGain = 1.0f;
+    /// Asymmetric gain smoothing: fast attack (10ms), slow release (300ms)
+    AttackDecayFilter<float> mGainFilter{0.01f, 0.3f, 1.0f};
 
     /// Working buffer (reused to avoid allocations)
     vector<i16> mOutputBuffer;

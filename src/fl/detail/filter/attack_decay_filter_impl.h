@@ -13,6 +13,10 @@ class AttackDecayFilterImpl {
 
     T update(T input, T dt_seconds) {
         T tau = (input > mY) ? mAttackTau : mDecayTau;
+        if (tau <= T(0)) {
+            mY = input;  // No smoothing when tau <= 0
+            return mY;
+        }
         T decay = fl::exp(-(dt_seconds / tau));
         mY = input + (mY - input) * decay;
         return mY;

@@ -21,7 +21,6 @@ void SignalConditioner::configure(const SignalConditionerConfig& config) {
 }
 
 void SignalConditioner::reset() {
-    mDCOffsetEMA = 0.0f;
     mNoiseGateOpen = false;
     mStats.dcOffset = 0;
     mStats.noiseGateOpen = false;
@@ -54,6 +53,8 @@ AudioSample SignalConditioner::processSample(const AudioSample& sample) {
     }
 
     // Stage 2: DC offset removal (if enabled)
+    // Uses per-buffer instantaneous DC calculation for accuracy,
+    // plus per-sample DCBlocker for cross-buffer continuity.
     i32 dcOffset = 0;
     if (mConfig.enableDCRemoval) {
         dcOffset = calculateDCOffset(pcm, mValidMask);
@@ -125,15 +126,7 @@ i32 SignalConditioner::calculateDCOffset(span<const i16> pcm, const vector<bool>
     }
 
     // Calculate instantaneous DC offset for this buffer
-    // This is the standard approach for per-buffer DC removal in audio processing
     const i32 instantDC = static_cast<i32>(sum / static_cast<i64>(validCount));
-
-    // Optional: Track DC offset for monitoring/debugging purposes
-    // Use EMA for smoother statistics but return instantaneous offset for removal
-    const float alpha = mConfig.dcRemovalAlpha;
-    mDCOffsetEMA = alpha * mDCOffsetEMA + (1.0f - alpha) * static_cast<float>(instantDC);
-
-    // Return instantaneous DC offset (not EMA) for immediate removal
     return instantDC;
 }
 

@@ -14,7 +14,6 @@ PitchDetector::PitchDetector()
     , mMinFrequency(80.0f)     // Typical low male voice / bass guitar
     , mMaxFrequency(1000.0f)   // Upper range for most melodic instruments
     , mConfidenceThreshold(0.5f)  // Require 50% confidence minimum
-    , mSmoothingFactor(0.85f)  // High smoothing for stable pitch
     , mPitchChangeSensitivity(5.0f)  // 5 Hz threshold for pitch change events
     , mMinPeriod(0)
     , mMaxPeriod(0)
@@ -90,6 +89,7 @@ void PitchDetector::reset() {
     mPreviousVoiced = false;
     mPreviousPitch = 0.0f;
     mAutocorrelation.clear();
+    mPitchSmoother.reset();
 }
 
 void PitchDetector::updatePeriodRange() {
@@ -222,15 +222,9 @@ int PitchDetector::frequencyToPeriod(float frequency) const {
 }
 
 void PitchDetector::updatePitchSmoothing(float newPitch) {
-    if (mSmoothedPitch == 0.0f) {
-        // First pitch detection - initialize smoothed pitch
-        mSmoothedPitch = newPitch;
-    } else {
-        // Exponential moving average
-        // smoothed = alpha * smoothed + (1 - alpha) * new
-        mSmoothedPitch = mSmoothingFactor * mSmoothedPitch +
-                        (1.0f - mSmoothingFactor) * newPitch;
-    }
+    // OneEuroFilter: adaptive — low jitter when pitch stable, low lag on changes
+    static constexpr float kFrameDt = 0.023f;
+    mSmoothedPitch = mPitchSmoother.update(newPitch, kFrameDt);
 }
 
 bool PitchDetector::shouldReportPitchChange(float newPitch) const {

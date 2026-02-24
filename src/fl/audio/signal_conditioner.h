@@ -28,9 +28,7 @@ struct SignalConditionerConfig {
     /// Noise gate close threshold (signal must fall below to close gate)
     i16 noiseGateCloseThreshold = 300;
 
-    /// DC removal time constant (0.0 = instant, 1.0 = very slow)
-    /// Higher values = slower adaptation to DC changes
-    float dcRemovalAlpha = 0.99f;
+    // DC removal uses per-buffer instantaneous calculation (no alpha needed)
 };
 
 /// SignalConditioner performs low-level audio preprocessing to clean
@@ -105,9 +103,6 @@ private:
 
     SignalConditionerConfig mConfig;
     Stats mStats;
-
-    /// DC offset tracking (exponential moving average)
-    float mDCOffsetEMA = 0.0f;
 
     /// Noise gate state
     bool mNoiseGateOpen = false;

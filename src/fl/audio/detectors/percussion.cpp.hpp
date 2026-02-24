@@ -15,9 +15,6 @@ PercussionDetector::PercussionDetector()
     , mKickThreshold(0.7f)
     , mSnareThreshold(0.6f)
     , mHiHatThreshold(0.5f)
-    , mPrevBassEnergy(0.0f)
-    , mPrevMidEnergy(0.0f)
-    , mPrevTrebleEnergy(0.0f)
     , mLastKickTime(0)
     , mLastSnareTime(0)
     , mLastHiHatTime(0)
@@ -35,10 +32,16 @@ void PercussionDetector::update(shared_ptr<AudioContext> context) {
     float midEnergy = getMidEnergy(fft);
     float trebleEnergy = getTrebleEnergy(fft);
 
-    // Calculate spectral flux (energy change) in each band
-    float bassFlux = fl::fl_max(0.0f, bassEnergy - mPrevBassEnergy);
-    float midFlux = fl::fl_max(0.0f, midEnergy - mPrevMidEnergy);
-    float trebleFlux = fl::fl_max(0.0f, trebleEnergy - mPrevTrebleEnergy);
+    // Calculate spectral flux as energy above envelope baseline.
+    // Envelope followers provide smooth reference (fast attack, slow decay),
+    // giving cleaner flux than single-frame differencing.
+    static constexpr float kFrameDt = 0.023f;
+    float bassEnv = mBassEnvelope.update(bassEnergy, kFrameDt);
+    float midEnv = mMidEnvelope.update(midEnergy, kFrameDt);
+    float trebleEnv = mTrebleEnvelope.update(trebleEnergy, kFrameDt);
+    float bassFlux = fl::fl_max(0.0f, bassEnergy - bassEnv);
+    float midFlux = fl::fl_max(0.0f, midEnergy - midEnv);
+    float trebleFlux = fl::fl_max(0.0f, trebleEnergy - trebleEnv);
 
     // Detect individual percussion types and store state for polling
     mKickDetected = detectKick(bassEnergy, bassFlux, timestamp);
@@ -59,10 +62,7 @@ void PercussionDetector::update(shared_ptr<AudioContext> context) {
         mLastHiHatTime = timestamp;
     }
 
-    // Update previous energy values for next frame
-    mPrevBassEnergy = bassEnergy;
-    mPrevMidEnergy = midEnergy;
-    mPrevTrebleEnergy = trebleEnergy;
+    // Envelope followers are updated above via mXxxEnvelope.update()
 }
 
 void PercussionDetector::fireCallbacks() {
@@ -87,9 +87,9 @@ void PercussionDetector::reset() {
     mSnareDetected = false;
     mHiHatDetected = false;
     mTomDetected = false;
-    mPrevBassEnergy = 0.0f;
-    mPrevMidEnergy = 0.0f;
-    mPrevTrebleEnergy = 0.0f;
+    mBassEnvelope.reset();
+    mMidEnvelope.reset();
+    mTrebleEnvelope.reset();
     mLastKickTime = 0;
     mLastSnareTime = 0;
     mLastHiHatTime = 0;

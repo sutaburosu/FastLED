@@ -2,6 +2,7 @@
 
 #include "fl/audio/audio_detector.h"
 #include "fl/audio/audio_context.h"
+#include "fl/filter.h"
 #include "fl/stl/function.h"
 #include "fl/stl/vector.h"
 
@@ -54,9 +55,9 @@ private:
     static constexpr u32 MIN_BEAT_INTERVAL_MS = 250;  // Max 240 BPM
     static constexpr u32 MAX_BEAT_INTERVAL_MS = 2000; // Min 30 BPM
 
-    // Adaptive threshold
+    // Adaptive threshold (O(1) running average)
     float mAdaptiveThreshold;
-    vector<float> mFluxHistory;
+    MovingAverage<float, 43> mFluxAvg;
     static constexpr size FLUX_HISTORY_SIZE = 43;  // ~1 second at 43fps
 
     shared_ptr<const FFTBins> mRetainedFFT;

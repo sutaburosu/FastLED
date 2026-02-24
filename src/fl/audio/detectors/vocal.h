@@ -9,6 +9,7 @@
 
 #include "fl/audio/audio_detector.h"
 #include "fl/audio/audio_context.h"
+#include "fl/filter.h"
 #include "fl/math_macros.h"
 #include "fl/stl/function.h"
 #include "fl/stl/shared_ptr.h"
@@ -35,9 +36,9 @@ public:
 
     // State access
     bool isVocal() const { return mVocalActive; }
-    float getConfidence() const { return mSmoothedConfidence; }
+    float getConfidence() const { return mConfidenceSmoother.value(); }
     void setThreshold(float threshold) { mOnThreshold = threshold; mOffThreshold = fl::fl_max(0.0f, threshold - 0.2f); }
-    void setSmoothingAlpha(float alpha) { mSmoothingAlpha = alpha; }
+    void setSmoothingAlpha(float tau) { mConfidenceSmoother.setTau(tau); }
     int getNumBins() const { return mNumBins; }
 
 private:
@@ -45,10 +46,10 @@ private:
     bool mPreviousVocalActive;
     bool mStateChanged = false;
     float mConfidence;
-    float mSmoothedConfidence = 0.0f;
     float mOnThreshold = 0.65f;
     float mOffThreshold = 0.45f;
-    float mSmoothingAlpha = 0.7f; // EMA smoothing factor (higher = more smoothing)
+    // Time-aware confidence smoothing (tau=0.05s ≈ old alpha=0.7 at 43fps)
+    ExponentialSmoother<float> mConfidenceSmoother{0.05f};
     int mFramesInState = 0; // Debounce counter
     static constexpr int MIN_FRAMES_TO_TRANSITION = 3; // Debounce: require N frames before state change
     float mSpectralCentroid;

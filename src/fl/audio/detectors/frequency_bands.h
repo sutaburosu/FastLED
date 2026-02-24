@@ -3,6 +3,7 @@
 #include "fl/audio/audio_detector.h"
 #include "fl/audio/audio_context.h"
 #include "fl/fft.h"
+#include "fl/filter.h"
 #include "fl/stl/function.h"
 
 namespace fl {
@@ -35,8 +36,8 @@ public:
     void setMidRange(float min, float max) { mMidMin = min; mMidMax = max; }
     void setTrebleRange(float min, float max) { mTrebleMin = min; mTrebleMax = max; }
 
-    // Smoothing factor (0.0 = no smoothing, 1.0 = maximum smoothing)
-    void setSmoothing(float smoothing) { mSmoothing = smoothing; }
+    // Smoothing time constant in seconds (higher = smoother)
+    void setSmoothing(float tau) { mBassSmoother.setTau(tau); mMidSmoother.setTau(tau); mTrebleSmoother.setTau(tau); }
 
     int getSampleRate() const { return mSampleRate; }
 
@@ -54,8 +55,10 @@ private:
     float mTrebleMin;
     float mTrebleMax;
 
-    // Smoothing
-    float mSmoothing;
+    // Smoothing (time-aware exponential smoothing)
+    ExponentialSmoother<float> mBassSmoother{0.05f};
+    ExponentialSmoother<float> mMidSmoother{0.05f};
+    ExponentialSmoother<float> mTrebleSmoother{0.05f};
 
     // Own FFT instance for computing with the correct frequency range
     FFT mFFT;

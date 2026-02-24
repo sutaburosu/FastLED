@@ -27,7 +27,6 @@ FL_TEST_CASE("AutoGain - amplification converges to target") {
     AutoGainConfig config;
     config.enabled = true;
     config.targetRMSLevel = 8000.0f;
-    config.gainSmoothing = 0.5f;
     config.learningRate = 0.1f;
     config.maxGain = 20.0f;  // Default 10 would cap gain before reaching target
     agc.configure(config);
@@ -54,7 +53,6 @@ FL_TEST_CASE("AutoGain - attenuation converges to target") {
     AutoGainConfig config;
     config.enabled = true;
     config.targetRMSLevel = 8000.0f;
-    config.gainSmoothing = 0.5f;
     config.learningRate = 0.1f;
     agc.configure(config);
 
@@ -167,7 +165,6 @@ FL_TEST_CASE("AutoGain - gain clamping bounds") {
 FL_TEST_CASE("AutoGain - smoothing prevents gain jumps") {
     AutoGain agc;
     AutoGainConfig config;
-    config.gainSmoothing = 0.95f;
     config.learningRate = 0.5f;
     config.targetRMSLevel = 8000.0f;
     agc.configure(config);

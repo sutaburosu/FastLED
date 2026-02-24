@@ -2,8 +2,8 @@
 
 #include "fl/audio/audio_detector.h"
 #include "fl/audio/audio_context.h"
+#include "fl/filter.h"
 #include "fl/stl/function.h"
-#include "fl/stl/vector.h"
 
 namespace fl {
 
@@ -44,19 +44,16 @@ private:
     float mMaxEnergy;
     float mNormalizedRMS = 0.0f;
 
-    // Adaptive range tracking for normalization
-    float mRunningMax = 1.0f;        // Adaptive ceiling (decays slowly)
-    static constexpr float MAX_DECAY = 0.999f;  // Slow decay for ceiling
+    // Adaptive range tracking for normalization (instant attack, slow 2s decay)
+    AttackDecayFilter<float> mRunningMaxFilter{0.001f, 2.0f, 1.0f};
 
     // Peak tracking
     float mPeakDecay;
     u32 mLastPeakTime;
     static constexpr u32 PEAK_HOLD_MS = 50;
 
-    // History for average calculation
-    vector<float> mEnergyHistory;
-    int mHistorySize;
-    int mHistoryIndex;
+    // History for average calculation (O(1) running sum)
+    MovingAverage<float, 0> mEnergyAvg{43};
 
     void updatePeak(float energy, u32 timestamp);
     void updateAverage(float energy);
