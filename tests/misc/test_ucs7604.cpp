@@ -230,45 +230,6 @@ void verifyPreamble(fl::span<const uint8_t> bytes, fl::span<const uint8_t> expec
     }
 }
 
-/// Helper to verify pixel data (RGB 8-bit mode)
-/// Verifies that the byte stream contains the expected RGB pixel data
-/// starting at offset 15 (after the preamble)
-void verifyPixels8bit(fl::span<const uint8_t> bytes, fl::span<const CRGB> pixels) {
-    const size_t PREAMBLE_SIZE = 15;
-    const size_t BYTES_PER_PIXEL = 3;  // RGB 8-bit
-
-    for (size_t i = 0; i < pixels.size(); i++) {
-        size_t byte_offset = PREAMBLE_SIZE + (i * BYTES_PER_PIXEL);
-        FL_CHECK_EQ(bytes[byte_offset + 0], pixels[i].r);  // R
-        FL_CHECK_EQ(bytes[byte_offset + 1], pixels[i].g);  // G
-        FL_CHECK_EQ(bytes[byte_offset + 2], pixels[i].b);  // B
-    }
-}
-
-/// Helper to verify pixel data (RGB 16-bit mode)
-/// Verifies that the byte stream contains the expected RGB pixel data
-/// starting at offset 15 (after the preamble), scaled to 16-bit
-void verifyPixels16bit(fl::span<const uint8_t> bytes, fl::span<const RGB16> pixels) {
-    const size_t PREAMBLE_SIZE = 15;
-    const size_t BYTES_PER_PIXEL = 6;  // RGB 16-bit
-
-    for (size_t i = 0; i < pixels.size(); i++) {
-        size_t byte_offset = PREAMBLE_SIZE + (i * BYTES_PER_PIXEL);
-
-        uint16_t r16 = pixels[i].r;
-        uint16_t g16 = pixels[i].g;
-        uint16_t b16 = pixels[i].b;
-
-        // Verify big-endian 16-bit values
-        FL_CHECK_EQ(bytes[byte_offset + 0], r16 >> 8);    // R high
-        FL_CHECK_EQ(bytes[byte_offset + 1], r16 & 0xFF);  // R low
-        FL_CHECK_EQ(bytes[byte_offset + 2], g16 >> 8);    // G high
-        FL_CHECK_EQ(bytes[byte_offset + 3], g16 & 0xFF);  // G low
-        FL_CHECK_EQ(bytes[byte_offset + 4], b16 >> 8);    // B high
-        FL_CHECK_EQ(bytes[byte_offset + 5], b16 & 0xFF);  // B low
-    }
-}
-
 /// Helper to verify pixel data (RGBW 8-bit mode)
 /// Verifies that the byte stream contains the expected RGBW pixel data
 /// Note: UCS7604 pads data BEFORE LED values, so padding comes right after preamble
@@ -375,23 +336,23 @@ FL_TEST_CASE("UCS7604 8-bit - RGB color order") {
         CRGB(0x00, 0x00, 0xFF)   // Blue
     };
 
-    // RGB -> RGB (no conversion)
-    CRGB expected[] = {
-        CRGB(0xFF, 0x00, 0x00),
-        CRGB(0x00, 0xFF, 0x00),
-        CRGB(0x00, 0x00, 0xFF)
+    // RGB -> RGBW (UCS7604 always forces RGBW, primary colors have W=0)
+    RGBW8 expected[] = {
+        RGBW8(0xFF, 0x00, 0x00, 0x00),
+        RGBW8(0x00, 0xFF, 0x00, 0x00),
+        RGBW8(0x00, 0x00, 0xFF, 0x00)
     };
 
     fl::span<const uint8_t> output = testUCS7604Controller<RGB, fl::UCS7604_MODE_8BIT_800KHZ>(leds);
 
-    // Verify total size: 15 (preamble) + 9 (3 LEDs * 3 bytes) = 24
-    FL_REQUIRE_EQ(output.size(), 24);
+    // Verify total size: 15 (preamble) + 0 (padding) + 12 (3 LEDs * 4 bytes) = 27
+    FL_REQUIRE_EQ(output.size(), 27);
 
     // Verify preamble with 8-bit mode byte
     verifyPreamble(output, PREAMBLE_8BIT_800KHZ);
 
     // Verify pixel data
-    verifyPixels8bit(output, expected);
+    verifyPixels8bitRGBW(output, expected, 0);
 }
 
 FL_TEST_CASE("UCS7604 8-bit - GRB color order") {
@@ -401,23 +362,23 @@ FL_TEST_CASE("UCS7604 8-bit - GRB color order") {
         CRGB(0x00, 0x00, 0xFF)   // Blue
     };
 
-    // GRB -> RGB conversion
-    CRGB expected[] = {
-        CRGB(0x00, 0xFF, 0x00),  // Red as GRB -> Green
-        CRGB(0xFF, 0x00, 0x00),  // Green as GRB -> Red
-        CRGB(0x00, 0x00, 0xFF)   // Blue as GRB -> Blue
+    // GRB -> RGBW conversion (UCS7604 always forces RGBW, primary colors have W=0)
+    RGBW8 expected[] = {
+        RGBW8(0x00, 0xFF, 0x00, 0x00),  // Red as GRB -> Green
+        RGBW8(0xFF, 0x00, 0x00, 0x00),  // Green as GRB -> Red
+        RGBW8(0x00, 0x00, 0xFF, 0x00)   // Blue as GRB -> Blue
     };
 
     fl::span<const uint8_t> output = testUCS7604Controller<GRB, fl::UCS7604_MODE_8BIT_800KHZ>(leds);
 
-    // Verify total size: 15 (preamble) + 9 (3 LEDs * 3 bytes) = 24
-    FL_REQUIRE_EQ(output.size(), 24);
+    // Verify total size: 15 (preamble) + 0 (padding) + 12 (3 LEDs * 4 bytes) = 27
+    FL_REQUIRE_EQ(output.size(), 27);
 
     // Verify preamble with 8-bit mode byte
     verifyPreamble(output, PREAMBLE_8BIT_800KHZ);
 
     // Verify pixel data
-    verifyPixels8bit(output, expected);
+    verifyPixels8bitRGBW(output, expected, 0);
 }
 
 FL_TEST_CASE("UCS7604 8-bit - BRG color order") {
@@ -427,23 +388,23 @@ FL_TEST_CASE("UCS7604 8-bit - BRG color order") {
         CRGB(0x00, 0x00, 0xFF)   // Blue
     };
 
-    // BRG -> RGB conversion
-    CRGB expected[] = {
-        CRGB(0x00, 0xFF, 0x00),  // Red as BRG -> Green
-        CRGB(0x00, 0x00, 0xFF),  // Green as BRG -> Blue
-        CRGB(0xFF, 0x00, 0x00)   // Blue as BRG -> Red
+    // BRG -> RGBW conversion (UCS7604 always forces RGBW, primary colors have W=0)
+    RGBW8 expected[] = {
+        RGBW8(0x00, 0xFF, 0x00, 0x00),  // Red as BRG -> Green
+        RGBW8(0x00, 0x00, 0xFF, 0x00),  // Green as BRG -> Blue
+        RGBW8(0xFF, 0x00, 0x00, 0x00)   // Blue as BRG -> Red
     };
 
     fl::span<const uint8_t> output = testUCS7604Controller<BRG, fl::UCS7604_MODE_8BIT_800KHZ>(leds);
 
-    // Verify total size: 15 (preamble) + 9 (3 LEDs * 3 bytes) = 24
-    FL_REQUIRE_EQ(output.size(), 24);
+    // Verify total size: 15 (preamble) + 0 (padding) + 12 (3 LEDs * 4 bytes) = 27
+    FL_REQUIRE_EQ(output.size(), 27);
 
     // Verify preamble with 8-bit mode byte
     verifyPreamble(output, PREAMBLE_8BIT_800KHZ);
 
     // Verify pixel data
-    verifyPixels8bit(output, expected);
+    verifyPixels8bitRGBW(output, expected, 0);
 }
 
 FL_TEST_CASE("UCS7604 16-bit - RGB color order") {
@@ -453,25 +414,25 @@ FL_TEST_CASE("UCS7604 16-bit - RGB color order") {
         CRGB(0, 0, 127)   // Blue (mid-range to show gamma curve)
     };
 
-    // RGB -> RGB (no conversion) - 8-bit to 16-bit with gamma 2.8 correction
+    // RGB -> RGBW 16-bit with gamma 2.8 correction (UCS7604 always forces RGBW)
     const uint16_t g0 = fl::gamma_2_8(0);
     const uint16_t g127 = fl::gamma_2_8(127);
-    RGB16 expected[] = {
-        RGB16(g127, g0, g0),  // Red
-        RGB16(g0, g127, g0),  // Green
-        RGB16(g0, g0, g127)   // Blue
+    RGBW16 expected[] = {
+        RGBW16(g127, g0, g0, g0),  // Red
+        RGBW16(g0, g127, g0, g0),  // Green
+        RGBW16(g0, g0, g127, g0)   // Blue
     };
 
     fl::span<const uint8_t> output = testUCS7604Controller<RGB, fl::UCS7604_MODE_16BIT_800KHZ>(leds);
 
-    // Verify total size: 15 (preamble) + 18 (3 LEDs * 6 bytes) = 33
-    FL_REQUIRE_EQ(output.size(), 33);
+    // Verify total size: 15 (preamble) + 0 (padding) + 24 (3 LEDs * 8 bytes) = 39
+    FL_REQUIRE_EQ(output.size(), 39);
 
     // Verify preamble with 16-bit mode byte
     verifyPreamble(output, PREAMBLE_16BIT_800KHZ);
 
     // Verify pixel data
-    verifyPixels16bit(output, expected);
+    verifyPixels16bitRGBW(output, expected, 0);
 }
 
 FL_TEST_CASE("UCS7604 16-bit - GRB color order") {
@@ -481,26 +442,26 @@ FL_TEST_CASE("UCS7604 16-bit - GRB color order") {
         CRGB(0, 0, 127)   // Blue (mid-range to show gamma curve)
     };
 
-    // GRB -> RGB conversion with gamma 2.8 correction
+    // GRB -> RGBW conversion with gamma 2.8 correction (UCS7604 always forces RGBW)
     // When input is GRB order, it gets reordered to RGB for wire protocol
     const uint16_t g0 = fl::gamma_2_8(0);
     const uint16_t g127 = fl::gamma_2_8(127);
-    RGB16 expected[] = {
-        RGB16(g0, g127, g0),  // Red as GRB -> Green at wire
-        RGB16(g127, g0, g0),  // Green as GRB -> Red at wire
-        RGB16(g0, g0, g127)   // Blue as GRB -> Blue at wire
+    RGBW16 expected[] = {
+        RGBW16(g0, g127, g0, g0),  // Red as GRB -> Green at wire
+        RGBW16(g127, g0, g0, g0),  // Green as GRB -> Red at wire
+        RGBW16(g0, g0, g127, g0)   // Blue as GRB -> Blue at wire
     };
 
     fl::span<const uint8_t> output = testUCS7604Controller<GRB, fl::UCS7604_MODE_16BIT_800KHZ>(leds);
 
-    // Verify total size: 15 (preamble) + 18 (3 LEDs * 6 bytes) = 33
-    FL_REQUIRE_EQ(output.size(), 33);
+    // Verify total size: 15 (preamble) + 0 (padding) + 24 (3 LEDs * 8 bytes) = 39
+    FL_REQUIRE_EQ(output.size(), 39);
 
     // Verify preamble with 16-bit mode byte
     verifyPreamble(output, PREAMBLE_16BIT_800KHZ);
 
     // Verify pixel data
-    verifyPixels16bit(output, expected);
+    verifyPixels16bitRGBW(output, expected, 0);
 }
 
 FL_TEST_CASE("UCS7604 runtime brightness control") {
@@ -1093,17 +1054,19 @@ FL_TEST_CASE("UCS7604 16-bit gamma via Gamma8") {
         FL_CHECK_EQ(gamma16(*g32, 255), 65535);
     }
 
-    FL_SUBCASE("gamma 3.2 captured in 16-bit RGB wire bytes") {
+    FL_SUBCASE("gamma 3.2 captured in 16-bit RGBW wire bytes") {
         auto g32 = Gamma8::getOrCreate(3.2f);
 
         CRGB leds[] = {
             CRGB(127, 64, 200)
         };
 
-        // Compute expected 16-bit values with gamma 3.2
-        u16 expected_r = gamma16(*g32, 127);
-        u16 expected_g = gamma16(*g32, 64);
-        u16 expected_b = gamma16(*g32, 200);
+        // RGBW exact conversion: min(127,64,200)=64
+        // R=127-64=63, G=64-64=0, B=200-64=136, W=64
+        u16 expected_r = gamma16(*g32, 63);
+        u16 expected_g = gamma16(*g32, 0);
+        u16 expected_b = gamma16(*g32, 136);
+        u16 expected_w = gamma16(*g32, 64);
 
         // Encode via the test controller with gamma override
         static UCS7604TestController16bit<10, RGB> controller;
@@ -1115,18 +1078,18 @@ FL_TEST_CASE("UCS7604 16-bit gamma via Gamma8") {
 
         fl::span<const uint8_t> output = controller.getCapturedBytes();
 
-        // Verify total size: 15 (preamble) + 6 (1 LED * 6 bytes) = 21
-        FL_REQUIRE_EQ(output.size(), 21);
+        // Verify total size: 15 (preamble) + 1 (padding) + 8 (1 LED * 8 bytes) = 24
+        FL_REQUIRE_EQ(output.size(), 24);
 
         // Verify preamble
         verifyPreamble(output, PREAMBLE_16BIT_800KHZ);
 
-        // Verify pixel data at offset 15 (big-endian 16-bit)
-        RGB16 expected[] = { RGB16(expected_r, expected_g, expected_b) };
-        verifyPixels16bit(output, expected);
+        // Verify pixel data (RGBW 16-bit with 1 byte padding)
+        RGBW16 expected[] = { RGBW16(expected_r, expected_g, expected_b, expected_w) };
+        verifyPixels16bitRGBW(output, expected, 1);
 
         // Double-check the values differ from gamma 2.8
-        u16 g28_r = fl::gamma_2_8(127);
+        u16 g28_r = fl::gamma_2_8(63);
         FL_CHECK_NE(expected_r, g28_r);
 
         // Clean up
@@ -1170,22 +1133,24 @@ FL_TEST_CASE("UCS7604 per-controller gamma override via setGamma") {
 
         CRGB leds[] = { CRGB(127, 64, 200) };
 
-        // Compute expected 16-bit values with gamma 3.2
+        // RGBW exact conversion: min(127,64,200)=64
+        // R=63, G=0, B=136, W=64
         auto g32 = Gamma8::getOrCreate(3.2f);
-        u16 expected_r = gamma16(*g32, 127);
-        u16 expected_g = gamma16(*g32, 64);
-        u16 expected_b = gamma16(*g32, 200);
+        u16 expected_r = gamma16(*g32, 63);
+        u16 expected_g = gamma16(*g32, 0);
+        u16 expected_b = gamma16(*g32, 136);
+        u16 expected_w = gamma16(*g32, 64);
 
         PixelController<RGB> pixels(leds, 1, ColorAdjustment::noAdjustment(), DISABLE_DITHER);
         controller.init();
         controller.showPixels(pixels);
 
         fl::span<const uint8_t> output = controller.getCapturedBytes();
-        FL_REQUIRE_EQ(output.size(), 21);  // 15 preamble + 6 (1 LED * 6 bytes)
+        FL_REQUIRE_EQ(output.size(), 24);  // 15 preamble + 1 padding + 8 (1 LED * 8 bytes)
 
-        // Verify pixel data uses gamma 3.2 values
-        RGB16 expected[] = { RGB16(expected_r, expected_g, expected_b) };
-        verifyPixels16bit(output, expected);
+        // Verify pixel data uses gamma 3.2 values (RGBW 16-bit)
+        RGBW16 expected[] = { RGBW16(expected_r, expected_g, expected_b, expected_w) };
+        verifyPixels16bitRGBW(output, expected, 1);
     }
 
     FL_SUBCASE("controller without setGamma uses default 2.8") {
@@ -1194,21 +1159,23 @@ FL_TEST_CASE("UCS7604 per-controller gamma override via setGamma") {
 
         CRGB leds[] = { CRGB(127, 64, 200) };
 
-        // Compute expected 16-bit values with default gamma 2.8
-        u16 expected_r = fl::gamma_2_8(127);
-        u16 expected_g = fl::gamma_2_8(64);
-        u16 expected_b = fl::gamma_2_8(200);
+        // RGBW exact conversion: min(127,64,200)=64
+        // R=63, G=0, B=136, W=64
+        u16 expected_r = fl::gamma_2_8(63);
+        u16 expected_g = fl::gamma_2_8(0);
+        u16 expected_b = fl::gamma_2_8(136);
+        u16 expected_w = fl::gamma_2_8(64);
 
         PixelController<RGB> pixels(leds, 1, ColorAdjustment::noAdjustment(), DISABLE_DITHER);
         controller.init();
         controller.showPixels(pixels);
 
         fl::span<const uint8_t> output = controller.getCapturedBytes();
-        FL_REQUIRE_EQ(output.size(), 21);
+        FL_REQUIRE_EQ(output.size(), 24);  // 15 preamble + 1 padding + 8 (1 LED * 8 bytes)
 
-        // Verify pixel data uses default gamma 2.8 values
-        RGB16 expected[] = { RGB16(expected_r, expected_g, expected_b) };
-        verifyPixels16bit(output, expected);
+        // Verify pixel data uses default gamma 2.8 values (RGBW 16-bit)
+        RGBW16 expected[] = { RGBW16(expected_r, expected_g, expected_b, expected_w) };
+        verifyPixels16bitRGBW(output, expected, 1);
     }
 }
 

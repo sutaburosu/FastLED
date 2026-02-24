@@ -118,6 +118,8 @@ public:
 
     virtual void init() override {
         mDelegate.init();
+        // UCS7604 is always RGBW — override any user setting.
+        this->setRgbw(RgbwDefault::value());
     }
 
     // Access delegate controller (for testing)
@@ -169,8 +171,8 @@ protected:
         float gamma = this->mSettings.mGamma.value_or(2.8f);
         fl::shared_ptr<const Gamma8> gamma8 = Gamma8::getOrCreate(gamma);
 
-        // Convert to PixelIterator with RGBW support
-        fl::Rgbw rgbw = mDelegate.getRgbw();
+        // UCS7604 is always RGBW — override any user setting.
+        fl::Rgbw rgbw = RgbwDefault::value();
         fl::PixelIterator pixel_iter = pixels.as_iterator(rgbw);
 
         // Clear buffer and use encoder to fill it
