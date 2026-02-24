@@ -180,16 +180,15 @@ class s12x4 {
         return atan2(sqrt(one - x * x), x);
     }
 
-    static FASTLED_FORCE_INLINE s12x4 sqrt(s12x4 x) {
-        if (x.mValue <= 0) return s12x4();
-        return from_raw(static_cast<i16>(
+    static constexpr FASTLED_FORCE_INLINE s12x4 sqrt(s12x4 x) {
+        return x.mValue <= 0 ? s12x4() : from_raw(static_cast<i16>(
             fl::isqrt32(static_cast<u32>(x.mValue) << FRAC_BITS)));
     }
 
-    static FASTLED_FORCE_INLINE s12x4 rsqrt(s12x4 x) {
-        s12x4 s = sqrt(x);
-        if (s.mValue == 0) return s12x4();
-        return from_raw(static_cast<i16>(1) << FRAC_BITS) / s;
+    static constexpr FASTLED_FORCE_INLINE s12x4 rsqrt(s12x4 x) {
+        return sqrt(x).mValue == 0
+            ? s12x4()
+            : from_raw(SCALE) / sqrt(x);
     }
 
     static FASTLED_FORCE_INLINE s12x4 pow(s12x4 base, s12x4 exp) {
@@ -242,11 +241,11 @@ class s12x4 {
         return acos(*this);
     }
 
-    FASTLED_FORCE_INLINE s12x4 sqrt() const {
+    constexpr FASTLED_FORCE_INLINE s12x4 sqrt() const {
         return sqrt(*this);
     }
 
-    FASTLED_FORCE_INLINE s12x4 rsqrt() const {
+    constexpr FASTLED_FORCE_INLINE s12x4 rsqrt() const {
         return rsqrt(*this);
     }
 
@@ -272,15 +271,17 @@ class s12x4 {
     i16 mValue = 0;
 
     // Returns 0-based position of highest set bit, or -1 if v==0.
-    static FASTLED_FORCE_INLINE int highest_bit(u32 v) {
-        if (v == 0) return -1;
-        int r = 0;
-        if (v & 0xFFFF0000u) { v >>= 16; r += 16; }
-        if (v & 0x0000FF00u) { v >>= 8;  r += 8; }
-        if (v & 0x000000F0u) { v >>= 4;  r += 4; }
-        if (v & 0x0000000Cu) { v >>= 2;  r += 2; }
-        if (v & 0x00000002u) { r += 1; }
-        return r;
+    static constexpr FASTLED_FORCE_INLINE int highest_bit(u32 v) {
+        return v == 0 ? -1 : _highest_bit_step(v, 0);
+    }
+
+    static constexpr int _highest_bit_step(u32 v, int r) {
+        return (v & 0xFFFF0000u) ? _highest_bit_step(v >> 16, r + 16)
+             : (v & 0x0000FF00u) ? _highest_bit_step(v >> 8,  r + 8)
+             : (v & 0x000000F0u) ? _highest_bit_step(v >> 4,  r + 4)
+             : (v & 0x0000000Cu) ? _highest_bit_step(v >> 2,  r + 2)
+             : (v & 0x00000002u) ? r + 1
+             : r;
     }
 
     // Fixed-point log base 2 for positive values.
@@ -358,9 +359,9 @@ class s12x4 {
     }
 
     // Converts s12x4 radians to sin32/cos32 input format.
-    static FASTLED_FORCE_INLINE u32 angle_to_a24(s12x4 angle) {
-        // 256/(2*PI) in s16x16 — converts radians to sin32/cos32 format.
-        static constexpr i32 RAD_TO_24 = 2670177;
+    // 256/(2*PI) — converts radians to sin32/cos32 format.
+    static constexpr i32 RAD_TO_24 = 2670177;
+    static constexpr FASTLED_FORCE_INLINE u32 angle_to_a24(s12x4 angle) {
         return static_cast<u32>(
             (static_cast<i64>(angle.mValue) * RAD_TO_24) >> FRAC_BITS);
     }

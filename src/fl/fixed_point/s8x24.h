@@ -191,16 +191,15 @@ class s8x24 {
         return atan2(sqrt(one - x * x), x);
     }
 
-    static FASTLED_FORCE_INLINE s8x24 sqrt(s8x24 x) {
-        if (x.mValue <= 0) return s8x24();
-        return from_raw(static_cast<i32>(
+    static constexpr FASTLED_FORCE_INLINE s8x24 sqrt(s8x24 x) {
+        return x.mValue <= 0 ? s8x24() : from_raw(static_cast<i32>(
             fl::isqrt64(static_cast<u64>(x.mValue) << FRAC_BITS)));
     }
 
-    static FASTLED_FORCE_INLINE s8x24 rsqrt(s8x24 x) {
-        s8x24 s = sqrt(x);
-        if (s.mValue == 0) return s8x24();
-        return from_raw(SCALE) / s;
+    static constexpr FASTLED_FORCE_INLINE s8x24 rsqrt(s8x24 x) {
+        return sqrt(x).mValue == 0
+            ? s8x24()
+            : from_raw(SCALE) / sqrt(x);
     }
 
     static FASTLED_FORCE_INLINE s8x24 pow(s8x24 base, s8x24 exp) {
@@ -253,11 +252,11 @@ class s8x24 {
         return acos(*this);
     }
 
-    FASTLED_FORCE_INLINE s8x24 sqrt() const {
+    constexpr FASTLED_FORCE_INLINE s8x24 sqrt() const {
         return sqrt(*this);
     }
 
-    FASTLED_FORCE_INLINE s8x24 rsqrt() const {
+    constexpr FASTLED_FORCE_INLINE s8x24 rsqrt() const {
         return rsqrt(*this);
     }
 
@@ -283,15 +282,17 @@ class s8x24 {
     i32 mValue = 0;
 
     // Returns 0-based position of highest set bit, or -1 if v==0.
-    static FASTLED_FORCE_INLINE int highest_bit(u32 v) {
-        if (v == 0) return -1;
-        int r = 0;
-        if (v & 0xFFFF0000u) { v >>= 16; r += 16; }
-        if (v & 0x0000FF00u) { v >>= 8;  r += 8; }
-        if (v & 0x000000F0u) { v >>= 4;  r += 4; }
-        if (v & 0x0000000Cu) { v >>= 2;  r += 2; }
-        if (v & 0x00000002u) { r += 1; }
-        return r;
+    static constexpr FASTLED_FORCE_INLINE int highest_bit(u32 v) {
+        return v == 0 ? -1 : _highest_bit_step(v, 0);
+    }
+
+    static constexpr int _highest_bit_step(u32 v, int r) {
+        return (v & 0xFFFF0000u) ? _highest_bit_step(v >> 16, r + 16)
+             : (v & 0x0000FF00u) ? _highest_bit_step(v >> 8,  r + 8)
+             : (v & 0x000000F0u) ? _highest_bit_step(v >> 4,  r + 4)
+             : (v & 0x0000000Cu) ? _highest_bit_step(v >> 2,  r + 2)
+             : (v & 0x00000002u) ? r + 1
+             : r;
     }
 
     // Fixed-point log base 2 for positive values.
@@ -367,9 +368,9 @@ class s8x24 {
     }
 
     // Converts s8x24 radians to sin32/cos32 input format.
-    static FASTLED_FORCE_INLINE u32 angle_to_a24(s8x24 angle) {
-        // 256/(2*PI) in s8x24 — converts radians to sin32/cos32 format.
-        static constexpr i32 RAD_TO_24 = 2670177;
+    // 256/(2*PI) — converts radians to sin32/cos32 format.
+    static constexpr i32 RAD_TO_24 = 2670177;
+    static constexpr FASTLED_FORCE_INLINE u32 angle_to_a24(s8x24 angle) {
         return static_cast<u32>(
             (static_cast<i64>(angle.mValue) * RAD_TO_24) >> FRAC_BITS);
     }

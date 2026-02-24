@@ -950,6 +950,18 @@ constexpr bool constexpr_step_check(float edge, float x) {
     return T::step(T(edge), T(x)).raw() == T::step(T(edge), T(x)).raw();
 }
 
+// Helper: Verify sqrt is constexpr
+template <typename T>
+constexpr bool constexpr_sqrt_check(float a) {
+    return T::sqrt(T(a)).raw() == T::sqrt(T(a)).raw();
+}
+
+// Helper: Verify rsqrt is constexpr
+template <typename T>
+constexpr bool constexpr_rsqrt_check(float a) {
+    return T::rsqrt(T(a)).raw() == T::rsqrt(T(a)).raw();
+}
+
 FL_TEST_CASE("constexpr from_raw - all types") {
     // Signed
     static_assert(constexpr_from_raw_check<s4x12>(), "s4x12::from_raw must be constexpr");
@@ -1028,6 +1040,34 @@ FL_TEST_CASE("constexpr math functions") {
     static_assert(constexpr_clamp_check<s16x16>(3.0f, 0.0f, 2.0f), "s16x16 clamp must be constexpr");
     // step
     static_assert(constexpr_step_check<s16x16>(0.5f, 1.0f), "s16x16 step must be constexpr");
+    // sqrt - all signed types
+    static_assert(constexpr_sqrt_check<s4x12>(1.0f), "s4x12 sqrt must be constexpr");
+    static_assert(constexpr_sqrt_check<s8x8>(1.0f), "s8x8 sqrt must be constexpr");
+    static_assert(constexpr_sqrt_check<s8x24>(1.0f), "s8x24 sqrt must be constexpr");
+    static_assert(constexpr_sqrt_check<s12x4>(1.0f), "s12x4 sqrt must be constexpr");
+    static_assert(constexpr_sqrt_check<s16x16>(1.0f), "s16x16 sqrt must be constexpr");
+    static_assert(constexpr_sqrt_check<s24x8>(1.0f), "s24x8 sqrt must be constexpr");
+    // sqrt - all unsigned types
+    static_assert(constexpr_sqrt_check<u4x12>(1.0f), "u4x12 sqrt must be constexpr");
+    static_assert(constexpr_sqrt_check<u8x8>(1.0f), "u8x8 sqrt must be constexpr");
+    static_assert(constexpr_sqrt_check<u8x24>(1.0f), "u8x24 sqrt must be constexpr");
+    static_assert(constexpr_sqrt_check<u12x4>(1.0f), "u12x4 sqrt must be constexpr");
+    static_assert(constexpr_sqrt_check<u16x16>(1.0f), "u16x16 sqrt must be constexpr");
+    static_assert(constexpr_sqrt_check<u24x8>(1.0f), "u24x8 sqrt must be constexpr");
+    // rsqrt - all signed types
+    static_assert(constexpr_rsqrt_check<s4x12>(1.0f), "s4x12 rsqrt must be constexpr");
+    static_assert(constexpr_rsqrt_check<s8x8>(1.0f), "s8x8 rsqrt must be constexpr");
+    static_assert(constexpr_rsqrt_check<s8x24>(1.0f), "s8x24 rsqrt must be constexpr");
+    static_assert(constexpr_rsqrt_check<s12x4>(1.0f), "s12x4 rsqrt must be constexpr");
+    static_assert(constexpr_rsqrt_check<s16x16>(1.0f), "s16x16 rsqrt must be constexpr");
+    static_assert(constexpr_rsqrt_check<s24x8>(1.0f), "s24x8 rsqrt must be constexpr");
+    // rsqrt - all unsigned types
+    static_assert(constexpr_rsqrt_check<u4x12>(1.0f), "u4x12 rsqrt must be constexpr");
+    static_assert(constexpr_rsqrt_check<u8x8>(1.0f), "u8x8 rsqrt must be constexpr");
+    static_assert(constexpr_rsqrt_check<u8x24>(1.0f), "u8x24 rsqrt must be constexpr");
+    static_assert(constexpr_rsqrt_check<u12x4>(1.0f), "u12x4 rsqrt must be constexpr");
+    static_assert(constexpr_rsqrt_check<u16x16>(1.0f), "u16x16 rsqrt must be constexpr");
+    static_assert(constexpr_rsqrt_check<u24x8>(1.0f), "u24x8 rsqrt must be constexpr");
 }
 
 // Verify constexpr works for concrete value computation
@@ -1055,6 +1095,34 @@ FL_TEST_CASE("constexpr value verification") {
     // s16x16: abs(-1.5) = 1.5
     static_assert(s16x16::abs(s16x16(-1.5f)).raw() == s16x16(1.5f).raw(),
                   "abs(-1.5) must equal 1.5");
+
+    // s16x16: sqrt(4.0) = 2.0
+    static_assert(s16x16::sqrt(s16x16(4.0f)).raw() == s16x16(2.0f).raw(),
+                  "sqrt(4.0) must equal 2.0");
+
+    // s16x16: sqrt(1.0) = 1.0
+    static_assert(s16x16::sqrt(s16x16(1.0f)).raw() == s16x16(1.0f).raw(),
+                  "sqrt(1.0) must equal 1.0");
+
+    // s16x16: sqrt(0.0) = 0.0
+    static_assert(s16x16::sqrt(s16x16(0.0f)).raw() == 0,
+                  "sqrt(0.0) must equal 0.0");
+
+    // u16x16: sqrt(4.0) = 2.0
+    static_assert(u16x16::sqrt(u16x16(4.0f)).raw() == u16x16(2.0f).raw(),
+                  "u16x16 sqrt(4.0) must equal 2.0");
+
+    // s16x16: rsqrt(1.0) = 1.0
+    static_assert(s16x16::rsqrt(s16x16(1.0f)).raw() == s16x16(1.0f).raw(),
+                  "rsqrt(1.0) must equal 1.0");
+
+    // s16x16: rsqrt(0.0) = 0.0 (zero guard)
+    static_assert(s16x16::rsqrt(s16x16(0.0f)).raw() == 0,
+                  "rsqrt(0.0) must equal 0.0");
+
+    // u16x16: rsqrt(1.0) = 1.0
+    static_assert(u16x16::rsqrt(u16x16(1.0f)).raw() == u16x16(1.0f).raw(),
+                  "u16x16 rsqrt(1.0) must equal 1.0");
 }
 
 FL_TEST_CASE("Bit-exact tests - default construction") {

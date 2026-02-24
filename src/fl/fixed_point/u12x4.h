@@ -163,16 +163,15 @@ class u12x4 {
         return t * t * (three - two * t);
     }
 
-    static FASTLED_FORCE_INLINE u12x4 sqrt(u12x4 x) {
-        if (x.mValue == 0) return u12x4();
-        return from_raw(static_cast<u16>(
+    static constexpr FASTLED_FORCE_INLINE u12x4 sqrt(u12x4 x) {
+        return x.mValue == 0 ? u12x4() : from_raw(static_cast<u16>(
             fl::isqrt32(static_cast<u32>(x.mValue) << FRAC_BITS)));
     }
 
-    static FASTLED_FORCE_INLINE u12x4 rsqrt(u12x4 x) {
-        u12x4 s = sqrt(x);
-        if (s.mValue == 0) return u12x4();
-        return from_raw(static_cast<u16>(1) << FRAC_BITS) / s;
+    static constexpr FASTLED_FORCE_INLINE u12x4 rsqrt(u12x4 x) {
+        return sqrt(x).mValue == 0
+            ? u12x4()
+            : from_raw(static_cast<u16>(1) << FRAC_BITS) / sqrt(x);
     }
 
     static FASTLED_FORCE_INLINE u12x4 pow(u12x4 base, u12x4 exp) {
@@ -187,15 +186,17 @@ class u12x4 {
     u16 mValue = 0;
 
     // Returns 0-based position of highest set bit, or -1 if v==0.
-    static FASTLED_FORCE_INLINE int highest_bit(u32 v) {
-        if (v == 0) return -1;
-        int r = 0;
-        if (v & 0xFFFF0000u) { v >>= 16; r += 16; }
-        if (v & 0x0000FF00u) { v >>= 8;  r += 8; }
-        if (v & 0x000000F0u) { v >>= 4;  r += 4; }
-        if (v & 0x0000000Cu) { v >>= 2;  r += 2; }
-        if (v & 0x00000002u) { r += 1; }
-        return r;
+    static constexpr FASTLED_FORCE_INLINE int highest_bit(u32 v) {
+        return v == 0 ? -1 : _highest_bit_step(v, 0);
+    }
+
+    static constexpr int _highest_bit_step(u32 v, int r) {
+        return (v & 0xFFFF0000u) ? _highest_bit_step(v >> 16, r + 16)
+             : (v & 0x0000FF00u) ? _highest_bit_step(v >> 8,  r + 8)
+             : (v & 0x000000F0u) ? _highest_bit_step(v >> 4,  r + 4)
+             : (v & 0x0000000Cu) ? _highest_bit_step(v >> 2,  r + 2)
+             : (v & 0x00000002u) ? r + 1
+             : r;
     }
 
     // Fixed-point log base 2 for positive values.

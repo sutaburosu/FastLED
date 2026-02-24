@@ -202,30 +202,29 @@ class fixed_point_base {
         return atan2(sqrt(one - x * x), x);
     }
 
-    static FASTLED_FORCE_INLINE Derived sqrt(Derived x) {
-        if (x.mValue <= 0) return Derived();
-        return sqrt_impl(x, fl::bool_constant<traits::USE_ISQRT32>());
+    static constexpr FASTLED_FORCE_INLINE Derived sqrt(Derived x) {
+        return x.mValue <= 0 ? Derived() : sqrt_impl(x, fl::bool_constant<traits::USE_ISQRT32>());
     }
 
   private:
     // sqrt implementation for i16 types (use isqrt32)
-    static FASTLED_FORCE_INLINE Derived sqrt_impl(Derived x, fl::true_type) {
+    static constexpr FASTLED_FORCE_INLINE Derived sqrt_impl(Derived x, fl::true_type) {
         return Derived::from_raw(static_cast<raw_type>(
             fl::isqrt32(static_cast<u32>(x.mValue) << FRAC_BITS)));
     }
 
     // sqrt implementation for i32 types (use isqrt64)
-    static FASTLED_FORCE_INLINE Derived sqrt_impl(Derived x, fl::false_type) {
+    static constexpr FASTLED_FORCE_INLINE Derived sqrt_impl(Derived x, fl::false_type) {
         return Derived::from_raw(static_cast<raw_type>(
             fl::isqrt64(static_cast<u64>(x.mValue) << FRAC_BITS)));
     }
 
   public:
 
-    static FASTLED_FORCE_INLINE Derived rsqrt(Derived x) {
-        Derived s = sqrt(x);
-        if (s.mValue == 0) return Derived();
-        return Derived::from_raw(static_cast<raw_type>(1) << FRAC_BITS) / s;
+    static constexpr FASTLED_FORCE_INLINE Derived rsqrt(Derived x) {
+        return sqrt(x).mValue == 0
+            ? Derived()
+            : Derived::from_raw(static_cast<raw_type>(1) << FRAC_BITS) / sqrt(x);
     }
 
     static FASTLED_FORCE_INLINE Derived pow(Derived base, Derived exp) {
@@ -278,11 +277,11 @@ class fixed_point_base {
         return acos(*static_cast<const Derived*>(this));
     }
 
-    FASTLED_FORCE_INLINE Derived sqrt() const {
+    constexpr FASTLED_FORCE_INLINE Derived sqrt() const {
         return sqrt(*static_cast<const Derived*>(this));
     }
 
-    FASTLED_FORCE_INLINE Derived rsqrt() const {
+    constexpr FASTLED_FORCE_INLINE Derived rsqrt() const {
         return rsqrt(*static_cast<const Derived*>(this));
     }
 
@@ -310,15 +309,18 @@ class fixed_point_base {
 
   private:
     // Returns 0-based position of highest set bit, or -1 if v==0.
-    static FASTLED_FORCE_INLINE int highest_bit(u32 v) {
-        if (v == 0) return -1;
-        int r = 0;
-        if (v & 0xFFFF0000u) { v >>= 16; r += 16; }
-        if (v & 0x0000FF00u) { v >>= 8;  r += 8; }
-        if (v & 0x000000F0u) { v >>= 4;  r += 4; }
-        if (v & 0x0000000Cu) { v >>= 2;  r += 2; }
-        if (v & 0x00000002u) { r += 1; }
-        return r;
+    // C++11 constexpr: recursive helper with accumulator.
+    static constexpr FASTLED_FORCE_INLINE int highest_bit(u32 v) {
+        return v == 0 ? -1 : _highest_bit_step(v, 0);
+    }
+
+    static constexpr int _highest_bit_step(u32 v, int r) {
+        return (v & 0xFFFF0000u) ? _highest_bit_step(v >> 16, r + 16)
+             : (v & 0x0000FF00u) ? _highest_bit_step(v >> 8,  r + 8)
+             : (v & 0x000000F0u) ? _highest_bit_step(v >> 4,  r + 4)
+             : (v & 0x0000000Cu) ? _highest_bit_step(v >> 2,  r + 2)
+             : (v & 0x00000002u) ? r + 1
+             : r;
     }
 
     // Fixed-point log base 2 for positive values.
@@ -455,9 +457,9 @@ class fixed_point_base {
     }
 
     // Converts radians to sin32/cos32 input format.
-    static FASTLED_FORCE_INLINE u32 angle_to_a24(Derived angle) {
-        // 256/(2*PI) — converts radians to sin32/cos32 format.
-        static constexpr i32 RAD_TO_24 = 2670177;
+    // 256/(2*PI) — converts radians to sin32/cos32 format.
+    static constexpr i32 RAD_TO_24 = 2670177;
+    static constexpr FASTLED_FORCE_INLINE u32 angle_to_a24(Derived angle) {
         // Always use i64 for multiplication to avoid overflow
         return static_cast<u32>(
             (static_cast<i64>(angle.mValue) * RAD_TO_24) >> FRAC_BITS);

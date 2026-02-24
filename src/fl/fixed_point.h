@@ -283,11 +283,11 @@ class fixed_point : protected fixed_point_impl<IntBits, FracBits, S>::type {
 
     // ---- Other math functions ----
 
-    static FASTLED_FORCE_INLINE fixed_point sqrt(fixed_point x) {
+    static constexpr FASTLED_FORCE_INLINE fixed_point sqrt(fixed_point x) {
         return from_raw(Base::sqrt(x).raw());
     }
 
-    static FASTLED_FORCE_INLINE fixed_point rsqrt(fixed_point x) {
+    static constexpr FASTLED_FORCE_INLINE fixed_point rsqrt(fixed_point x) {
         return from_raw(Base::rsqrt(x).raw());
     }
 
