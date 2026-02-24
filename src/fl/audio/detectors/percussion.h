@@ -40,10 +40,27 @@ public:
     bool isHiHat() const { return mHiHatDetected; }
     bool isTom() const { return mTomDetected; }
 
+    // Confidence (0.0 - 1.0)
+    float getKickConfidence() const { return mKickConfidence; }
+    float getSnareConfidence() const { return mSnareConfidence; }
+    float getHiHatConfidence() const { return mHiHatConfidence; }
+    float getTomConfidence() const { return mTomConfidence; }
+
+    // Feature inspection (for calibration / testing)
+    float getBassToTotalRatio() const { return mBassToTotal; }
+    float getTrebleToTotalRatio() const { return mTrebleToTotal; }
+    float getClickRatio() const { return mClickRatio; }
+    float getTrebleFlatness() const { return mTrebleFlatness; }
+    float getMidToTrebleRatio() const { return mMidToTreble; }
+    float getOnsetSharpness() const { return mOnsetSharpness; }
+    float getSubBassProxy() const { return mSubBassProxy; }
+    float getZeroCrossingFactor() const { return mZeroCrossingFactor; }
+
     // Configuration
     void setKickThreshold(float threshold) { mKickThreshold = threshold; }
     void setSnareThreshold(float threshold) { mSnareThreshold = threshold; }
     void setHiHatThreshold(float threshold) { mHiHatThreshold = threshold; }
+    void setTomThreshold(float threshold) { mTomThreshold = threshold; }
 
 private:
     // Per-frame detection state
@@ -52,30 +69,48 @@ private:
     bool mHiHatDetected;
     bool mTomDetected;
 
+    // Confidence scores (0.0 - 1.0)
+    float mKickConfidence;
+    float mSnareConfidence;
+    float mHiHatConfidence;
+    float mTomConfidence;
+
+    // Spectral features (computed per frame)
+    float mBassToTotal;
+    float mTrebleToTotal;
+    float mClickRatio;
+    float mTrebleFlatness;
+    float mMidToTreble;
+    float mOnsetSharpness;
+    float mSubBassProxy;
+    float mZeroCrossingFactor;
+
+    // Thresholds
     float mKickThreshold;
     float mSnareThreshold;
     float mHiHatThreshold;
-    // Envelope followers: slow attack (lags behind onsets to produce flux),
-    // fast decay (recovers quickly after transient)
-    AttackDecayFilter<float> mBassEnvelope{0.15f, 0.005f};
-    AttackDecayFilter<float> mMidEnvelope{0.15f, 0.005f};
-    AttackDecayFilter<float> mTrebleEnvelope{0.15f, 0.005f};
+    float mTomThreshold;
+
+    // Envelope followers for onset detection
+    AttackDecayFilter<float> mTotalEnvelope{0.15f, 0.005f};
+
+    // Cooldown timestamps
     u32 mLastKickTime;
     u32 mLastSnareTime;
     u32 mLastHiHatTime;
+    u32 mLastTomTime;
 
     shared_ptr<const FFTBins> mRetainedFFT;
 
     static constexpr u32 KICK_COOLDOWN_MS = 100;
     static constexpr u32 SNARE_COOLDOWN_MS = 80;
     static constexpr u32 HIHAT_COOLDOWN_MS = 50;
+    static constexpr u32 TOM_COOLDOWN_MS = 100;
 
-    float getBassEnergy(const FFTBins& fft);
-    float getMidEnergy(const FFTBins& fft);
-    float getTrebleEnergy(const FFTBins& fft);
-    bool detectKick(float bassEnergy, float bassFlux, u32 timestamp);
-    bool detectSnare(float midEnergy, float midFlux, u32 timestamp);
-    bool detectHiHat(float trebleEnergy, float trebleFlux, u32 timestamp);
+    // Feature computation
+    void computeFeatures(const FFTBins& fft);
+    void computeConfidences();
+    void applyCrossBandRejection();
 };
 
 } // namespace fl

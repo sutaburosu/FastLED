@@ -443,4 +443,3 @@ FL_TEST_CASE("VocalDetector - voice-in-mix harmonic structure") {
     // Should have measurable harmonic density
     FL_CHECK_GT(detector.getHarmonicDensity(), 50.0f);
 }
-

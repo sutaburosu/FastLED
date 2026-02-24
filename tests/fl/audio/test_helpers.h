@@ -279,6 +279,129 @@ inline AudioSample makeChirp(float startFreq, float endFreq, u32 timestamp,
     return AudioSample(data, timestamp);
 }
 
+// ============================================================================
+// Percussion Signal Generators
+// ============================================================================
+
+/// Generate a synthetic kick drum: 60Hz body + 120Hz harmonic (30ms decay) + click transient
+/// The click uses multiple high-frequency sines sustained long enough for CQ FFT to resolve
+inline AudioSample makeKickDrum(fl::u32 timestamp, float amplitude = 16000.0f,
+                                 int count = 512, float sampleRate = 44100.0f) {
+    fl::vector<fl::i16> data(count, 0);
+    for (int i = 0; i < count; ++i) {
+        float t = static_cast<float>(i) / sampleRate;
+        // Body: 60Hz fundamental with 30ms exponential decay
+        float bodyDecay = fl::expf(-t / 0.030f);
+        float body = amplitude * 0.7f * bodyDecay * fl::sinf(2.0f * FL_M_PI * 60.0f * t);
+        // Second harmonic: 120Hz
+        float harm2 = amplitude * 0.3f * bodyDecay * fl::sinf(2.0f * FL_M_PI * 120.0f * t);
+        // Click transient: sustained for ~200 samples with fast exponential decay
+        // Uses multiple frequencies in the CQ treble range (bins 10-12)
+        float clickDecay = fl::expf(-t / 0.003f); // ~3ms decay, covers ~130 samples
+        float click = amplitude * 0.8f * clickDecay * (
+            0.5f * fl::sinf(2.0f * FL_M_PI * 2000.0f * t) +
+            0.3f * fl::sinf(2.0f * FL_M_PI * 3000.0f * t) +
+            0.2f * fl::sinf(2.0f * FL_M_PI * 4000.0f * t)
+        );
+        float sample = body + harm2 + click;
+        if (sample > 32767.0f) sample = 32767.0f;
+        if (sample < -32768.0f) sample = -32768.0f;
+        data[i] = static_cast<fl::i16>(sample);
+    }
+    return AudioSample(data, timestamp);
+}
+
+/// Generate a synthetic snare: 250Hz body (25ms decay) + high-frequency noise (50ms decay)
+/// Produces moderate bass + significant treble energy from noise rattles
+inline AudioSample makeSnare(fl::u32 timestamp, float amplitude = 16000.0f,
+                              int count = 512, float sampleRate = 44100.0f) {
+    fl::fl_random rng(42); // Deterministic seed
+    fl::vector<fl::i16> data(count, 0);
+    float prevNoise = 0.0f;
+    for (int i = 0; i < count; ++i) {
+        float t = static_cast<float>(i) / sampleRate;
+        // Tonal body: 250Hz with 25ms decay — reduced to let treble dominate
+        float bodyDecay = fl::expf(-t / 0.025f);
+        float body = amplitude * 0.20f * bodyDecay * fl::sinf(2.0f * FL_M_PI * 250.0f * t);
+        // Noise rattle: high-pass filtered white noise with 50ms decay
+        float noiseDecay = fl::expf(-t / 0.050f);
+        float rawNoise = (static_cast<float>(rng.random16()) / 32767.5f) - 1.0f;
+        // Second-order high-pass approximation for stronger treble content
+        float highPassNoise = rawNoise - 0.95f * prevNoise;
+        prevNoise = rawNoise;
+        float noise = amplitude * 0.80f * noiseDecay * highPassNoise;
+        // Also add explicit high-frequency tones to boost CQ treble bins
+        float trebleTones = amplitude * 0.25f * bodyDecay * (
+            0.4f * fl::sinf(2.0f * FL_M_PI * 2000.0f * t) +
+            0.3f * fl::sinf(2.0f * FL_M_PI * 3500.0f * t) +
+            0.3f * fl::sinf(2.0f * FL_M_PI * 4500.0f * t)
+        );
+        float sample = body + noise + trebleTones;
+        if (sample > 32767.0f) sample = 32767.0f;
+        if (sample < -32768.0f) sample = -32768.0f;
+        data[i] = static_cast<fl::i16>(sample);
+    }
+    return AudioSample(data, timestamp);
+}
+
+/// Generate a synthetic hi-hat: high-pass shaped white noise
+/// @param open If true, use 80ms decay (open hi-hat); if false, use 5ms decay (closed)
+inline AudioSample makeHiHat(fl::u32 timestamp, bool open = false, float amplitude = 16000.0f,
+                              int count = 512, float sampleRate = 44100.0f) {
+    fl::fl_random rng(99); // Deterministic seed
+    float decayTime = open ? 0.080f : 0.005f;
+    fl::vector<fl::i16> data(count, 0);
+    float prevSample = 0.0f;
+    for (int i = 0; i < count; ++i) {
+        float t = static_cast<float>(i) / sampleRate;
+        float decay = fl::expf(-t / decayTime);
+        // White noise
+        float noiseVal = (static_cast<float>(rng.random16()) / 32767.5f) - 1.0f;
+        // Simple high-pass: subtract previous sample (first-order difference)
+        float raw = amplitude * decay * noiseVal;
+        float highPassed = raw - prevSample * 0.85f;
+        prevSample = raw;
+        if (highPassed > 32767.0f) highPassed = 32767.0f;
+        if (highPassed < -32768.0f) highPassed = -32768.0f;
+        data[i] = static_cast<fl::i16>(highPassed);
+    }
+    return AudioSample(data, timestamp);
+}
+
+/// Generate a synthetic tom drum: single sine at tuning frequency, 60ms decay, NO click
+/// Discriminated from kick by absence of click transient
+inline AudioSample makeTom(fl::u32 timestamp, float tuningHz = 160.0f, float amplitude = 16000.0f,
+                            int count = 512, float sampleRate = 44100.0f) {
+    fl::vector<fl::i16> data(count, 0);
+    for (int i = 0; i < count; ++i) {
+        float t = static_cast<float>(i) / sampleRate;
+        float decay = fl::expf(-t / 0.060f);
+        float sample = amplitude * decay * fl::sinf(2.0f * FL_M_PI * tuningHz * t);
+        if (sample > 32767.0f) sample = 32767.0f;
+        if (sample < -32768.0f) sample = -32768.0f;
+        data[i] = static_cast<fl::i16>(sample);
+    }
+    return AudioSample(data, timestamp);
+}
+
+/// Generate a synthetic crash cymbal: broadband noise with 80ms decay
+/// All treble bins have similar energy (high flatness)
+inline AudioSample makeCrashCymbal(fl::u32 timestamp, float amplitude = 16000.0f,
+                                    int count = 512, float sampleRate = 44100.0f) {
+    fl::fl_random rng(77); // Deterministic seed
+    fl::vector<fl::i16> data(count, 0);
+    for (int i = 0; i < count; ++i) {
+        float t = static_cast<float>(i) / sampleRate;
+        float decay = fl::expf(-t / 0.080f);
+        float noiseVal = (static_cast<float>(rng.random16()) / 32767.5f) - 1.0f;
+        float sample = amplitude * decay * noiseVal;
+        if (sample > 32767.0f) sample = 32767.0f;
+        if (sample < -32768.0f) sample = -32768.0f;
+        data[i] = static_cast<fl::i16>(sample);
+    }
+    return AudioSample(data, timestamp);
+}
+
 } // namespace test
 } // namespace audio
 } // namespace fl
