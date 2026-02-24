@@ -57,10 +57,12 @@ class s0x32 {
             static_cast<i64>(other.raw()) << (FRAC_BITS - OtherFP::FRAC_BITS))) {}
 
     // Construct from raw i32 value (Q31 format)
-    static FASTLED_FORCE_INLINE s0x32 from_raw(i32 raw) {
-        s0x32 r;
-        r.mValue = raw;
-        return r;
+    // Raw constructor for C++11 constexpr from_raw
+    struct RawTag {};
+    constexpr explicit s0x32(i32 raw, RawTag) : mValue(raw) {}
+
+    static constexpr FASTLED_FORCE_INLINE s0x32 from_raw(i32 raw) {
+        return s0x32(raw, RawTag());
     }
 
     // ---- Access ------------------------------------------------------------
@@ -68,47 +70,47 @@ class s0x32 {
     constexpr i32 raw() const { return mValue; }
 
     // Convert to integer (always 0 or -1 since range is [-1.0, 1.0])
-    i32 to_int() const { return mValue >> 31; }
+    constexpr i32 to_int() const { return mValue >> 31; }
 
-    float to_float() const {
+    constexpr float to_float() const {
         return static_cast<float>(mValue) / (1LL << 31);
     }
 
     // ---- Same-type arithmetic (s0x32 OP s0x32 → s0x32) --------------------
 
-    FASTLED_FORCE_INLINE s0x32 operator+(s0x32 b) const {
+    constexpr FASTLED_FORCE_INLINE s0x32 operator+(s0x32 b) const {
         return from_raw(mValue + b.mValue);
     }
 
-    FASTLED_FORCE_INLINE s0x32 operator-(s0x32 b) const {
+    constexpr FASTLED_FORCE_INLINE s0x32 operator-(s0x32 b) const {
         return from_raw(mValue - b.mValue);
     }
 
-    FASTLED_FORCE_INLINE s0x32 operator-() const {
+    constexpr FASTLED_FORCE_INLINE s0x32 operator-() const {
         return from_raw(-mValue);
     }
 
     // Multiply two normalized values: s0x32 × s0x32 → s0x32
     // Both inputs ≤ 1.0, so product ≤ 1.0
-    FASTLED_FORCE_INLINE s0x32 operator*(s0x32 b) const {
+    constexpr FASTLED_FORCE_INLINE s0x32 operator*(s0x32 b) const {
         // Q31 × Q31 = Q62 → shift right 31 → Q31
         return from_raw(static_cast<i32>(
             (static_cast<i64>(mValue) * b.mValue) >> 31));
     }
 
     // Divide normalized values: s0x32 / s0x32 → s0x32
-    FASTLED_FORCE_INLINE s0x32 operator/(s0x32 b) const {
+    constexpr FASTLED_FORCE_INLINE s0x32 operator/(s0x32 b) const {
         // Q31 / Q31: shift dividend left 31 bits then divide
         // (a / 2^31) / (b / 2^31) = a / b → need (a << 31) / b
         return from_raw(static_cast<i32>(
             (static_cast<i64>(mValue) << 31) / b.mValue));
     }
 
-    FASTLED_FORCE_INLINE s0x32 operator>>(int shift) const {
+    constexpr FASTLED_FORCE_INLINE s0x32 operator>>(int shift) const {
         return from_raw(mValue >> shift);
     }
 
-    FASTLED_FORCE_INLINE s0x32 operator<<(int shift) const {
+    constexpr FASTLED_FORCE_INLINE s0x32 operator<<(int shift) const {
         return from_raw(mValue << shift);
     }
 
@@ -122,11 +124,11 @@ class s0x32 {
         return from_raw(static_cast<i32>(result));
     }
 
-    friend FASTLED_FORCE_INLINE s0x32 operator*(i32 scalar, s0x32 a) {
+    friend constexpr FASTLED_FORCE_INLINE s0x32 operator*(i32 scalar, s0x32 a) {
         return a * scalar;  // Commutative
     }
 
-    FASTLED_FORCE_INLINE s0x32 operator/(i32 scalar) const {
+    constexpr FASTLED_FORCE_INLINE s0x32 operator/(i32 scalar) const {
         return from_raw(mValue / scalar);
     }
 
@@ -136,32 +138,32 @@ class s0x32 {
     // Common pattern: sin/cos × distance
     // Math: Q31 × Q16 = Q47 → shift right 31 → Q16
     // Implemented in fixed_point.h after s16x16 is fully defined
-    FASTLED_FORCE_INLINE s16x16 operator*(s16x16 b) const;
+    constexpr FASTLED_FORCE_INLINE s16x16 operator*(s16x16 b) const;
 
-    friend FASTLED_FORCE_INLINE s16x16 operator*(s16x16 a, s0x32 b);
+    friend constexpr FASTLED_FORCE_INLINE s16x16 operator*(s16x16 a, s0x32 b);
 
     // ---- Math functions ----------------------------------------------------
 
-    static FASTLED_FORCE_INLINE s0x32 abs(s0x32 x) {
+    static constexpr FASTLED_FORCE_INLINE s0x32 abs(s0x32 x) {
         return from_raw(x.mValue < 0 ? -x.mValue : x.mValue);
     }
 
-    static FASTLED_FORCE_INLINE s0x32 min(s0x32 a, s0x32 b) {
+    static constexpr FASTLED_FORCE_INLINE s0x32 min(s0x32 a, s0x32 b) {
         return from_raw(a.mValue < b.mValue ? a.mValue : b.mValue);
     }
 
-    static FASTLED_FORCE_INLINE s0x32 max(s0x32 a, s0x32 b) {
+    static constexpr FASTLED_FORCE_INLINE s0x32 max(s0x32 a, s0x32 b) {
         return from_raw(a.mValue > b.mValue ? a.mValue : b.mValue);
     }
 
     // ---- Comparisons -------------------------------------------------------
 
-    bool operator<(s0x32 b) const { return mValue < b.mValue; }
-    bool operator>(s0x32 b) const { return mValue > b.mValue; }
-    bool operator<=(s0x32 b) const { return mValue <= b.mValue; }
-    bool operator>=(s0x32 b) const { return mValue >= b.mValue; }
-    bool operator==(s0x32 b) const { return mValue == b.mValue; }
-    bool operator!=(s0x32 b) const { return mValue != b.mValue; }
+    constexpr bool operator<(s0x32 b) const { return mValue < b.mValue; }
+    constexpr bool operator>(s0x32 b) const { return mValue > b.mValue; }
+    constexpr bool operator<=(s0x32 b) const { return mValue <= b.mValue; }
+    constexpr bool operator>=(s0x32 b) const { return mValue >= b.mValue; }
+    constexpr bool operator==(s0x32 b) const { return mValue == b.mValue; }
+    constexpr bool operator!=(s0x32 b) const { return mValue != b.mValue; }
 
   private:
     i32 mValue = 0;

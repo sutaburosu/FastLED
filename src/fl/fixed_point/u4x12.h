@@ -37,114 +37,109 @@ class u4x12 {
         : mValue(static_cast<u16>(
             static_cast<u32>(other.raw()) << (FRAC_BITS - OtherFP::FRAC_BITS))) {}
 
-    static FASTLED_FORCE_INLINE u4x12 from_raw(u16 raw) {
-        u4x12 r;
-        r.mValue = raw;
-        return r;
+    // Raw constructor for C++11 constexpr from_raw
+    struct RawTag {};
+    constexpr explicit u4x12(u16 raw, RawTag) : mValue(raw) {}
+
+    static constexpr FASTLED_FORCE_INLINE u4x12 from_raw(u16 raw) {
+        return u4x12(raw, RawTag());
     }
 
     // ---- Access ------------------------------------------------------------
 
     constexpr u16 raw() const { return mValue; }
-    u16 to_int() const { return mValue >> FRAC_BITS; }
-    float to_float() const { return static_cast<float>(mValue) / (SCALE); }
+    constexpr u16 to_int() const { return mValue >> FRAC_BITS; }
+    constexpr float to_float() const { return static_cast<float>(mValue) / (SCALE); }
 
     // ---- Fixed-point arithmetic --------------------------------------------
 
-    FASTLED_FORCE_INLINE u4x12 operator*(u4x12 b) const {
+    constexpr FASTLED_FORCE_INLINE u4x12 operator*(u4x12 b) const {
         return from_raw(static_cast<u16>(
             (static_cast<u32>(mValue) * b.mValue) >> FRAC_BITS));
     }
 
-    FASTLED_FORCE_INLINE u4x12 operator/(u4x12 b) const {
+    constexpr FASTLED_FORCE_INLINE u4x12 operator/(u4x12 b) const {
         return from_raw(static_cast<u16>(
             (static_cast<u32>(mValue) * (static_cast<u32>(1) << FRAC_BITS)) / b.mValue));
     }
 
-    FASTLED_FORCE_INLINE u4x12 operator+(u4x12 b) const {
+    constexpr FASTLED_FORCE_INLINE u4x12 operator+(u4x12 b) const {
         return from_raw(mValue + b.mValue);
     }
 
-    FASTLED_FORCE_INLINE u4x12 operator-(u4x12 b) const {
+    constexpr FASTLED_FORCE_INLINE u4x12 operator-(u4x12 b) const {
         return from_raw(mValue - b.mValue);
     }
 
-    FASTLED_FORCE_INLINE u4x12 operator>>(int shift) const {
+    constexpr FASTLED_FORCE_INLINE u4x12 operator>>(int shift) const {
         return from_raw(mValue >> shift);
     }
 
-    FASTLED_FORCE_INLINE u4x12 operator<<(int shift) const {
+    constexpr FASTLED_FORCE_INLINE u4x12 operator<<(int shift) const {
         return from_raw(mValue << shift);
     }
 
     // ---- Scalar multiply (no fixed-point shift) ----------------------------
 
-    FASTLED_FORCE_INLINE u4x12 operator*(u16 scalar) const {
+    constexpr FASTLED_FORCE_INLINE u4x12 operator*(u16 scalar) const {
         return from_raw(mValue * scalar);
     }
 
-    friend FASTLED_FORCE_INLINE u4x12 operator*(u16 scalar, u4x12 fp) {
+    friend constexpr FASTLED_FORCE_INLINE u4x12 operator*(u16 scalar, u4x12 fp) {
         return u4x12::from_raw(scalar * fp.mValue);
     }
 
     // ---- Comparisons -------------------------------------------------------
 
-    bool operator<(u4x12 b) const { return mValue < b.mValue; }
-    bool operator>(u4x12 b) const { return mValue > b.mValue; }
-    bool operator<=(u4x12 b) const { return mValue <= b.mValue; }
-    bool operator>=(u4x12 b) const { return mValue >= b.mValue; }
-    bool operator==(u4x12 b) const { return mValue == b.mValue; }
-    bool operator!=(u4x12 b) const { return mValue != b.mValue; }
+    constexpr bool operator<(u4x12 b) const { return mValue < b.mValue; }
+    constexpr bool operator>(u4x12 b) const { return mValue > b.mValue; }
+    constexpr bool operator<=(u4x12 b) const { return mValue <= b.mValue; }
+    constexpr bool operator>=(u4x12 b) const { return mValue >= b.mValue; }
+    constexpr bool operator==(u4x12 b) const { return mValue == b.mValue; }
+    constexpr bool operator!=(u4x12 b) const { return mValue != b.mValue; }
 
     // ---- Math ---------------------------------------------------------------
 
-    static FASTLED_FORCE_INLINE u4x12 mod(u4x12 a, u4x12 b) {
+    static constexpr FASTLED_FORCE_INLINE u4x12 mod(u4x12 a, u4x12 b) {
         return from_raw(a.mValue % b.mValue);
     }
 
-    static FASTLED_FORCE_INLINE u4x12 floor(u4x12 x) {
-        constexpr u16 frac_mask = (SCALE) - 1;
-        return from_raw(x.mValue & ~frac_mask);
+    static constexpr FASTLED_FORCE_INLINE u4x12 floor(u4x12 x) {
+        return from_raw(x.mValue & ~(u16((SCALE) - 1)));
     }
 
-    static FASTLED_FORCE_INLINE u4x12 ceil(u4x12 x) {
-        constexpr u16 frac_mask = (SCALE) - 1;
-        u16 floored = x.mValue & ~frac_mask;
-        if (x.mValue & frac_mask) floored += (SCALE);
-        return from_raw(floored);
+    static constexpr FASTLED_FORCE_INLINE u4x12 ceil(u4x12 x) {
+        return from_raw((x.mValue & ~(u16((SCALE) - 1))) +
+                        ((x.mValue & u16((SCALE) - 1)) ? (SCALE) : 0));
     }
 
-    static FASTLED_FORCE_INLINE u4x12 fract(u4x12 x) {
-        constexpr u16 frac_mask = (SCALE) - 1;
-        return from_raw(x.mValue & frac_mask);
+    static constexpr FASTLED_FORCE_INLINE u4x12 fract(u4x12 x) {
+        return from_raw(x.mValue & u16((SCALE) - 1));
     }
 
-    static FASTLED_FORCE_INLINE u4x12 abs(u4x12 x) {
+    static constexpr FASTLED_FORCE_INLINE u4x12 abs(u4x12 x) {
         // For unsigned type, abs is identity
         return x;
     }
 
-    static FASTLED_FORCE_INLINE u4x12 min(u4x12 a, u4x12 b) {
+    static constexpr FASTLED_FORCE_INLINE u4x12 min(u4x12 a, u4x12 b) {
         return a < b ? a : b;
     }
 
-    static FASTLED_FORCE_INLINE u4x12 max(u4x12 a, u4x12 b) {
+    static constexpr FASTLED_FORCE_INLINE u4x12 max(u4x12 a, u4x12 b) {
         return a > b ? a : b;
     }
 
-    static FASTLED_FORCE_INLINE u4x12 lerp(u4x12 a, u4x12 b, u4x12 t) {
+    static constexpr FASTLED_FORCE_INLINE u4x12 lerp(u4x12 a, u4x12 b, u4x12 t) {
         return a + (b - a) * t;
     }
 
-    static FASTLED_FORCE_INLINE u4x12 clamp(u4x12 x, u4x12 lo, u4x12 hi) {
-        if (x < lo) return lo;
-        if (x > hi) return hi;
-        return x;
+    static constexpr FASTLED_FORCE_INLINE u4x12 clamp(u4x12 x, u4x12 lo, u4x12 hi) {
+        return x < lo ? lo : (x > hi ? hi : x);
     }
 
-    static FASTLED_FORCE_INLINE u4x12 step(u4x12 edge, u4x12 x) {
-        constexpr u4x12 one(1.0f);
-        return x < edge ? u4x12() : one;
+    static constexpr FASTLED_FORCE_INLINE u4x12 step(u4x12 edge, u4x12 x) {
+        return x < edge ? u4x12() : u4x12(1.0f);
     }
 
     static FASTLED_FORCE_INLINE u4x12 smoothstep(u4x12 edge0, u4x12 edge1, u4x12 x) {

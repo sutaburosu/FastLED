@@ -57,102 +57,93 @@ class fixed_point_base {
     // ---- Access ------------------------------------------------------------
 
     constexpr raw_type raw() const { return mValue; }
-    raw_type to_int() const { return mValue >> FRAC_BITS; }
-    float to_float() const { return static_cast<float>(mValue) / (static_cast<raw_type>(1) << FRAC_BITS); }
+    constexpr raw_type to_int() const { return mValue >> FRAC_BITS; }
+    constexpr float to_float() const { return static_cast<float>(mValue) / (static_cast<raw_type>(1) << FRAC_BITS); }
 
     // ---- Fixed-point arithmetic --------------------------------------------
 
-    FASTLED_FORCE_INLINE Derived operator*(Derived b) const {
+    constexpr FASTLED_FORCE_INLINE Derived operator*(Derived b) const {
         return Derived::from_raw(static_cast<raw_type>(
             (static_cast<intermediate_type>(mValue) * b.mValue) >> FRAC_BITS));
     }
 
-    FASTLED_FORCE_INLINE Derived operator/(Derived b) const {
+    constexpr FASTLED_FORCE_INLINE Derived operator/(Derived b) const {
         return Derived::from_raw(static_cast<raw_type>(
             (static_cast<intermediate_type>(mValue) * (static_cast<intermediate_type>(1) << FRAC_BITS)) / b.mValue));
     }
 
-    FASTLED_FORCE_INLINE Derived operator+(Derived b) const {
+    constexpr FASTLED_FORCE_INLINE Derived operator+(Derived b) const {
         return Derived::from_raw(mValue + b.mValue);
     }
 
-    FASTLED_FORCE_INLINE Derived operator-(Derived b) const {
+    constexpr FASTLED_FORCE_INLINE Derived operator-(Derived b) const {
         return Derived::from_raw(mValue - b.mValue);
     }
 
-    FASTLED_FORCE_INLINE Derived operator-() const {
+    constexpr FASTLED_FORCE_INLINE Derived operator-() const {
         return Derived::from_raw(-mValue);
     }
 
-    FASTLED_FORCE_INLINE Derived operator>>(int shift) const {
+    constexpr FASTLED_FORCE_INLINE Derived operator>>(int shift) const {
         return Derived::from_raw(mValue >> shift);
     }
 
     // ---- Scalar multiply (no fixed-point shift) ----------------------------
 
-    FASTLED_FORCE_INLINE Derived operator*(raw_type scalar) const {
+    constexpr FASTLED_FORCE_INLINE Derived operator*(raw_type scalar) const {
         return Derived::from_raw(mValue * scalar);
     }
 
-    friend FASTLED_FORCE_INLINE Derived operator*(raw_type scalar, Derived fp) {
+    friend constexpr FASTLED_FORCE_INLINE Derived operator*(raw_type scalar, Derived fp) {
         return Derived::from_raw(scalar * fp.mValue);
     }
 
     // ---- Comparisons -------------------------------------------------------
 
-    bool operator<(Derived b) const { return mValue < b.mValue; }
-    bool operator>(Derived b) const { return mValue > b.mValue; }
-    bool operator<=(Derived b) const { return mValue <= b.mValue; }
-    bool operator>=(Derived b) const { return mValue >= b.mValue; }
-    bool operator==(Derived b) const { return mValue == b.mValue; }
-    bool operator!=(Derived b) const { return mValue != b.mValue; }
+    constexpr bool operator<(Derived b) const { return mValue < b.mValue; }
+    constexpr bool operator>(Derived b) const { return mValue > b.mValue; }
+    constexpr bool operator<=(Derived b) const { return mValue <= b.mValue; }
+    constexpr bool operator>=(Derived b) const { return mValue >= b.mValue; }
+    constexpr bool operator==(Derived b) const { return mValue == b.mValue; }
+    constexpr bool operator!=(Derived b) const { return mValue != b.mValue; }
 
     // ---- Math ---------------------------------------------------------------
 
-    static FASTLED_FORCE_INLINE Derived mod(Derived a, Derived b) {
+    static constexpr FASTLED_FORCE_INLINE Derived mod(Derived a, Derived b) {
         return Derived::from_raw(a.mValue % b.mValue);
     }
 
-    static FASTLED_FORCE_INLINE Derived floor(Derived x) {
-        constexpr raw_type frac_mask = (Derived::SCALE) - 1;
-        return Derived::from_raw(x.mValue & ~frac_mask);
+    static constexpr FASTLED_FORCE_INLINE Derived floor(Derived x) {
+        return Derived::from_raw(x.mValue & ~(raw_type((Derived::SCALE) - 1)));
     }
 
-    static FASTLED_FORCE_INLINE Derived ceil(Derived x) {
-        constexpr raw_type frac_mask = (Derived::SCALE) - 1;
-        raw_type floored = x.mValue & ~frac_mask;
-        if (x.mValue & frac_mask) floored += (Derived::SCALE);
-        return Derived::from_raw(floored);
+    static constexpr FASTLED_FORCE_INLINE Derived ceil(Derived x) {
+        return Derived::from_raw((x.mValue & ~(raw_type((Derived::SCALE) - 1))) +
+                                 ((x.mValue & raw_type((Derived::SCALE) - 1)) ? (Derived::SCALE) : 0));
     }
 
-    static FASTLED_FORCE_INLINE Derived fract(Derived x) {
-        constexpr raw_type frac_mask = (Derived::SCALE) - 1;
-        return Derived::from_raw(x.mValue & frac_mask);
+    static constexpr FASTLED_FORCE_INLINE Derived fract(Derived x) {
+        return Derived::from_raw(x.mValue & raw_type((Derived::SCALE) - 1));
     }
 
-    static FASTLED_FORCE_INLINE Derived abs(Derived x) {
+    static constexpr FASTLED_FORCE_INLINE Derived abs(Derived x) {
         return Derived::from_raw(x.mValue < 0 ? -x.mValue : x.mValue);
     }
 
-    static FASTLED_FORCE_INLINE int sign(Derived x) {
-        if (x.mValue > 0) return 1;
-        if (x.mValue < 0) return -1;
-        return 0;
+    static constexpr FASTLED_FORCE_INLINE int sign(Derived x) {
+        return x.mValue > 0 ? 1 : (x.mValue < 0 ? -1 : 0);
     }
 
-    static FASTLED_FORCE_INLINE Derived lerp(Derived a, Derived b, Derived t) {
+    static constexpr FASTLED_FORCE_INLINE Derived lerp(Derived a, Derived b, Derived t) {
         return a + (b - a) * t;
     }
 
-    static FASTLED_FORCE_INLINE Derived clamp(Derived x, Derived lo, Derived hi) {
-        if (x < lo) return lo;
-        if (x > hi) return hi;
-        return x;
+    static constexpr FASTLED_FORCE_INLINE Derived clamp(Derived x, Derived lo, Derived hi) {
+        return x < lo ? lo : (x > hi ? hi : x);
     }
 
-    static FASTLED_FORCE_INLINE Derived step(Derived edge, Derived x) {
-        constexpr Derived one(1.0f);
-        return x < edge ? Derived() : one;
+    static constexpr FASTLED_FORCE_INLINE Derived step(Derived edge, Derived x) {
+        return x < edge ? Derived() : Derived(1.0f);
     }
 
     static FASTLED_FORCE_INLINE Derived smoothstep(Derived edge0, Derived edge1, Derived x) {
@@ -245,23 +236,23 @@ class fixed_point_base {
 
     // ---- Member function versions (operate on *this) -----------------------
 
-    FASTLED_FORCE_INLINE Derived floor() const {
+    constexpr FASTLED_FORCE_INLINE Derived floor() const {
         return floor(*static_cast<const Derived*>(this));
     }
 
-    FASTLED_FORCE_INLINE Derived ceil() const {
+    constexpr FASTLED_FORCE_INLINE Derived ceil() const {
         return ceil(*static_cast<const Derived*>(this));
     }
 
-    FASTLED_FORCE_INLINE Derived fract() const {
+    constexpr FASTLED_FORCE_INLINE Derived fract() const {
         return fract(*static_cast<const Derived*>(this));
     }
 
-    FASTLED_FORCE_INLINE Derived abs() const {
+    constexpr FASTLED_FORCE_INLINE Derived abs() const {
         return abs(*static_cast<const Derived*>(this));
     }
 
-    FASTLED_FORCE_INLINE int sign() const {
+    constexpr FASTLED_FORCE_INLINE int sign() const {
         return sign(*static_cast<const Derived*>(this));
     }
 

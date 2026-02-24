@@ -128,110 +128,110 @@ class fixed_point : protected fixed_point_impl<IntBits, FracBits, S>::type {
     // ---- Conversion methods ----
 
     FASTLED_FORCE_INLINE constexpr RawType raw() const { return Base::raw(); }
-    FASTLED_FORCE_INLINE i32 to_int() const { return Base::to_int(); }
-    FASTLED_FORCE_INLINE float to_float() const { return Base::to_float(); }
+    constexpr FASTLED_FORCE_INLINE i32 to_int() const { return Base::to_int(); }
+    constexpr FASTLED_FORCE_INLINE float to_float() const { return Base::to_float(); }
 
     // ---- Arithmetic operators ----
 
-    FASTLED_FORCE_INLINE fixed_point operator+(fixed_point b) const {
+    constexpr FASTLED_FORCE_INLINE fixed_point operator+(fixed_point b) const {
         return from_raw((Base::operator+(b)).raw());
     }
 
-    FASTLED_FORCE_INLINE fixed_point operator-(fixed_point b) const {
+    constexpr FASTLED_FORCE_INLINE fixed_point operator-(fixed_point b) const {
         return from_raw((Base::operator-(b)).raw());
     }
 
-    FASTLED_FORCE_INLINE fixed_point operator*(fixed_point b) const {
+    constexpr FASTLED_FORCE_INLINE fixed_point operator*(fixed_point b) const {
         return from_raw((Base::operator*(b)).raw());
     }
 
-    FASTLED_FORCE_INLINE fixed_point operator/(fixed_point b) const {
+    constexpr FASTLED_FORCE_INLINE fixed_point operator/(fixed_point b) const {
         return from_raw((Base::operator/(b)).raw());
     }
 
-    FASTLED_FORCE_INLINE fixed_point operator-() const {
+    constexpr FASTLED_FORCE_INLINE fixed_point operator-() const {
         return from_raw((Base::operator-()).raw());
     }
 
-    FASTLED_FORCE_INLINE fixed_point operator>>(int shift) const {
+    constexpr FASTLED_FORCE_INLINE fixed_point operator>>(int shift) const {
         return from_raw((Base::operator>>(shift)).raw());
     }
 
-    FASTLED_FORCE_INLINE fixed_point operator<<(int shift) const {
+    constexpr FASTLED_FORCE_INLINE fixed_point operator<<(int shift) const {
         return from_raw((Base::operator<<(shift)).raw());
     }
 
     // ---- Scalar multiplication ----
 
-    FASTLED_FORCE_INLINE fixed_point operator*(i32 scalar) const {
+    constexpr FASTLED_FORCE_INLINE fixed_point operator*(i32 scalar) const {
         return from_raw((Base::operator*(scalar)).raw());
     }
 
-    friend FASTLED_FORCE_INLINE fixed_point operator*(i32 scalar, fixed_point fp) {
+    friend constexpr FASTLED_FORCE_INLINE fixed_point operator*(i32 scalar, fixed_point fp) {
         return from_raw((scalar * static_cast<Base>(fp)).raw());
     }
 
     // ---- Comparison operators ----
 
-    FASTLED_FORCE_INLINE bool operator<(fixed_point b) const {
+    constexpr FASTLED_FORCE_INLINE bool operator<(fixed_point b) const {
         return Base::operator<(b);
     }
 
-    FASTLED_FORCE_INLINE bool operator>(fixed_point b) const {
+    constexpr FASTLED_FORCE_INLINE bool operator>(fixed_point b) const {
         return Base::operator>(b);
     }
 
-    FASTLED_FORCE_INLINE bool operator<=(fixed_point b) const {
+    constexpr FASTLED_FORCE_INLINE bool operator<=(fixed_point b) const {
         return Base::operator<=(b);
     }
 
-    FASTLED_FORCE_INLINE bool operator>=(fixed_point b) const {
+    constexpr FASTLED_FORCE_INLINE bool operator>=(fixed_point b) const {
         return Base::operator>=(b);
     }
 
-    FASTLED_FORCE_INLINE bool operator==(fixed_point b) const {
+    constexpr FASTLED_FORCE_INLINE bool operator==(fixed_point b) const {
         return Base::operator==(b);
     }
 
-    FASTLED_FORCE_INLINE bool operator!=(fixed_point b) const {
+    constexpr FASTLED_FORCE_INLINE bool operator!=(fixed_point b) const {
         return Base::operator!=(b);
     }
 
     // ---- Static math functions ----
 
-    static FASTLED_FORCE_INLINE fixed_point mod(fixed_point a, fixed_point b) {
+    static constexpr FASTLED_FORCE_INLINE fixed_point mod(fixed_point a, fixed_point b) {
         return from_raw(Base::mod(a, b).raw());
     }
 
-    static FASTLED_FORCE_INLINE fixed_point floor(fixed_point x) {
+    static constexpr FASTLED_FORCE_INLINE fixed_point floor(fixed_point x) {
         return from_raw(Base::floor(x).raw());
     }
 
-    static FASTLED_FORCE_INLINE fixed_point ceil(fixed_point x) {
+    static constexpr FASTLED_FORCE_INLINE fixed_point ceil(fixed_point x) {
         return from_raw(Base::ceil(x).raw());
     }
 
-    static FASTLED_FORCE_INLINE fixed_point fract(fixed_point x) {
+    static constexpr FASTLED_FORCE_INLINE fixed_point fract(fixed_point x) {
         return from_raw(Base::fract(x).raw());
     }
 
-    static FASTLED_FORCE_INLINE fixed_point abs(fixed_point x) {
+    static constexpr FASTLED_FORCE_INLINE fixed_point abs(fixed_point x) {
         return from_raw(Base::abs(x).raw());
     }
 
-    static FASTLED_FORCE_INLINE fixed_point sign(fixed_point x) {
+    static constexpr FASTLED_FORCE_INLINE fixed_point sign(fixed_point x) {
         return from_raw(Base::sign(x).raw());
     }
 
-    static FASTLED_FORCE_INLINE fixed_point lerp(fixed_point a, fixed_point b, fixed_point t) {
+    static constexpr FASTLED_FORCE_INLINE fixed_point lerp(fixed_point a, fixed_point b, fixed_point t) {
         return from_raw(Base::lerp(a, b, t).raw());
     }
 
-    static FASTLED_FORCE_INLINE fixed_point clamp(fixed_point x, fixed_point lo, fixed_point hi) {
+    static constexpr FASTLED_FORCE_INLINE fixed_point clamp(fixed_point x, fixed_point lo, fixed_point hi) {
         return from_raw(Base::clamp(x, lo, hi).raw());
     }
 
-    static FASTLED_FORCE_INLINE fixed_point step(fixed_point edge, fixed_point x) {
+    static constexpr FASTLED_FORCE_INLINE fixed_point step(fixed_point edge, fixed_point x) {
         return from_raw(Base::step(edge, x).raw());
     }
 
@@ -239,11 +239,11 @@ class fixed_point : protected fixed_point_impl<IntBits, FracBits, S>::type {
         return from_raw(Base::smoothstep(edge0, edge1, x).raw());
     }
 
-    static FASTLED_FORCE_INLINE fixed_point min(fixed_point a, fixed_point b) {
+    static constexpr FASTLED_FORCE_INLINE fixed_point min(fixed_point a, fixed_point b) {
         return from_raw(Base::min(a, b).raw());
     }
 
-    static FASTLED_FORCE_INLINE fixed_point max(fixed_point a, fixed_point b) {
+    static constexpr FASTLED_FORCE_INLINE fixed_point max(fixed_point a, fixed_point b) {
         return from_raw(Base::max(a, b).raw());
     }
 

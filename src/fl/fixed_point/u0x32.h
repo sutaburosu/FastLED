@@ -57,10 +57,12 @@ class u0x32 {
             static_cast<u64>(other.raw()) << (FRAC_BITS - OtherFP::FRAC_BITS))) {}
 
     // Construct from raw u32 value (UQ32 format)
-    static FASTLED_FORCE_INLINE u0x32 from_raw(u32 raw) {
-        u0x32 r;
-        r.mValue = raw;
-        return r;
+    // Raw constructor for C++11 constexpr from_raw
+    struct RawTag {};
+    constexpr explicit u0x32(u32 raw, RawTag) : mValue(raw) {}
+
+    static constexpr FASTLED_FORCE_INLINE u0x32 from_raw(u32 raw) {
+        return u0x32(raw, RawTag());
     }
 
     // ---- Access ------------------------------------------------------------
@@ -68,9 +70,9 @@ class u0x32 {
     constexpr u32 raw() const { return mValue; }
 
     // Convert to integer (always 0 since range is [0.0, 1.0))
-    u32 to_int() const { return 0; }
+    constexpr u32 to_int() const { return 0; }
 
-    float to_float() const {
+    constexpr float to_float() const {
         return static_cast<float>(mValue) / 4294967296.0f;
     }
 
@@ -91,7 +93,7 @@ class u0x32 {
 
     // Multiply two normalized values: u0x32 × u0x32 → u0x32
     // Both inputs < 1.0, so product < 1.0
-    FASTLED_FORCE_INLINE u0x32 operator*(u0x32 b) const {
+    constexpr FASTLED_FORCE_INLINE u0x32 operator*(u0x32 b) const {
         // UQ32 × UQ32 = UQ64 → shift right 32 → UQ32
         return from_raw(static_cast<u32>(
             (static_cast<u64>(mValue) * b.mValue) >> 32));
@@ -107,11 +109,11 @@ class u0x32 {
         return from_raw(static_cast<u32>(result));
     }
 
-    FASTLED_FORCE_INLINE u0x32 operator>>(int shift) const {
+    constexpr FASTLED_FORCE_INLINE u0x32 operator>>(int shift) const {
         return from_raw(mValue >> shift);
     }
 
-    FASTLED_FORCE_INLINE u0x32 operator<<(int shift) const {
+    constexpr FASTLED_FORCE_INLINE u0x32 operator<<(int shift) const {
         return from_raw(mValue << shift);
     }
 
@@ -124,7 +126,7 @@ class u0x32 {
         return from_raw(static_cast<u32>(result));
     }
 
-    friend FASTLED_FORCE_INLINE u0x32 operator*(u32 scalar, u0x32 a) {
+    friend constexpr FASTLED_FORCE_INLINE u0x32 operator*(u32 scalar, u0x32 a) {
         return a * scalar;  // Commutative
     }
 
@@ -135,26 +137,26 @@ class u0x32 {
 
     // ---- Math functions ----------------------------------------------------
 
-    static FASTLED_FORCE_INLINE u0x32 min(u0x32 a, u0x32 b) {
+    static constexpr FASTLED_FORCE_INLINE u0x32 min(u0x32 a, u0x32 b) {
         return from_raw(a.mValue < b.mValue ? a.mValue : b.mValue);
     }
 
-    static FASTLED_FORCE_INLINE u0x32 max(u0x32 a, u0x32 b) {
+    static constexpr FASTLED_FORCE_INLINE u0x32 max(u0x32 a, u0x32 b) {
         return from_raw(a.mValue > b.mValue ? a.mValue : b.mValue);
     }
 
-    static FASTLED_FORCE_INLINE u0x32 clamp(u0x32 val, u0x32 low, u0x32 high) {
+    static constexpr FASTLED_FORCE_INLINE u0x32 clamp(u0x32 val, u0x32 low, u0x32 high) {
         return max(low, min(val, high));
     }
 
     // ---- Comparisons -------------------------------------------------------
 
-    bool operator<(u0x32 b) const { return mValue < b.mValue; }
-    bool operator>(u0x32 b) const { return mValue > b.mValue; }
-    bool operator<=(u0x32 b) const { return mValue <= b.mValue; }
-    bool operator>=(u0x32 b) const { return mValue >= b.mValue; }
-    bool operator==(u0x32 b) const { return mValue == b.mValue; }
-    bool operator!=(u0x32 b) const { return mValue != b.mValue; }
+    constexpr bool operator<(u0x32 b) const { return mValue < b.mValue; }
+    constexpr bool operator>(u0x32 b) const { return mValue > b.mValue; }
+    constexpr bool operator<=(u0x32 b) const { return mValue <= b.mValue; }
+    constexpr bool operator>=(u0x32 b) const { return mValue >= b.mValue; }
+    constexpr bool operator==(u0x32 b) const { return mValue == b.mValue; }
+    constexpr bool operator!=(u0x32 b) const { return mValue != b.mValue; }
 
   private:
     u32 mValue = 0;

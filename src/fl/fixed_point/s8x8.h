@@ -37,111 +37,104 @@ class s8x8 {
         : mValue(static_cast<i16>(
             static_cast<i32>(other.raw()) << (FRAC_BITS - OtherFP::FRAC_BITS))) {}
 
-    static FASTLED_FORCE_INLINE s8x8 from_raw(i16 raw) {
-        s8x8 r;
-        r.mValue = raw;
-        return r;
+    // Raw constructor for C++11 constexpr from_raw
+    struct RawTag {};
+    constexpr explicit s8x8(i16 raw, RawTag) : mValue(raw) {}
+
+    static constexpr FASTLED_FORCE_INLINE s8x8 from_raw(i16 raw) {
+        return s8x8(raw, RawTag());
     }
 
     // ---- Access ------------------------------------------------------------
 
     constexpr i16 raw() const { return mValue; }
-    i16 to_int() const { return mValue >> FRAC_BITS; }
-    float to_float() const { return static_cast<float>(mValue) / (static_cast<i16>(1) << FRAC_BITS); }
+    constexpr i16 to_int() const { return mValue >> FRAC_BITS; }
+    constexpr float to_float() const { return static_cast<float>(mValue) / (static_cast<i16>(1) << FRAC_BITS); }
 
     // ---- Fixed-point arithmetic --------------------------------------------
 
-    FASTLED_FORCE_INLINE s8x8 operator*(s8x8 b) const {
+    constexpr FASTLED_FORCE_INLINE s8x8 operator*(s8x8 b) const {
         return from_raw(static_cast<i16>(
             (static_cast<i32>(mValue) * b.mValue) >> FRAC_BITS));
     }
 
-    FASTLED_FORCE_INLINE s8x8 operator/(s8x8 b) const {
+    constexpr FASTLED_FORCE_INLINE s8x8 operator/(s8x8 b) const {
         return from_raw(static_cast<i16>(
             (static_cast<i32>(mValue) * (SCALE)) / b.mValue));
     }
 
-    FASTLED_FORCE_INLINE s8x8 operator+(s8x8 b) const {
+    constexpr FASTLED_FORCE_INLINE s8x8 operator+(s8x8 b) const {
         return from_raw(mValue + b.mValue);
     }
 
-    FASTLED_FORCE_INLINE s8x8 operator-(s8x8 b) const {
+    constexpr FASTLED_FORCE_INLINE s8x8 operator-(s8x8 b) const {
         return from_raw(mValue - b.mValue);
     }
 
-    FASTLED_FORCE_INLINE s8x8 operator-() const {
+    constexpr FASTLED_FORCE_INLINE s8x8 operator-() const {
         return from_raw(-mValue);
     }
 
-    FASTLED_FORCE_INLINE s8x8 operator>>(int shift) const {
+    constexpr FASTLED_FORCE_INLINE s8x8 operator>>(int shift) const {
         return from_raw(mValue >> shift);
     }
 
     // ---- Scalar multiply (no fixed-point shift) ----------------------------
 
-    FASTLED_FORCE_INLINE s8x8 operator*(i16 scalar) const {
+    constexpr FASTLED_FORCE_INLINE s8x8 operator*(i16 scalar) const {
         return from_raw(mValue * scalar);
     }
 
-    friend FASTLED_FORCE_INLINE s8x8 operator*(i16 scalar, s8x8 fp) {
+    friend constexpr FASTLED_FORCE_INLINE s8x8 operator*(i16 scalar, s8x8 fp) {
         return s8x8::from_raw(scalar * fp.mValue);
     }
 
     // ---- Comparisons -------------------------------------------------------
 
-    bool operator<(s8x8 b) const { return mValue < b.mValue; }
-    bool operator>(s8x8 b) const { return mValue > b.mValue; }
-    bool operator<=(s8x8 b) const { return mValue <= b.mValue; }
-    bool operator>=(s8x8 b) const { return mValue >= b.mValue; }
-    bool operator==(s8x8 b) const { return mValue == b.mValue; }
-    bool operator!=(s8x8 b) const { return mValue != b.mValue; }
+    constexpr bool operator<(s8x8 b) const { return mValue < b.mValue; }
+    constexpr bool operator>(s8x8 b) const { return mValue > b.mValue; }
+    constexpr bool operator<=(s8x8 b) const { return mValue <= b.mValue; }
+    constexpr bool operator>=(s8x8 b) const { return mValue >= b.mValue; }
+    constexpr bool operator==(s8x8 b) const { return mValue == b.mValue; }
+    constexpr bool operator!=(s8x8 b) const { return mValue != b.mValue; }
 
     // ---- Math ---------------------------------------------------------------
 
-    static FASTLED_FORCE_INLINE s8x8 mod(s8x8 a, s8x8 b) {
+    static constexpr FASTLED_FORCE_INLINE s8x8 mod(s8x8 a, s8x8 b) {
         return from_raw(a.mValue % b.mValue);
     }
 
-    static FASTLED_FORCE_INLINE s8x8 floor(s8x8 x) {
-        constexpr i16 frac_mask = (SCALE) - 1;
-        return from_raw(x.mValue & ~frac_mask);
+    static constexpr FASTLED_FORCE_INLINE s8x8 floor(s8x8 x) {
+        return from_raw(x.mValue & ~(i16((SCALE) - 1)));
     }
 
-    static FASTLED_FORCE_INLINE s8x8 ceil(s8x8 x) {
-        constexpr i16 frac_mask = (SCALE) - 1;
-        i16 floored = x.mValue & ~frac_mask;
-        if (x.mValue & frac_mask) floored += (SCALE);
-        return from_raw(floored);
+    static constexpr FASTLED_FORCE_INLINE s8x8 ceil(s8x8 x) {
+        return from_raw((x.mValue & ~(i16((SCALE) - 1))) +
+                        ((x.mValue & i16((SCALE) - 1)) ? (SCALE) : 0));
     }
 
-    static FASTLED_FORCE_INLINE s8x8 fract(s8x8 x) {
-        constexpr i16 frac_mask = (SCALE) - 1;
-        return from_raw(x.mValue & frac_mask);
+    static constexpr FASTLED_FORCE_INLINE s8x8 fract(s8x8 x) {
+        return from_raw(x.mValue & i16((SCALE) - 1));
     }
 
-    static FASTLED_FORCE_INLINE s8x8 abs(s8x8 x) {
+    static constexpr FASTLED_FORCE_INLINE s8x8 abs(s8x8 x) {
         return from_raw(x.mValue < 0 ? -x.mValue : x.mValue);
     }
 
-    static FASTLED_FORCE_INLINE int sign(s8x8 x) {
-        if (x.mValue > 0) return 1;
-        if (x.mValue < 0) return -1;
-        return 0;
+    static constexpr FASTLED_FORCE_INLINE int sign(s8x8 x) {
+        return x.mValue > 0 ? 1 : (x.mValue < 0 ? -1 : 0);
     }
 
-    static FASTLED_FORCE_INLINE s8x8 lerp(s8x8 a, s8x8 b, s8x8 t) {
+    static constexpr FASTLED_FORCE_INLINE s8x8 lerp(s8x8 a, s8x8 b, s8x8 t) {
         return a + (b - a) * t;
     }
 
-    static FASTLED_FORCE_INLINE s8x8 clamp(s8x8 x, s8x8 lo, s8x8 hi) {
-        if (x < lo) return lo;
-        if (x > hi) return hi;
-        return x;
+    static constexpr FASTLED_FORCE_INLINE s8x8 clamp(s8x8 x, s8x8 lo, s8x8 hi) {
+        return x < lo ? lo : (x > hi ? hi : x);
     }
 
-    static FASTLED_FORCE_INLINE s8x8 step(s8x8 edge, s8x8 x) {
-        constexpr s8x8 one(1.0f);
-        return x < edge ? s8x8() : one;
+    static constexpr FASTLED_FORCE_INLINE s8x8 step(s8x8 edge, s8x8 x) {
+        return x < edge ? s8x8() : s8x8(1.0f);
     }
 
     static FASTLED_FORCE_INLINE s8x8 smoothstep(s8x8 edge0, s8x8 edge1, s8x8 x) {
@@ -220,23 +213,23 @@ class s8x8 {
 
     // ---- Member function versions (operate on *this) -----------------------
 
-    FASTLED_FORCE_INLINE s8x8 floor() const {
+    constexpr FASTLED_FORCE_INLINE s8x8 floor() const {
         return floor(*this);
     }
 
-    FASTLED_FORCE_INLINE s8x8 ceil() const {
+    constexpr FASTLED_FORCE_INLINE s8x8 ceil() const {
         return ceil(*this);
     }
 
-    FASTLED_FORCE_INLINE s8x8 fract() const {
+    constexpr FASTLED_FORCE_INLINE s8x8 fract() const {
         return fract(*this);
     }
 
-    FASTLED_FORCE_INLINE s8x8 abs() const {
+    constexpr FASTLED_FORCE_INLINE s8x8 abs() const {
         return abs(*this);
     }
 
-    FASTLED_FORCE_INLINE int sign() const {
+    constexpr FASTLED_FORCE_INLINE int sign() const {
         return sign(*this);
     }
 
