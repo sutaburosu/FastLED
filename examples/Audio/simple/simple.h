@@ -236,15 +236,12 @@ void loop() {
         // fft.run(sample.pcm(), &fftOut);
         sample.fft(&fftOut);
 
-        // FASTLED_ASSERT(fftOut.bins_raw.size() == WIDTH_2X,
-        //                "FFT bins size mismatch");
-
         if (enableFFT) {
-            auto max_x = fftOut.bins_raw.size() - 1;
+            auto max_x = fftOut.raw().size() - 1;
             FASTLED_UNUSED(max_x);
-            for (size_t i = 0; i < fftOut.bins_raw.size(); ++i) {
+            for (size_t i = 0; i < fftOut.raw().size(); ++i) {
                 auto x = i;
-                auto v = fftOut.bins_db[i];
+                auto v = fftOut.db()[i];
                 // Map audio intensity to a position in the heat palette (0-255)
                 v = fl::map_range<float, float>(v, 45, 70, 0, 1.f);
                 v = fl::clamp(v, 0.0f, 1.0f);

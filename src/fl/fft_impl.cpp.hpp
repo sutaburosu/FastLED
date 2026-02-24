@@ -1,11 +1,3 @@
-/// #include <Arduino.h>
-// #include <iostream>
-// #include "audio_types.h"
-// // #include "defs.h"
-// #include "thirdparty/cq_kernel/cq_kernel.h"
-// #include "thirdparty/cq_kernel/kiss_fftr.h"
-// #include "util.h"
-
 #ifndef FASTLED_INTERNAL
 #define FASTLED_INTERNAL
 #endif
@@ -43,14 +35,6 @@
 
 #ifndef FL_FFT_BANDS
 #define FL_FFT_BANDS 16
-#endif
-
-#ifndef FL_FFT_MAX_FREQUENCY
-#define FL_FFT_MAX_FREQUENCY 4698.3
-#endif
-
-#ifndef FL_FFT_MIN_FREQUENCY
-#define FL_FFT_MIN_FREQUENCY 174.6
 #endif
 
 #ifndef FL_FFT_MIN_VAL
@@ -92,16 +76,10 @@ class FFTContext {
 
     fl::size sampleSize() const { return m_cq_cfg.samples; }
 
-    void fft_unit_test(span<const i16> buffer, FFTBins *out) {
-
-        // FASTLED_ASSERT(512 == m_cq_cfg.samples, "FFTImpl samples mismatch and
-        // are still hardcoded to 512");
-        out->clear();
+    void run(span<const i16> buffer, FFTBins *out) {
         out->setParams(m_cq_cfg.fmin, m_cq_cfg.fmax, m_cq_cfg.fs);
-        // allocate
         FASTLED_STACK_ARRAY(kiss_fft_cpx, fft, m_cq_cfg.samples);
         FASTLED_STACK_ARRAY(kiss_fft_cpx, cq, m_cq_cfg.bands);
-        // initialize
         kiss_fftr(m_fftr_cfg, buffer.data(), fft);
 
         // Capture linear-spaced magnitude bins directly from raw FFT output.
@@ -118,39 +96,42 @@ class FFTContext {
             const float rawBinHz = fs / static_cast<float>(nfft);
             const float linearBinHz = (fmax - fmin) / static_cast<float>(numLinearBins);
 
-            out->bins_linear.resize(numLinearBins, 0.0f);
+            // resize reuses capacity when recycled — zero allocs after warmup
+            fl::vector<float>& linBins = out->linear_mut();
+            linBins.resize(numLinearBins);
+            for (int i = 0; i < numLinearBins; ++i) {
+                linBins[i] = 0.0f;
+            }
             out->setLinearParams(fmin, fmax);
 
             for (int k = 0; k < numRawBins; ++k) {
                 float freq = static_cast<float>(k) * rawBinHz;
                 if (freq < fmin || freq >= fmax) continue;
 
-                // Compute magnitude of this raw FFT bin
                 float re = static_cast<float>(fft[k].r);
                 float im = static_cast<float>(fft[k].i);
                 float mag = sqrt(re * re + im * im);
 
-                // Map to linear output bin
                 int linIdx = static_cast<int>((freq - fmin) / linearBinHz);
                 if (linIdx >= numLinearBins) linIdx = numLinearBins - 1;
-                out->bins_linear[linIdx] += mag;
+                linBins[linIdx] += mag;
             }
         }
 
         apply_kernels(fft, cq, m_kernels, m_cq_cfg);
-        // begin transform
-        for (int i = 0; i < m_cq_cfg.bands; ++i) {
-            // Q15 fixed-point values from kiss_fft: int16_t where 32768 = 1.0
-            // Widen to 32-bit to preserve fixed-point scaling during multiplication
+        // Use resize + indexed assignment instead of clear + push_back
+        // to reuse vector capacity when recycling — zero allocs after warmup
+        const int bands = m_cq_cfg.bands;
+        fl::vector<float>& rawBins = out->raw_mut();
+        fl::vector<float>& dbBins = out->db_mut();
+        rawBins.resize(bands);
+        dbBins.resize(bands);
+        for (int i = 0; i < bands; ++i) {
             i32 real = cq[i].r;
             i32 imag = cq[i].i;
-            // Calculate magnitude - multiply as integers to preserve Q15 scaling
             float r2 = float(real * real);
             float i2 = float(imag * imag);
             float magnitude = sqrt(r2 + i2);
-
-            // Integer multiplication preserves the Q15 fixed-point scale.
-            // Test expectations have been updated to match this implementation.
 
             float magnitude_db = 20 * log10(magnitude);
 
@@ -158,11 +139,8 @@ class FFTContext {
                 magnitude_db = 0.0f;
             }
 
-            // FASTLED_UNUSED(magnitude_db);
-            // FASTLED_WARN("magnitude_db: " << magnitude_db);
-            // out->push_back(magnitude_db);
-            out->bins_raw.push_back(magnitude);
-            out->bins_db.push_back(magnitude_db);
+            rawBins[i] = magnitude;
+            dbBins[i] = magnitude_db;
         }
     }
 
@@ -170,9 +148,9 @@ class FFTContext {
         // Build a temporary FFTBins to use its binBoundary/binToFreq methods
         FFTBins tmp(m_cq_cfg.bands);
         tmp.setParams(m_cq_cfg.fmin, m_cq_cfg.fmax, m_cq_cfg.fs);
-        // Populate bins_raw so binToFreq uses correct size
+        // Populate raw bins so binToFreq uses correct size
         for (int i = 0; i < m_cq_cfg.bands; ++i) {
-            tmp.bins_raw.push_back(0.0f);
+            tmp.raw_mut().push_back(0.0f);
         }
 
         fl::sstream ss;
@@ -228,7 +206,7 @@ FFTImpl::Result FFTImpl::run(span<const i16> sample, FFTBins *out) {
         FASTLED_WARN("FFTImpl sample size mismatch");
         return FFTImpl::Result(false, "FFTImpl sample size mismatch");
     }
-    mContext->fft_unit_test(sample, out);
+    mContext->run(sample, out);
     return FFTImpl::Result(true, "");
 }
 

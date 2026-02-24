@@ -683,7 +683,7 @@ void AudioReactive::applyPerceptualWeighting() {
 
 // Helper methods
 float AudioReactive::mapFrequencyBin(int fromBin, int toBin) {
-    if (fromBin < 0 || toBin >= static_cast<int>(mFFTBins.size()) || fromBin > toBin) {
+    if (fromBin < 0 || toBin >= static_cast<int>(mFFTBins.bands()) || fromBin > toBin) {
         return 0.0f;
     }
     

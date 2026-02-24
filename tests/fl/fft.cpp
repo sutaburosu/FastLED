@@ -66,7 +66,7 @@ FL_TEST_CASE("fft tester 512") {
 #endif
 
     for (int i = 0; i < 16; ++i) {
-        float a = out.bins_raw[i];
+        float a = out.raw()[i];
         float b = expected_output[i];
         bool almost_equal = FL_ALMOST_EQUAL(a, b, tolerance);
         if (!almost_equal) {
@@ -121,7 +121,7 @@ FL_TEST_CASE("fft tester 256") {
 #endif
 
     for (int i = 0; i < 16; ++i) {
-        float a = out.bins_raw[i];
+        float a = out.raw()[i];
         float b = expected_output[i];
         bool almost_equal = FL_ALMOST_EQUAL(a, b, tolerance);
         if (!almost_equal) {
@@ -197,7 +197,7 @@ FL_TEST_CASE("fft tester 256 with 64 bands") {
 #endif
 
     for (int i = 0; i < 64; ++i) {
-        float a = out.bins_raw[i];
+        float a = out.raw()[i];
         float b = expected_output[i];
         bool almost_equal = FL_ALMOST_EQUAL(a, b, tolerance);
         if (!almost_equal) {
@@ -225,45 +225,51 @@ fl::vector<fl::i16> generateSine(float freq, int count = 512, float sampleRate =
 
 } // anonymous namespace
 
-FL_TEST_CASE("FFTBins - constructor and size") {
+FL_TEST_CASE("FFTBins - constructor and bands") {
     fl::FFTBins bins(16);
-    FL_CHECK_EQ(bins.size(), 16u);
-    FL_CHECK_EQ(bins.bins_raw.size(), 0u);  // Initially empty (just reserved)
-    FL_CHECK_EQ(bins.bins_db.size(), 0u);
+    FL_CHECK_EQ(bins.bands(), 16u);
+    FL_CHECK_EQ(bins.raw().size(), 0u);  // Initially empty (just reserved)
+    FL_CHECK_EQ(bins.db().size(), 0u);
 }
 
 FL_TEST_CASE("fl::FFTBins - copy constructor") {
+    auto samples = generateSine(1000.0f);
     fl::FFTBins original(16);
-    original.bins_raw.push_back(1.0f);
-    original.bins_raw.push_back(2.0f);
-    original.bins_db.push_back(10.0f);
-    original.bins_db.push_back(20.0f);
+    fl::FFT fft;
+    fft.run(samples, &original);
 
     fl::FFTBins copy(original);
-    FL_CHECK_EQ(copy.size(), 16u);
-    FL_CHECK_EQ(copy.bins_raw.size(), 2u);
-    FL_CHECK_EQ(copy.bins_raw[0], 1.0f);
-    FL_CHECK_EQ(copy.bins_raw[1], 2.0f);
+    FL_CHECK_EQ(copy.bands(), 16u);
+    FL_CHECK_EQ(copy.raw().size(), original.raw().size());
+    for (fl::size i = 0; i < copy.raw().size(); ++i) {
+        FL_CHECK_EQ(copy.raw()[i], original.raw()[i]);
+    }
 }
 
 FL_TEST_CASE("fl::FFTBins - move constructor") {
+    auto samples = generateSine(1000.0f);
     fl::FFTBins original(16);
-    original.bins_raw.push_back(42.0f);
+    fl::FFT fft;
+    fft.run(samples, &original);
+    fl::size origSize = original.raw().size();
+    float firstVal = original.raw()[0];
 
     fl::FFTBins moved(fl::move(original));
-    FL_CHECK_EQ(moved.size(), 16u);
-    FL_CHECK_EQ(moved.bins_raw.size(), 1u);
-    FL_CHECK_EQ(moved.bins_raw[0], 42.0f);
+    FL_CHECK_EQ(moved.bands(), 16u);
+    FL_CHECK_EQ(moved.raw().size(), origSize);
+    FL_CHECK_EQ(moved.raw()[0], firstVal);
 }
 
 FL_TEST_CASE("fl::FFTBins - clear") {
+    auto samples = generateSine(1000.0f);
     fl::FFTBins bins(16);
-    bins.bins_raw.push_back(1.0f);
-    bins.bins_db.push_back(10.0f);
+    fl::FFT fft;
+    fft.run(samples, &bins);
+    FL_CHECK_GT(bins.raw().size(), 0u);
     bins.clear();
-    FL_CHECK_EQ(bins.bins_raw.size(), 0u);
-    FL_CHECK_EQ(bins.bins_db.size(), 0u);
-    FL_CHECK_EQ(bins.size(), 16u);  // mSize unchanged
+    FL_CHECK_EQ(bins.raw().size(), 0u);
+    FL_CHECK_EQ(bins.db().size(), 0u);
+    FL_CHECK_EQ(bins.bands(), 16u);  // bands unchanged
 }
 
 FL_TEST_CASE("fl::FFT_Args - defaults match documented values") {
@@ -285,15 +291,15 @@ FL_TEST_CASE("fl::FFT - run with sine wave concentrates energy") {
     fl::FFTBins bins(16);
     fft.run(samples, &bins);
 
-    FL_REQUIRE_GT(bins.bins_raw.size(), 0u);
+    FL_REQUIRE_GT(bins.raw().size(), 0u);
 
     // Find the bin with maximum energy and compute total energy
     float maxVal = 0.0f;
     float totalEnergy = 0.0f;
-    for (fl::size i = 0; i < bins.bins_raw.size(); ++i) {
-        totalEnergy += bins.bins_raw[i];
-        if (bins.bins_raw[i] > maxVal) {
-            maxVal = bins.bins_raw[i];
+    for (fl::size i = 0; i < bins.raw().size(); ++i) {
+        totalEnergy += bins.raw()[i];
+        if (bins.raw()[i] > maxVal) {
+            maxVal = bins.raw()[i];
         }
     }
 
@@ -308,7 +314,7 @@ FL_TEST_CASE("fl::FFT - run with sine wave concentrates energy") {
 
     // The peak bin's energy should be significantly greater than the average of other bins
     float otherBinsTotal = totalEnergy - maxVal;
-    float otherBinsAvg = otherBinsTotal / static_cast<float>(bins.bins_raw.size() - 1);
+    float otherBinsAvg = otherBinsTotal / static_cast<float>(bins.raw().size() - 1);
     FL_CHECK_GT(maxVal, otherBinsAvg * 3.0f);  // Peak should be at least 3x the average of other bins
 }
 
@@ -325,24 +331,24 @@ FL_TEST_CASE("fl::FFT - different frequencies produce different peak bins") {
     fft.run(bassSignal, &bassBins);
     fft.run(trebleSignal, &trebleBins);
 
-    FL_REQUIRE_GT(bassBins.bins_raw.size(), 0u);
-    FL_REQUIRE_GT(trebleBins.bins_raw.size(), 0u);
+    FL_REQUIRE_GT(bassBins.raw().size(), 0u);
+    FL_REQUIRE_GT(trebleBins.raw().size(), 0u);
 
     // Find peak bins for each frequency
     fl::size bassPeakBin = 0;
     float bassPeakVal = 0.0f;
-    for (fl::size i = 0; i < bassBins.bins_raw.size(); ++i) {
-        if (bassBins.bins_raw[i] > bassPeakVal) {
-            bassPeakVal = bassBins.bins_raw[i];
+    for (fl::size i = 0; i < bassBins.raw().size(); ++i) {
+        if (bassBins.raw()[i] > bassPeakVal) {
+            bassPeakVal = bassBins.raw()[i];
             bassPeakBin = i;
         }
     }
 
     fl::size treblePeakBin = 0;
     float treblePeakVal = 0.0f;
-    for (fl::size i = 0; i < trebleBins.bins_raw.size(); ++i) {
-        if (trebleBins.bins_raw[i] > treblePeakVal) {
-            treblePeakVal = trebleBins.bins_raw[i];
+    for (fl::size i = 0; i < trebleBins.raw().size(); ++i) {
+        if (trebleBins.raw()[i] > treblePeakVal) {
+            treblePeakVal = trebleBins.raw()[i];
             treblePeakBin = i;
         }
     }
@@ -363,8 +369,8 @@ FL_TEST_CASE("fl::FFT - silence produces near-zero bins") {
     fft.run(silence, &bins);
 
     // All bins should be near zero
-    for (fl::size i = 0; i < bins.bins_raw.size(); ++i) {
-        FL_CHECK_LT(bins.bins_raw[i], 10.0f);
+    for (fl::size i = 0; i < bins.raw().size(); ++i) {
+        FL_CHECK_LT(bins.raw()[i], 10.0f);
     }
 }
 
@@ -392,8 +398,8 @@ FL_TEST_CASE("fl::FFT - sine wave maps to correct CQ bin") {
         int peakBin = 0;
         float peakVal = 0.0f;
         for (int i = 0; i < bands; ++i) {
-            if (bins.bins_raw[i] > peakVal) {
-                peakVal = bins.bins_raw[i];
+            if (bins.raw()[i] > peakVal) {
+                peakVal = bins.raw()[i];
                 peakBin = i;
             }
         }
@@ -406,9 +412,11 @@ FL_TEST_CASE("fl::FFT - sine wave maps to correct CQ bin") {
 }
 
 FL_TEST_CASE("fl::FFTBins - binToFreq known values") {
+    // Run FFT with silence to populate 16 bins with default params
+    fl::vector<fl::i16> silence(512, 0);
     fl::FFTBins bins(16);
-    bins.setParams(174.6f, 4698.3f, 44100);
-    for (int i = 0; i < 16; ++i) bins.bins_raw.push_back(0.0f);
+    fl::FFT fft;
+    fft.run(silence, &bins);
 
     // Bin 0 = fmin
     FL_CHECK(FL_ALMOST_EQUAL(bins.binToFreq(0), 174.6f, 0.1f));
@@ -419,9 +427,10 @@ FL_TEST_CASE("fl::FFTBins - binToFreq known values") {
 }
 
 FL_TEST_CASE("fl::FFTBins - freqToBin is inverse of binToFreq") {
+    fl::vector<fl::i16> silence(512, 0);
     fl::FFTBins bins(16);
-    bins.setParams(174.6f, 4698.3f, 44100);
-    for (int i = 0; i < 16; ++i) bins.bins_raw.push_back(0.0f);
+    fl::FFT fft;
+    fft.run(silence, &bins);
 
     for (int i = 0; i < 16; ++i) {
         float freq = bins.binToFreq(i);
@@ -430,9 +439,10 @@ FL_TEST_CASE("fl::FFTBins - freqToBin is inverse of binToFreq") {
 }
 
 FL_TEST_CASE("fl::FFTBins - freqToBin clamps to valid range") {
+    fl::vector<fl::i16> silence(512, 0);
     fl::FFTBins bins(16);
-    bins.setParams(174.6f, 4698.3f, 44100);
-    for (int i = 0; i < 16; ++i) bins.bins_raw.push_back(0.0f);
+    fl::FFT fft;
+    fft.run(silence, &bins);
 
     FL_CHECK_EQ(bins.freqToBin(10.0f), 0);
     FL_CHECK_EQ(bins.freqToBin(50000.0f), 15);
@@ -481,8 +491,8 @@ FL_TEST_CASE("fl::FFTBins - multi-freq CQ and linear mapping") {
         int peakBin = 0;
         float peakVal = 0.0f;
         for (int i = 0; i < bands; ++i) {
-            if (bins.bins_raw[i] > peakVal) {
-                peakVal = bins.bins_raw[i];
+            if (bins.raw()[i] > peakVal) {
+                peakVal = bins.raw()[i];
                 peakBin = i;
             }
         }

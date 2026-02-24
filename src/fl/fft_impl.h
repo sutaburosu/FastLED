@@ -38,13 +38,6 @@ class FFTImpl {
     // Info on what the frequency the bins represent
     fl::string info() const;
 
-    // Detail.
-    static int DefaultSamples() { return 512; }
-    static int DefaultBands() { return 16; }
-    static float DefaultMinFrequency() { return 174.6f; }
-    static float DefaultMaxFrequency() { return 4698.3f; }
-    static int DefaultSampleRate() { return 44100; }
-
     // Disable copy and move constructors and assignment operators
     FFTImpl(const FFTImpl &) = delete;
     FFTImpl &operator=(const FFTImpl &) = delete;

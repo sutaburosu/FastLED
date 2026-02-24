@@ -198,10 +198,10 @@ float VocalDetector::calculateSpectralFlatness(const FFTBins& fft) {
     float sumRaw = 0.0f;
     int count = 0;
 
-    for (fl::size i = 0; i < fft.bins_raw.size(); ++i) {
-        if (fft.bins_raw[i] <= 1e-6f) continue;
-        sumLn += fft.bins_db[i] * 0.1151293f;  // dB to natural log
-        sumRaw += fft.bins_raw[i];
+    for (fl::size i = 0; i < fft.raw().size(); ++i) {
+        if (fft.raw()[i] <= 1e-6f) continue;
+        sumLn += fft.db()[i] * 0.1151293f;  // dB to natural log
+        sumRaw += fft.raw()[i];
         ++count;
     }
 
@@ -216,16 +216,16 @@ float VocalDetector::calculateSpectralFlatness(const FFTBins& fft) {
 
 float VocalDetector::calculateHarmonicDensity(const FFTBins& fft) {
     float peak = 0.0f;
-    for (fl::size i = 0; i < fft.bins_raw.size(); ++i) {
-        peak = fl::max(peak, fft.bins_raw[i]);
+    for (fl::size i = 0; i < fft.raw().size(); ++i) {
+        peak = fl::max(peak, fft.raw()[i]);
     }
 
     if (peak < 1e-6f) return 0.0f;
 
     float threshold = peak * 0.1f;
     int count = 0;
-    for (fl::size i = 0; i < fft.bins_raw.size(); ++i) {
-        if (fft.bins_raw[i] >= threshold) ++count;
+    for (fl::size i = 0; i < fft.raw().size(); ++i) {
+        if (fft.raw()[i] >= threshold) ++count;
     }
 
     return static_cast<float>(count);
@@ -236,7 +236,7 @@ float VocalDetector::calculateSpectralFlux(const FFTBins& fft) {
     // Voice has more frame-to-frame spectral variation (phoneme transitions,
     // formant shifts) than sustained guitar notes.
     // Uses normalized spectra (sum-to-1) so flux is amplitude-independent.
-    const auto& bins = fft.bins_raw;
+    const auto& bins = fft.raw();
     const int n = static_cast<int>(bins.size());
     if (n == 0) return 0.0f;
 
@@ -322,7 +322,7 @@ float VocalDetector::calculateSpectralVariance(const FFTBins& fft) {
     // Delegates to SpectralVariance filter — per-bin EMA with mean relative
     // deviation measurement. Voice has higher variance (~1.01) than guitar
     // (~0.74) due to vocal cord modulation and formant transitions.
-    return mSpectralVarianceFilter.update(fft.bins_raw);
+    return mSpectralVarianceFilter.update(fft.raw());
 }
 
 float VocalDetector::calculateRawConfidence(float centroid, float rolloff, float formantRatio,

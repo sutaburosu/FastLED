@@ -489,7 +489,7 @@ FL_TEST_CASE("FrequencyBinMapper + SpectralEqualizer - Basic integration") {
 
     // Map FFT bins to frequency channels
     vector<float> frequencyBins(16);
-    mapper.mapBins(fftBins.bins_raw, frequencyBins);
+    mapper.mapBins(fftBins.raw(), frequencyBins);
 
     // Verify we got frequency bins
     bool hasEnergy = false;
@@ -550,7 +550,7 @@ FL_TEST_CASE("FrequencyBinMapper + SpectralEqualizer - A-weighting integration")
 
     // Map to frequency bins
     vector<float> frequencyBins(16);
-    mapper.mapBins(fftBins.bins_raw, frequencyBins);
+    mapper.mapBins(fftBins.raw(), frequencyBins);
 
     // Apply A-weighting
     vector<float> equalizedBins(16);
@@ -599,7 +599,7 @@ FL_TEST_CASE("FrequencyBinMapper + SpectralEqualizer - 32-bin mode") {
 
     // Map to frequency bins
     vector<float> frequencyBins(32);
-    mapper.mapBins(fftBins.bins_raw, frequencyBins);
+    mapper.mapBins(fftBins.raw(), frequencyBins);
 
     FL_CHECK_EQ(mapper.getNumBins(), 32u);
 
@@ -656,7 +656,7 @@ FL_TEST_CASE("FrequencyBinMapper + SpectralEqualizer - Complete pipeline") {
 
     // Stage 2: Frequency bin mapping
     vector<float> frequencyBins(16);
-    mapper.mapBins(fftBins.bins_raw, frequencyBins);
+    mapper.mapBins(fftBins.raw(), frequencyBins);
 
     // Stage 3: Spectral equalization
     vector<float> equalizedBins(16);

@@ -175,7 +175,7 @@ void AudioSample::fft(FFTBins *out) const {
             fl::span<const fl::i16> sample = pcm();
     FFT_Args args;
     args.samples = sample.size();
-    args.bands = out->size();
+    args.bands = out->bands();
     args.fmin = FFT_Args::DefaultMinFrequency();
     args.fmax = FFT_Args::DefaultMaxFrequency();
     args.sample_rate =

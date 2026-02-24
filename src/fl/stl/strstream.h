@@ -21,7 +21,7 @@ template <typename Key, typename Value, fl::size N> class FixedMap;  // Forward 
 template <typename Key, typename Value, typename Less, typename Allocator> class SortedHeapMap;  // Forward declaration from fl/stl/map.h
 template <typename T, fl::size Extent> class span;  // Forward declaration from fl/slice.h (no default arg to avoid redefinition)
 template <typename T1, typename T2> struct pair;  // Forward declaration from fl/stl/pair.h
-struct FFTBins;  // Forward declaration from fl/fft.h
+class FFTBins;  // Forward declaration from fl/fft.h
 template <fl::u32 N> class BitsetFixed;
 class bitset_dynamic;
 template <fl::u32 N> class BitsetInlined;

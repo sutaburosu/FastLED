@@ -170,7 +170,7 @@ FL_TEST_CASE("BeatDetector - periodic bass onsets converge BPM") {
     auto ctx = fl::make_shared<AudioContext>(silence);
     ctx->setSampleRate(44100);
     ctx->getFFT(16);
-    ctx->getFFTHistory(4);
+    ctx->setFFTHistoryDepth(4);
 
     u32 timestamp = 0;
     for (int beat = 0; beat < totalBeats; ++beat) {
@@ -216,7 +216,7 @@ FL_TEST_CASE("BeatDetector - phase increases monotonically between beats") {
     auto ctx = fl::make_shared<AudioContext>(silence);
     ctx->setSampleRate(44100);
     ctx->getFFT(16);
-    ctx->getFFTHistory(4);
+    ctx->setFFTHistoryDepth(4);
 
     // Establish tempo with periodic bass bursts
     u32 timestamp = 0;
@@ -341,7 +341,7 @@ FL_TEST_CASE("BeatDetector - amplitude sweep: periodic beats converge BPM") {
         auto ctx = fl::make_shared<AudioContext>(silence);
         ctx->setSampleRate(44100);
         ctx->getFFT(16, 30.0f);
-        ctx->getFFTHistory(4);
+        ctx->setFFTHistoryDepth(4);
 
         u32 timestamp = 0;
         for (int beat = 0; beat < totalBeats; ++beat) {

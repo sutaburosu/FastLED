@@ -184,9 +184,11 @@ void drawSpectrumBars(fl::FFTBins* fft, float /* peak */) {
     fl::CRGBPalette16 palette = getCurrentPalette();
     
     int barWidth = WIDTH / NUM_BANDS;
+
+    auto bands = fft->db();
     
-    for (size_t band = 0; band < NUM_BANDS && band < fft->bins_db.size(); band++) {
-        float magnitude = fft->bins_db[band];
+    for (size_t band = 0; band < NUM_BANDS && band < bands.size(); band++) {
+        float magnitude = bands[band];
         
         // Apply noise floor
         magnitude = magnitude / 100.0f;  // Normalize from dB
@@ -233,12 +235,14 @@ void drawRadialSpectrum(fl::FFTBins* fft, float /* peak */) {
     
     int centerX = WIDTH / 2;
     int centerY = HEIGHT / 2;
+
+    auto bands = fft->db();
     
     for (size_t angle = 0; angle < 360; angle += 6) {  // Reduced resolution
         size_t band = (angle / 6) % NUM_BANDS;
-        if (band >= fft->bins_db.size()) continue;
+        if (band >= bands.size()) continue;
         
-        float magnitude = fft->bins_db[band] / 100.0f;
+        float magnitude = bands[band] / 100.0f;
         magnitude = FL_MAX(0.0f, magnitude - noiseFloor.value());
         magnitude *= audioGain.value() * autoGainValue;
         magnitude = fl::clamp(magnitude, 0.0f, 1.0f);

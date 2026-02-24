@@ -71,7 +71,7 @@ template <typename Key, typename Hash, typename KeyEqual> class HashSet;
 
 class XYMap;
 
-struct FFTBins;
+class FFTBins;
 struct CRGB;
 
 } // namespace fl

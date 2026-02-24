@@ -34,10 +34,10 @@ int string::strcmp(const string& a, const string& b) {
 
 string &string::append(const FFTBins &str) {
     append("\n FFTImpl Bins:\n  ");
-    append(str.bins_raw);
+    append(str.raw());
     append("\n");
     append(" FFTImpl Bins DB:\n  ");
-    append(str.bins_db);
+    append(str.db());
     append("\n");
     return *this;
 }

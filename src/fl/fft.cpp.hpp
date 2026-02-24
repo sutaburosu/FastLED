@@ -10,7 +10,14 @@ namespace fl {
 
 template <> struct Hash<FFT_Args> {
     fl::u32 operator()(const FFT_Args &key) const noexcept {
-        return MurmurHash3_x86_32(&key, sizeof(FFT_Args));
+        // Hash fields individually to avoid padding-byte issues
+        fl::u32 h = 0;
+        h ^= MurmurHash3_x86_32(&key.samples, sizeof(key.samples));
+        h ^= MurmurHash3_x86_32(&key.bands, sizeof(key.bands)) * 2654435761u;
+        h ^= MurmurHash3_x86_32(&key.fmin, sizeof(key.fmin)) * 2246822519u;
+        h ^= MurmurHash3_x86_32(&key.fmax, sizeof(key.fmax)) * 3266489917u;
+        h ^= MurmurHash3_x86_32(&key.sample_rate, sizeof(key.sample_rate)) * 668265263u;
+        return h;
     }
 };
 

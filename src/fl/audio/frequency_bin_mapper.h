@@ -59,7 +59,7 @@ struct FrequencyBinMapperConfig {
 /// // Map FFT output to frequency bins
 /// FFTBins fftOutput = ...;  // From FFT
 /// vector<float> frequencyBins(16);
-/// mapper.mapBins(fftOutput.bins_raw, frequencyBins);
+/// mapper.mapBins(fftOutput.raw(), frequencyBins);
 ///
 /// // Access specific ranges
 /// float bassEnergy = mapper.getBassEnergy(frequencyBins);

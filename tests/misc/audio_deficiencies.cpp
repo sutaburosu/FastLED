@@ -209,9 +209,11 @@ FL_TEST_CASE("Audio fix - VocalDetector F1 formant spans multiple FFT bins") {
     VocalDetector detector;
     const int numBins = detector.getNumBins();
 
-    // Create an FFTBins to use its freqToBin method
+    // Run FFT with silence to populate bins for freqToBin to use
+    fl::vector<fl::i16> silence(512, 0);
     FFTBins fftBins(numBins);
-    for (int i = 0; i < numBins; ++i) fftBins.bins_raw.push_back(0.0f);
+    FFT fft;
+    fft.run(silence, &fftBins, FFT_Args(512, numBins));
 
     int f1MinBin = fftBins.freqToBin(500.0f);
     int f1MaxBin = fftBins.freqToBin(900.0f);

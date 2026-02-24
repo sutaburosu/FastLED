@@ -12,71 +12,37 @@ namespace fl {
 class FFTImpl;
 class AudioSample;
 
-struct FFTBins {
+class FFTBins {
+    friend class FFTContext;
+
   public:
-    FFTBins(fl::size n) : mSize(n) {
-        bins_raw.reserve(n);
-        bins_db.reserve(n);
+    FFTBins(fl::size n) : mBands(n) {
+        mBinsRaw.reserve(n);
+        mBinsDb.reserve(n);
+        mBinsLinear.reserve(n);
     }
 
-    // Copy constructor and assignment
-    FFTBins(const FFTBins &other)
-        : bins_raw(other.bins_raw), bins_db(other.bins_db)
-        , bins_linear(other.bins_linear), mSize(other.mSize)
-        , mFmin(other.mFmin), mFmax(other.mFmax), mSampleRate(other.mSampleRate)
-        , mLinearFmin(other.mLinearFmin), mLinearFmax(other.mLinearFmax) {}
-    FFTBins &operator=(const FFTBins &other) {
-        if (this != &other) {
-            mSize = other.mSize;
-            bins_raw = other.bins_raw;
-            bins_db = other.bins_db;
-            bins_linear = other.bins_linear;
-            mFmin = other.mFmin;
-            mFmax = other.mFmax;
-            mSampleRate = other.mSampleRate;
-            mLinearFmin = other.mLinearFmin;
-            mLinearFmax = other.mLinearFmax;
-        }
-        return *this;
-    }
-
-    // Move constructor and assignment
-    FFTBins(FFTBins &&other) noexcept
-        : bins_raw(fl::move(other.bins_raw)), bins_db(fl::move(other.bins_db))
-        , bins_linear(fl::move(other.bins_linear)), mSize(other.mSize)
-        , mFmin(other.mFmin), mFmax(other.mFmax), mSampleRate(other.mSampleRate)
-        , mLinearFmin(other.mLinearFmin), mLinearFmax(other.mLinearFmax) {}
-
-    FFTBins &operator=(FFTBins &&other) noexcept {
-        if (this != &other) {
-            bins_raw = fl::move(other.bins_raw);
-            bins_db = fl::move(other.bins_db);
-            bins_linear = fl::move(other.bins_linear);
-            mSize = other.mSize;
-            mFmin = other.mFmin;
-            mFmax = other.mFmax;
-            mSampleRate = other.mSampleRate;
-            mLinearFmin = other.mLinearFmin;
-            mLinearFmax = other.mLinearFmax;
-        }
-        return *this;
-    }
+    FFTBins(const FFTBins &) = default;
+    FFTBins &operator=(const FFTBins &) = default;
+    FFTBins(FFTBins &&) noexcept = default;
+    FFTBins &operator=(FFTBins &&) noexcept = default;
 
     void clear() {
-        bins_raw.clear();
-        bins_db.clear();
-        bins_linear.clear();
+        mBinsRaw.clear();
+        mBinsDb.clear();
+        mBinsLinear.clear();
     }
 
-    fl::size size() const { return mSize; }
+    // Configured band count (stable across clear/populate cycles)
+    fl::size bands() const { return mBands; }
 
-    // Read-only span accessors (preferred for consumers)
-    fl::span<const float> raw() const { return bins_raw; }
-    fl::span<const float> db() const { return bins_db; }
+    // Read-only span accessors
+    fl::span<const float> raw() const { return mBinsRaw; }
+    fl::span<const float> db() const { return mBinsDb; }
 
     // Linear-spaced magnitude bins captured directly from raw FFT output.
     // Same count as CQ bins, evenly spaced from linearFmin() to linearFmax().
-    fl::span<const float> linear() const { return bins_linear; }
+    fl::span<const float> linear() const { return mBinsLinear; }
     float linearFmin() const { return mLinearFmin; }
     float linearFmax() const { return mLinearFmax; }
 
@@ -85,38 +51,25 @@ struct FFTBins {
     float fmax() const { return mFmax; }
     int sampleRate() const { return mSampleRate; }
 
-    // Set CQ parameters (called by FFTImpl)
-    void setParams(float fmin, float fmax, int sampleRate) {
-        mFmin = fmin;
-        mFmax = fmax;
-        mSampleRate = sampleRate;
-    }
-
-    // Set linear bin frequency range (called by FFTImpl)
-    void setLinearParams(float linearFmin, float linearFmax) {
-        mLinearFmin = linearFmin;
-        mLinearFmax = linearFmax;
-    }
-
     // Log-spaced center frequency for CQ bin i
     float binToFreq(int i) const {
-        int bands = static_cast<int>(bins_raw.size());
-        if (bands <= 1) return mFmin;
+        int nbands = static_cast<int>(mBinsRaw.size());
+        if (nbands <= 1) return mFmin;
         float m = fl::logf(mFmax / mFmin);
-        return mFmin * fl::expf(m * static_cast<float>(i) / static_cast<float>(bands - 1));
+        return mFmin * fl::expf(m * static_cast<float>(i) / static_cast<float>(nbands - 1));
     }
 
     // Find which CQ bin contains a given frequency (inverse of binToFreq)
     int freqToBin(float freq) const {
-        int bands = static_cast<int>(bins_raw.size());
-        if (bands <= 1) return 0;
+        int nbands = static_cast<int>(mBinsRaw.size());
+        if (nbands <= 1) return 0;
         if (freq <= mFmin) return 0;
-        if (freq >= mFmax) return bands - 1;
+        if (freq >= mFmax) return nbands - 1;
         float m = fl::logf(mFmax / mFmin);
-        float bin = fl::logf(freq / mFmin) / m * static_cast<float>(bands - 1);
+        float bin = fl::logf(freq / mFmin) / m * static_cast<float>(nbands - 1);
         int result = static_cast<int>(bin + 0.5f);
         if (result < 0) return 0;
-        if (result >= bands) return bands - 1;
+        if (result >= nbands) return nbands - 1;
         return result;
     }
 
@@ -127,15 +80,27 @@ struct FFTBins {
         return fl::sqrtf(f_i * f_next);
     }
 
-    // The bins are the output of the FFTImpl (CQ log-spaced magnitudes).
-    fl::vector<float> bins_raw;
-    // The frequency range of the bins (dB scale).
-    fl::vector<float> bins_db;
-    // Linear-spaced magnitude bins from raw FFT output (populated by FFTImpl).
-    fl::vector<float> bins_linear;
-
   private:
-    fl::size mSize;
+    // Mutable accessors for FFTContext (the only writer)
+    fl::vector<float>& raw_mut() { return mBinsRaw; }
+    fl::vector<float>& db_mut() { return mBinsDb; }
+    fl::vector<float>& linear_mut() { return mBinsLinear; }
+
+    void setParams(float fmin, float fmax, int sampleRate) {
+        mFmin = fmin;
+        mFmax = fmax;
+        mSampleRate = sampleRate;
+    }
+
+    void setLinearParams(float linearFmin, float linearFmax) {
+        mLinearFmin = linearFmin;
+        mLinearFmax = linearFmax;
+    }
+
+    fl::vector<float> mBinsRaw;
+    fl::vector<float> mBinsDb;
+    fl::vector<float> mBinsLinear;
+    fl::size mBands;
     float mFmin = 174.6f;
     float mFmax = 4698.3f;
     int mSampleRate = 44100;
@@ -150,31 +115,17 @@ struct FFT_Args {
     static float DefaultMaxFrequency() { return 4698.3f; }
     static int DefaultSampleRate() { return 44100; }
 
-    int samples;
-    int bands;
-    float fmin;
-    float fmax;
-    int sample_rate;
+    int samples = DefaultSamples();
+    int bands = DefaultBands();
+    float fmin = DefaultMinFrequency();
+    float fmax = DefaultMaxFrequency();
+    int sample_rate = DefaultSampleRate();
 
     FFT_Args(int samples = DefaultSamples(), int bands = DefaultBands(),
              float fmin = DefaultMinFrequency(),
              float fmax = DefaultMaxFrequency(),
-             int sample_rate = DefaultSampleRate()) {
-        // Memset so that this object can be hashed without garbage from packed
-        // in data.
-        fl::memset(this, 0, sizeof(FFT_Args));
-        this->samples = samples;
-        this->bands = bands;
-        this->fmin = fmin;
-        this->fmax = fmax;
-        this->sample_rate = sample_rate;
-    }
-
-    // Rule of 5 for POD data
-    FFT_Args(const FFT_Args &other) = default;
-    FFT_Args &operator=(const FFT_Args &other) = default;
-    FFT_Args(FFT_Args &&other) noexcept = default;
-    FFT_Args &operator=(FFT_Args &&other) noexcept = default;
+             int sample_rate = DefaultSampleRate())
+        : samples(samples), bands(bands), fmin(fmin), fmax(fmax), sample_rate(sample_rate) {}
 
     bool operator==(const FFT_Args &other) const ;
     bool operator!=(const FFT_Args &other) const { return !(*this == other); }

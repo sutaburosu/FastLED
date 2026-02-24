@@ -8,7 +8,7 @@
 #include "fl/int.h"
 
 namespace fl {
-struct FFTBins;  // Forward declaration
+class FFTBins;  // Forward declaration
 
 class AudioSampleImpl;
 

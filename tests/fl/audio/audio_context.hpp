@@ -46,14 +46,14 @@ FL_TEST_CASE("AudioContext - lazy FFT computation") {
     auto binsPtr = ctx.getFFT(16);
     const FFTBins& bins = *binsPtr;
     FL_CHECK(ctx.hasFFT());
-    FL_CHECK_GT(bins.bins_raw.size(), 0u);
+    FL_CHECK_GT(bins.raw().size(), 0u);
 
     // The input is a 1kHz sine wave with amplitude 16000 (Q15 scale).
     // The FFT should contain meaningful energy, not just zeros.
     float maxBin = 0.0f;
-    for (fl::size i = 0; i < bins.bins_raw.size(); i++) {
-        if (bins.bins_raw[i] > maxBin) {
-            maxBin = bins.bins_raw[i];
+    for (fl::size i = 0; i < bins.raw().size(); i++) {
+        if (bins.raw()[i] > maxBin) {
+            maxBin = bins.raw()[i];
         }
     }
     // With a strong 1kHz sine input, the peak FFT bin should have
@@ -67,7 +67,7 @@ FL_TEST_CASE("AudioContext - FFT history") {
     auto fft1 = ctx.getFFT(16);  // Retain shared_ptr so weak cache is alive for setSample
 
     // Initialize history tracking BEFORE calling setSample
-    ctx.getFFTHistory(4);
+    ctx.setFFTHistoryDepth(4);
     FL_CHECK(ctx.hasFFTHistory());
 
     // setSample pushes the current FFT into history (locks weak_ptr)
@@ -79,7 +79,7 @@ FL_TEST_CASE("AudioContext - FFT history") {
     ctx.setSample(sample3);
     ctx.getFFT(16);  // Compute FFT for third sample
 
-    const auto& history = ctx.getFFTHistory(4);
+    const auto& history = ctx.getFFTHistory();
     FL_CHECK_EQ(history.size(), 2u);  // Two FFTs were pushed via setSample
 }
 
@@ -89,7 +89,7 @@ FL_TEST_CASE("AudioContext - getHistoricalFFT") {
     auto fft1 = ctx.getFFT(16);  // Retain so setSample can lock weak_ptr
 
     // Initialize history tracking before pushing samples
-    ctx.getFFTHistory(4);
+    ctx.setFFTHistoryDepth(4);
 
     // Push sample1's FFT into history via setSample
     AudioSample sample2 = makeSineAudioSample(880.0f, 2000);
@@ -130,4 +130,70 @@ FL_TEST_CASE("AudioContext - setSample updates state") {
     AudioSample sample2 = makeSineAudioSample(880.0f, 2000);
     ctx.setSample(sample2);
     FL_CHECK_EQ(ctx.getTimestamp(), 2000u);
+}
+
+FL_TEST_CASE("AudioContext - FFTBins recycled when not retained") {
+    AudioSample sample1 = makeSineAudioSample(440.0f, 1000);
+    AudioContext ctx(sample1);
+
+    // Get FFT, capture raw pointer, then let shared_ptr go out of scope
+    const FFTBins* rawPtr;
+    {
+        auto fft = ctx.getFFT(16);
+        rawPtr = fft.get();
+    }
+    // Only cache holds it now (use_count == 1).
+    // setSample should recycle it.
+    AudioSample sample2 = makeSineAudioSample(880.0f, 2000);
+    ctx.setSample(sample2);
+
+    // getFFT with same band count should reuse the recycled object
+    auto fft2 = ctx.getFFT(16);
+    FL_CHECK_EQ(fft2.get(), rawPtr);
+}
+
+FL_TEST_CASE("AudioContext - FFTBins NOT recycled when still retained") {
+    AudioSample sample1 = makeSineAudioSample(440.0f, 1000);
+    AudioContext ctx(sample1);
+
+    // Hold onto the shared_ptr — refcount > 1
+    auto retained = ctx.getFFT(16);
+    const FFTBins* rawPtr = retained.get();
+
+    AudioSample sample2 = makeSineAudioSample(880.0f, 2000);
+    ctx.setSample(sample2);
+
+    // Since we still hold retained, it shouldn't have been recycled
+    auto fft2 = ctx.getFFT(16);
+    FL_CHECK_NE(fft2.get(), rawPtr);
+}
+
+FL_TEST_CASE("AudioContext - recycled FFTBins has correct data") {
+    AudioSample sample1 = makeSineAudioSample(440.0f, 1000);
+    AudioContext ctx(sample1);
+
+    // Get FFT for first sample, capture a bin value, then release
+    float firstMaxBin;
+    {
+        auto fft1 = ctx.getFFT(16);
+        firstMaxBin = 0.0f;
+        for (fl::size i = 0; i < fft1->raw().size(); i++) {
+            if (fft1->raw()[i] > firstMaxBin) firstMaxBin = fft1->raw()[i];
+        }
+    }
+
+    // New sample with different frequency
+    AudioSample sample2 = makeSineAudioSample(2000.0f, 2000);
+    ctx.setSample(sample2);
+
+    // This should recycle the bins but populate with NEW data
+    auto fft2 = ctx.getFFT(16);
+    FL_CHECK_GT(fft2->raw().size(), 0u);
+
+    // Verify it has valid data (non-zero energy)
+    float secondMaxBin = 0.0f;
+    for (fl::size i = 0; i < fft2->raw().size(); i++) {
+        if (fft2->raw()[i] > secondMaxBin) secondMaxBin = fft2->raw()[i];
+    }
+    FL_CHECK_GT(secondMaxBin, 100.0f);
 }

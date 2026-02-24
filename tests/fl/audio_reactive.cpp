@@ -429,7 +429,7 @@ FL_TEST_CASE("AudioSample - fft produces output") {
     AudioSample sample(data, 0);
     FFTBins bins(16);
     sample.fft(&bins);
-    FL_CHECK_GT(bins.bins_raw.size(), 0u);
+    FL_CHECK_GT(bins.raw().size(), 0u);
 }
 
 FL_TEST_CASE("AudioSample - copy and equality") {

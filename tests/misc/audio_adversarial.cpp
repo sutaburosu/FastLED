@@ -52,8 +52,8 @@ FL_TEST_CASE("Adversarial - FFT with DC-only input produces no spectral peaks") 
     // DC should not produce significant energy in frequency bins
     // (CQ transform starts at ~175 Hz, DC is 0 Hz)
     float totalEnergy = 0.0f;
-    for (fl::size i = 0; i < bins.bins_raw.size(); ++i) {
-        totalEnergy += bins.bins_raw[i];
+    for (fl::size i = 0; i < bins.raw().size(); ++i) {
+        totalEnergy += bins.raw()[i];
     }
     // Total energy should be minimal for pure DC
     FL_CHECK_LT(totalEnergy, 1000.0f);
@@ -70,13 +70,13 @@ FL_TEST_CASE("Adversarial - FFT with alternating max samples") {
     fft.run(alternating, &bins);
 
     // Should not crash, bins should have values
-    FL_CHECK_GT(bins.bins_raw.size(), 0u);
+    FL_CHECK_GT(bins.raw().size(), 0u);
 
     // Alternating +-max is essentially Nyquist frequency
     // Energy should be concentrated in the highest bins (if within CQ range)
     // At minimum, it should not produce NaN or Inf
-    for (fl::size i = 0; i < bins.bins_raw.size(); ++i) {
-        FL_CHECK_FALSE(isNaN(bins.bins_raw[i]));
+    for (fl::size i = 0; i < bins.raw().size(); ++i) {
+        FL_CHECK_FALSE(isNaN(bins.raw()[i]));
     }
 }
 
@@ -88,10 +88,10 @@ FL_TEST_CASE("Adversarial - FFT with single impulse") {
     fft.run(impulse, &bins);
 
     // Impulse should distribute energy across all frequency bins
-    FL_CHECK_GT(bins.bins_raw.size(), 0u);
+    FL_CHECK_GT(bins.raw().size(), 0u);
     int nonZeroBins = 0;
-    for (fl::size i = 0; i < bins.bins_raw.size(); ++i) {
-        if (bins.bins_raw[i] > 0.0f) nonZeroBins++;
+    for (fl::size i = 0; i < bins.raw().size(); ++i) {
+        if (bins.raw()[i] > 0.0f) nonZeroBins++;
     }
     // Impulse has flat spectrum - should have energy in multiple bins
     FL_CHECK_GT(nonZeroBins, 1);
@@ -247,7 +247,7 @@ FL_TEST_CASE("Adversarial - BeatDetector with constant loud signal doesn't spam 
     for (int i = 0; i < 100; ++i) {
         ctx->setSample(makeSample_Adversarial(200.0f, i * 23, 20000.0f));
         ctx->getFFT(16);
-        ctx->getFFTHistory(4);
+        ctx->setFFTHistoryDepth(4);
         detector.update(ctx);
     }
 
@@ -269,7 +269,7 @@ FL_TEST_CASE("Adversarial - BeatDetector cooldown enforced") {
     auto ctx = fl::make_shared<AudioContext>(makeSilence(0));
     ctx->setSampleRate(44100);
     ctx->getFFT(16);
-    ctx->getFFTHistory(4);
+    ctx->setFFTHistoryDepth(4);
 
     // Rapid-fire bass bursts every frame (23ms apart, faster than cooldown)
     for (int i = 0; i < 50; ++i) {
@@ -333,7 +333,7 @@ FL_TEST_CASE("Adversarial - TempoAnalyzer with random noise doesn't crash") {
     auto ctx = fl::make_shared<AudioContext>(makeSilence(0));
     ctx->setSampleRate(44100);
     ctx->getFFT(16);
-    ctx->getFFTHistory(4);
+    ctx->setFFTHistoryDepth(4);
 
     // Feed random-amplitude signals at random-ish intervals
     u32 timestamp = 0;
@@ -359,7 +359,7 @@ FL_TEST_CASE("Adversarial - TempoAnalyzer with silence only") {
     auto ctx = fl::make_shared<AudioContext>(makeSilence(0));
     ctx->setSampleRate(44100);
     ctx->getFFT(16);
-    ctx->getFFTHistory(4);
+    ctx->setFFTHistoryDepth(4);
 
     for (int i = 0; i < 100; ++i) {
         ctx->setSample(makeSilence(i * 23));

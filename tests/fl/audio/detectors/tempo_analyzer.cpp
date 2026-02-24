@@ -121,7 +121,7 @@ FL_TEST_CASE("TempoAnalyzer - periodic onsets converge to BPM") {
 
     // Initialize FFT history before first setSample
     ctx->getFFT(16);
-    ctx->getFFTHistory(4);
+    ctx->setFFTHistoryDepth(4);
 
     u32 timestamp = 0;
     for (int beat = 0; beat < totalBeats; ++beat) {
@@ -175,7 +175,7 @@ FL_TEST_CASE("TempoAnalyzer - onTempo callback fires") {
     auto ctx = fl::make_shared<AudioContext>(silence);
     ctx->setSampleRate(44100);
     ctx->getFFT(16);
-    ctx->getFFTHistory(4);
+    ctx->setFFTHistoryDepth(4);
 
     u32 timestamp = 0;
     for (int beat = 0; beat < totalBeats; ++beat) {
@@ -216,7 +216,7 @@ FL_TEST_CASE("TempoAnalyzer - onTempoChange callback fires on BPM shift") {
     auto ctx = fl::make_shared<AudioContext>(silence);
     ctx->setSampleRate(44100);
     ctx->getFFT(16);
-    ctx->getFFTHistory(4);
+    ctx->setFFTHistoryDepth(4);
 
     u32 timestamp = 0;
 
@@ -279,7 +279,7 @@ FL_TEST_CASE("TempoAnalyzer - isStable becomes true with consistent tempo") {
     auto ctx = fl::make_shared<AudioContext>(silence);
     ctx->setSampleRate(44100);
     ctx->getFFT(16);
-    ctx->getFFTHistory(4);
+    ctx->setFFTHistoryDepth(4);
 
     u32 timestamp = 0;
 
