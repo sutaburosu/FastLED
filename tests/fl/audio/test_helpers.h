@@ -228,7 +228,7 @@ inline AudioSample makeSyntheticVowel(float f0, float f1Freq, float f2Freq,
     fl::vector<fl::i16> data(count, 0);
     const float f1Bw = 150.0f; // F1 bandwidth
     const float f2Bw = 200.0f; // F2 bandwidth
-    const float maxFreq = fl::fl_min(4000.0f, sampleRate / 2.0f);
+    const float maxFreq = fl::min(4000.0f, sampleRate / 2.0f);
 
     for (int h = 1; h * f0 < maxFreq; ++h) {
         float freq = f0 * h;
@@ -237,8 +237,8 @@ inline AudioSample makeSyntheticVowel(float f0, float f1Freq, float f2Freq,
         // Gaussian formant envelopes
         float f1Gain = fl::expf(-0.5f * (freq - f1Freq) * (freq - f1Freq) / (f1Bw * f1Bw));
         float f2Gain = fl::expf(-0.5f * (freq - f2Freq) * (freq - f2Freq) / (f2Bw * f2Bw));
-        float formantGain = fl::fl_max(f1Gain, f2Gain);
-        float harmonicAmp = amplitude * naturalAmp * fl::fl_max(0.05f, formantGain);
+        float formantGain = fl::max(f1Gain, f2Gain);
+        float harmonicAmp = amplitude * naturalAmp * fl::max(0.05f, formantGain);
 
         for (int i = 0; i < count; ++i) {
             float phase = 2.0f * FL_M_PI * freq * i / sampleRate;

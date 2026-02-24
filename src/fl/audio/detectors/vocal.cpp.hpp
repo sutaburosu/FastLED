@@ -217,7 +217,7 @@ float VocalDetector::calculateSpectralFlatness(const FFTBins& fft) {
 float VocalDetector::calculateHarmonicDensity(const FFTBins& fft) {
     float peak = 0.0f;
     for (fl::size i = 0; i < fft.bins_raw.size(); ++i) {
-        peak = fl::fl_max(peak, fft.bins_raw[i]);
+        peak = fl::max(peak, fft.bins_raw[i]);
     }
 
     if (peak < 1e-6f) return 0.0f;
@@ -350,8 +350,8 @@ float VocalDetector::calculateRawConfidence(float centroid, float rolloff, float
         formantScore = 0.0f;  // No formants detected (flat noise or pure tone)
     } else {
         // Wide acceptance: peaks at 0.5, range 0.05-2.0+
-        float dist = fl::fl_abs(formantRatio - 0.5f);
-        formantScore = fl::fl_max(0.0f, 1.0f - dist / 1.5f);
+        float dist = fl::abs(formantRatio - 0.5f);
+        formantScore = fl::max(0.0f, 1.0f - dist / 1.5f);
     }
 
     // Spectral flatness score: KEY DISCRIMINATOR for real audio.
@@ -363,11 +363,11 @@ float VocalDetector::calculateRawConfidence(float centroid, float rolloff, float
         flatnessScore = spectralFlatness / 0.20f * 0.3f;
     } else if (spectralFlatness <= 0.55f) {
         // Voice range — sharp peak at 0.46 (centered on voice flatness)
-        float dist = fl::fl_abs(spectralFlatness - 0.46f);
-        flatnessScore = fl::fl_max(0.0f, 1.0f - dist / 0.05f);
+        float dist = fl::abs(spectralFlatness - 0.46f);
+        flatnessScore = fl::max(0.0f, 1.0f - dist / 0.05f);
     } else {
         // Too flat — noise-like
-        flatnessScore = fl::fl_max(0.0f, 1.0f - (spectralFlatness - 0.55f) / 0.10f);
+        flatnessScore = fl::max(0.0f, 1.0f - (spectralFlatness - 0.55f) / 0.10f);
     }
 
     // Harmonic density score: with 128 CQ bins
@@ -381,7 +381,7 @@ float VocalDetector::calculateRawConfidence(float centroid, float rolloff, float
         densityScore = 0.3f + (harmonicDensity - 20.0f) / 80.0f * 0.7f;
     } else {
         // Too dense — noise-like
-        densityScore = fl::fl_max(0.0f, 1.0f - (harmonicDensity - 100.0f) / 28.0f);
+        densityScore = fl::max(0.0f, 1.0f - (harmonicDensity - 100.0f) / 28.0f);
     }
 
     // Vocal presence ratio score: voice adds energy in 2-4 kHz vs bass
@@ -393,7 +393,7 @@ float VocalDetector::calculateRawConfidence(float centroid, float rolloff, float
     } else if (vocalPresenceRatio < 0.05f) {
         presenceScore = (vocalPresenceRatio - 0.005f) / 0.045f * 0.5f;
     } else {
-        presenceScore = fl::fl_min(1.0f, 0.5f + (vocalPresenceRatio - 0.05f) / 0.10f * 0.5f);
+        presenceScore = fl::min(1.0f, 0.5f + (vocalPresenceRatio - 0.05f) / 0.10f * 0.5f);
     }
 
     // Weighted average — flatness is the key discriminator for real audio
@@ -420,7 +420,7 @@ float VocalDetector::calculateRawConfidence(float centroid, float rolloff, float
     }
 
     // Soft formant gate: formant must show some structure (prevents pure tones/noise)
-    float formantGate = fl::fl_min(1.0f, formantScore * 2.5f);  // ~0.4+ maps to 1.0
+    float formantGate = fl::min(1.0f, formantScore * 2.5f);  // ~0.4+ maps to 1.0
     mConfidence = weightedAvg * formantGate;
     return mConfidence;
 }

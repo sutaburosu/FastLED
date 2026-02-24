@@ -558,6 +558,9 @@ class CFastLED {
 	fl::u32 m_nPowerData;    ///< max power use parameter
 	power_func m_pPowerFunc;  ///< function for overriding brightness when using FastLED.show();
 	static fl::vector<fl::ChannelPtr> mChannels; ///< stored ChannelPtrs to keep them alive
+#if SKETCH_HAS_LOTS_OF_MEMORY
+	static fl::vector<fl::shared_ptr<fl::AudioProcessor>> mAudioProcessors; ///< stored AudioProcessors to keep them alive
+#endif
 
 public:
 	CFastLED();
@@ -773,6 +776,16 @@ public:
 	/// FastLED.remove(channel);  // Remove from controller list
 	/// @endcode
 	static void remove(fl::ChannelPtr channel);
+
+	/// @brief Remove an audio processor from the internal list
+	///
+	/// Removes the audio processor from the active list so it will no longer
+	/// be kept alive by FastLED. If this was the last shared_ptr, the processor
+	/// and its associated mic/task will be destroyed via RAII.
+	///
+	/// @param processor Shared pointer to an AudioProcessor instance
+	/// @note Safe to call multiple times - no error if processor not in list
+	static void remove(fl::shared_ptr<fl::AudioProcessor> processor);
 
 	/// @}
 

@@ -21,15 +21,15 @@ during `FastLED.show()`.
 #define I2S_CLK 4
 
 CRGB leds[NUM_LEDS];
-fl::shared_ptr<fl::AudioProcessor> audio;
 
 void setup() {
     FastLED.addLeds<WS2812B, LED_PIN, GRB>(leds, NUM_LEDS);
     FastLED.setBrightness(128);
 
     // One line: create mic + auto-pump task
+    // FastLED stores the AudioProcessor internally, so no global needed
     auto config = fl::AudioConfig::CreateInmp441(I2S_WS, I2S_SD, I2S_CLK, fl::Right);
-    audio = FastLED.add(config);
+    auto audio = FastLED.add(config);
     audio->setAutoGainEnabled(true);
 
     // Flash white on every beat
@@ -47,6 +47,9 @@ void setup() {
     audio->onSilenceStart([] {
         fill_solid(leds, NUM_LEDS, CRGB::Black);
     });
+
+    // audio goes out of scope here — that's fine, FastLED keeps it alive.
+    // Use FastLED.remove(audio) if you ever need to tear it down.
 }
 
 void loop() {
@@ -56,10 +59,11 @@ void loop() {
 ```
 
 **How it works:** `FastLED.add(config)` internally calls `IAudioInput::create()`, starts
-the mic, and creates a `fl::task::every_ms(1)` that drains all buffered samples and
-feeds them to the `AudioProcessor`. The task runs during `FastLED.show()` via
-end-frame → `async_run()` → `Scheduler::update()`. When the `shared_ptr<AudioProcessor>`
-destructs, the task and mic are cleaned up automatically (RAII).
+the mic, stores the `AudioProcessor` in an internal list, and creates a
+`fl::task::every_ms(1)` that drains all buffered samples and feeds them to the
+`AudioProcessor`. The task runs during `FastLED.show()` via
+end-frame → `async_run()` → `Scheduler::update()`. Use `FastLED.remove(audio)` to
+tear down a specific processor, or let it live for the lifetime of the program.
 
 **Platform behavior:**
 - **ESP32 / Teensy** (`FASTLED_HAS_AUDIO_INPUT == 1`): Real I2S mic is created and pumped.

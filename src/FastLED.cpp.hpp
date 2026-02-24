@@ -121,6 +121,9 @@ CLEDController &CFastLED::addLeds(CLEDController *pLed,
 }
 
 fl::vector<fl::ChannelPtr> CFastLED::mChannels;
+#if SKETCH_HAS_LOTS_OF_MEMORY
+fl::vector<fl::shared_ptr<fl::AudioProcessor>> CFastLED::mAudioProcessors;
+#endif
 
 void CFastLED::add(fl::ChannelPtr channel) {
 	if (!channel) {
@@ -692,7 +695,14 @@ fl::shared_ptr<fl::AudioProcessor> CFastLED::add(const fl::AudioConfig& config) 
         return nullptr;
     }
     input->start();
-    return fl::AudioProcessor::createWithAutoInput(fl::move(input));
+    auto processor = fl::AudioProcessor::createWithAutoInput(fl::move(input));
+    mAudioProcessors.push_back(processor);
+    return processor;
+#elif SKETCH_HAS_LOTS_OF_MEMORY
+    (void)config;
+    auto processor = fl::make_shared<fl::AudioProcessor>();
+    mAudioProcessors.push_back(processor);
+    return processor;
 #else
     (void)config;
     return fl::make_shared<fl::AudioProcessor>();
@@ -706,9 +716,22 @@ fl::shared_ptr<fl::AudioProcessor> CFastLED::add(fl::shared_ptr<fl::IAudioInput>
         return nullptr;
     }
     input->start();
-    return fl::AudioProcessor::createWithAutoInput(fl::move(input));
+    auto processor = fl::AudioProcessor::createWithAutoInput(fl::move(input));
+    mAudioProcessors.push_back(processor);
+    return processor;
 #else
     (void)input;
     return fl::make_shared<fl::AudioProcessor>();
+#endif
+}
+
+void CFastLED::remove(fl::shared_ptr<fl::AudioProcessor> processor) {
+#if SKETCH_HAS_LOTS_OF_MEMORY
+    if (!processor) {
+        return;
+    }
+    mAudioProcessors.erase(processor);
+#else
+    (void)processor;
 #endif
 }
