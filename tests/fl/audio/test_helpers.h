@@ -8,6 +8,7 @@
 #include "fl/int.h"
 #include "fl/math_macros.h"
 #include "fl/stl/math.h"
+#include "fl/stl/random.h"
 #include "fl/stl/span.h"
 #include "fl/stl/vector.h"
 
@@ -195,6 +196,87 @@ inline vector<float> generateSyntheticCQFFT(size numBins, float peakFrequency,
 /// @return Vector of float magnitudes
 inline vector<float> generateUniformBins(size count, float magnitude) {
     return vector<float>(count, magnitude);
+}
+
+// ============================================================================
+// Complex Signal Generators (for vocal detection testing)
+// ============================================================================
+
+/// Generate a multi-harmonic signal (fundamental + overtones with geometric decay)
+/// Useful for testing harmonic-rich signals that aren't voice (e.g., instruments)
+inline AudioSample makeMultiHarmonic(float f0, int numHarmonics, float decay,
+                                      u32 timestamp, float amplitude = 16000.0f,
+                                      int count = 512, float sampleRate = 44100.0f) {
+    fl::vector<fl::i16> data(count, 0);
+    for (int h = 1; h <= numHarmonics; ++h) {
+        float harmonicAmp = amplitude * fl::powf(decay, static_cast<float>(h - 1));
+        float freq = f0 * h;
+        if (freq >= sampleRate / 2.0f) break; // Nyquist
+        for (int i = 0; i < count; ++i) {
+            float phase = 2.0f * FL_M_PI * freq * i / sampleRate;
+            data[i] += static_cast<fl::i16>(harmonicAmp * fl::sinf(phase));
+        }
+    }
+    return AudioSample(data, timestamp);
+}
+
+/// Generate a synthetic vowel using additive synthesis with Gaussian formant envelopes
+/// Simplest physically-motivated voice model: harmonic series with 1/h rolloff shaped by two resonance peaks
+inline AudioSample makeSyntheticVowel(float f0, float f1Freq, float f2Freq,
+                                       u32 timestamp, float amplitude = 16000.0f,
+                                       int count = 512, float sampleRate = 44100.0f) {
+    fl::vector<fl::i16> data(count, 0);
+    const float f1Bw = 150.0f; // F1 bandwidth
+    const float f2Bw = 200.0f; // F2 bandwidth
+    const float maxFreq = fl::fl_min(4000.0f, sampleRate / 2.0f);
+
+    for (int h = 1; h * f0 < maxFreq; ++h) {
+        float freq = f0 * h;
+        // Natural 1/h rolloff
+        float naturalAmp = 1.0f / static_cast<float>(h);
+        // Gaussian formant envelopes
+        float f1Gain = fl::expf(-0.5f * (freq - f1Freq) * (freq - f1Freq) / (f1Bw * f1Bw));
+        float f2Gain = fl::expf(-0.5f * (freq - f2Freq) * (freq - f2Freq) / (f2Bw * f2Bw));
+        float formantGain = fl::fl_max(f1Gain, f2Gain);
+        float harmonicAmp = amplitude * naturalAmp * fl::fl_max(0.05f, formantGain);
+
+        for (int i = 0; i < count; ++i) {
+            float phase = 2.0f * FL_M_PI * freq * i / sampleRate;
+            data[i] += static_cast<fl::i16>(harmonicAmp * fl::sinf(phase));
+        }
+    }
+    return AudioSample(data, timestamp);
+}
+
+/// Generate deterministic white noise using fl::fl_random with fixed seed
+inline AudioSample makeWhiteNoise(u32 timestamp, float amplitude = 16000.0f,
+                                   int count = 512) {
+    fl::fl_random rng(12345); // Deterministic seed for reproducible tests
+    fl::vector<fl::i16> data;
+    data.reserve(count);
+    for (int i = 0; i < count; ++i) {
+        // Map u16 [0, 65535] to float [-1, 1]
+        float sample = (static_cast<float>(rng.random16()) / 32767.5f) - 1.0f;
+        data.push_back(static_cast<fl::i16>(amplitude * sample));
+    }
+    return AudioSample(data, timestamp);
+}
+
+/// Generate a linear frequency sweep (chirp) with phase accumulation
+/// Tests that a sweeping tone doesn't trigger vocal detection
+inline AudioSample makeChirp(float startFreq, float endFreq, u32 timestamp,
+                              float amplitude = 16000.0f, int count = 512,
+                              float sampleRate = 44100.0f) {
+    fl::vector<fl::i16> data;
+    data.reserve(count);
+    float phase = 0.0f;
+    for (int i = 0; i < count; ++i) {
+        float t = static_cast<float>(i) / static_cast<float>(count);
+        float freq = startFreq + (endFreq - startFreq) * t;
+        phase += 2.0f * FL_M_PI * freq / sampleRate;
+        data.push_back(static_cast<fl::i16>(amplitude * fl::sinf(phase)));
+    }
+    return AudioSample(data, timestamp);
 }
 
 } // namespace test

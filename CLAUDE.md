@@ -397,6 +397,11 @@ FL_AGENT_ALLOW_ALL_CMDS=1 rm -rf .build/meson-quick
 - If `FL_AGENT_ALLOW_ALL_CMDS=1` is found, the forbidden command is allowed to proceed
 - See `ci/hooks/README.md` for complete documentation
 
+### C++ Span Convention
+- **`fl::span` auto-converts from containers**: When constructing from a `fl::vector` or similar container with `data()`/`size()`, pass the container directly instead of `fl::span<const T>(v.data(), v.size())`
+  - ✅ `AudioSample(data, timestamp)` or `fl::span<const fl::i16> s = myVector;`
+  - ❌ `AudioSample(fl::span<const fl::i16>(data.data(), data.size()), timestamp)`
+
 ### JavaScript Code Standards
 - **After modifying any JavaScript files**: Always run `bash lint --js` to ensure proper formatting
 

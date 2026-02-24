@@ -40,14 +40,22 @@ public:
     void setThreshold(float threshold) { mOnThreshold = threshold; mOffThreshold = fl::max(0.0f, threshold - 0.2f); }
     void setSmoothingAlpha(float tau) { mConfidenceSmoother.setTau(tau); }
     int getNumBins() const { return mNumBins; }
+    float getSpectralFlatness() const { return mSpectralFlatness; }
+    float getHarmonicDensity() const { return mHarmonicDensity; }
+    float getSpectralCentroid() const { return mSpectralCentroid; }
+    float getSpectralRolloff() const { return mSpectralRolloff; }
+    float getFormantRatio() const { return mFormantRatio; }
+    float getVocalPresenceRatio() const { return mVocalPresenceRatio; }
+    float getSpectralFlux() const { return mSpectralFlux; }
+    float getSpectralVariance() const { return mSpectralVariance; }
 
 private:
     bool mVocalActive;
     bool mPreviousVocalActive;
     bool mStateChanged = false;
     float mConfidence;
-    float mOnThreshold = 0.65f;
-    float mOffThreshold = 0.45f;
+    float mOnThreshold = 0.49f;
+    float mOffThreshold = 0.33f;
     // Time-aware confidence smoothing (tau=0.05s ≈ old alpha=0.7 at 43fps)
     ExponentialSmoother<float> mConfidenceSmoother{0.05f};
     int mFramesInState = 0; // Debounce counter
@@ -55,6 +63,13 @@ private:
     float mSpectralCentroid;
     float mSpectralRolloff;
     float mFormantRatio;
+    float mSpectralFlatness = 0.0f;
+    float mHarmonicDensity = 0.0f;
+    float mVocalPresenceRatio = 0.0f;
+    float mSpectralFlux = 0.0f;
+    float mSpectralVariance = 0.0f;
+    fl::vector<float> mPrevBins;
+    SpectralVariance<float> mSpectralVarianceFilter{0.2f};
     int mSampleRate = 44100;
     int mNumBins = 128;
 
@@ -64,7 +79,15 @@ private:
     float calculateSpectralCentroid(const FFTBins& fft);
     float calculateSpectralRolloff(const FFTBins& fft);
     float estimateFormantRatio(const FFTBins& fft);
-    float calculateRawConfidence(float centroid, float rolloff, float formantRatio);
+    float calculateSpectralFlatness(const FFTBins& fft);
+    float calculateHarmonicDensity(const FFTBins& fft);
+    float calculateVocalPresenceRatio(const FFTBins& fft);
+    float calculateSpectralFlux(const FFTBins& fft);
+    float calculateSpectralVariance(const FFTBins& fft);
+    float calculateRawConfidence(float centroid, float rolloff, float formantRatio,
+                                 float spectralFlatness, float harmonicDensity,
+                                 float vocalPresenceRatio, float spectralFlux,
+                                 float spectralVariance);
 };
 
 } // namespace fl

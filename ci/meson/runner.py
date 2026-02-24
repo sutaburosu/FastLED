@@ -969,6 +969,9 @@ def run_meson_build_and_test(
                 test_env["LD_LIBRARY_PATH"] = (
                     fastled_lib_dir + os.pathsep + test_env.get("LD_LIBRARY_PATH", "")
                 )
+            # Set runner watchdog timeout to match meson slow test timeout (60s)
+            if "FASTLED_TEST_TIMEOUT" not in test_env:
+                test_env["FASTLED_TEST_TIMEOUT"] = "60"
             proc = RunningProcess(
                 test_cmd,
                 cwd=source_dir,  # Run from project root

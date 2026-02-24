@@ -72,6 +72,10 @@ tmp.*
 
 .pio_cache
 compile_commands.json
+
+# Voice detection calibration files (development-only, see src/fl/audio/TESTING.md)
+tests/data/codec/voice_music_*.mp3
+tests/data/codec/ground_truth.txt
 tests/.build/
 tests/.build-examples/
 tests/.build-examples-*/

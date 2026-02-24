@@ -236,7 +236,8 @@ foreach test_name : test_names
     'test_downbeat_synthetic',     # Downbeat detection test (audio processing)
     'test_spi_channel_adapter',    # SPI channel adapter test
     'test_uart_channel_engine',    # UART channel engine test
-    'test_uart_waveform_alignment' # UART waveform timing test
+    'test_uart_waveform_alignment', # UART waveform timing test
+    'fl_audio_detectors_vocal'     # Vocal detector test (CQ kernel generation + MP3 decoding)
   ]
 
   if test_name in slow_tests

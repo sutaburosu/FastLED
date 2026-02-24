@@ -12,6 +12,9 @@
 //   KalmanFilter<T>             — 1D scalar Kalman filter
 //   OneEuroFilter<T>            — adaptive velocity-based smoothing (VR/graphics)
 //
+// Multi-channel:
+//   SpectralVariance<T>         — per-bin EMA with relative deviation (audio/sensors)
+//
 // FIR (windowed, buffer-backed):
 //   MovingAverage<T, N>          — simple moving average (O(1) running sum)
 //   WeightedMovingAverage<T, N>  — linearly weighted moving average
@@ -145,6 +148,9 @@
 #include "fl/detail/filter/biquad_filter_impl.h"
 #include "fl/detail/filter/kalman_filter_impl.h"
 #include "fl/detail/filter/one_euro_filter_impl.h"
+
+// Detail impl headers — Multi-channel
+#include "fl/detail/filter/spectral_variance_impl.h"
 
 // Detail impl headers — FIR
 #include "fl/detail/filter/moving_average_impl.h"
@@ -698,6 +704,44 @@ class BilateralFilter {
     FASTLED_FORCE_INLINE void resize(fl::size new_capacity) { mImpl.resize(new_capacity); }
   private:
     detail::BilateralFilterImpl<T, N> mImpl;
+};
+
+// ============================================================================
+// Multi-channel filters
+// ============================================================================
+
+// Multi-channel EMA with per-bin relative deviation measurement. Feeds a
+// span of values (e.g., FFT bins, sensor array) each update, smooths each
+// channel independently with an EMA, and returns the mean relative deviation
+// from the smoothed values. Detects temporal instability across channels.
+//
+// update(): O(N)   Memory: N*T (one EMA state per channel)
+//
+// Use cases:
+//   - Audio: detect spectral change over time (voice vs steady instrument)
+//   - Sensors: detect unstable channels in a multi-sensor array
+//
+//   SpectralVariance<float> sv(0.2f);     // alpha=0.2, 5-frame window
+//   void loop() {
+//       float variance = sv.update(fftBins);  // mean per-bin relative change
+//       if (variance > threshold) { /* spectral content is changing */ }
+//   }
+//
+// Alpha controls tracking speed:
+//   0.1 = slow (10-frame window), 0.2 = moderate (default), 0.5 = fast
+template <typename T = float>
+class SpectralVariance {
+  public:
+    explicit SpectralVariance(T alpha = T(0.2f), T floor = T(1e-4f))
+        : mImpl(alpha, floor) {}
+    FASTLED_FORCE_INLINE T update(fl::span<const T> bins) { return mImpl.update(bins); }
+    FASTLED_FORCE_INLINE T value() const { return mImpl.value(); }
+    FASTLED_FORCE_INLINE void reset() { mImpl.reset(); }
+    FASTLED_FORCE_INLINE void setAlpha(T alpha) { mImpl.setAlpha(alpha); }
+    FASTLED_FORCE_INLINE void setFloor(T floor) { mImpl.setFloor(floor); }
+    FASTLED_FORCE_INLINE fl::size size() const { return mImpl.size(); }
+  private:
+    detail::SpectralVarianceImpl<T> mImpl;
 };
 
 } // namespace fl
