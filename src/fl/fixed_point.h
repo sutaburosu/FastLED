@@ -127,7 +127,7 @@ class fixed_point : protected fixed_point_impl<IntBits, FracBits, S>::type {
 
     // ---- Conversion methods ----
 
-    FASTLED_FORCE_INLINE RawType raw() const { return Base::raw(); }
+    FASTLED_FORCE_INLINE constexpr RawType raw() const { return Base::raw(); }
     FASTLED_FORCE_INLINE i32 to_int() const { return Base::to_int(); }
     FASTLED_FORCE_INLINE float to_float() const { return Base::to_float(); }
 

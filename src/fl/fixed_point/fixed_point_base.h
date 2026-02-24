@@ -56,7 +56,7 @@ class fixed_point_base {
 
     // ---- Access ------------------------------------------------------------
 
-    raw_type raw() const { return mValue; }
+    constexpr raw_type raw() const { return mValue; }
     raw_type to_int() const { return mValue >> FRAC_BITS; }
     float to_float() const { return static_cast<float>(mValue) / (static_cast<raw_type>(1) << FRAC_BITS); }
 
