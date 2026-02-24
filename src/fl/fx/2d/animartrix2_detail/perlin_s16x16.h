@@ -46,6 +46,19 @@ struct perlin_s16x16 {
 
     // z=0 gradient via branchless coefficient LUT.
     static fl::i32 grad(int hash, fl::i32 x, fl::i32 y);
+
+    // 3D Perlin noise. Input s16x16, output s16x16 approx [-1, 1].
+    static fl::s16x16 pnoise3d(fl::s16x16 fx, fl::s16x16 fy, fl::s16x16 fz,
+                                      const fl::i32 *fade_lut,
+                                      const fl::u8 *perm);
+
+    // Raw i32 version of 3D Perlin noise.
+    static fl::i32 pnoise3d_raw(fl::i32 fx_raw, fl::i32 fy_raw, fl::i32 fz_raw,
+                                        const fl::i32 *fade_lut,
+                                        const fl::u8 *perm);
+
+    // 3D gradient: 12-direction gradient matching float grad().
+    static fl::i32 grad3d(int hash, fl::i32 x, fl::i32 y, fl::i32 z);
 };
 
 }  // namespace fl

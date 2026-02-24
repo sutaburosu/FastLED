@@ -92,6 +92,63 @@ fl::i32 perlin_s16x16::pnoise2d_raw(fl::i32 fx_raw, fl::i32 fy_raw,
     return g.cx * x + g.cy * y;
 }
 
+fl::s16x16 perlin_s16x16::pnoise3d(fl::s16x16 fx, fl::s16x16 fy, fl::s16x16 fz,
+                                          const fl::i32 *fade_lut,
+                                          const fl::u8 *perm) {
+    return fl::s16x16::from_raw(
+        pnoise3d_raw(fx.raw(), fy.raw(), fz.raw(), fade_lut, perm));
+}
+
+fl::i32 perlin_s16x16::pnoise3d_raw(fl::i32 fx_raw, fl::i32 fy_raw, fl::i32 fz_raw,
+                                            const fl::i32 *fade_lut,
+                                            const fl::u8 *perm) {
+    int X, Y, Z;
+    fl::i32 x, y, z;
+    floor_frac(fx_raw, X, x);
+    floor_frac(fy_raw, Y, y);
+    floor_frac(fz_raw, Z, z);
+    X &= 255;
+    Y &= 255;
+    Z &= 255;
+
+    fl::i32 u = fade(x, fade_lut);
+    fl::i32 v = fade(y, fade_lut);
+    fl::i32 w = fade(z, fade_lut);
+
+    int A  = perm[X & 255]       + Y;
+    int AA = perm[A & 255]       + Z;
+    int AB = perm[(A + 1) & 255] + Z;
+    int B  = perm[(X + 1) & 255] + Y;
+    int BA = perm[B & 255]       + Z;
+    int BB = perm[(B + 1) & 255] + Z;
+
+    fl::i32 result = lerp(w,
+        lerp(v,
+            lerp(u, grad3d(perm[AA & 255],       x,          y,          z),
+                    grad3d(perm[BA & 255],       x - HP_ONE, y,          z)),
+            lerp(u, grad3d(perm[AB & 255],       x,          y - HP_ONE, z),
+                    grad3d(perm[BB & 255],       x - HP_ONE, y - HP_ONE, z))),
+        lerp(v,
+            lerp(u, grad3d(perm[(AA + 1) & 255], x,          y,          z - HP_ONE),
+                    grad3d(perm[(BA + 1) & 255], x - HP_ONE, y,          z - HP_ONE)),
+            lerp(u, grad3d(perm[(AB + 1) & 255], x,          y - HP_ONE, z - HP_ONE),
+                    grad3d(perm[(BB + 1) & 255], x - HP_ONE, y - HP_ONE, z - HP_ONE))));
+
+    return result >> (HP_BITS - fl::s16x16::FRAC_BITS);
+}
+
+fl::i32 perlin_s16x16::grad3d(int hash, fl::i32 x, fl::i32 y, fl::i32 z) {
+    // Matches float grad(hash, x, y, z) from perlin_float.h:
+    //   h = hash & 15
+    //   u = h < 8 ? x : y
+    //   v = h < 4 ? y : (h == 12 || h == 14 ? x : z)
+    //   return ((h&1)==0 ? u : -u) + ((h&2)==0 ? v : -v)
+    int h = hash & 15;
+    fl::i32 u = h < 8 ? x : y;
+    fl::i32 v = h < 4 ? y : (h == 12 || h == 14 ? x : z);
+    return ((h & 1) == 0 ? u : -u) + ((h & 2) == 0 ? v : -v);
+}
+
 }  // namespace fl
 
 FL_OPTIMIZATION_LEVEL_O3_END

@@ -863,6 +863,138 @@ FL_TEST_CASE("Chasing_Spirals Q16 - low error at t=1000") {
                   "Q16 Chasing_Spirals max per-channel error should be <= 8 at t=1000");
 }
 
+// ============================================================
+// Center_Field FP (Fixed-Point) Accuracy Tests
+// ============================================================
+
+// Render Center_Field using the float path (via v2 Context)
+void renderCenterFieldFloat(CRGB *leds, uint32_t timeMs) {
+    XYMap xy = XYMap::constructRectangularGrid(W, H);
+    Context ctx;
+    ctx.leds = leds;
+    ctx.xyMapFn = [](u16 x, u16 y, void *userData) -> u16 {
+        XYMap *map = static_cast<XYMap*>(userData);
+        return map->mapToIndex(x, y);
+    };
+    ctx.xyMapUserData = &xy;
+    init(ctx, W, H);
+    setTime(ctx, timeMs);
+    fl::Center_Field().draw(ctx);
+}
+
+// Render Center_Field using FP path
+void renderCenterFieldFP(CRGB *leds, uint32_t timeMs) {
+    XYMap xy = XYMap::constructRectangularGrid(W, H);
+    Context ctx;
+    ctx.leds = leds;
+    ctx.xyMapFn = [](u16 x, u16 y, void *userData) -> u16 {
+        XYMap *map = static_cast<XYMap*>(userData);
+        return map->mapToIndex(x, y);
+    };
+    ctx.xyMapUserData = &xy;
+    init(ctx, W, H);
+    setTime(ctx, timeMs);
+    fl::Center_Field_FP().draw(ctx);
+}
+
+FL_TEST_CASE("Center_Field FP - accuracy at t=1000") {
+    CRGB leds_float[N] = {};
+    CRGB leds_fp[N] = {};
+
+    renderCenterFieldFloat(leds_float, 1000);
+    renderCenterFieldFP(leds_fp, 1000);
+
+    float avg_err = computeAvgError(leds_float, leds_fp, N);
+    int max_err = computeMaxError(leds_float, leds_fp, N);
+    float error_pct = avg_err / 255.0f * 100.0f;
+
+    FL_MESSAGE("Center_Field FP t=1000: avg_err=", avg_err,
+               " max_err=", max_err, " error_pct=", error_pct, "%");
+
+    FL_CHECK_MESSAGE(error_pct < 1.0f,
+                  "Center_Field FP avg error should be < 1% at t=1000");
+    FL_CHECK_MESSAGE(max_err <= 6,
+                  "Center_Field FP max error should be <= 6 at t=1000");
+}
+
+FL_TEST_CASE("Center_Field FP - accuracy at multiple times") {
+    // Center_Field uses sqrtf(distance) which adds more FP rounding error
+    // than Chasing_Spirals (no sqrt). Max error is higher at high times but
+    // avg error stays well under 1%.
+    const uint32_t times[] = { 1000, 1000000, 100000000, 2000000000 };
+    const int max_thresholds[] = { 6, 12, 12, 12 };
+
+    for (int ti = 0; ti < 4; ti++) {
+        uint32_t t = times[ti];
+        CRGB leds_float[N] = {};
+        CRGB leds_fp[N] = {};
+
+        renderCenterFieldFloat(leds_float, t);
+        renderCenterFieldFP(leds_fp, t);
+
+        float avg_err = computeAvgError(leds_float, leds_fp, N);
+        int max_err = computeMaxError(leds_float, leds_fp, N);
+        float error_pct = avg_err / 255.0f * 100.0f;
+
+        FL_MESSAGE("Center_Field FP t=", t, ": avg_err=", avg_err,
+                   " max_err=", max_err, " error_pct=", error_pct, "%");
+
+        FL_CHECK_MESSAGE(error_pct < 1.0f,
+                      "Center_Field FP avg error should be < 1%");
+        FL_CHECK_MESSAGE(max_err <= max_thresholds[ti],
+                      "Center_Field FP max error exceeded threshold");
+    }
+}
+
+FL_TEST_CASE("Center_Field FP - timing benchmark") {
+    constexpr int BENCH_ITERS = 100;
+
+    // Float reference (via Animartrix v1)
+    XYMap xy_float = XYMap::constructRectangularGrid(W, H);
+    Animartrix fx_float(xy_float, CENTER_FIELD);
+    CRGB leds_float[N] = {};
+    double float_us = benchmarkFx(fx_float, leds_float, BENCH_ITERS);
+
+    // FP via Animartrix2 Context
+    XYMap xy_fp = XYMap::constructRectangularGrid(W, H);
+    CRGB leds_fp[N] = {};
+
+    // Benchmark FP using a persistent Context + Center_Field_FP
+    Context ctx_fp;
+    ctx_fp.leds = leds_fp;
+    ctx_fp.xyMapFn = [](u16 x, u16 y, void *userData) -> u16 {
+        XYMap *map = static_cast<XYMap*>(userData);
+        return map->mapToIndex(x, y);
+    };
+    ctx_fp.xyMapUserData = &xy_fp;
+    init(ctx_fp, W, H);
+
+    fl::Center_Field_FP fp_viz;
+    // Warmup
+    for (int i = 0; i < 2; i++) {
+        setTime(ctx_fp, static_cast<uint32_t>(i * 16));
+        fp_viz.draw(ctx_fp);
+    }
+    auto start = std::chrono::high_resolution_clock::now(); // okay std namespace
+    for (int i = 0; i < BENCH_ITERS; i++) {
+        setTime(ctx_fp, static_cast<uint32_t>(1000 + i * 16));
+        fp_viz.draw(ctx_fp);
+    }
+    auto end = std::chrono::high_resolution_clock::now(); // okay std namespace
+    auto elapsed_us = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count(); // okay std namespace
+    double fp_us = static_cast<double>(elapsed_us) / BENCH_ITERS;
+
+    double speedup = float_us / fp_us;
+
+    FL_MESSAGE("=== Center_Field Timing Benchmark (", BENCH_ITERS, " frames, ", W, "x", H, " grid) ===");
+    FL_MESSAGE("  Float:  ", float_us, " us/frame");
+    FL_MESSAGE("  FP:     ", fp_us, " us/frame");
+    FL_MESSAGE("  Speedup: ", speedup, "x");
+
+    FL_CHECK_MESSAGE(fp_us > 0, "FP benchmark produced valid timing");
+    FL_CHECK_MESSAGE(float_us > 0, "Float benchmark produced valid timing");
+}
+
 FL_TEST_CASE("Chasing_Spirals Q16 - approximate at high time") {
     // Test multiple high time values to verify stability with reduced precision
     const uint32_t times[] = {
@@ -893,4 +1025,98 @@ FL_TEST_CASE("Chasing_Spirals Q16 - approximate at high time") {
         FL_CHECK_MESSAGE(max_err <= 12,
                       "Q16 Chasing_Spirals max per-channel error should be <= 12 at high time values");
     }
+}
+
+// ============================================================
+// Generic FP Variant Accuracy Tests
+// Covers representative visualizers across complexity levels:
+//   - Rings: z=0, 3 passes, simple
+//   - Zoom2: z=0, 1 pass, directional
+//   - Lava1: z=30 (3D Perlin), 3 passes, data deps
+//   - Fluffy_Blobs: 9 passes, no get_ready()
+//   - Complex_Kaleido: z=5/500, blend modes (screen())
+//   - RGB_Blobs: z=3+sqrtf(dist), noise_angle (3D Perlin)
+//   - SpiralMatrix1: half-grid mirror
+// ============================================================
+
+namespace {
+
+// Generic helper: render a float viz and its FP variant, compare accuracy
+template <typename FloatViz, typename FPViz>
+void testFPAccuracy(const char *name, uint32_t timeMs,
+                    float max_avg_pct, int max_max_err) {
+    XYMap xy_f = XYMap::constructRectangularGrid(W, H);
+    XYMap xy_fp = XYMap::constructRectangularGrid(W, H);
+
+    CRGB leds_float[N] = {};
+    CRGB leds_fp[N] = {};
+
+    // Float reference
+    Context ctx_f;
+    ctx_f.leds = leds_float;
+    ctx_f.xyMapFn = [](u16 x, u16 y, void *userData) -> u16 {
+        XYMap *map = static_cast<XYMap*>(userData);
+        return map->mapToIndex(x, y);
+    };
+    ctx_f.xyMapUserData = &xy_f;
+    init(ctx_f, W, H);
+    setTime(ctx_f, timeMs);
+    FloatViz().draw(ctx_f);
+
+    // FP variant
+    Context ctx_fp;
+    ctx_fp.leds = leds_fp;
+    ctx_fp.xyMapFn = [](u16 x, u16 y, void *userData) -> u16 {
+        XYMap *map = static_cast<XYMap*>(userData);
+        return map->mapToIndex(x, y);
+    };
+    ctx_fp.xyMapUserData = &xy_fp;
+    init(ctx_fp, W, H);
+    setTime(ctx_fp, timeMs);
+    FPViz().draw(ctx_fp);
+
+    float avg_err = computeAvgError(leds_float, leds_fp, N);
+    int max_err = computeMaxError(leds_float, leds_fp, N);
+    float error_pct = avg_err / 255.0f * 100.0f;
+
+    FL_MESSAGE(name, " FP t=", timeMs, ": avg_err=", avg_err,
+               " max_err=", max_err, " error_pct=", error_pct, "%");
+
+    FL_CHECK_MESSAGE(error_pct < max_avg_pct,
+                  "FP avg error too high");
+    FL_CHECK_MESSAGE(max_err <= max_max_err,
+                  "FP max error too high");
+}
+
+} // namespace
+
+FL_TEST_CASE("FP accuracy - Rings (z=0, 3 passes)") {
+    testFPAccuracy<fl::Rings, fl::Rings_FP>("Rings", 1000, 1.0f, 6);
+}
+
+FL_TEST_CASE("FP accuracy - Zoom2 (z=0, directional)") {
+    testFPAccuracy<fl::Zoom2, fl::Zoom2_FP>("Zoom2", 1000, 1.0f, 6);
+}
+
+FL_TEST_CASE("FP accuracy - Lava1 (z=30, 3D Perlin)") {
+    testFPAccuracy<fl::Lava1, fl::Lava1_FP>("Lava1", 1000, 1.0f, 6);
+}
+
+FL_TEST_CASE("FP accuracy - Fluffy_Blobs (9 passes)") {
+    // 9 render_value calls accumulate more rounding error
+    testFPAccuracy<fl::Fluffy_Blobs, fl::Fluffy_Blobs_FP>("Fluffy_Blobs", 1000, 1.0f, 14);
+}
+
+FL_TEST_CASE("FP accuracy - Complex_Kaleido (blend modes)") {
+    // Blend mode operations (screen()) add slight extra FP rounding
+    testFPAccuracy<fl::Complex_Kaleido, fl::Complex_Kaleido_FP>("Complex_Kaleido", 1000, 1.0f, 8);
+}
+
+FL_TEST_CASE("FP accuracy - RGB_Blobs (z=3+sqrt, 3D Perlin)") {
+    // 3D Perlin with z=3+sqrtf(dist) has higher FP rounding vs float
+    testFPAccuracy<fl::RGB_Blobs, fl::RGB_Blobs_FP>("RGB_Blobs", 1000, 1.0f, 24);
+}
+
+FL_TEST_CASE("FP accuracy - SpiralMatrix1 (half-grid mirror)") {
+    testFPAccuracy<fl::SpiralMatrix1, fl::SpiralMatrix1_FP>("SpiralMatrix1", 1000, 1.0f, 6);
 }
