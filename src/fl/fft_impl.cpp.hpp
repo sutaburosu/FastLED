@@ -103,6 +103,40 @@ class FFTContext {
         FASTLED_STACK_ARRAY(kiss_fft_cpx, cq, m_cq_cfg.bands);
         // initialize
         kiss_fftr(m_fftr_cfg, buffer.data(), fft);
+
+        // Capture linear-spaced magnitude bins directly from raw FFT output.
+        // kiss_fftr produces nfft/2+1 complex bins spanning 0 to Nyquist.
+        // We rebin these into m_cq_cfg.bands linear bins spanning fmin to fmax.
+        // This is O(nfft/2) — a single pass with no transcendentals.
+        {
+            const int nfft = m_cq_cfg.samples;
+            const int numRawBins = nfft / 2 + 1;
+            const int numLinearBins = m_cq_cfg.bands;
+            const float fs = static_cast<float>(m_cq_cfg.fs);
+            const float fmin = m_cq_cfg.fmin;
+            const float fmax = m_cq_cfg.fmax;
+            const float rawBinHz = fs / static_cast<float>(nfft);
+            const float linearBinHz = (fmax - fmin) / static_cast<float>(numLinearBins);
+
+            out->bins_linear.resize(numLinearBins, 0.0f);
+            out->setLinearParams(fmin, fmax);
+
+            for (int k = 0; k < numRawBins; ++k) {
+                float freq = static_cast<float>(k) * rawBinHz;
+                if (freq < fmin || freq >= fmax) continue;
+
+                // Compute magnitude of this raw FFT bin
+                float re = static_cast<float>(fft[k].r);
+                float im = static_cast<float>(fft[k].i);
+                float mag = sqrt(re * re + im * im);
+
+                // Map to linear output bin
+                int linIdx = static_cast<int>((freq - fmin) / linearBinHz);
+                if (linIdx >= numLinearBins) linIdx = numLinearBins - 1;
+                out->bins_linear[linIdx] += mag;
+            }
+        }
+
         apply_kernels(fft, cq, m_kernels, m_cq_cfg);
         // begin transform
         for (int i = 0; i < m_cq_cfg.bands; ++i) {

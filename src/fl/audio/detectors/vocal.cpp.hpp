@@ -278,12 +278,12 @@ float VocalDetector::calculateVocalPresenceRatio(const FFTBins& fft) {
     // Ratio = mean energy in 2-4 kHz (F3 formant / sibilance) /
     //         mean energy in 80-400 Hz (guitar fundamentals / bass)
     // Voice adds energy in the 2-4 kHz range; guitar energy decays above 2 kHz.
-    auto linearBins = fft.getLinearBins();
+    auto linearBins = fft.linear();
     if (linearBins.size() < 4) return 0.0f;
 
     const int numBins = static_cast<int>(linearBins.size());
-    const float fmin = fft.fmin();
-    const float fmax = fft.fmax();
+    const float fmin = fft.linearFmin();
+    const float fmax = fft.linearFmax();
     const float binWidth = (fmax - fmin) / static_cast<float>(numBins);
 
     // Map frequency to linear bin index

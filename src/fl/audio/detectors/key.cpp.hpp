@@ -188,10 +188,10 @@ void KeyDetector::extractChroma(const FFTBins& fft, float* chroma) {
 
     // Map FFT bins to pitch classes using linearly-rebinned magnitudes.
     // Linear bins give evenly-spaced frequency mapping: freq = fmin + bin * binWidth.
-    fl::span<const float> linearBins = fft.getLinearBins();
+    fl::span<const float> linearBins = fft.linear();
     const int numBins = static_cast<int>(linearBins.size());
-    const float fmin = fft.fmin();
-    const float fmax = fft.fmax();
+    const float fmin = fft.linearFmin();
+    const float fmax = fft.linearFmax();
     const float linearBinWidth = (numBins > 0) ? (fmax - fmin) / static_cast<float>(numBins) : 1.0f;
 
     // Process each linear bin

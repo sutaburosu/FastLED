@@ -445,7 +445,7 @@ FL_TEST_CASE("fl::FFTBins - linear bins redistribute energy") {
     fl::FFT fft;
     fft.run(samples, &bins);
 
-    fl::span<const float> linear = bins.getLinearBins();
+    fl::span<const float> linear = bins.linear();
     FL_CHECK_EQ(linear.size(), static_cast<fl::size>(bands));
 
     // Find peak in linear bins
@@ -458,8 +458,8 @@ FL_TEST_CASE("fl::FFTBins - linear bins redistribute energy") {
         }
     }
 
-    float linBinWidth = (bins.fmax() - bins.fmin()) / static_cast<float>(bands);
-    float linPeakFreq = bins.fmin() + (static_cast<float>(linPeakBin) + 0.5f) * linBinWidth;
+    float linBinWidth = (bins.linearFmax() - bins.linearFmin()) / static_cast<float>(bands);
+    float linPeakFreq = bins.linearFmin() + (static_cast<float>(linPeakBin) + 0.5f) * linBinWidth;
 
     // Peak should be near 440 Hz (within 1.5 bin widths)
     FL_CHECK_LT(fl::abs(linPeakFreq - 440.0f), linBinWidth * 1.5f);
@@ -491,7 +491,7 @@ FL_TEST_CASE("fl::FFTBins - multi-freq CQ and linear mapping") {
         FL_CHECK_LE(diff, 1);
 
         // Linear bin check
-        fl::span<const float> linear = bins.getLinearBins();
+        fl::span<const float> linear = bins.linear();
         int linPeakBin = 0;
         float linPeakVal = 0.0f;
         for (int i = 0; i < bands; ++i) {
@@ -500,8 +500,8 @@ FL_TEST_CASE("fl::FFTBins - multi-freq CQ and linear mapping") {
                 linPeakBin = i;
             }
         }
-        float linBinWidth = (bins.fmax() - bins.fmin()) / static_cast<float>(bands);
-        float linPeakFreq = bins.fmin() + (static_cast<float>(linPeakBin) + 0.5f) * linBinWidth;
+        float linBinWidth = (bins.linearFmax() - bins.linearFmin()) / static_cast<float>(bands);
+        float linPeakFreq = bins.linearFmin() + (static_cast<float>(linPeakBin) + 0.5f) * linBinWidth;
         FL_CHECK_LT(fl::abs(linPeakFreq - freq), linBinWidth * 1.5f);
     }
 }
@@ -522,4 +522,125 @@ FL_TEST_CASE("fl::FFTImpl - info reports log-spaced") {
         ++p;
     }
     FL_CHECK(hasLogSpaced);
+}
+
+FL_TEST_CASE("FFTBins - linear bins populated after FFT run") {
+    auto samples = generateSine(1000.0f);
+    fl::FFTBins bins(16);
+    fl::FFT fft;
+    fft.run(samples, &bins);
+
+    FL_CHECK_EQ(bins.linear().size(), static_cast<fl::size>(16));
+    // All linear bins should be non-negative
+    bool hasEnergy = false;
+    for (fl::size i = 0; i < bins.linear().size(); ++i) {
+        FL_CHECK_GE(bins.linear()[i], 0.0f);
+        if (bins.linear()[i] > 1.0f) hasEnergy = true;
+    }
+    FL_CHECK(hasEnergy);
+}
+
+FL_TEST_CASE("FFTBins - linear bins peak at correct frequency") {
+    float testFreqs[] = {300.0f, 1000.0f, 2000.0f, 4000.0f};
+    const int bands = 16;
+
+    for (float freq : testFreqs) {
+        auto samples = generateSine(freq);
+        fl::FFTBins bins(bands);
+        fl::FFT fft;
+        fft.run(samples, &bins);
+
+        fl::span<const float> linear = bins.linear();
+        FL_REQUIRE_EQ(linear.size(), static_cast<fl::size>(bands));
+
+        float linFmin = bins.linearFmin();
+        float linFmax = bins.linearFmax();
+        float binWidth = (linFmax - linFmin) / static_cast<float>(bands);
+
+        // Find peak bin
+        int peakBin = 0;
+        float peakVal = 0.0f;
+        for (int i = 0; i < bands; ++i) {
+            if (linear[i] > peakVal) {
+                peakVal = linear[i];
+                peakBin = i;
+            }
+        }
+
+        // Expected bin index
+        int expectedBin = static_cast<int>((freq - linFmin) / binWidth);
+        if (expectedBin >= bands) expectedBin = bands - 1;
+        if (expectedBin < 0) expectedBin = 0;
+
+        int diff = peakBin - expectedBin;
+        if (diff < 0) diff = -diff;
+        FL_CHECK_LE(diff, 1);
+    }
+}
+
+FL_TEST_CASE("FFTBins - linear bins sine energy is concentrated") {
+    auto samples = generateSine(1000.0f);
+    fl::FFTBins bins(16);
+    fl::FFT fft;
+    fft.run(samples, &bins);
+
+    fl::span<const float> linear = bins.linear();
+    FL_REQUIRE_GT(linear.size(), 0u);
+
+    float maxVal = 0.0f;
+    float totalEnergy = 0.0f;
+    for (fl::size i = 0; i < linear.size(); ++i) {
+        totalEnergy += linear[i];
+        if (linear[i] > maxVal) maxVal = linear[i];
+    }
+
+    FL_CHECK_GT(totalEnergy, 0.0f);
+    // Peak bin should hold >25% of total energy
+    float peakFraction = maxVal / totalEnergy;
+    FL_CHECK_GT(peakFraction, 0.25f);
+}
+
+FL_TEST_CASE("FFTBins - linear bins silence produces near-zero") {
+    fl::vector<fl::i16> silence(512, 0);
+    fl::FFTBins bins(16);
+    fl::FFT fft;
+    fft.run(silence, &bins);
+
+    for (fl::size i = 0; i < bins.linear().size(); ++i) {
+        FL_CHECK_LT(bins.linear()[i], 10.0f);
+    }
+}
+
+FL_TEST_CASE("FFTBins - linear bins copy/move preserve data") {
+    auto samples = generateSine(1000.0f);
+    fl::FFTBins bins(16);
+    fl::FFT fft;
+    fft.run(samples, &bins);
+
+    // Copy constructor
+    fl::FFTBins copy(bins);
+    FL_CHECK_EQ(copy.linear().size(), bins.linear().size());
+    for (fl::size i = 0; i < bins.linear().size(); ++i) {
+        FL_CHECK_EQ(copy.linear()[i], bins.linear()[i]);
+    }
+    FL_CHECK_EQ(copy.linearFmin(), bins.linearFmin());
+    FL_CHECK_EQ(copy.linearFmax(), bins.linearFmax());
+
+    // Move constructor
+    fl::FFTBins moved(fl::move(copy));
+    FL_CHECK_EQ(moved.linear().size(), bins.linear().size());
+    for (fl::size i = 0; i < bins.linear().size(); ++i) {
+        FL_CHECK_EQ(moved.linear()[i], bins.linear()[i]);
+    }
+}
+
+FL_TEST_CASE("FFTBins - linear bins clear resets") {
+    auto samples = generateSine(1000.0f);
+    fl::FFTBins bins(16);
+    fl::FFT fft;
+    fft.run(samples, &bins);
+
+    FL_CHECK_GT(bins.linear().size(), 0u);
+    bins.clear();
+    FL_CHECK_EQ(bins.linear().size(), 0u);
 }

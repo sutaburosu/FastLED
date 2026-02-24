@@ -6,8 +6,6 @@
 #include "fl/stl/move.h"
 #include "fl/stl/cstring.h"
 #include "fl/stl/math.h"
-#include "fl/stl/mutex.h"
-#include "fl/stl/optional.h"
 
 namespace fl {
 
@@ -23,37 +21,43 @@ struct FFTBins {
 
     // Copy constructor and assignment
     FFTBins(const FFTBins &other)
-        : bins_raw(other.bins_raw), bins_db(other.bins_db), mSize(other.mSize)
-        , mFmin(other.mFmin), mFmax(other.mFmax), mSampleRate(other.mSampleRate) {}
+        : bins_raw(other.bins_raw), bins_db(other.bins_db)
+        , bins_linear(other.bins_linear), mSize(other.mSize)
+        , mFmin(other.mFmin), mFmax(other.mFmax), mSampleRate(other.mSampleRate)
+        , mLinearFmin(other.mLinearFmin), mLinearFmax(other.mLinearFmax) {}
     FFTBins &operator=(const FFTBins &other) {
         if (this != &other) {
             mSize = other.mSize;
             bins_raw = other.bins_raw;
             bins_db = other.bins_db;
+            bins_linear = other.bins_linear;
             mFmin = other.mFmin;
             mFmax = other.mFmax;
             mSampleRate = other.mSampleRate;
-            fl::unique_lock<fl::mutex> lock(mLinearMutex);
-            mLinearBins.reset();
+            mLinearFmin = other.mLinearFmin;
+            mLinearFmax = other.mLinearFmax;
         }
         return *this;
     }
 
     // Move constructor and assignment
     FFTBins(FFTBins &&other) noexcept
-        : bins_raw(fl::move(other.bins_raw)), bins_db(fl::move(other.bins_db)), mSize(other.mSize)
-        , mFmin(other.mFmin), mFmax(other.mFmax), mSampleRate(other.mSampleRate) {}
+        : bins_raw(fl::move(other.bins_raw)), bins_db(fl::move(other.bins_db))
+        , bins_linear(fl::move(other.bins_linear)), mSize(other.mSize)
+        , mFmin(other.mFmin), mFmax(other.mFmax), mSampleRate(other.mSampleRate)
+        , mLinearFmin(other.mLinearFmin), mLinearFmax(other.mLinearFmax) {}
 
     FFTBins &operator=(FFTBins &&other) noexcept {
         if (this != &other) {
             bins_raw = fl::move(other.bins_raw);
             bins_db = fl::move(other.bins_db);
+            bins_linear = fl::move(other.bins_linear);
             mSize = other.mSize;
             mFmin = other.mFmin;
             mFmax = other.mFmax;
             mSampleRate = other.mSampleRate;
-            fl::unique_lock<fl::mutex> lock(mLinearMutex);
-            mLinearBins.reset();
+            mLinearFmin = other.mLinearFmin;
+            mLinearFmax = other.mLinearFmax;
         }
         return *this;
     }
@@ -61,8 +65,7 @@ struct FFTBins {
     void clear() {
         bins_raw.clear();
         bins_db.clear();
-        fl::unique_lock<fl::mutex> lock(mLinearMutex);
-        mLinearBins.reset();
+        bins_linear.clear();
     }
 
     fl::size size() const { return mSize; }
@@ -70,6 +73,12 @@ struct FFTBins {
     // Read-only span accessors (preferred for consumers)
     fl::span<const float> raw() const { return bins_raw; }
     fl::span<const float> db() const { return bins_db; }
+
+    // Linear-spaced magnitude bins captured directly from raw FFT output.
+    // Same count as CQ bins, evenly spaced from linearFmin() to linearFmax().
+    fl::span<const float> linear() const { return bins_linear; }
+    float linearFmin() const { return mLinearFmin; }
+    float linearFmax() const { return mLinearFmax; }
 
     // CQ parameters (set by FFTImpl after populating bins)
     float fmin() const { return mFmin; }
@@ -81,6 +90,12 @@ struct FFTBins {
         mFmin = fmin;
         mFmax = fmax;
         mSampleRate = sampleRate;
+    }
+
+    // Set linear bin frequency range (called by FFTImpl)
+    void setLinearParams(float linearFmin, float linearFmax) {
+        mLinearFmin = linearFmin;
+        mLinearFmax = linearFmax;
     }
 
     // Log-spaced center frequency for CQ bin i
@@ -112,66 +127,20 @@ struct FFTBins {
         return fl::sqrtf(f_i * f_next);
     }
 
-    // Get linearly-rebinned magnitudes. Same number of bins as bins_raw,
-    // but evenly spaced from fmin to fmax. Lazy-computed on first access.
-    fl::span<const float> getLinearBins() const {
-        fl::unique_lock<fl::mutex> lock(mLinearMutex);
-        if (!mLinearBins.has_value()) {
-            mLinearBins = computeLinearBins();
-        }
-        return *mLinearBins.ptr();
-    }
-
     // The bins are the output of the FFTImpl (CQ log-spaced magnitudes).
     fl::vector<float> bins_raw;
     // The frequency range of the bins (dB scale).
     fl::vector<float> bins_db;
+    // Linear-spaced magnitude bins from raw FFT output (populated by FFTImpl).
+    fl::vector<float> bins_linear;
 
   private:
     fl::size mSize;
     float mFmin = 174.6f;
     float mFmax = 4698.3f;
     int mSampleRate = 44100;
-
-    mutable fl::mutex mLinearMutex;
-    mutable fl::optional<fl::vector_inlined<float, 16>> mLinearBins;
-
-    // Redistribute CQ log-spaced energy into linearly-spaced bins
-    fl::vector_inlined<float, 16> computeLinearBins() const {
-        const int numBins = static_cast<int>(bins_raw.size());
-        fl::vector_inlined<float, 16> linear;
-        linear.reserve(numBins);
-        if (numBins <= 0) return linear;
-
-        const float linearBinWidth = (mFmax - mFmin) / static_cast<float>(numBins);
-
-        for (int j = 0; j < numBins; ++j) {
-            float linLow = mFmin + j * linearBinWidth;
-            float linHigh = linLow + linearBinWidth;
-            float energy = 0.0f;
-            float totalWeight = 0.0f;
-
-            for (int i = 0; i < numBins; ++i) {
-                // CQ bin frequency boundaries
-                float cqLow = (i == 0) ? mFmin : binBoundary(i - 1);
-                float cqHigh = (i == numBins - 1) ? mFmax : binBoundary(i);
-
-                // Overlap between CQ bin and linear bin
-                float overlapLow = (linLow > cqLow) ? linLow : cqLow;
-                float overlapHigh = (linHigh < cqHigh) ? linHigh : cqHigh;
-
-                if (overlapHigh <= overlapLow) continue;
-
-                float cqWidth = cqHigh - cqLow;
-                float fraction = (cqWidth > 0.0f) ? (overlapHigh - overlapLow) / cqWidth : 0.0f;
-                energy += bins_raw[i] * fraction;
-                totalWeight += fraction;
-            }
-
-            linear.push_back((totalWeight > 0.0f) ? energy / totalWeight : 0.0f);
-        }
-        return linear;
-    }
+    float mLinearFmin = 0.0f;
+    float mLinearFmax = 0.0f;
 };
 
 struct FFT_Args {
