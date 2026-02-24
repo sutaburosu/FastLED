@@ -992,8 +992,6 @@ class ChannelEngineRMTImpl : public ChannelEngineRMT {
             }
 
             // Pass pooled buffer (DRAM/DMA) instead of PSRAM pointer
-            FL_WARN("[RMT TX] Transmitting " << pooledBuffer.size() << " bytes on pin "
-                    << static_cast<int>(channel->pin) << " (DMA=" << channel->useDMA << ")");
             bool tx_success = mPeripheral.transmit(channel->channel, channel->encoder,
                                                     pooledBuffer.data(),
                                                     pooledBuffer.size());
