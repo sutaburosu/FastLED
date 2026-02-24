@@ -61,6 +61,7 @@ FastLED's codebase is organized into several major areas. Each directory contain
 
 ## Table of Contents
 
+- [🎵 Audio Reactive LEDs](#-audio-reactive-leds)
 - [🆕 Latest Feature](#-latest-feature)
 - [⭐ Community Growth](#-community-growth)
 - [🆕 Latest Features](#-latest-features)
@@ -176,6 +177,42 @@ Tracks compilation speed and performance of FastLED header files across differen
    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=fastled/fastled&type=Date" />
  </picture>
 </a>
+
+## 🎵 Audio Reactive LEDs
+
+**Turn sound into light with a fluent, callback-driven API.** Connect an I2S microphone, register callbacks for beats, bass, percussion, silence — and FastLED handles the rest. Audio is auto-pumped during `FastLED.show()`, so there's no manual update loop.
+
+```cpp
+#include "FastLED.h"
+
+#define NUM_LEDS 60
+CRGB leds[NUM_LEDS];
+fl::shared_ptr<fl::AudioProcessor> audio;
+
+void setup() {
+    FastLED.addLeds<WS2812B, 2, GRB>(leds, NUM_LEDS);
+
+    // One line: create mic + auto-pump task
+    auto config = fl::AudioConfig::CreateInmp441(/*WS*/ 7, /*SD*/ 8, /*CLK*/ 4, fl::Right);
+    audio = FastLED.add(config);
+
+    // React to music
+    audio->onBeat([] { fill_solid(leds, NUM_LEDS, CRGB::White); });
+    audio->onBass([](float level) {
+        fill_solid(leds, NUM_LEDS, CHSV(level * 160, 255, 255));
+    });
+    audio->onSilenceStart([] { fill_solid(leds, NUM_LEDS, CRGB::Black); });
+}
+
+void loop() {
+    fadeToBlackBy(leds, NUM_LEDS, 20);
+    FastLED.show();  // Audio is auto-pumped here
+}
+```
+
+> **Platforms**: ESP32 (I2S / PDM) and Teensy. Code compiles on all platforms — callbacks are simply inert where hardware isn't available.
+
+**More examples & full API reference**: [src/fl/audio/README.md](src/fl/audio/README.md)
 
 ## 🆕 Latest Features
 
