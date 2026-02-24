@@ -351,14 +351,17 @@ bool ChannelManager::waitForCondition(Condition condition, u32 timeoutMs) {
 
 IChannelDriver::DriverState ChannelManager::poll() {
     // Poll all registered drivers and return aggregate state
-    // Return "worst" state: ERROR > BUSY > READY
+    // Priority order: ERROR > BUSY > DRAINING > READY
     bool anyBusy = false;
+    bool anyDraining = false;
     fl::string firstError;
 
     for (auto& entry : mDrivers) {
         IChannelDriver::DriverState result = entry.driver->poll();
         if (result.state == IChannelDriver::DriverState::BUSY) {
             anyBusy = true;
+        } else if (result.state == IChannelDriver::DriverState::DRAINING) {
+            anyDraining = true;
         }
         // Capture first error encountered
         if (result.state == IChannelDriver::DriverState::ERROR && firstError.empty()) {
@@ -371,7 +374,13 @@ IChannelDriver::DriverState ChannelManager::poll() {
         return IChannelDriver::DriverState(IChannelDriver::DriverState::ERROR, firstError);
     }
 
-    return IChannelDriver::DriverState(anyBusy ? IChannelDriver::DriverState::BUSY : IChannelDriver::DriverState::READY);
+    if (anyBusy) {
+        return IChannelDriver::DriverState(IChannelDriver::DriverState::BUSY);
+    }
+    if (anyDraining) {
+        return IChannelDriver::DriverState(IChannelDriver::DriverState::DRAINING);
+    }
+    return IChannelDriver::DriverState(IChannelDriver::DriverState::READY);
 }
 
 bool ChannelManager::waitForReady(u32 timeoutMs) {
