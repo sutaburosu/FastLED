@@ -1164,32 +1164,30 @@ FL_TEST_CASE("AudioProcessor - polling getters") {
     // Test that AudioProcessor polling getters return valid values
     AudioProcessor proc;
 
-    // Before any update, getters should return defaults (0 / false)
-    FL_CHECK_EQ(proc.getVocalConfidence(), 0);
-    FL_CHECK_EQ(proc.isVocalActive(), 0);
-    FL_CHECK_EQ(proc.getBeatConfidence(), 0);
-    FL_CHECK_EQ(proc.isBeat(), 0);
-    FL_CHECK_EQ(proc.getEnergy(), 0);
-    FL_CHECK_EQ(proc.getPeakLevel(), 0);
-    FL_CHECK_EQ(proc.getBassLevel(), 0);
-    FL_CHECK_EQ(proc.getMidLevel(), 0);
-    FL_CHECK_EQ(proc.getTrebleLevel(), 0);
-    // Note: isSilent() may be 0 before any data is processed
+    // Before any update, getters should return defaults (0.0f / false)
+    FL_CHECK_EQ(proc.getVocalConfidence(), 0.0f);
+    FL_CHECK_EQ(proc.getBeatConfidence(), 0.0f);
+    FL_CHECK_EQ(proc.getEnergy(), 0.0f);
+    FL_CHECK_EQ(proc.getPeakLevel(), 0.0f);
+    FL_CHECK_EQ(proc.getBassLevel(), 0.0f);
+    FL_CHECK_EQ(proc.getMidLevel(), 0.0f);
+    FL_CHECK_EQ(proc.getTrebleLevel(), 0.0f);
+    // Note: isSilent() may be false before any data is processed
     // since the detector needs samples to determine silence state
-    FL_CHECK_EQ(proc.isTransient(), 0);
-    FL_CHECK_EQ(proc.isCrescendo(), 0);
-    FL_CHECK_EQ(proc.isDiminuendo(), 0);
-    FL_CHECK_EQ(proc.isVoiced(), 0);
-    FL_CHECK_EQ(proc.isTempoStable(), 0);
-    FL_CHECK_EQ(proc.isBuilding(), 0);
-    FL_CHECK_EQ(proc.isKick(), 0);
-    FL_CHECK_EQ(proc.isSnare(), 0);
-    FL_CHECK_EQ(proc.isHiHat(), 0);
-    FL_CHECK_EQ(proc.isTom(), 0);
-    FL_CHECK_EQ(proc.isNoteActive(), 0);
-    FL_CHECK_EQ(proc.isDownbeat(), 0);
-    FL_CHECK_EQ(proc.hasChord(), 0);
-    FL_CHECK_EQ(proc.hasKey(), 0);
+    FL_CHECK_EQ(proc.getTransientStrength(), 0.0f);
+    FL_CHECK_FALSE(proc.isCrescendo());
+    FL_CHECK_FALSE(proc.isDiminuendo());
+    FL_CHECK_EQ(proc.getPitchConfidence(), 0.0f);
+    FL_CHECK_EQ(proc.getTempoConfidence(), 0.0f);
+    FL_CHECK_EQ(proc.getBuildupIntensity(), 0.0f);
+    FL_CHECK_FALSE(proc.isKick());
+    FL_CHECK_FALSE(proc.isSnare());
+    FL_CHECK_FALSE(proc.isHiHat());
+    FL_CHECK_FALSE(proc.isTom());
+    FL_CHECK_EQ(proc.getNoteConfidence(), 0.0f);
+    FL_CHECK_EQ(proc.getDownbeatConfidence(), 0.0f);
+    FL_CHECK_EQ(proc.getChordConfidence(), 0.0f);
+    FL_CHECK_EQ(proc.getKeyConfidence(), 0.0f);
 
     // Feed a sine wave and verify getters still work without crashing
     fl::vector<int16_t> samples;
@@ -1204,7 +1202,7 @@ FL_TEST_CASE("AudioProcessor - polling getters") {
     proc.update(audioSample);
 
     // After processing, energy should be non-zero
-    FL_CHECK_GT(proc.getEnergy(), 0);
+    FL_CHECK_GT(proc.getEnergy(), 0.0f);
 }
 
 FL_TEST_CASE("AudioReactive - polling getters via AudioProcessor") {
@@ -1214,19 +1212,17 @@ FL_TEST_CASE("AudioReactive - polling getters via AudioProcessor") {
     audio.begin(config);
 
     // Polling getters should not crash on initial state
-    FL_CHECK_EQ(audio.getVocalConfidence(), 0);
-    FL_CHECK_EQ(audio.isVocalActive(), 0);
-    FL_CHECK_EQ(audio.getBeatConfidence(), 0);
-    FL_CHECK_EQ(audio.isBeatDetected(), 0);
-    FL_CHECK_EQ(audio.getEnergyLevel(), 0);
-    FL_CHECK_EQ(audio.getBassLevel(), 0);
-    FL_CHECK_EQ(audio.getMidLevel(), 0);
-    FL_CHECK_EQ(audio.getTrebleLevel(), 0);
-    FL_CHECK_EQ(audio.isKick(), 0);
-    FL_CHECK_EQ(audio.isSnare(), 0);
-    FL_CHECK_EQ(audio.isHiHat(), 0);
-    FL_CHECK_EQ(audio.hasChord(), 0);
-    FL_CHECK_EQ(audio.hasKey(), 0);
+    FL_CHECK_EQ(audio.getVocalConfidence(), 0.0f);
+    FL_CHECK_EQ(audio.getBeatConfidence(), 0.0f);
+    FL_CHECK_EQ(audio.getEnergyLevel(), 0.0f);
+    FL_CHECK_EQ(audio.getBassLevel(), 0.0f);
+    FL_CHECK_EQ(audio.getMidLevel(), 0.0f);
+    FL_CHECK_EQ(audio.getTrebleLevel(), 0.0f);
+    FL_CHECK_FALSE(audio.isKick());
+    FL_CHECK_FALSE(audio.isSnare());
+    FL_CHECK_FALSE(audio.isHiHat());
+    FL_CHECK_EQ(audio.getChordConfidence(), 0.0f);
+    FL_CHECK_EQ(audio.getKeyConfidence(), 0.0f);
 
     // Feed audio and verify getters still work
     fl::vector<int16_t> samples;
@@ -1239,5 +1235,5 @@ FL_TEST_CASE("AudioReactive - polling getters via AudioProcessor") {
     audio.processSample(audioSample);
 
     // After processing, energy polling getter should reflect audio
-    FL_CHECK_GT(audio.getEnergyLevel(), 0);
+    FL_CHECK_GT(audio.getEnergyLevel(), 0.0f);
 }

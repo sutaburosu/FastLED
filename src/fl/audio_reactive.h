@@ -118,89 +118,81 @@ public:
     float getMidEnergy() const;
     float getTrebleEnergy() const;
     
-    // ----- Polling Getters (uint8_t-scaled where applicable) -----
+    // ----- Polling Getters (float 0.0-1.0, bool, or integer) -----
     // These forward to an internal AudioProcessor for detector-based analysis.
 
     // Vocal Detection
-    u8 getVocalConfidence();
-    u8 isVocalActive();
+    float getVocalConfidence();
 
     // Beat Detection (detector-based)
-    u8 getBeatConfidence();
-    u8 isBeatDetected();
+    float getBeatConfidence();
     float getBPM();
 
     // Energy Analysis
-    u8 getEnergyLevel();
-    u8 getPeakLevel();
+    float getEnergyLevel();
+    float getPeakLevel();
 
-    // Frequency Bands (uint8_t)
-    u8 getBassLevel();
-    u8 getMidLevel();
-    u8 getTrebleLevel();
+    // Frequency Bands
+    float getBassLevel();
+    float getMidLevel();
+    float getTrebleLevel();
 
     // Silence Detection
-    u8 isSilent();
+    bool isSilent();
     u32 getSilenceDuration();
 
     // Transient Detection
-    u8 getTransientStrength();
-    u8 isTransient();
+    float getTransientStrength();
 
     // Dynamics Analysis
-    u8 getDynamicTrend();
-    u8 isCrescendo();
-    u8 isDiminuendo();
+    float getDynamicTrend();  // -1.0 to 1.0
+    bool isCrescendo();
+    bool isDiminuendo();
 
     // Pitch Detection
-    u8 getPitchConfidence();
+    float getPitchConfidence();
     float getPitchHz();
-    u8 isVoiced();
 
     // Tempo Analysis
-    u8 getTempoConfidence();
+    float getTempoConfidence();
     float getTempoBPM();
-    u8 isTempoStable();
 
     // Buildup Detection
-    u8 getBuildupIntensity();
-    u8 getBuildupProgress();
-    u8 isBuilding();
+    float getBuildupIntensity();
+    float getBuildupProgress();
 
     // Drop Detection
-    u8 getDropImpact();
+    float getDropImpact();
 
     // Percussion Detection
-    u8 isKick();
-    u8 isSnare();
-    u8 isHiHat();
-    u8 isTom();
+    bool isKick();
+    bool isSnare();
+    bool isHiHat();
+    bool isTom();
 
     // Note Detection
     u8 getCurrentNote();
-    u8 getNoteVelocity();
-    u8 isNoteActive();
+    float getNoteVelocity();
+    float getNoteConfidence();
 
     // Downbeat Detection
-    u8 isDownbeat();
-    u8 getMeasurePhase();
+    float getDownbeatConfidence();
+    float getMeasurePhase();
     u8 getCurrentBeatNumber();
 
     // Backbeat Detection
-    u8 getBackbeatConfidence();
-    u8 getBackbeatStrength();
+    float getBackbeatConfidence();
+    float getBackbeatStrength();
 
     // Chord Detection
-    u8 hasChord();
-    u8 getChordConfidence();
+    float getChordConfidence();
 
     // Key Detection
-    u8 hasKey();
-    u8 getKeyConfidence();
+    float getKeyConfidence();
 
     // Mood Analysis
-    u8 getMoodArousal();
-    u8 getMoodValence();
+    float getMoodArousal();
+    float getMoodValence();  // -1.0 to 1.0
 
     // Effect helpers
     fl::u8 volumeToScale255() const;

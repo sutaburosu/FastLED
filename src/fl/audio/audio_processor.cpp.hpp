@@ -402,232 +402,166 @@ void AudioProcessor::onDropImpact(function<void(float)> callback) {
 
 // ----- Polling Getter Implementations -----
 
-u8 AudioProcessor::getVocalConfidence() {
-    return static_cast<u8>(getVocalDetector()->getConfidence() * 255.0f);
+// Helper: clamp float to 0..1
+static float clamp01(float v) {
+    if (v < 0.0f) return 0.0f;
+    if (v > 1.0f) return 1.0f;
+    return v;
 }
 
-u8 AudioProcessor::isVocalActive() {
-    return static_cast<u8>(getVocalDetector()->getConfidence() * 255.0f);
+// Helper: clamp float to -1..1
+static float clampNeg1To1(float v) {
+    if (v < -1.0f) return -1.0f;
+    if (v > 1.0f) return 1.0f;
+    return v;
 }
 
-u8 AudioProcessor::getBeatConfidence() {
-    return static_cast<u8>(getBeatDetector()->getConfidence() * 255.0f);
+float AudioProcessor::getVocalConfidence() {
+    return clamp01(getVocalDetector()->getConfidence());
 }
 
-u8 AudioProcessor::isBeat() {
-    return static_cast<u8>(getBeatDetector()->getConfidence() * 255.0f);
+float AudioProcessor::getBeatConfidence() {
+    return clamp01(getBeatDetector()->getConfidence());
 }
 
 float AudioProcessor::getBPM() {
     return getBeatDetector()->getBPM();
 }
 
-u8 AudioProcessor::getEnergy() {
-    return static_cast<u8>(getEnergyAnalyzer()->getNormalizedRMS() * 255.0f);
+float AudioProcessor::getEnergy() {
+    return clamp01(getEnergyAnalyzer()->getNormalizedRMS());
 }
 
-u8 AudioProcessor::getPeakLevel() {
-    float peak = getEnergyAnalyzer()->getPeak();
-    // Clamp to 0..1 range then scale
-    if (peak < 0.0f) peak = 0.0f;
-    if (peak > 1.0f) peak = 1.0f;
-    return static_cast<u8>(peak * 255.0f);
+float AudioProcessor::getPeakLevel() {
+    return clamp01(getEnergyAnalyzer()->getPeak());
 }
 
-u8 AudioProcessor::getBassLevel() {
-    float bass = getFrequencyBands()->getBass();
-    if (bass < 0.0f) bass = 0.0f;
-    if (bass > 1.0f) bass = 1.0f;
-    return static_cast<u8>(bass * 255.0f);
+float AudioProcessor::getBassLevel() {
+    return clamp01(getFrequencyBands()->getBass());
 }
 
-u8 AudioProcessor::getMidLevel() {
-    float mid = getFrequencyBands()->getMid();
-    if (mid < 0.0f) mid = 0.0f;
-    if (mid > 1.0f) mid = 1.0f;
-    return static_cast<u8>(mid * 255.0f);
+float AudioProcessor::getMidLevel() {
+    return clamp01(getFrequencyBands()->getMid());
 }
 
-u8 AudioProcessor::getTrebleLevel() {
-    float treble = getFrequencyBands()->getTreble();
-    if (treble < 0.0f) treble = 0.0f;
-    if (treble > 1.0f) treble = 1.0f;
-    return static_cast<u8>(treble * 255.0f);
+float AudioProcessor::getTrebleLevel() {
+    return clamp01(getFrequencyBands()->getTreble());
 }
 
-u8 AudioProcessor::isSilent() {
-    return getSilenceDetector()->isSilent() ? 255 : 0;
+bool AudioProcessor::isSilent() {
+    return getSilenceDetector()->isSilent();
 }
 
 u32 AudioProcessor::getSilenceDuration() {
     return getSilenceDetector()->getSilenceDuration();
 }
 
-u8 AudioProcessor::getTransientStrength() {
-    float strength = getTransientDetector()->getStrength();
-    if (strength < 0.0f) strength = 0.0f;
-    if (strength > 1.0f) strength = 1.0f;
-    return static_cast<u8>(strength * 255.0f);
+float AudioProcessor::getTransientStrength() {
+    return clamp01(getTransientDetector()->getStrength());
 }
 
-u8 AudioProcessor::isTransient() {
-    float strength = getTransientDetector()->getStrength();
-    if (strength < 0.0f) strength = 0.0f;
-    if (strength > 1.0f) strength = 1.0f;
-    return static_cast<u8>(strength * 255.0f);
+float AudioProcessor::getDynamicTrend() {
+    return clampNeg1To1(getDynamicsAnalyzer()->getDynamicTrend());
 }
 
-u8 AudioProcessor::getDynamicTrend() {
-    // Maps -1..1 to 0..255 (128 = neutral)
-    float trend = getDynamicsAnalyzer()->getDynamicTrend();
-    if (trend < -1.0f) trend = -1.0f;
-    if (trend > 1.0f) trend = 1.0f;
-    return static_cast<u8>((trend + 1.0f) * 0.5f * 255.0f);
+bool AudioProcessor::isCrescendo() {
+    return getDynamicsAnalyzer()->isCrescendo();
 }
 
-u8 AudioProcessor::isCrescendo() {
-    return getDynamicsAnalyzer()->isCrescendo() ? 255 : 0;
+bool AudioProcessor::isDiminuendo() {
+    return getDynamicsAnalyzer()->isDiminuendo();
 }
 
-u8 AudioProcessor::isDiminuendo() {
-    return getDynamicsAnalyzer()->isDiminuendo() ? 255 : 0;
-}
-
-u8 AudioProcessor::getPitchConfidence() {
-    return static_cast<u8>(getPitchDetector()->getConfidence() * 255.0f);
+float AudioProcessor::getPitchConfidence() {
+    return clamp01(getPitchDetector()->getConfidence());
 }
 
 float AudioProcessor::getPitch() {
     return getPitchDetector()->getPitch();
 }
 
-u8 AudioProcessor::isVoiced() {
-    return static_cast<u8>(getPitchDetector()->getConfidence() * 255.0f);
-}
-
-u8 AudioProcessor::getTempoConfidence() {
-    return static_cast<u8>(getTempoAnalyzer()->getConfidence() * 255.0f);
+float AudioProcessor::getTempoConfidence() {
+    return clamp01(getTempoAnalyzer()->getConfidence());
 }
 
 float AudioProcessor::getTempoBPM() {
     return getTempoAnalyzer()->getBPM();
 }
 
-u8 AudioProcessor::isTempoStable() {
-    return static_cast<u8>(getTempoAnalyzer()->getConfidence() * 255.0f);
+float AudioProcessor::getBuildupIntensity() {
+    return clamp01(getBuildupDetector()->getIntensity());
 }
 
-u8 AudioProcessor::getBuildupIntensity() {
-    float intensity = getBuildupDetector()->getIntensity();
-    if (intensity < 0.0f) intensity = 0.0f;
-    if (intensity > 1.0f) intensity = 1.0f;
-    return static_cast<u8>(intensity * 255.0f);
+float AudioProcessor::getBuildupProgress() {
+    return clamp01(getBuildupDetector()->getProgress());
 }
 
-u8 AudioProcessor::getBuildupProgress() {
-    float progress = getBuildupDetector()->getProgress();
-    if (progress < 0.0f) progress = 0.0f;
-    if (progress > 1.0f) progress = 1.0f;
-    return static_cast<u8>(progress * 255.0f);
+float AudioProcessor::getDropImpact() {
+    return clamp01(getDropDetector()->getLastDrop().impact);
 }
 
-u8 AudioProcessor::isBuilding() {
-    float intensity = getBuildupDetector()->getIntensity();
-    if (intensity < 0.0f) intensity = 0.0f;
-    if (intensity > 1.0f) intensity = 1.0f;
-    return static_cast<u8>(intensity * 255.0f);
+bool AudioProcessor::isKick() {
+    return getPercussionDetector()->isKick();
 }
 
-u8 AudioProcessor::getDropImpact() {
-    float impact = getDropDetector()->getLastDrop().impact;
-    if (impact < 0.0f) impact = 0.0f;
-    if (impact > 1.0f) impact = 1.0f;
-    return static_cast<u8>(impact * 255.0f);
+bool AudioProcessor::isSnare() {
+    return getPercussionDetector()->isSnare();
 }
 
-u8 AudioProcessor::isKick() {
-    return getPercussionDetector()->isKick() ? 255 : 0;
+bool AudioProcessor::isHiHat() {
+    return getPercussionDetector()->isHiHat();
 }
 
-u8 AudioProcessor::isSnare() {
-    return getPercussionDetector()->isSnare() ? 255 : 0;
-}
-
-u8 AudioProcessor::isHiHat() {
-    return getPercussionDetector()->isHiHat() ? 255 : 0;
-}
-
-u8 AudioProcessor::isTom() {
-    return getPercussionDetector()->isTom() ? 255 : 0;
+bool AudioProcessor::isTom() {
+    return getPercussionDetector()->isTom();
 }
 
 u8 AudioProcessor::getCurrentNote() {
     return getNoteDetector()->getCurrentNote();
 }
 
-u8 AudioProcessor::getNoteVelocity() {
-    return getNoteDetector()->getLastVelocity();
+float AudioProcessor::getNoteVelocity() {
+    return getNoteDetector()->getLastVelocity() / 255.0f;
 }
 
-u8 AudioProcessor::isNoteActive() {
-    return getNoteDetector()->isNoteActive() ? getNoteDetector()->getLastVelocity() : 0;
+float AudioProcessor::getNoteConfidence() {
+    return getNoteDetector()->isNoteActive() ? (getNoteDetector()->getLastVelocity() / 255.0f) : 0.0f;
 }
 
-u8 AudioProcessor::isDownbeat() {
-    return static_cast<u8>(getDownbeatDetector()->getConfidence() * 255.0f);
+float AudioProcessor::getDownbeatConfidence() {
+    return clamp01(getDownbeatDetector()->getConfidence());
 }
 
-u8 AudioProcessor::getMeasurePhase() {
-    float phase = getDownbeatDetector()->getMeasurePhase();
-    if (phase < 0.0f) phase = 0.0f;
-    if (phase > 1.0f) phase = 1.0f;
-    return static_cast<u8>(phase * 255.0f);
+float AudioProcessor::getMeasurePhase() {
+    return clamp01(getDownbeatDetector()->getMeasurePhase());
 }
 
 u8 AudioProcessor::getCurrentBeatNumber() {
     return getDownbeatDetector()->getCurrentBeat();
 }
 
-u8 AudioProcessor::getBackbeatConfidence() {
-    return static_cast<u8>(getBackbeatDetector()->getConfidence() * 255.0f);
+float AudioProcessor::getBackbeatConfidence() {
+    return clamp01(getBackbeatDetector()->getConfidence());
 }
 
-u8 AudioProcessor::getBackbeatStrength() {
-    float strength = getBackbeatDetector()->getStrength();
-    if (strength < 0.0f) strength = 0.0f;
-    if (strength > 1.0f) strength = 1.0f;
-    return static_cast<u8>(strength * 255.0f);
+float AudioProcessor::getBackbeatStrength() {
+    return clamp01(getBackbeatDetector()->getStrength());
 }
 
-u8 AudioProcessor::hasChord() {
-    return static_cast<u8>(getChordDetector()->getCurrentChord().confidence * 255.0f);
+float AudioProcessor::getChordConfidence() {
+    return clamp01(getChordDetector()->getCurrentChord().confidence);
 }
 
-u8 AudioProcessor::getChordConfidence() {
-    return static_cast<u8>(getChordDetector()->getCurrentChord().confidence * 255.0f);
+float AudioProcessor::getKeyConfidence() {
+    return clamp01(getKeyDetector()->getCurrentKey().confidence);
 }
 
-u8 AudioProcessor::hasKey() {
-    return static_cast<u8>(getKeyDetector()->getCurrentKey().confidence * 255.0f);
+float AudioProcessor::getMoodArousal() {
+    return clamp01(getMoodAnalyzer()->getArousal());
 }
 
-u8 AudioProcessor::getKeyConfidence() {
-    return static_cast<u8>(getKeyDetector()->getCurrentKey().confidence * 255.0f);
-}
-
-u8 AudioProcessor::getMoodArousal() {
-    float arousal = getMoodAnalyzer()->getArousal();
-    if (arousal < 0.0f) arousal = 0.0f;
-    if (arousal > 1.0f) arousal = 1.0f;
-    return static_cast<u8>(arousal * 255.0f);
-}
-
-u8 AudioProcessor::getMoodValence() {
-    // Maps -1..1 to 0..255 (128 = neutral)
-    float valence = getMoodAnalyzer()->getValence();
-    if (valence < -1.0f) valence = -1.0f;
-    if (valence > 1.0f) valence = 1.0f;
-    return static_cast<u8>((valence + 1.0f) * 0.5f * 255.0f);
+float AudioProcessor::getMoodValence() {
+    return clampNeg1To1(getMoodAnalyzer()->getValence());
 }
 
 void AudioProcessor::setSampleRate(int sampleRate) {
