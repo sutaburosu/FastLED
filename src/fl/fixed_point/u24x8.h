@@ -45,7 +45,7 @@ class u24x8 {
 
     // ---- Access ------------------------------------------------------------
 
-    u32 raw() const { return mValue; }
+    constexpr u32 raw() const { return mValue; }
     u32 to_int() const { return mValue >> FRAC_BITS; }
     float to_float() const { return static_cast<float>(mValue) / (SCALE); }
 

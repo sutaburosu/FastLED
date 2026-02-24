@@ -114,6 +114,12 @@ namespace { // Anonymous namespace for fixed_point tests
 template <typename T>
 using raw_t = decltype(T().raw());
 
+// Compile-time check that T::raw() is constexpr.
+template <typename T>
+constexpr bool constexpr_raw_check(float f) {
+    return T(f).raw(), true;
+}
+
 // ============================================================================
 // Type-Specific Accuracy Bounds (Template Specializations)
 // ============================================================================
@@ -796,6 +802,27 @@ void test_to_float_impl(float epsilon, float epsilon_large) {
 // ===========================================================================
 // Organized by function with FL_SUBCASE for each type.
 // This provides clear test grouping while maintaining type-specific granularity.
+
+// Verify that raw() is constexpr for all fixed-point types.
+// This is a compile-time check: if raw() is not constexpr, static_assert fails.
+FL_TEST_CASE("constexpr raw() - all fixed-point types") {
+    // Signed types
+    static_assert(constexpr_raw_check<s0x32>(0.5f), "s0x32::raw() must be constexpr");
+    static_assert(constexpr_raw_check<s4x12>(1.0f), "s4x12::raw() must be constexpr");
+    static_assert(constexpr_raw_check<s8x8>(1.0f), "s8x8::raw() must be constexpr");
+    static_assert(constexpr_raw_check<s8x24>(1.0f), "s8x24::raw() must be constexpr");
+    static_assert(constexpr_raw_check<s12x4>(1.0f), "s12x4::raw() must be constexpr");
+    static_assert(constexpr_raw_check<s16x16>(1.0f), "s16x16::raw() must be constexpr");
+    static_assert(constexpr_raw_check<s24x8>(1.0f), "s24x8::raw() must be constexpr");
+    // Unsigned types
+    static_assert(constexpr_raw_check<u0x32>(0.5f), "u0x32::raw() must be constexpr");
+    static_assert(constexpr_raw_check<u4x12>(1.0f), "u4x12::raw() must be constexpr");
+    static_assert(constexpr_raw_check<u8x8>(1.0f), "u8x8::raw() must be constexpr");
+    static_assert(constexpr_raw_check<u8x24>(1.0f), "u8x24::raw() must be constexpr");
+    static_assert(constexpr_raw_check<u12x4>(1.0f), "u12x4::raw() must be constexpr");
+    static_assert(constexpr_raw_check<u16x16>(1.0f), "u16x16::raw() must be constexpr");
+    static_assert(constexpr_raw_check<u24x8>(1.0f), "u24x8::raw() must be constexpr");
+}
 
 FL_TEST_CASE("Bit-exact tests - default construction") {
     FL_SUBCASE("s4x12") { test_default_construction_impl<s4x12>(); }

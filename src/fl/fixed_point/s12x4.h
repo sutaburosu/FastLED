@@ -34,7 +34,7 @@ class s12x4 {
 
     // ---- Access ------------------------------------------------------------
 
-    i16 raw() const { return mValue; }
+    constexpr i16 raw() const { return mValue; }
     i16 to_int() const { return mValue >> FRAC_BITS; }
     float to_float() const { return static_cast<float>(mValue) / (static_cast<i16>(1) << FRAC_BITS); }
 

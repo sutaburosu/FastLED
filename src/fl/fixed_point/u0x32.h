@@ -65,7 +65,7 @@ class u0x32 {
 
     // ---- Access ------------------------------------------------------------
 
-    u32 raw() const { return mValue; }
+    constexpr u32 raw() const { return mValue; }
 
     // Convert to integer (always 0 since range is [0.0, 1.0))
     u32 to_int() const { return 0; }

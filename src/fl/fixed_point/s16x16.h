@@ -46,7 +46,7 @@ class s16x16 {
 
     // ---- Access ------------------------------------------------------------
 
-    i32 raw() const { return mValue; }
+    constexpr i32 raw() const { return mValue; }
     i32 to_int() const { return mValue >> FRAC_BITS; }
     float to_float() const { return static_cast<float>(mValue) / (SCALE); }
 

@@ -65,7 +65,7 @@ class s0x32 {
 
     // ---- Access ------------------------------------------------------------
 
-    i32 raw() const { return mValue; }
+    constexpr i32 raw() const { return mValue; }
 
     // Convert to integer (always 0 or -1 since range is [-1.0, 1.0])
     i32 to_int() const { return mValue >> 31; }

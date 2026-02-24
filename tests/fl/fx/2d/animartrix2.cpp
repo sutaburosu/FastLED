@@ -1120,3 +1120,152 @@ FL_TEST_CASE("FP accuracy - RGB_Blobs (z=3+sqrt, 3D Perlin)") {
 FL_TEST_CASE("FP accuracy - SpiralMatrix1 (half-grid mirror)") {
     testFPAccuracy<fl::SpiralMatrix1, fl::SpiralMatrix1_FP>("SpiralMatrix1", 1000, 1.0f, 6);
 }
+
+// ============================================================
+// Comprehensive Float vs Fixed-Point Performance Benchmark
+// Benchmarks ALL animartrix2 visualizations comparing float
+// and FP (fixed-point) variants.
+// ============================================================
+
+namespace {
+
+// Benchmark a Context-based viz: returns average microseconds per frame.
+template <typename Viz>
+double benchmarkViz(int iterations) {
+    XYMap xy = XYMap::constructRectangularGrid(W, H);
+    CRGB leds[N] = {};
+
+    Context ctx;
+    ctx.leds = leds;
+    ctx.xyMapFn = [](u16 x, u16 y, void *userData) -> u16 {
+        XYMap *map = static_cast<XYMap *>(userData);
+        return map->mapToIndex(x, y);
+    };
+    ctx.xyMapUserData = &xy;
+    init(ctx, W, H);
+
+    Viz viz;
+
+    // Warmup
+    for (int i = 0; i < 2; i++) {
+        setTime(ctx, static_cast<uint32_t>(i * 16));
+        viz.draw(ctx);
+    }
+
+    auto start = std::chrono::high_resolution_clock::now(); // okay std namespace
+    for (int i = 0; i < iterations; i++) {
+        setTime(ctx, static_cast<uint32_t>(1000 + i * 16));
+        viz.draw(ctx);
+    }
+    auto end = std::chrono::high_resolution_clock::now(); // okay std namespace
+    auto elapsed_us = std::chrono::duration_cast<std::chrono::microseconds>( // okay std namespace
+                          end - start)
+                          .count();
+    return static_cast<double>(elapsed_us) / iterations;
+}
+
+struct BenchResult {
+    const char *name;
+    double float_us;
+    double fp_us;
+    double speedup;
+};
+
+template <typename FloatViz, typename FPViz>
+BenchResult benchPair(const char *name, int iterations) {
+    double f = benchmarkViz<FloatViz>(iterations);
+    double fp = benchmarkViz<FPViz>(iterations);
+    double speedup = f / fp;
+    return {name, f, fp, speedup};
+}
+
+} // namespace
+
+FL_TEST_CASE("Animartrix2 - Float vs FP performance benchmark (ALL visualizations)") {
+    constexpr int ITERS = 50;
+
+    BenchResult results[] = {
+        benchPair<fl::RGB_Blobs5, fl::RGB_Blobs5_FP>("RGB_Blobs5", ITERS),
+        benchPair<fl::RGB_Blobs4, fl::RGB_Blobs4_FP>("RGB_Blobs4", ITERS),
+        benchPair<fl::RGB_Blobs3, fl::RGB_Blobs3_FP>("RGB_Blobs3", ITERS),
+        benchPair<fl::RGB_Blobs2, fl::RGB_Blobs2_FP>("RGB_Blobs2", ITERS),
+        benchPair<fl::RGB_Blobs, fl::RGB_Blobs_FP>("RGB_Blobs", ITERS),
+        benchPair<fl::Polar_Waves, fl::Polar_Waves_FP>("Polar_Waves", ITERS),
+        benchPair<fl::Slow_Fade, fl::Slow_Fade_FP>("Slow_Fade", ITERS),
+        benchPair<fl::Zoom2, fl::Zoom2_FP>("Zoom2", ITERS),
+        benchPair<fl::Zoom, fl::Zoom_FP>("Zoom", ITERS),
+        benchPair<fl::Hot_Blob, fl::Hot_Blob_FP>("Hot_Blob", ITERS),
+        benchPair<fl::Spiralus2, fl::Spiralus2_FP>("Spiralus2", ITERS),
+        benchPair<fl::Spiralus, fl::Spiralus_FP>("Spiralus", ITERS),
+        benchPair<fl::Yves, fl::Yves_FP>("Yves", ITERS),
+        benchPair<fl::Scaledemo1, fl::Scaledemo1_FP>("Scaledemo1", ITERS),
+        benchPair<fl::Lava1, fl::Lava1_FP>("Lava1", ITERS),
+        benchPair<fl::Caleido3, fl::Caleido3_FP>("Caleido3", ITERS),
+        benchPair<fl::Caleido2, fl::Caleido2_FP>("Caleido2", ITERS),
+        benchPair<fl::Caleido1, fl::Caleido1_FP>("Caleido1", ITERS),
+        benchPair<fl::Distance_Experiment, fl::Distance_Experiment_FP>("Distance_Experiment", ITERS),
+        benchPair<fl::Center_Field, fl::Center_Field_FP>("Center_Field", ITERS),
+        benchPair<fl::Waves, fl::Waves_FP>("Waves", ITERS),
+        benchPair<fl::Chasing_Spirals_Float, fl::Chasing_Spirals_Q31>("Chasing_Spirals", ITERS),
+        benchPair<fl::Rotating_Blob, fl::Rotating_Blob_FP>("Rotating_Blob", ITERS),
+        benchPair<fl::Rings, fl::Rings_FP>("Rings", ITERS),
+        benchPair<fl::Complex_Kaleido, fl::Complex_Kaleido_FP>("Complex_Kaleido", ITERS),
+        benchPair<fl::Complex_Kaleido_2, fl::Complex_Kaleido_2_FP>("Complex_Kaleido_2", ITERS),
+        benchPair<fl::Complex_Kaleido_3, fl::Complex_Kaleido_3_FP>("Complex_Kaleido_3", ITERS),
+        benchPair<fl::Complex_Kaleido_4, fl::Complex_Kaleido_4_FP>("Complex_Kaleido_4", ITERS),
+        benchPair<fl::Complex_Kaleido_5, fl::Complex_Kaleido_5_FP>("Complex_Kaleido_5", ITERS),
+        benchPair<fl::Complex_Kaleido_6, fl::Complex_Kaleido_6_FP>("Complex_Kaleido_6", ITERS),
+        benchPair<fl::Water, fl::Water_FP>("Water", ITERS),
+        benchPair<fl::Parametric_Water, fl::Parametric_Water_FP>("Parametric_Water", ITERS),
+        benchPair<fl::Module_Experiment1, fl::Module_Experiment1_FP>("Module_Experiment1", ITERS),
+        benchPair<fl::Module_Experiment2, fl::Module_Experiment2_FP>("Module_Experiment2", ITERS),
+        benchPair<fl::Module_Experiment3, fl::Module_Experiment3_FP>("Module_Experiment3", ITERS),
+        benchPair<fl::Module_Experiment4, fl::Module_Experiment4_FP>("Module_Experiment4", ITERS),
+        benchPair<fl::Module_Experiment5, fl::Module_Experiment5_FP>("Module_Experiment5", ITERS),
+        benchPair<fl::Module_Experiment6, fl::Module_Experiment6_FP>("Module_Experiment6", ITERS),
+        benchPair<fl::Module_Experiment7, fl::Module_Experiment7_FP>("Module_Experiment7", ITERS),
+        benchPair<fl::Module_Experiment8, fl::Module_Experiment8_FP>("Module_Experiment8", ITERS),
+        benchPair<fl::Module_Experiment9, fl::Module_Experiment9_FP>("Module_Experiment9", ITERS),
+        benchPair<fl::Module_Experiment10, fl::Module_Experiment10_FP>("Module_Experiment10", ITERS),
+        benchPair<fl::SpiralMatrix1, fl::SpiralMatrix1_FP>("SpiralMatrix1", ITERS),
+        benchPair<fl::SpiralMatrix2, fl::SpiralMatrix2_FP>("SpiralMatrix2", ITERS),
+        benchPair<fl::SpiralMatrix3, fl::SpiralMatrix3_FP>("SpiralMatrix3", ITERS),
+        benchPair<fl::SpiralMatrix4, fl::SpiralMatrix4_FP>("SpiralMatrix4", ITERS),
+        benchPair<fl::SpiralMatrix5, fl::SpiralMatrix5_FP>("SpiralMatrix5", ITERS),
+        benchPair<fl::SpiralMatrix6, fl::SpiralMatrix6_FP>("SpiralMatrix6", ITERS),
+        benchPair<fl::SpiralMatrix8, fl::SpiralMatrix8_FP>("SpiralMatrix8", ITERS),
+        benchPair<fl::SpiralMatrix9, fl::SpiralMatrix9_FP>("SpiralMatrix9", ITERS),
+        benchPair<fl::SpiralMatrix10, fl::SpiralMatrix10_FP>("SpiralMatrix10", ITERS),
+        benchPair<fl::Fluffy_Blobs, fl::Fluffy_Blobs_FP>("Fluffy_Blobs", ITERS),
+    };
+
+    const int count = sizeof(results) / sizeof(results[0]);
+
+    // Print table header
+    fl::cout << fl::endl;
+    fl::cout << "=== Float vs Fixed-Point Performance (" << ITERS << " frames, " << W << "x" << H << " grid) ===" << fl::endl;
+    fl::cout << "| Visualization          | Float (us) | FP (us) | Speedup |" << fl::endl;
+    fl::cout << "|------------------------|------------|---------|---------|" << fl::endl;
+
+    double total_float = 0;
+    double total_fp = 0;
+
+    for (int i = 0; i < count; i++) {
+        const auto &r = results[i];
+        total_float += r.float_us;
+        total_fp += r.fp_us;
+
+        fl::cout << "| " << r.name << " | " << r.float_us << " | " << r.fp_us << " | " << r.speedup << "x |" << fl::endl;
+    }
+
+    double overall_speedup = total_float / total_fp;
+    fl::cout << "|------------------------|------------|---------|---------|" << fl::endl;
+    fl::cout << "| TOTAL | " << total_float << " | " << total_fp << " | " << overall_speedup << "x |" << fl::endl;
+    fl::cout << fl::endl;
+
+    // Verify all benchmarks produced valid timing
+    for (int i = 0; i < count; i++) {
+        FL_CHECK_MESSAGE(results[i].float_us > 0, "Float benchmark valid");
+        FL_CHECK_MESSAGE(results[i].fp_us > 0, "FP benchmark valid");
+    }
+}
