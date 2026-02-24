@@ -110,7 +110,7 @@ fl::shared_ptr<RxDevice> RxDevice::create<RxDeviceType::FLEXPWM>(int pin) {
 
 // DEFAULT maps to RMT on ESP32
 template <>
-fl::shared_ptr<RxDevice> RxDevice::create<RxDeviceType::DEFAULT>(int pin) {
+fl::shared_ptr<RxDevice> RxDevice::create<RxDeviceType::PLATFORM_DEFAULT>(int pin) {
     return RxDevice::create<RxDeviceType::RMT>(pin);
 }
 
@@ -142,7 +142,7 @@ fl::shared_ptr<RxDevice> RxDevice::create<RxDeviceType::ISR>(int pin) {
 
 // DEFAULT maps to FLEXPWM on Teensy 4.x
 template <>
-fl::shared_ptr<RxDevice> RxDevice::create<RxDeviceType::DEFAULT>(int pin) {
+fl::shared_ptr<RxDevice> RxDevice::create<RxDeviceType::PLATFORM_DEFAULT>(int pin) {
     return RxDevice::create<RxDeviceType::FLEXPWM>(pin);
 }
 
@@ -168,7 +168,7 @@ fl::shared_ptr<RxDevice> RxDevice::create<RxDeviceType::FLEXPWM>(int pin) {
 
 // DEFAULT maps to RMT on stub (same as ESP32 default)
 template <>
-fl::shared_ptr<RxDevice> RxDevice::create<RxDeviceType::DEFAULT>(int pin) {
+fl::shared_ptr<RxDevice> RxDevice::create<RxDeviceType::PLATFORM_DEFAULT>(int pin) {
     return RxDevice::create<RxDeviceType::RMT>(pin);
 }
 
@@ -197,7 +197,7 @@ fl::shared_ptr<RxDevice> RxDevice::create<RxDeviceType::FLEXPWM>(int pin) {
 
 // DEFAULT maps to RMT on unsupported platforms (returns dummy)
 template <>
-fl::shared_ptr<RxDevice> RxDevice::create<RxDeviceType::DEFAULT>(int pin) {
+fl::shared_ptr<RxDevice> RxDevice::create<RxDeviceType::PLATFORM_DEFAULT>(int pin) {
     return RxDevice::create<RxDeviceType::RMT>(pin);
 }
 

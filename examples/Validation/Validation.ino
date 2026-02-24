@@ -193,7 +193,7 @@
 // Serial port timeout (milliseconds) - wait for serial monitor to attach
 #define SERIAL_TIMEOUT_MS 120000  // 120 seconds
 
-const fl::RxDeviceType RX_TYPE = fl::RxDeviceType::DEFAULT;
+const fl::RxDeviceType RX_TYPE = fl::RxDeviceType::PLATFORM_DEFAULT;
 
 // ============================================================================
 // Platform-Specific Pin Defaults

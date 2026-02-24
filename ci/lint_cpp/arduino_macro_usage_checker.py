@@ -10,7 +10,7 @@ Allowed contexts (skipped by this checker):
 - Preprocessor directives (#define, #undef, #ifdef, #ifndef, #pragma)
 - Platform definition headers (src/platforms/)
 - Third-party code (third_party/)
-- Scoped enum values (e.g., RxDeviceType::DEFAULT)
+- Scoped enum values (e.g., SomeEnum::DEFAULT)
 """
 
 import re
