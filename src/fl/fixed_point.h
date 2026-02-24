@@ -337,7 +337,17 @@ expfp(T x) {
     return powfp(e_val, x);
 }
 
-} // namespace fl
-
 // ---- Cross-type operator implementations (after all types are fully defined) ----
-#include "fl/fixed_point/scalar_ops.h"  // allow-include-after-namespace
+
+// s0x32 × s16x16 → s16x16
+constexpr FASTLED_FORCE_INLINE s16x16 s0x32::operator*(s16x16 b) const {
+    return s16x16::from_raw(static_cast<i32>(
+        (static_cast<i64>(mValue) * b.raw()) >> 31));
+}
+
+// s16x16 × s0x32 → s16x16 (commutative)
+constexpr FASTLED_FORCE_INLINE s16x16 operator*(s16x16 a, s0x32 b) {
+    return b * a;
+}
+
+} // namespace fl
