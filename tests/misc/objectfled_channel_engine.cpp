@@ -7,11 +7,11 @@
 #include "platforms/arm/teensy/teensy4_common/drivers/objectfled/channel_engine_objectfled.h"
 #include "fl/chipsets/chipset_timing_config.h"
 #include "fl/channels/data.h"
-#include "fl/channels/engine.h"
+#include "fl/channels/driver.h"
 #include "test.h"
 
 using namespace fl;
-using EngineState = IChannelEngine::EngineState;
+using DriverState = IChannelDriver::DriverState;
 
 namespace {
 
@@ -123,7 +123,7 @@ FL_TEST_CASE("ObjectFLED engine - invalid pin is skipped") {
 FL_TEST_CASE("ObjectFLED engine - initial state is READY") {
     auto mock = fl::make_shared<ObjectFLEDPeripheralMock>();
     ChannelEngineObjectFLED engine(mock);
-    FL_CHECK(engine.poll() == EngineState::READY);
+    FL_CHECK(engine.poll() == DriverState::READY);
 }
 
 FL_TEST_CASE("ObjectFLED engine - single channel RGB transmission") {
@@ -136,7 +136,7 @@ FL_TEST_CASE("ObjectFLED engine - single channel RGB transmission") {
     engine.enqueue(ch);
     engine.show();
 
-    FL_CHECK(engine.poll() == EngineState::READY);
+    FL_CHECK(engine.poll() == DriverState::READY);
     FL_CHECK(mock->getCreateCount() == 1);
 
     auto* inst = mock->getLastInstance();
@@ -200,7 +200,7 @@ FL_TEST_CASE("ObjectFLED engine - empty enqueue does nothing") {
     ChannelEngineObjectFLED engine(mock);
     engine.show();
     FL_CHECK(mock->getCreateCount() == 0);
-    FL_CHECK(engine.poll() == EngineState::READY);
+    FL_CHECK(engine.poll() == DriverState::READY);
 }
 
 //=============================================================================
@@ -263,7 +263,7 @@ FL_TEST_CASE("ObjectFLED engine - handles createInstance failure") {
     engine.show();
 
     FL_CHECK(mock->getCreateCount() == 1);
-    FL_CHECK(engine.poll() == EngineState::READY);
+    FL_CHECK(engine.poll() == DriverState::READY);
 }
 
 //=============================================================================

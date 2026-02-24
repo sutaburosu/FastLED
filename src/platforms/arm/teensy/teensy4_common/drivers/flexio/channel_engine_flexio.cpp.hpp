@@ -76,7 +76,7 @@ void ChannelEngineFlexIO::show() {
     }
 
     // Wait for any previous transmission (per DMA Wait Pattern)
-    while (poll() != EngineState::READY) {
+    while (poll() != DriverState::READY) {
         // Spin until FlexIO DMA completes
     }
 
@@ -136,7 +136,7 @@ void ChannelEngineFlexIO::show() {
     mTransmittingChannels.clear();
 }
 
-IChannelEngine::EngineState ChannelEngineFlexIO::poll() {
+IChannelDriver::DriverState ChannelEngineFlexIO::poll() {
     if (!mTransmittingChannels.empty()) {
         if (mPeripheral && mPeripheral->isDone()) {
             // Transfer complete — clean up
@@ -144,11 +144,11 @@ IChannelEngine::EngineState ChannelEngineFlexIO::poll() {
                 ch->setInUse(false);
             }
             mTransmittingChannels.clear();
-            return EngineState::READY;
+            return DriverState::READY;
         }
-        return EngineState::BUSY;
+        return DriverState::BUSY;
     }
-    return EngineState::READY;
+    return DriverState::READY;
 }
 
 } // namespace fl

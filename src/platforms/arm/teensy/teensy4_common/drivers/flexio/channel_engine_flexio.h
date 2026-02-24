@@ -1,7 +1,7 @@
 /// @file channel_engine_flexio.h
 /// @brief FlexIO2-based channel engine for Teensy 4.x
 ///
-/// Implements IChannelEngine using FlexIO2 hardware for WS2812 waveform generation.
+/// Implements IChannelDriver using FlexIO2 hardware for WS2812 waveform generation.
 /// Uses 4-timer + 1-shifter architecture with DMA for asynchronous transmission.
 ///
 /// Unlike ObjectFLED (which uses QTimer + XBAR + eDMA + GPIO), this driver uses
@@ -15,7 +15,7 @@
 
 // IWYU pragma: private
 
-#include "fl/channels/engine.h"
+#include "fl/channels/driver.h"
 #include "fl/channels/data.h"
 #include "fl/chipsets/chipset_timing_config.h"
 #include "fl/stl/vector.h"
@@ -37,7 +37,7 @@ class IFlexIOPeripheral;
 ///
 /// Strict chipset filtering: Only handles clockless chipsets with total bit
 /// period 1000-2500ns (standard WS2812/SK6812 range).
-class ChannelEngineFlexIO : public IChannelEngine {
+class ChannelEngineFlexIO : public IChannelDriver {
 public:
     /// @brief Construct with platform-default peripheral
     ChannelEngineFlexIO();
@@ -59,7 +59,7 @@ public:
 
     /// @brief Query engine state
     /// @return READY when idle, BUSY during DMA transfer
-    EngineState poll() override;
+    DriverState poll() override;
 
     /// @brief Get engine name
     /// @return "FLEXIO"

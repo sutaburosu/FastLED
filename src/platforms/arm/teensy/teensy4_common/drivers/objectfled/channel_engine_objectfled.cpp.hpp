@@ -73,7 +73,7 @@ void ChannelEngineObjectFLED::enqueue(ChannelDataPtr channelData) {
 
 void ChannelEngineObjectFLED::show() {
     // Wait for any previous transmission (per DMA Wait Pattern)
-    while (poll() != EngineState::READY) {
+    while (poll() != DriverState::READY) {
         // ObjectFLED show() is synchronous, so this should be instant
     }
 
@@ -237,9 +237,9 @@ void ChannelEngineObjectFLED::show() {
     mTransmittingChannels.clear();
 }
 
-IChannelEngine::EngineState ChannelEngineObjectFLED::poll() {
+IChannelDriver::DriverState ChannelEngineObjectFLED::poll() {
     // ObjectFLED show() is synchronous - always READY after show() returns
-    return EngineState::READY;
+    return DriverState::READY;
 }
 
 } // namespace fl

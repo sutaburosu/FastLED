@@ -1,7 +1,7 @@
 /// @file channel_engine_objectfled.h
 /// @brief ObjectFLED DMA-based channel engine for Teensy 4.x
 ///
-/// Implements IChannelEngine wrapping ObjectFLED's 3:1 DMA bit transposition.
+/// Implements IChannelDriver wrapping ObjectFLED's 3:1 DMA bit transposition.
 /// ObjectFLED's show() is synchronous (blocks until DMA completes), so the
 /// state machine is simply: READY -> BUSY -> READY (no DRAINING).
 ///
@@ -12,7 +12,7 @@
 
 // IWYU pragma: private
 
-#include "fl/channels/engine.h"
+#include "fl/channels/driver.h"
 #include "fl/channels/data.h"
 #include "fl/chipsets/chipset_timing_config.h"
 #include "fl/stl/vector.h"
@@ -38,7 +38,7 @@ class IObjectFLEDPeripheral;
 /// other HD chipsets that use different encoding.
 ///
 /// State machine: READY -> BUSY -> READY (synchronous DMA)
-class ChannelEngineObjectFLED : public IChannelEngine {
+class ChannelEngineObjectFLED : public IChannelDriver {
 public:
     /// @brief Construct with platform-default peripheral
     ChannelEngineObjectFLED();
@@ -60,7 +60,7 @@ public:
 
     /// @brief Query engine state
     /// @return READY (ObjectFLED show() is synchronous, always completes before returning)
-    EngineState poll() override;
+    DriverState poll() override;
 
     /// @brief Get engine name
     /// @return "OBJECTFLED"

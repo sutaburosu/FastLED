@@ -15,12 +15,12 @@
 #include "platforms/arm/teensy/teensy4_common/drivers/flexio/channel_engine_flexio.h"
 #include "fl/chipsets/chipset_timing_config.h"
 #include "fl/channels/data.h"
-#include "fl/channels/engine.h"
+#include "fl/channels/driver.h"
 #include "test.h"
 
 using namespace fl;
 
-using EngineState = IChannelEngine::EngineState;
+using DriverState = IChannelDriver::DriverState;
 
 namespace {
 
@@ -97,7 +97,7 @@ FL_TEST_CASE("FlexIO engine - initial state is READY") {
     auto mock = fl::make_shared<FlexIOPeripheralMock>();
     ChannelEngineFlexIO engine(mock);
 
-    FL_CHECK(engine.poll() == EngineState::READY);
+    FL_CHECK(engine.poll() == DriverState::READY);
 }
 
 FL_TEST_CASE("FlexIO engine - single channel transmission") {
@@ -111,7 +111,7 @@ FL_TEST_CASE("FlexIO engine - single channel transmission") {
     engine.show();
 
     // Mock completes instantly, so should be READY after show()
-    FL_CHECK(engine.poll() == EngineState::READY);
+    FL_CHECK(engine.poll() == DriverState::READY);
 
     // Verify transmission occurred
     FL_CHECK(mock->getTransmissionCount() == 1);
@@ -158,7 +158,7 @@ FL_TEST_CASE("FlexIO engine - empty enqueue does nothing") {
     engine.show();
 
     FL_CHECK(mock->getTransmissionCount() == 0);
-    FL_CHECK(engine.poll() == EngineState::READY);
+    FL_CHECK(engine.poll() == DriverState::READY);
 }
 
 //=============================================================================
@@ -220,7 +220,7 @@ FL_TEST_CASE("FlexIO engine - handles init failure gracefully") {
 
     // Should not crash, but no transmission should occur
     FL_CHECK(mock->getTransmissionCount() == 0);
-    FL_CHECK(engine.poll() == EngineState::READY);
+    FL_CHECK(engine.poll() == DriverState::READY);
 }
 
 #endif // FASTLED_STUB_IMPL
