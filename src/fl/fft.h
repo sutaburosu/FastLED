@@ -67,6 +67,10 @@ struct FFTBins {
 
     fl::size size() const { return mSize; }
 
+    // Read-only span accessors (preferred for consumers)
+    fl::span<const float> raw() const { return bins_raw; }
+    fl::span<const float> db() const { return bins_db; }
+
     // CQ parameters (set by FFTImpl after populating bins)
     float fmin() const { return mFmin; }
     float fmax() const { return mFmax; }
@@ -110,7 +114,7 @@ struct FFTBins {
 
     // Get linearly-rebinned magnitudes. Same number of bins as bins_raw,
     // but evenly spaced from fmin to fmax. Lazy-computed on first access.
-    const fl::vector<float>& getLinearBins() const {
+    fl::span<const float> getLinearBins() const {
         fl::unique_lock<fl::mutex> lock(mLinearMutex);
         if (!mLinearBins.has_value()) {
             mLinearBins = computeLinearBins();
@@ -130,12 +134,12 @@ struct FFTBins {
     int mSampleRate = 44100;
 
     mutable fl::mutex mLinearMutex;
-    mutable fl::optional<fl::vector<float>> mLinearBins;
+    mutable fl::optional<fl::vector_inlined<float, 16>> mLinearBins;
 
     // Redistribute CQ log-spaced energy into linearly-spaced bins
-    fl::vector<float> computeLinearBins() const {
+    fl::vector_inlined<float, 16> computeLinearBins() const {
         const int numBins = static_cast<int>(bins_raw.size());
-        fl::vector<float> linear;
+        fl::vector_inlined<float, 16> linear;
         linear.reserve(numBins);
         if (numBins <= 0) return linear;
 

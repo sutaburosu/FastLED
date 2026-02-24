@@ -297,12 +297,12 @@ void BuildupDetector::updateTrebleHistory(float treble) {
 
 float BuildupDetector::getTrebleEnergy(const FFTBins& fft) const {
     // Calculate high-frequency energy (top 25% of bins)
-    int startBin = static_cast<int>(fft.bins_raw.size() * 0.75f);
+    int startBin = static_cast<int>(fft.raw().size() * 0.75f);
     float energy = 0.0f;
     int count = 0;
 
-    for (fl::size i = startBin; i < fft.bins_raw.size(); i++) {
-        energy += fft.bins_raw[i];
+    for (fl::size i = startBin; i < fft.raw().size(); i++) {
+        energy += fft.raw()[i];
         count++;
     }
 

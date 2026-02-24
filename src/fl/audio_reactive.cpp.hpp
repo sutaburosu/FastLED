@@ -223,7 +223,7 @@ void AudioReactive::mapFFTBinsToFrequencyChannels() {
     // frequency-mapped (linearly spaced from fmin to fmax). Copy them
     // directly instead of re-mapping through FrequencyBinMapper, which
     // incorrectly treats CQ bins as raw DFT bins.
-    const auto& rawBins = mFFTBins.bins_raw;
+    fl::span<const float> rawBins = mFFTBins.raw();
     if (rawBins.empty()) {
         for (int i = 0; i < 16; ++i) {
             mCurrentData.frequencyBins[i] = 0.0f;
@@ -689,8 +689,8 @@ float AudioReactive::mapFrequencyBin(int fromBin, int toBin) {
     
     float sum = 0.0f;
     for (int i = fromBin; i <= toBin; ++i) {
-        if (i < static_cast<int>(mFFTBins.bins_raw.size())) {
-            sum += mFFTBins.bins_raw[i];
+        if (i < static_cast<int>(mFFTBins.raw().size())) {
+            sum += mFFTBins.raw()[i];
         }
     }
     

@@ -84,12 +84,12 @@ float TransientDetector::calculateHighFreqEnergy(const FFTBins& fft) {
     // Focus on mid-high to high frequencies (bins 4-15) for transient detection
     // Low frequencies tend to have slower attack times
     float energy = 0.0f;
-    size numBins = fft.bins_raw.size();
+    size numBins = fft.raw().size();
 
     // Weight higher frequencies more for transient detection
     for (size i = 4; i < numBins; i++) {
         float weight = static_cast<float>(i) / static_cast<float>(numBins);
-        energy += fft.bins_raw[i] * (1.0f + weight);
+        energy += fft.raw()[i] * (1.0f + weight);
     }
 
     size validBins = (numBins > 4) ? (numBins - 4) : 1;

@@ -111,8 +111,8 @@ float MoodAnalyzer::calculateSpectralCentroid(const FFTBins& fft) {
     float weightedSum = 0.0f;
     float magnitudeSum = 0.0f;
 
-    for (size_t i = 0; i < fft.bins_raw.size(); i++) {
-        float magnitude = fft.bins_raw[i];
+    for (size_t i = 0; i < fft.raw().size(); i++) {
+        float magnitude = fft.raw()[i];
         weightedSum += i * magnitude;
         magnitudeSum += magnitude;
     }
@@ -123,19 +123,19 @@ float MoodAnalyzer::calculateSpectralCentroid(const FFTBins& fft) {
 float MoodAnalyzer::calculateSpectralRolloff(const FFTBins& fft, float threshold) {
     float totalEnergy = 0.0f;
 
-    for (size_t i = 0; i < fft.bins_raw.size(); i++) {
-        float magnitude = fft.bins_raw[i];
+    for (size_t i = 0; i < fft.raw().size(); i++) {
+        float magnitude = fft.raw()[i];
         totalEnergy += magnitude * magnitude;
     }
 
     float energyThreshold = totalEnergy * threshold;
     float cumulativeEnergy = 0.0f;
 
-    for (size_t i = 0; i < fft.bins_raw.size(); i++) {
-        float magnitude = fft.bins_raw[i];
+    for (size_t i = 0; i < fft.raw().size(); i++) {
+        float magnitude = fft.raw()[i];
         cumulativeEnergy += magnitude * magnitude;
         if (cumulativeEnergy >= energyThreshold) {
-            return static_cast<float>(i) / fft.bins_raw.size();
+            return static_cast<float>(i) / fft.raw().size();
         }
     }
 
@@ -143,13 +143,13 @@ float MoodAnalyzer::calculateSpectralRolloff(const FFTBins& fft, float threshold
 }
 
 float MoodAnalyzer::calculateSpectralFlux(const FFTBins& fft, const FFTBins* prevFFT) {
-    if (!prevFFT || prevFFT->bins_raw.size() != fft.bins_raw.size()) {
+    if (!prevFFT || prevFFT->raw().size() != fft.raw().size()) {
         return 0.0f;
     }
 
     float flux = 0.0f;
-    for (size_t i = 0; i < fft.bins_raw.size(); i++) {
-        float diff = fft.bins_raw[i] - prevFFT->bins_raw[i];
+    for (size_t i = 0; i < fft.raw().size(); i++) {
+        float diff = fft.raw()[i] - prevFFT->raw()[i];
         flux += diff * diff;
     }
 

@@ -87,7 +87,7 @@ void FrequencyBands::reset() {
 
 float FrequencyBands::calculateBandEnergy(const FFTBins& fft, float minFreq, float maxFreq,
                                            float fftMinFreq, float fftMaxFreq) {
-    const int numBins = static_cast<int>(fft.bins_raw.size());
+    const int numBins = static_cast<int>(fft.raw().size());
     if (numBins <= 1) {
         return 0.0f;
     }
@@ -122,7 +122,7 @@ float FrequencyBands::calculateBandEnergy(const FFTBins& fft, float minFreq, flo
         float binWidth = binHigh - binLow;
         float overlapFraction = (overlapMax - overlapMin) / binWidth;
 
-        totalEnergy += fft.bins_raw[i] * overlapFraction;
+        totalEnergy += fft.raw()[i] * overlapFraction;
         totalWeight += overlapFraction;
     }
 

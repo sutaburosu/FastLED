@@ -55,8 +55,8 @@ void DownbeatDetector::update(shared_ptr<AudioContext> context) {
 
         // Calculate current energy (bass-weighted for accent detection)
         float bassEnergy = 0.0f;
-        for (size i = 0; i < fl::fl_min(static_cast<size>(4), fft.bins_raw.size()); i++) {
-            bassEnergy += fft.bins_raw[i];
+        for (size i = 0; i < fl::fl_min(static_cast<size>(4), fft.raw().size()); i++) {
+            bassEnergy += fft.raw()[i];
         }
         bassEnergy /= 4.0f;
 
@@ -199,10 +199,10 @@ float DownbeatDetector::calculateBeatAccent(const FFTBins& fft, float bassEnergy
 
     // Calculate overall energy
     float totalEnergy = 0.0f;
-    for (size i = 0; i < fft.bins_raw.size(); i++) {
-        totalEnergy += fft.bins_raw[i];
+    for (size i = 0; i < fft.raw().size(); i++) {
+        totalEnergy += fft.raw()[i];
     }
-    totalEnergy /= static_cast<float>(fft.bins_raw.size());
+    totalEnergy /= static_cast<float>(fft.raw().size());
 
     // Bass ratio (downbeats typically have relatively more bass)
     float bassRatio = 1.0f;

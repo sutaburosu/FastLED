@@ -212,7 +212,7 @@ MultibandAccent BackbeatDetector::calculateMultibandAccent(const FFTBins& fft) {
     // Mid: bins 4-10 (~460-2100 Hz) - snare fundamental and harmonics
     // High: bins 11-15 (~2450-4698 Hz) - hi-hats, cymbals
 
-    size numBins = fft.bins_raw.size();
+    size numBins = fft.raw().size();
     if (numBins == 0) {
         accent = {0.0f, 0.0f, 0.0f, 0.0f};
         return accent;
@@ -232,13 +232,13 @@ MultibandAccent BackbeatDetector::calculateMultibandAccent(const FFTBins& fft) {
 
     // Sum energy in each band
     for (size i = 0; i < bassEnd; i++) {
-        bassEnergy += fft.bins_raw[i];
+        bassEnergy += fft.raw()[i];
     }
     for (size i = midStart; i < midEnd; i++) {
-        midEnergy += fft.bins_raw[i];
+        midEnergy += fft.raw()[i];
     }
     for (size i = highStart; i < highEnd; i++) {
-        highEnergy += fft.bins_raw[i];
+        highEnergy += fft.raw()[i];
     }
 
     // Normalize by bin count
@@ -380,12 +380,12 @@ void BackbeatDetector::updateBackbeatProfile(const FFTBins& fft) {
     // Update spectral profile using exponential moving average
     // This learns the typical frequency content of backbeats
 
-    size profileSize = fl::fl_min(mBackbeatSpectralProfile.size(), fft.bins_raw.size());
+    size profileSize = fl::fl_min(mBackbeatSpectralProfile.size(), fft.raw().size());
 
     for (size i = 0; i < profileSize; i++) {
         // EMA: profile = alpha * new + (1 - alpha) * old
         mBackbeatSpectralProfile[i] =
-            (mProfileAlpha * fft.bins_raw[i]) +
+            (mProfileAlpha * fft.raw()[i]) +
             ((1.0f - mProfileAlpha) * mBackbeatSpectralProfile[i]);
     }
 }
@@ -408,16 +408,16 @@ float BackbeatDetector::calculatePatternConfidence(const FFTBins& fft) {
     }
 
     // Calculate normalized correlation
-    size compareSize = fl::fl_min(mBackbeatSpectralProfile.size(), fft.bins_raw.size());
+    size compareSize = fl::fl_min(mBackbeatSpectralProfile.size(), fft.raw().size());
 
     float dotProduct = 0.0f;
     float profileMag = 0.0f;
     float currentMag = 0.0f;
 
     for (size i = 0; i < compareSize; i++) {
-        dotProduct += mBackbeatSpectralProfile[i] * fft.bins_raw[i];
+        dotProduct += mBackbeatSpectralProfile[i] * fft.raw()[i];
         profileMag += mBackbeatSpectralProfile[i] * mBackbeatSpectralProfile[i];
-        currentMag += fft.bins_raw[i] * fft.bins_raw[i];
+        currentMag += fft.raw()[i] * fft.raw()[i];
     }
 
     // Cosine similarity

@@ -105,11 +105,11 @@ void DropDetector::reset() {
 
 float DropDetector::getBassEnergy(const FFTBins& fft) const {
     // Bass = first 25% of bins (sub-bass and bass)
-    int endBin = fl::fl_max(1, static_cast<int>(fft.bins_raw.size() / 4));
+    int endBin = fl::fl_max(1, static_cast<int>(fft.raw().size() / 4));
     float energy = 0.0f;
 
     for (int i = 0; i < endBin; i++) {
-        energy += fft.bins_raw[i];
+        energy += fft.raw()[i];
     }
 
     return energy / static_cast<float>(endBin);
@@ -117,13 +117,13 @@ float DropDetector::getBassEnergy(const FFTBins& fft) const {
 
 float DropDetector::getMidEnergy(const FFTBins& fft) const {
     // Mid = middle 50% of bins (midrange frequencies)
-    int startBin = static_cast<int>(fft.bins_raw.size() / 4);
-    int endBin = static_cast<int>(fft.bins_raw.size() * 3 / 4);
+    int startBin = static_cast<int>(fft.raw().size() / 4);
+    int endBin = static_cast<int>(fft.raw().size() * 3 / 4);
     float energy = 0.0f;
     int count = 0;
 
     for (int i = startBin; i < endBin; i++) {
-        energy += fft.bins_raw[i];
+        energy += fft.raw()[i];
         count++;
     }
 
@@ -132,12 +132,12 @@ float DropDetector::getMidEnergy(const FFTBins& fft) const {
 
 float DropDetector::getTrebleEnergy(const FFTBins& fft) const {
     // Treble = top 25% of bins (high frequencies)
-    int startBin = static_cast<int>(fft.bins_raw.size() * 3 / 4);
+    int startBin = static_cast<int>(fft.raw().size() * 3 / 4);
     float energy = 0.0f;
     int count = 0;
 
-    for (fl::size i = startBin; i < fft.bins_raw.size(); i++) {
-        energy += fft.bins_raw[i];
+    for (fl::size i = startBin; i < fft.raw().size(); i++) {
+        energy += fft.raw()[i];
         count++;
     }
 

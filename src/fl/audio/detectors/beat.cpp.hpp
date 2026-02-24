@@ -47,8 +47,8 @@ void BeatDetector::update(shared_ptr<AudioContext> context) {
     updatePhase(timestamp);
 
     // Update previous magnitudes for next frame
-    for (size i = 0; i < fft.bins_raw.size() && i < mPreviousMagnitudes.size(); i++) {
-        mPreviousMagnitudes[i] = fft.bins_raw[i];
+    for (size i = 0; i < fft.raw().size() && i < mPreviousMagnitudes.size(); i++) {
+        mPreviousMagnitudes[i] = fft.raw()[i];
     }
 }
 
@@ -67,7 +67,7 @@ void BeatDetector::reset() {
 
 float BeatDetector::calculateSpectralFlux(const FFTBins& fft) {
     float flux = 0.0f;
-    size numBins = fl::fl_min(fft.bins_raw.size(), mPreviousMagnitudes.size());
+    size numBins = fl::fl_min(fft.raw().size(), mPreviousMagnitudes.size());
 
     // Only consider the bass quarter of FFT bins for beat detection.
     // Musical beats (kick drums) are characterized by bass/low-mid energy.
@@ -77,7 +77,7 @@ float BeatDetector::calculateSpectralFlux(const FFTBins& fft) {
     if (bassBins < 1) bassBins = 1;
 
     for (size i = 0; i < bassBins; i++) {
-        float diff = fft.bins_raw[i] - mPreviousMagnitudes[i];
+        float diff = fft.raw()[i] - mPreviousMagnitudes[i];
         if (diff > 0.0f) {
             flux += diff;
         }

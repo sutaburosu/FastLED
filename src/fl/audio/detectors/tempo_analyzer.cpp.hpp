@@ -50,9 +50,9 @@ void TempoAnalyzer::update(shared_ptr<AudioContext> context) {
     mPreviousFlux = flux;
 
     // Update per-bin magnitudes for next frame's spectral flux calculation
-    size numBins = fl::fl_min(static_cast<size>(8), fft.bins_raw.size());
+    size numBins = fl::fl_min(static_cast<size>(8), fft.raw().size());
     for (size i = 0; i < numBins && i < mPreviousMagnitudes.size(); i++) {
-        mPreviousMagnitudes[i] = fft.bins_raw[i];
+        mPreviousMagnitudes[i] = fft.raw()[i];
     }
 
     // Prune weak hypotheses
@@ -108,11 +108,11 @@ void TempoAnalyzer::reset() {
 float TempoAnalyzer::calculateSpectralFlux(const FFTBins& fft) {
     // Focus on low-to-mid frequencies for beat detection
     float flux = 0.0f;
-    size numBins = fl::fl_min(static_cast<size>(8), fft.bins_raw.size());
+    size numBins = fl::fl_min(static_cast<size>(8), fft.raw().size());
     numBins = fl::fl_min(numBins, mPreviousMagnitudes.size());
 
     for (size i = 0; i < numBins; i++) {
-        float diff = fft.bins_raw[i] - mPreviousMagnitudes[i];
+        float diff = fft.raw()[i] - mPreviousMagnitudes[i];
         if (diff > 0.0f) {
             flux += diff;
         }

@@ -24,7 +24,7 @@ void VocalDetector::update(shared_ptr<AudioContext> context) {
     mSampleRate = context->getSampleRate();
     mRetainedFFT = context->getFFT(128);
     const FFTBins& fft = *mRetainedFFT;
-    mNumBins = static_cast<int>(fft.bins_raw.size());
+    mNumBins = static_cast<int>(fft.raw().size());
 
     // Calculate spectral features
     mSpectralCentroid = calculateSpectralCentroid(fft);
@@ -84,8 +84,8 @@ float VocalDetector::calculateSpectralCentroid(const FFTBins& fft) {
     float weightedSum = 0.0f;
     float magnitudeSum = 0.0f;
 
-    for (fl::size i = 0; i < fft.bins_raw.size(); i++) {
-        float magnitude = fft.bins_raw[i];
+    for (fl::size i = 0; i < fft.raw().size(); i++) {
+        float magnitude = fft.raw()[i];
         weightedSum += i * magnitude;
         magnitudeSum += magnitude;
     }
@@ -98,8 +98,8 @@ float VocalDetector::calculateSpectralRolloff(const FFTBins& fft) {
     float totalEnergy = 0.0f;
 
     // Calculate total energy
-    for (fl::size i = 0; i < fft.bins_raw.size(); i++) {
-        float magnitude = fft.bins_raw[i];
+    for (fl::size i = 0; i < fft.raw().size(); i++) {
+        float magnitude = fft.raw()[i];
         totalEnergy += magnitude * magnitude;
     }
 
@@ -107,11 +107,11 @@ float VocalDetector::calculateSpectralRolloff(const FFTBins& fft) {
     float cumulativeEnergy = 0.0f;
 
     // Find rolloff point
-    for (fl::size i = 0; i < fft.bins_raw.size(); i++) {
-        float magnitude = fft.bins_raw[i];
+    for (fl::size i = 0; i < fft.raw().size(); i++) {
+        float magnitude = fft.raw()[i];
         cumulativeEnergy += magnitude * magnitude;
         if (cumulativeEnergy >= energyThreshold) {
-            return static_cast<float>(i) / fft.bins_raw.size();
+            return static_cast<float>(i) / fft.raw().size();
         }
     }
 
@@ -119,10 +119,10 @@ float VocalDetector::calculateSpectralRolloff(const FFTBins& fft) {
 }
 
 float VocalDetector::estimateFormantRatio(const FFTBins& fft) {
-    if (fft.bins_raw.size() < 8) return 0.0f;
+    if (fft.raw().size() < 8) return 0.0f;
 
     // Use CQ log-spaced bin mapping via FFTBins methods
-    const int numBins = static_cast<int>(fft.bins_raw.size());
+    const int numBins = static_cast<int>(fft.raw().size());
 
     // F1 range: 500-900 Hz (first vocal formant)
     const int f1MinBin = fl::max(0, fft.freqToBin(500.0f));
@@ -135,13 +135,13 @@ float VocalDetector::estimateFormantRatio(const FFTBins& fft) {
     // Find peak energy in F1 range
     float f1Energy = 0.0f;
     for (int i = f1MinBin; i <= f1MaxBin && i < numBins; i++) {
-        f1Energy = fl::max(f1Energy, fft.bins_raw[i]);
+        f1Energy = fl::max(f1Energy, fft.raw()[i]);
     }
 
     // Find peak energy in F2 range
     float f2Energy = 0.0f;
     for (int i = f2MinBin; i <= f2MaxBin && i < numBins; i++) {
-        f2Energy = fl::max(f2Energy, fft.bins_raw[i]);
+        f2Energy = fl::max(f2Energy, fft.raw()[i]);
     }
 
     return (f1Energy < 1e-6f) ? 0.0f : f2Energy / f1Energy;

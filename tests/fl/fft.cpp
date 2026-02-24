@@ -445,7 +445,7 @@ FL_TEST_CASE("fl::FFTBins - linear bins redistribute energy") {
     fl::FFT fft;
     fft.run(fl::span<const fl::i16>(samples.data(), samples.size()), &bins);
 
-    const fl::vector<float>& linear = bins.getLinearBins();
+    fl::span<const float> linear = bins.getLinearBins();
     FL_CHECK_EQ(linear.size(), static_cast<fl::size>(bands));
 
     // Find peak in linear bins
@@ -491,7 +491,7 @@ FL_TEST_CASE("fl::FFTBins - multi-freq CQ and linear mapping") {
         FL_CHECK_LE(diff, 1);
 
         // Linear bin check
-        const fl::vector<float>& linear = bins.getLinearBins();
+        fl::span<const float> linear = bins.getLinearBins();
         int linPeakBin = 0;
         float linPeakVal = 0.0f;
         for (int i = 0; i < bands; ++i) {
