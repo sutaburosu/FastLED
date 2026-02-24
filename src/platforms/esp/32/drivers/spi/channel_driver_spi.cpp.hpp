@@ -359,7 +359,7 @@ IChannelDriver::DriverState ChannelEngineSpi::poll() {
     }
 
     // Pipeline idle — check for any channels needing cleanup
-    bool anyDraining = false;
+    bool anyBusy = false;
     for (auto &channel : mChannels) {
         if (!channel.inUse) continue;
         if (channel.transmissionComplete) {
@@ -368,7 +368,7 @@ IChannelDriver::DriverState ChannelEngineSpi::poll() {
             }
             releaseChannel(&channel);
         } else {
-            anyDraining = true;
+            anyBusy = true;
         }
     }
 
@@ -397,7 +397,7 @@ IChannelDriver::DriverState ChannelEngineSpi::pollChannels() {
             }
             releaseChannel(&channel);
         } else {
-            anyDraining = true;
+            anyBusy = true;
         }
     }
 

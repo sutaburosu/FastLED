@@ -17,7 +17,7 @@
 
 // Phase 0: Include PARLIO debug instrumentation
 #if defined(ESP32) && FASTLED_ESP32_HAS_PARLIO
-#include "platforms/esp/32/drivers/parlio/channel_engine_parlio.h"
+#include "platforms/esp/32/drivers/parlio/channel_driver_parlio.h"
 #endif
 
 /// @brief Dump raw edge timing data to console for debugging

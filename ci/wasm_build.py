@@ -315,11 +315,13 @@ def compile_sketch(
     emcc = get_emcc()
     object_path = build_dir / "sketch.o"
 
-    # Check if recompilation needed (simple mtime check)
+    # Check if recompilation needed (mtime check against wrapper and library)
+    library_archive = build_dir / "ci" / "meson" / "wasm" / "libfastled.a"
     if object_path.exists() and not verbose:
-        wrapper_mtime = wrapper_path.stat().st_mtime
         object_mtime = object_path.stat().st_mtime
-        if wrapper_mtime <= object_mtime:
+        wrapper_mtime = wrapper_path.stat().st_mtime
+        lib_mtime = library_archive.stat().st_mtime if library_archive.exists() else 0
+        if wrapper_mtime <= object_mtime and lib_mtime <= object_mtime:
             print("[WASM] Sketch is up-to-date")
             return object_path
 
