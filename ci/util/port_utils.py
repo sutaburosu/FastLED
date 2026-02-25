@@ -35,6 +35,7 @@ CHIP_TO_ENVIRONMENT: dict[str, str] = {
     "ESP32-C3": "esp32c3",
     "ESP32-C2": "esp32c2",
     "ESP32-H2": "esp32h2",
+    "ESP32-P4": "esp32p4",
     "ESP32": "esp32dev",  # Generic ESP32 (original)
     "ESP8266": "esp8266",  # ESP8266
 }

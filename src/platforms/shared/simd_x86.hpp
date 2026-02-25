@@ -113,9 +113,6 @@ FASTLED_FORCE_INLINE FL_IRAM simd_u8x16 add_sat_u8_16(simd_u8x16 a, simd_u8x16 b
 }
 
 FASTLED_FORCE_INLINE FL_IRAM simd_u8x16 scale_u8_16(simd_u8x16 vec, u8 scale) noexcept {
-    if (scale == 255) {
-        return vec;  // Identity
-    }
     if (scale == 0) {
         return _mm_setzero_si128();
     }
