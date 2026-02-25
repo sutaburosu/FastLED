@@ -12,6 +12,7 @@
 
 // Subdirectory implementations (alphabetical order - one level down only)
 #include "platforms/adafruit/_build.cpp.hpp"
+#include "platforms/apollo3/_build.cpp.hpp"
 #include "platforms/arduino/_build.cpp.hpp"
 #include "platforms/arm/_build.cpp.hpp"
 #include "platforms/avr/_build.cpp.hpp"

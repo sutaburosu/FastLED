@@ -682,6 +682,11 @@ struct JsonValue {
     JsonValue(fl::nullptr_t) noexcept : data(nullptr) {}
     JsonValue(bool b) noexcept : data(b) {}
     JsonValue(i64 i) noexcept : data(i) {}
+    // Explicit int/unsigned constructors to prevent ambiguity on platforms where
+    // int != i64 (e.g., 32-bit ARM with GCC). Without these, int is equally
+    // convertible to bool, i64, and float.
+    JsonValue(int i) noexcept : data(static_cast<i64>(i)) {}
+    JsonValue(unsigned int i) noexcept : data(static_cast<i64>(i)) {}
     JsonValue(float f) noexcept : data(f) {}  // Changed from double to float
     JsonValue(const fl::string& s) : data(s) {
     }

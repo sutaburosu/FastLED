@@ -250,6 +250,9 @@ NATIVE_TO_MODERN_DEFINES: dict[str, str] = {
     "SPARK": "FL_IS_STM32_F2",
     # ── Apollo3 bare define ─────────────────────────────────────────
     "APOLLO3": "FL_IS_APOLLO3",
+    # ── Teensy SDK defines ────────────────────────────────────────────
+    "TEENSYDUINO": "FL_IS_TEENSY",
+    "CORE_TEENSY": "FL_IS_TEENSY",
     # ── FastLED Teensy convenience defines ──────────────────────────
     "FASTLED_TEENSY3": "FL_IS_TEENSY_3X",
     "FASTLED_TEENSY4": "FL_IS_TEENSY_4X",
@@ -394,8 +397,8 @@ class NativePlatformDefinesChecker(FileContentChecker):
             if path_obj.parent == PLATFORMS_ROOT:
                 return False
 
-            # Pattern 1: fastpin_*.h — all fastpin files are pin dispatch headers
-            if file_name.startswith("fastpin_"):
+            # Pattern 1: fastpin_*.h / fastspi_*.h — pin and SPI dispatch/implementation headers
+            if file_name.startswith("fastpin_") or file_name.startswith("fastspi_"):
                 return False
 
             # Pattern 2: led_sysdefs_<platform>.h

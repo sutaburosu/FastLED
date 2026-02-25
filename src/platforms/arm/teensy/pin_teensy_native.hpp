@@ -2,6 +2,8 @@
 
 // IWYU pragma: private
 
+#include "platforms/arm/teensy/is_teensy.h"
+
 /// @file platforms/arm/teensy/pin_teensy_native.hpp
 /// Native Teensy pin implementation (non-Arduino builds)
 ///
@@ -18,7 +20,7 @@
 /// Note: Teensy core provides these functions in both Arduino and non-Arduino builds.
 /// The Teensy core headers (core_pins.h) define the standard Arduino-like functions.
 
-#if defined(CORE_TEENSY)
+#if defined(FL_IS_TEENSY)
     // Teensy core is available - use native Teensy functions
     // These are defined in the Teensy core's core_pins.h
     // IWYU pragma: begin_keep
@@ -60,7 +62,7 @@ namespace platforms {
 // ============================================================================
 
 inline void pinMode(int pin, fl::PinMode mode) {
-#if defined(CORE_TEENSY)
+#if defined(FL_IS_TEENSY)
     // Translate PinMode to Teensy core constants
     // PinMode::Input=0, Output=1, InputPullup=2, InputPulldown=3
     // Teensy: INPUT=0, OUTPUT=1, INPUT_PULLUP=2, INPUT_PULLDOWN (Teensy-specific)
@@ -96,7 +98,7 @@ inline void pinMode(int pin, fl::PinMode mode) {
 // ============================================================================
 
 inline void digitalWrite(int pin, fl::PinValue val) {
-#if defined(CORE_TEENSY)
+#if defined(FL_IS_TEENSY)
     ::digitalWrite(pin, static_cast<int>(val));  // PinValue::Low=0, High=1
 #else
     // No-op: Teensy core not available
@@ -106,7 +108,7 @@ inline void digitalWrite(int pin, fl::PinValue val) {
 }
 
 inline fl::PinValue digitalRead(int pin) {
-#if defined(CORE_TEENSY)
+#if defined(FL_IS_TEENSY)
     return ::digitalRead(pin) ? fl::PinValue::High : fl::PinValue::Low;
 #else
     // No-op: Teensy core not available
@@ -120,7 +122,7 @@ inline fl::PinValue digitalRead(int pin) {
 // ============================================================================
 
 inline u16 analogRead(int pin) {
-#if defined(CORE_TEENSY)
+#if defined(FL_IS_TEENSY)
     return static_cast<u16>(::analogRead(pin));
 #else
     // No-op: Teensy core not available
@@ -130,7 +132,7 @@ inline u16 analogRead(int pin) {
 }
 
 inline void analogWrite(int pin, u16 val) {
-#if defined(CORE_TEENSY)
+#if defined(FL_IS_TEENSY)
     ::analogWrite(pin, val);
 #else
     // No-op: Teensy core not available
@@ -140,7 +142,7 @@ inline void analogWrite(int pin, u16 val) {
 }
 
 inline void setPwm16(int pin, u16 val) {
-#if defined(CORE_TEENSY)
+#if defined(FL_IS_TEENSY)
     // Teensy native path: Use analogWriteResolution for 16-bit PWM
     analogWriteResolution(16);
     ::analogWrite(pin, val);
@@ -152,7 +154,7 @@ inline void setPwm16(int pin, u16 val) {
 }
 
 inline void setAdcRange(fl::AdcRange range) {
-#if defined(CORE_TEENSY)
+#if defined(FL_IS_TEENSY)
     // Translate AdcRange to Teensy analogReference() constants
     // Teensy supports: DEFAULT, INTERNAL, EXTERNAL
     int ref_mode;
@@ -182,7 +184,7 @@ inline void setAdcRange(fl::AdcRange range) {
 // PWM Frequency Control
 // ============================================================================
 
-#if defined(CORE_TEENSY)
+#if defined(FL_IS_TEENSY)
 
 namespace {
     struct TeensyPwmFreq {

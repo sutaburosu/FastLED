@@ -16,6 +16,22 @@
 #include <DMAChannel.h>
 // IWYU pragma: end_keep
 
+// The Teensy framework defines FLEXIO2_* as macros that expand to struct member
+// accesses (e.g. IMXRT_FLEXIO2.offset010). We need to #undef them so we can
+// define our own register accessors that support array indexing.
+#undef FLEXIO2_CTRL
+#undef FLEXIO2_SHIFTSTAT
+#undef FLEXIO2_SHIFTERR
+#undef FLEXIO2_TIMSTAT
+#undef FLEXIO2_SHIFTSDEN
+#undef FLEXIO2_SHIFTCTL
+#undef FLEXIO2_SHIFTCFG
+#undef FLEXIO2_SHIFTBUF
+#undef FLEXIO2_SHIFTBUFBIS
+#undef FLEXIO2_TIMCTL
+#undef FLEXIO2_TIMCFG
+#undef FLEXIO2_TIMCMP
+
 namespace fl {
 
 // ============================================================================

@@ -219,8 +219,8 @@ inline void setAdcRange(AdcRange range) {
 #endif
 
 // Maximum number of LEDC channels we manage
-// ESP32-C3, ESP32-C6 and ESP32-H2 have 6 channels, others have 8
-#if defined(FL_IS_ESP_32C3) || defined(FL_IS_ESP_32C6) || defined(FL_IS_ESP_32H2)
+// ESP32-C2, ESP32-C3, ESP32-C5, ESP32-C6 and ESP32-H2 have 6 channels, others have 8
+#if defined(FL_IS_ESP_32C2) || defined(FL_IS_ESP_32C3) || defined(FL_IS_ESP_32C5) || defined(FL_IS_ESP_32C6) || defined(FL_IS_ESP_32H2)
 #define FL_LEDC_MAX_CHANNELS 6
 #else
 #define FL_LEDC_MAX_CHANNELS 8

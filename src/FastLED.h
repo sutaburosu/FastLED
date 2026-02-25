@@ -184,8 +184,12 @@
 #include "fl/stl/math.h"
 
 // Bring fl:: math functions into global namespace for Arduino compatibility
+// Teensy platforms define their own template min/max in wiring.h (global namespace),
+// so we skip bringing fl::min/fl::max into global scope to avoid ambiguity.
+#if !defined(FL_IS_TEENSY)
 using fl::min;
 using fl::max;
+#endif
 using fl::abs;
 using fl::radians;
 using fl::degrees;

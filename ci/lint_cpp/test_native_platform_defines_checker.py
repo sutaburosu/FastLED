@@ -555,6 +555,7 @@ class TestMappingIntegrity(unittest.TestCase):
             "FL_IS_STM32_F1",
             "FL_IS_NRF52",
             "FL_IS_SAMD21",
+            "FL_IS_TEENSY",
             "FL_IS_TEENSY_3X",
             # OS detection
             "FL_IS_WIN",
