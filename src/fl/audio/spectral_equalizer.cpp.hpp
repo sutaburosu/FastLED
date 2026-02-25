@@ -175,13 +175,13 @@ void SpectralEqualizer::apply(span<const float> inputBins, span<float> outputBin
         outputSum *= makeupGain;
     }
 
-    // Update stats (mutable in const method for statistics)
-    const_cast<SpectralEqualizer*>(this)->mStats.applicationsCount++;
-    const_cast<SpectralEqualizer*>(this)->mStats.lastInputPeak = inputPeak;
-    const_cast<SpectralEqualizer*>(this)->mStats.lastOutputPeak = outputPeak;
-    const_cast<SpectralEqualizer*>(this)->mStats.lastMakeupGain = makeupGain;
-    const_cast<SpectralEqualizer*>(this)->mStats.avgInputLevel = inputSum / static_cast<float>(mConfig.numBands);
-    const_cast<SpectralEqualizer*>(this)->mStats.avgOutputLevel = outputSum / static_cast<float>(mConfig.numBands);
+    // Update mutable stats
+    mStats.applicationsCount++;
+    mStats.lastInputPeak = inputPeak;
+    mStats.lastOutputPeak = outputPeak;
+    mStats.lastMakeupGain = makeupGain;
+    mStats.avgInputLevel = inputSum / static_cast<float>(mConfig.numBands);
+    mStats.avgOutputLevel = outputSum / static_cast<float>(mConfig.numBands);
 }
 
 float SpectralEqualizer::calculateMakeupGain(span<const float> inputBins, span<const float> outputBins) const {

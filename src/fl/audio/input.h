@@ -8,6 +8,7 @@
 #include "fl/stl/variant.h"
 #include "fl/stl/shared_ptr.h"
 #include "fl/audio.h"
+#include "fl/audio/mic_profiles.h"
 #include "fl/compiler_control.h"
 #include "platforms/audio.h"
 
@@ -144,7 +145,9 @@ public:
     // The most common microphone on Amazon as of 2025-September.
     static AudioConfig CreateInmp441(int pin_ws, int pin_sd, int pin_clk, AudioChannel channel, u16 sample_rate = 44100ul, int i2s_num = 0) {
         AudioConfigI2S config(pin_ws, pin_sd, pin_clk, i2s_num, channel, sample_rate, 16);
-        return AudioConfig(config);
+        AudioConfig out(config);
+        out.setMicProfile(MicProfile::INMP441);
+        return out;
     }
 
     // Factory method for Teensy I2S microphones (INMP441, ICS43432, SPH0645LM4H, etc.)
@@ -177,8 +180,14 @@ public:
     void setGain(float gain) { mGain = gain; }
     float getGain() const { return mGain; }
 
+    /// Microphone pink noise correction profile.
+    /// Compensates for the frequency response of specific microphones.
+    void setMicProfile(MicProfile profile) { mMicProfile = profile; }
+    MicProfile getMicProfile() const { return mMicProfile; }
+
 private:
     float mGain = 1.0f;
+    MicProfile mMicProfile = MicProfile::None;
 };
 
 class IAudioInput {

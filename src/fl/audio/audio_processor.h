@@ -3,6 +3,7 @@
 #include "fl/audio.h"
 #include "fl/audio/audio_context.h"
 #include "fl/audio/audio_detector.h"
+#include "fl/audio/mic_profiles.h"
 #include "fl/audio/signal_conditioner.h"
 #include "fl/audio/noise_floor_tracker.h"
 #include "fl/stl/shared_ptr.h"
@@ -246,6 +247,11 @@ public:
     float getEqAutoGain();
     bool getEqIsSilence();
 
+    // Equalizer P2: peak detection and dB mapping
+    float getEqDominantFreqHz();     ///< Frequency of strongest bin (Hz)
+    float getEqDominantMagnitude();  ///< Magnitude of strongest bin (0.0-1.0)
+    float getEqVolumeDb();           ///< Volume in approximate dB
+
     // ----- Configuration -----
     /// Set the sample rate for all frequency-based calculations.
     /// This propagates to AudioContext and all detectors.
@@ -264,6 +270,13 @@ public:
     void setSignalConditioningEnabled(bool enabled);
     /// Enable/disable noise floor tracking
     void setNoiseFloorTrackingEnabled(bool enabled);
+
+    // ----- Microphone Profile -----
+    /// Set microphone correction profile for frequency response compensation.
+    /// This is a property of the physical microphone hardware.
+    /// Propagates to EqualizerDetector as pink noise correction gains.
+    void setMicProfile(MicProfile profile);
+    MicProfile getMicProfile() const { return mMicProfile; }
 
     /// Configure signal conditioner
     void configureSignalConditioner(const SignalConditionerConfig& config);
@@ -286,6 +299,7 @@ private:
     float mGain = 1.0f;
     bool mSignalConditioningEnabled = true;
     bool mNoiseFloorTrackingEnabled = false;
+    MicProfile mMicProfile = MicProfile::None;
     SignalConditioner mSignalConditioner;
     NoiseFloorTracker mNoiseFloorTracker;
     shared_ptr<AudioContext> mContext;

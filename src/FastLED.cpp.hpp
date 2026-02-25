@@ -696,6 +696,9 @@ fl::shared_ptr<fl::AudioProcessor> CFastLED::add(const fl::AudioConfig& config) 
     }
     input->start();
     auto processor = fl::AudioProcessor::createWithAutoInput(fl::move(input));
+    if (config.getMicProfile() != fl::MicProfile::None) {
+        processor->setMicProfile(config.getMicProfile());
+    }
     mAudioProcessors.push_back(processor);
     return processor;
 #elif SKETCH_HAS_LOTS_OF_MEMORY

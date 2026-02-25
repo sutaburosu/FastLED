@@ -611,6 +611,18 @@ bool AudioProcessor::getEqIsSilence() {
     return getEqualizerDetector()->getIsSilence();
 }
 
+float AudioProcessor::getEqDominantFreqHz() {
+    return getEqualizerDetector()->getDominantFreqHz();
+}
+
+float AudioProcessor::getEqDominantMagnitude() {
+    return clamp01(getEqualizerDetector()->getDominantMagnitude());
+}
+
+float AudioProcessor::getEqVolumeDb() {
+    return getEqualizerDetector()->getVolumeDb();
+}
+
 void AudioProcessor::setSampleRate(int sampleRate) {
     mSampleRate = sampleRate;
     mContext->setSampleRate(sampleRate);
@@ -649,6 +661,13 @@ void AudioProcessor::configureSignalConditioner(const SignalConditionerConfig& c
 void AudioProcessor::configureNoiseFloorTracker(const NoiseFloorTrackerConfig& config) {
     mNoiseFloorTracker.configure(config);
     mNoiseFloorTrackingEnabled = config.enabled;
+}
+
+void AudioProcessor::setMicProfile(MicProfile profile) {
+    mMicProfile = profile;
+    if (mEqualizerDetector) {
+        mEqualizerDetector->setMicProfile(profile);
+    }
 }
 
 void AudioProcessor::configureEqualizer(const EqualizerConfig& config) {
@@ -845,6 +864,9 @@ shared_ptr<DropDetector> AudioProcessor::getDropDetector() {
 shared_ptr<EqualizerDetector> AudioProcessor::getEqualizerDetector() {
     if (!mEqualizerDetector) {
         mEqualizerDetector = make_shared<EqualizerDetector>();
+        if (mMicProfile != MicProfile::None) {
+            mEqualizerDetector->setMicProfile(mMicProfile);
+        }
         registerDetector(mEqualizerDetector);
     }
     return mEqualizerDetector;

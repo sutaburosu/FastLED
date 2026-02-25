@@ -134,7 +134,7 @@ private:
     float applyCompression(float value) const;
 
     SpectralEqualizerConfig mConfig;
-    Stats mStats;
+    mutable Stats mStats;
 
     /// Per-band gain multipliers
     vector<float> mGains;

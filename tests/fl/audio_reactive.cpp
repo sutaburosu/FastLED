@@ -1313,7 +1313,7 @@ FL_TEST_CASE("AudioProcessor - equalizer callback has autoGain and isSilence") {
 
     proc.onEqualizer([&](const Equalizer& eq) {
         callbackFired = true;
-        receivedAutoGain = eq.autoGain;
+        receivedAutoGain = eq.volumeNormFactor;
         receivedIsSilence = eq.isSilence;
     });
 
@@ -1654,7 +1654,7 @@ static void checkEqBounds(const Equalizer& eq) {
     FL_CHECK_LE(eq.volume, 1.0f);
     FL_CHECK_GE(eq.zcf, 0.0f);
     FL_CHECK_LE(eq.zcf, 1.0f);
-    FL_CHECK_GE(eq.autoGain, 0.0f);
+    FL_CHECK_GE(eq.volumeNormFactor, 0.0f);
     // Check all 16 bins
     for (int b = 0; b < Equalizer::kNumBins; ++b) {
         FL_CHECK_GE(eq.bins[b], 0.0f);
@@ -1665,7 +1665,7 @@ static void checkEqBounds(const Equalizer& eq) {
     FL_CHECK_FALSE(eq.mid != eq.mid);
     FL_CHECK_FALSE(eq.treble != eq.treble);
     FL_CHECK_FALSE(eq.volume != eq.volume);
-    FL_CHECK_FALSE(eq.autoGain != eq.autoGain);
+    FL_CHECK_FALSE(eq.volumeNormFactor != eq.volumeNormFactor);
 }
 
 FL_TEST_CASE("Loud - bass sine detected in bass band, all values bounded") {
