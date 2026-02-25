@@ -382,6 +382,132 @@ FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 and_u32_4(simd_u32x4 a, simd_u32x4 b) no
     return result;
 }
 
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 load_u32_4_aligned(const u32* ptr) noexcept {
+    const u32* p = FL_ASSUME_ALIGNED(ptr, 16);
+    simd_u32x4 result;
+    for (int i = 0; i < 4; ++i) {
+        result.data[i] = p[i];
+    }
+    return result;
+}
+
+FASTLED_FORCE_INLINE FL_IRAM void store_u32_4_aligned(u32* ptr, simd_u32x4 vec) noexcept {
+    u32* p = FL_ASSUME_ALIGNED(ptr, 16);
+    for (int i = 0; i < 4; ++i) {
+        p[i] = vec.data[i];
+    }
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 set_u32_4(u32 a, u32 b, u32 c, u32 d) noexcept {
+    simd_u32x4 result;
+    result.data[0] = a;
+    result.data[1] = b;
+    result.data[2] = c;
+    result.data[3] = d;
+    return result;
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 or_u32_4(simd_u32x4 a, simd_u32x4 b) noexcept {
+    simd_u32x4 result;
+    for (int i = 0; i < 4; ++i) {
+        result.data[i] = a.data[i] | b.data[i];
+    }
+    return result;
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 sll_u32_4(simd_u32x4 vec, int shift) noexcept {
+    simd_u32x4 result;
+    for (int i = 0; i < 4; ++i) {
+        result.data[i] = vec.data[i] << shift;
+    }
+    return result;
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 sra_i32_4(simd_u32x4 vec, int shift) noexcept {
+    simd_u32x4 result;
+    for (int i = 0; i < 4; ++i) {
+        i32 signed_val = static_cast<i32>(vec.data[i]);
+        result.data[i] = static_cast<u32>(signed_val >> shift);
+    }
+    return result;
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 mulhi_u32_4(simd_u32x4 a, simd_u32x4 b) noexcept {
+    simd_u32x4 result;
+    for (int i = 0; i < 4; ++i) {
+        u64 prod = static_cast<u64>(a.data[i]) * static_cast<u64>(b.data[i]);
+        result.data[i] = static_cast<u32>(prod >> 16);
+    }
+    return result;
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 mulhi_su32_4(simd_u32x4 a, simd_u32x4 b) noexcept {
+    return mulhi_i32_4(a, b);
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 mulhi32_i32_4(simd_u32x4 a, simd_u32x4 b) noexcept {
+    simd_u32x4 result;
+    for (int i = 0; i < 4; ++i) {
+        i32 ai = static_cast<i32>(a.data[i]);
+        i32 bi = static_cast<i32>(b.data[i]);
+        i64 prod = static_cast<i64>(ai) * static_cast<i64>(bi);
+        result.data[i] = static_cast<u32>(static_cast<i32>(prod >> 32));
+    }
+    return result;
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 min_i32_4(simd_u32x4 a, simd_u32x4 b) noexcept {
+    simd_u32x4 result;
+    for (int i = 0; i < 4; ++i) {
+        i32 ai = static_cast<i32>(a.data[i]);
+        i32 bi = static_cast<i32>(b.data[i]);
+        result.data[i] = static_cast<u32>(ai < bi ? ai : bi);
+    }
+    return result;
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 max_i32_4(simd_u32x4 a, simd_u32x4 b) noexcept {
+    simd_u32x4 result;
+    for (int i = 0; i < 4; ++i) {
+        i32 ai = static_cast<i32>(a.data[i]);
+        i32 bi = static_cast<i32>(b.data[i]);
+        result.data[i] = static_cast<u32>(ai > bi ? ai : bi);
+    }
+    return result;
+}
+
+FASTLED_FORCE_INLINE FL_IRAM u32 extract_u32_4(simd_u32x4 vec, int lane) noexcept {
+    return vec.data[lane];
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 unpacklo_u32_4(simd_u32x4 a, simd_u32x4 b) noexcept {
+    simd_u32x4 result;
+    result.data[0] = a.data[0]; result.data[1] = b.data[0];
+    result.data[2] = a.data[1]; result.data[3] = b.data[1];
+    return result;
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 unpackhi_u32_4(simd_u32x4 a, simd_u32x4 b) noexcept {
+    simd_u32x4 result;
+    result.data[0] = a.data[2]; result.data[1] = b.data[2];
+    result.data[2] = a.data[3]; result.data[3] = b.data[3];
+    return result;
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 unpacklo_u64_as_u32_4(simd_u32x4 a, simd_u32x4 b) noexcept {
+    simd_u32x4 result;
+    result.data[0] = a.data[0]; result.data[1] = a.data[1];
+    result.data[2] = b.data[0]; result.data[3] = b.data[1];
+    return result;
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 unpackhi_u64_as_u32_4(simd_u32x4 a, simd_u32x4 b) noexcept {
+    simd_u32x4 result;
+    result.data[0] = a.data[2]; result.data[1] = a.data[3];
+    result.data[2] = b.data[2]; result.data[3] = b.data[3];
+    return result;
+}
+
 }  // namespace platforms
 }  // namespace simd
 }  // namespace fl

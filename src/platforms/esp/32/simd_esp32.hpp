@@ -20,7 +20,9 @@
     #include "platforms/esp/32/simd_xtensa.hpp"
 #elif defined(__riscv)
     // RISC-V-based ESP32 variants (C2, C3, C5, C6, H2, P4)
-    #include "platforms/esp/32/simd_riscv.hpp"
+    // RISC-V SIMD ops are untested - using scalar fallback for now
+    #warning "RISC-V SIMD ops are untested, using scalar noop fallback"
+    #include "platforms/shared/simd_noop.hpp"
 #else
     #error "Unknown ESP32 architecture (expected __XTENSA__ or __riscv)"
 #endif

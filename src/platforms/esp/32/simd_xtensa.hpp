@@ -21,9 +21,9 @@
 // Xtensa PIE intrinsics (available on ESP32, ESP32-S2, ESP32-S3)
 #if FL_HAS_INCLUDE(<xtensa/tie/xt_PIE.h>)
   #include <xtensa/tie/xt_PIE.h>  // IWYU pragma: keep
-  #define FASTLED_XTENSA_HAS_PIE 1
+  #define FL_XTENSA_HAS_PIE 1
 #else
-  #define FASTLED_XTENSA_HAS_PIE 0
+  #define FL_XTENSA_HAS_PIE 0
 #endif
 
 //==============================================================================
@@ -109,7 +109,6 @@ FASTLED_FORCE_INLINE FL_IRAM void store_f32_4(float* ptr, simd_f32x4 vec) noexce
 
 FASTLED_FORCE_INLINE FL_IRAM simd_u8x16 add_sat_u8_16(simd_u8x16 a, simd_u8x16 b) noexcept {
     simd_u8x16 result;
-    // PIE-ready: This loop can be replaced with ee.vadds.u8
     for (int i = 0; i < 16; ++i) {
         u16 sum = static_cast<u16>(a.data[i]) + static_cast<u16>(b.data[i]);
         result.data[i] = (sum > 255) ? 255 : static_cast<u8>(sum);
@@ -118,26 +117,42 @@ FASTLED_FORCE_INLINE FL_IRAM simd_u8x16 add_sat_u8_16(simd_u8x16 a, simd_u8x16 b
 }
 
 FASTLED_FORCE_INLINE FL_IRAM simd_u8x16 scale_u8_16(simd_u8x16 vec, u8 scale) noexcept {
-    if (scale == 255) {
-        return vec;
-    }
-
     simd_u8x16 result;
-    // PIE-ready: This loop can be replaced with ee.vmulas.u8.qacc
     for (int i = 0; i < 16; ++i) {
         result.data[i] = static_cast<u8>((static_cast<u16>(vec.data[i]) * scale) >> 8);
     }
     return result;
 }
 
+#if FL_XTENSA_HAS_PIE
+
 FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 set1_u32_4(u32 value) noexcept {
-    // PIE-ready: Can be replaced with ee.vldbc.32 (broadcast load)
+    simd_u32x4 result;
+    // Put value on stack so ee.vldbc.32 can broadcast it
+    FL_ALIGNAS(4) u32 tmp = value;
+    const u32* p = &tmp;
+    u32* pr = result.data;
+    asm volatile(
+        "ee.vldbc.32 q0, %[p]\n"
+        "ee.vst.128.ip q0, %[pr], 0\n"
+        : [p] "+r"(p), [pr] "+r"(pr)
+        :
+        : "memory"
+    );
+    return result;
+}
+
+#else
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 set1_u32_4(u32 value) noexcept {
     simd_u32x4 result;
     for (int i = 0; i < 4; ++i) {
         result.data[i] = value;
     }
     return result;
 }
+
+#endif  // FL_XTENSA_HAS_PIE
 
 FASTLED_FORCE_INLINE FL_IRAM simd_u8x16 blend_u8_16(simd_u8x16 a, simd_u8x16 b, u8 amount) noexcept {
     simd_u8x16 result;
@@ -154,6 +169,80 @@ FASTLED_FORCE_INLINE FL_IRAM simd_u8x16 blend_u8_16(simd_u8x16 a, simd_u8x16 b, 
 //==============================================================================
 // Atomic Bitwise Operations
 //==============================================================================
+
+#if FL_XTENSA_HAS_PIE
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u8x16 and_u8_16(simd_u8x16 a, simd_u8x16 b) noexcept {
+    simd_u8x16 result;
+    const u8* pa = a.data;
+    const u8* pb = b.data;
+    u8* pr = result.data;
+    asm volatile(
+        "ee.vld.128.ip q0, %[pa], 0\n"
+        "ee.vld.128.ip q1, %[pb], 0\n"
+        "ee.andq q2, q0, q1\n"
+        "ee.vst.128.ip q2, %[pr], 0\n"
+        : [pa] "+r"(pa), [pb] "+r"(pb), [pr] "+r"(pr)
+        :
+        : "memory"
+    );
+    return result;
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u8x16 or_u8_16(simd_u8x16 a, simd_u8x16 b) noexcept {
+    simd_u8x16 result;
+    const u8* pa = a.data;
+    const u8* pb = b.data;
+    u8* pr = result.data;
+    asm volatile(
+        "ee.vld.128.ip q0, %[pa], 0\n"
+        "ee.vld.128.ip q1, %[pb], 0\n"
+        "ee.orq q2, q0, q1\n"
+        "ee.vst.128.ip q2, %[pr], 0\n"
+        : [pa] "+r"(pa), [pb] "+r"(pb), [pr] "+r"(pr)
+        :
+        : "memory"
+    );
+    return result;
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u8x16 xor_u8_16(simd_u8x16 a, simd_u8x16 b) noexcept {
+    simd_u8x16 result;
+    const u8* pa = a.data;
+    const u8* pb = b.data;
+    u8* pr = result.data;
+    asm volatile(
+        "ee.vld.128.ip q0, %[pa], 0\n"
+        "ee.vld.128.ip q1, %[pb], 0\n"
+        "ee.xorq q2, q0, q1\n"
+        "ee.vst.128.ip q2, %[pr], 0\n"
+        : [pa] "+r"(pa), [pb] "+r"(pb), [pr] "+r"(pr)
+        :
+        : "memory"
+    );
+    return result;
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u8x16 andnot_u8_16(simd_u8x16 a, simd_u8x16 b) noexcept {
+    // andnot = ~a & b
+    simd_u8x16 result;
+    const u8* pa = a.data;
+    const u8* pb = b.data;
+    u8* pr = result.data;
+    asm volatile(
+        "ee.vld.128.ip q0, %[pa], 0\n"
+        "ee.vld.128.ip q1, %[pb], 0\n"
+        "ee.notq q0, q0\n"
+        "ee.andq q2, q0, q1\n"
+        "ee.vst.128.ip q2, %[pr], 0\n"
+        : [pa] "+r"(pa), [pb] "+r"(pb), [pr] "+r"(pr)
+        :
+        : "memory"
+    );
+    return result;
+}
+
+#else  // !FL_XTENSA_HAS_PIE
 
 FASTLED_FORCE_INLINE FL_IRAM simd_u8x16 and_u8_16(simd_u8x16 a, simd_u8x16 b) noexcept {
     simd_u8x16 result;
@@ -187,13 +276,13 @@ FASTLED_FORCE_INLINE FL_IRAM simd_u8x16 andnot_u8_16(simd_u8x16 a, simd_u8x16 b)
     return result;
 }
 
+#endif  // FL_XTENSA_HAS_PIE
+
 
 FASTLED_FORCE_INLINE FL_IRAM simd_u8x16 sub_sat_u8_16(simd_u8x16 a, simd_u8x16 b) noexcept {
     simd_u8x16 result;
-    // PIE-ready: This loop can be replaced with ee.vsubs.u8
     for (int i = 0; i < 16; ++i) {
-        i16 diff = static_cast<i16>(a.data[i]) - static_cast<i16>(b.data[i]);
-        result.data[i] = (diff < 0) ? 0 : static_cast<u8>(diff);
+        result.data[i] = (a.data[i] > b.data[i]) ? (a.data[i] - b.data[i]) : 0;
     }
     return result;
 }
@@ -310,6 +399,27 @@ FASTLED_FORCE_INLINE FL_IRAM simd_f32x4 max_f32_4(simd_f32x4 a, simd_f32x4 b) no
 // Int32 SIMD Operations (Scalar Fallback)
 //==============================================================================
 
+#if FL_XTENSA_HAS_PIE
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 xor_u32_4(simd_u32x4 a, simd_u32x4 b) noexcept {
+    simd_u32x4 result;
+    const u32* pa = a.data;
+    const u32* pb = b.data;
+    u32* pr = result.data;
+    asm volatile(
+        "ee.vld.128.ip q0, %[pa], 0\n"
+        "ee.vld.128.ip q1, %[pb], 0\n"
+        "ee.xorq q2, q0, q1\n"
+        "ee.vst.128.ip q2, %[pr], 0\n"
+        : [pa] "+r"(pa), [pb] "+r"(pb), [pr] "+r"(pr)
+        :
+        : "memory"
+    );
+    return result;
+}
+
+#else
+
 FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 xor_u32_4(simd_u32x4 a, simd_u32x4 b) noexcept {
     simd_u32x4 result;
     for (int i = 0; i < 4; ++i) {
@@ -317,6 +427,8 @@ FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 xor_u32_4(simd_u32x4 a, simd_u32x4 b) no
     }
     return result;
 }
+
+#endif  // FL_XTENSA_HAS_PIE
 
 FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 add_i32_4(simd_u32x4 a, simd_u32x4 b) noexcept {
     simd_u32x4 result;
@@ -357,11 +469,215 @@ FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 srl_u32_4(simd_u32x4 vec, int shift) noe
     return result;
 }
 
+#if FL_XTENSA_HAS_PIE
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 and_u32_4(simd_u32x4 a, simd_u32x4 b) noexcept {
+    simd_u32x4 result;
+    const u32* pa = a.data;
+    const u32* pb = b.data;
+    u32* pr = result.data;
+    asm volatile(
+        "ee.vld.128.ip q0, %[pa], 0\n"
+        "ee.vld.128.ip q1, %[pb], 0\n"
+        "ee.andq q2, q0, q1\n"
+        "ee.vst.128.ip q2, %[pr], 0\n"
+        : [pa] "+r"(pa), [pb] "+r"(pb), [pr] "+r"(pr)
+        :
+        : "memory"
+    );
+    return result;
+}
+
+#else
+
 FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 and_u32_4(simd_u32x4 a, simd_u32x4 b) noexcept {
     simd_u32x4 result;
     for (int i = 0; i < 4; ++i) {
         result.data[i] = a.data[i] & b.data[i];
     }
+    return result;
+}
+
+#endif  // FL_XTENSA_HAS_PIE
+
+#if FL_XTENSA_HAS_PIE
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 load_u32_4_aligned(const u32* ptr) noexcept {
+    simd_u32x4 result;
+    const u32* p = FL_ASSUME_ALIGNED(ptr, 16);
+    u32* pr = result.data;
+    asm volatile(
+        "ee.vld.128.ip q0, %[p], 0\n"
+        "ee.vst.128.ip q0, %[pr], 0\n"
+        : [p] "+r"(p), [pr] "+r"(pr)
+        :
+        : "memory"
+    );
+    return result;
+}
+
+FASTLED_FORCE_INLINE FL_IRAM void store_u32_4_aligned(u32* ptr, simd_u32x4 vec) noexcept {
+    u32* p = FL_ASSUME_ALIGNED(ptr, 16);
+    const u32* pv = vec.data;
+    asm volatile(
+        "ee.vld.128.ip q0, %[pv], 0\n"
+        "ee.vst.128.ip q0, %[p], 0\n"
+        : [pv] "+r"(pv), [p] "+r"(p)
+        :
+        : "memory"
+    );
+}
+
+#else
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 load_u32_4_aligned(const u32* ptr) noexcept {
+    const u32* p = FL_ASSUME_ALIGNED(ptr, 16);
+    simd_u32x4 result;
+    for (int i = 0; i < 4; ++i) {
+        result.data[i] = p[i];
+    }
+    return result;
+}
+
+FASTLED_FORCE_INLINE FL_IRAM void store_u32_4_aligned(u32* ptr, simd_u32x4 vec) noexcept {
+    u32* p = FL_ASSUME_ALIGNED(ptr, 16);
+    for (int i = 0; i < 4; ++i) {
+        p[i] = vec.data[i];
+    }
+}
+
+#endif  // FL_XTENSA_HAS_PIE
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 set_u32_4(u32 a, u32 b, u32 c, u32 d) noexcept {
+    simd_u32x4 result;
+    result.data[0] = a;
+    result.data[1] = b;
+    result.data[2] = c;
+    result.data[3] = d;
+    return result;
+}
+
+#if FL_XTENSA_HAS_PIE
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 or_u32_4(simd_u32x4 a, simd_u32x4 b) noexcept {
+    simd_u32x4 result;
+    const u32* pa = a.data;
+    const u32* pb = b.data;
+    u32* pr = result.data;
+    asm volatile(
+        "ee.vld.128.ip q0, %[pa], 0\n"
+        "ee.vld.128.ip q1, %[pb], 0\n"
+        "ee.orq q2, q0, q1\n"
+        "ee.vst.128.ip q2, %[pr], 0\n"
+        : [pa] "+r"(pa), [pb] "+r"(pb), [pr] "+r"(pr)
+        :
+        : "memory"
+    );
+    return result;
+}
+
+#else
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 or_u32_4(simd_u32x4 a, simd_u32x4 b) noexcept {
+    simd_u32x4 result;
+    for (int i = 0; i < 4; ++i) {
+        result.data[i] = a.data[i] | b.data[i];
+    }
+    return result;
+}
+
+#endif  // FL_XTENSA_HAS_PIE
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 sll_u32_4(simd_u32x4 vec, int shift) noexcept {
+    simd_u32x4 result;
+    for (int i = 0; i < 4; ++i) {
+        result.data[i] = vec.data[i] << shift;
+    }
+    return result;
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 sra_i32_4(simd_u32x4 vec, int shift) noexcept {
+    simd_u32x4 result;
+    for (int i = 0; i < 4; ++i) {
+        i32 signed_val = static_cast<i32>(vec.data[i]);
+        result.data[i] = static_cast<u32>(signed_val >> shift);
+    }
+    return result;
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 mulhi_u32_4(simd_u32x4 a, simd_u32x4 b) noexcept {
+    simd_u32x4 result;
+    for (int i = 0; i < 4; ++i) {
+        u64 prod = static_cast<u64>(a.data[i]) * static_cast<u64>(b.data[i]);
+        result.data[i] = static_cast<u32>(prod >> 16);
+    }
+    return result;
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 mulhi_su32_4(simd_u32x4 a, simd_u32x4 b) noexcept {
+    return mulhi_i32_4(a, b);
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 mulhi32_i32_4(simd_u32x4 a, simd_u32x4 b) noexcept {
+    simd_u32x4 result;
+    for (int i = 0; i < 4; ++i) {
+        i32 ai = static_cast<i32>(a.data[i]);
+        i32 bi = static_cast<i32>(b.data[i]);
+        i64 prod = static_cast<i64>(ai) * static_cast<i64>(bi);
+        result.data[i] = static_cast<u32>(static_cast<i32>(prod >> 32));
+    }
+    return result;
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 min_i32_4(simd_u32x4 a, simd_u32x4 b) noexcept {
+    simd_u32x4 result;
+    for (int i = 0; i < 4; ++i) {
+        i32 ai = static_cast<i32>(a.data[i]);
+        i32 bi = static_cast<i32>(b.data[i]);
+        result.data[i] = static_cast<u32>(ai < bi ? ai : bi);
+    }
+    return result;
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 max_i32_4(simd_u32x4 a, simd_u32x4 b) noexcept {
+    simd_u32x4 result;
+    for (int i = 0; i < 4; ++i) {
+        i32 ai = static_cast<i32>(a.data[i]);
+        i32 bi = static_cast<i32>(b.data[i]);
+        result.data[i] = static_cast<u32>(ai > bi ? ai : bi);
+    }
+    return result;
+}
+
+FASTLED_FORCE_INLINE FL_IRAM u32 extract_u32_4(simd_u32x4 vec, int lane) noexcept {
+    return vec.data[lane];
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 unpacklo_u32_4(simd_u32x4 a, simd_u32x4 b) noexcept {
+    simd_u32x4 result;
+    result.data[0] = a.data[0]; result.data[1] = b.data[0];
+    result.data[2] = a.data[1]; result.data[3] = b.data[1];
+    return result;
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 unpackhi_u32_4(simd_u32x4 a, simd_u32x4 b) noexcept {
+    simd_u32x4 result;
+    result.data[0] = a.data[2]; result.data[1] = b.data[2];
+    result.data[2] = a.data[3]; result.data[3] = b.data[3];
+    return result;
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 unpacklo_u64_as_u32_4(simd_u32x4 a, simd_u32x4 b) noexcept {
+    simd_u32x4 result;
+    result.data[0] = a.data[0]; result.data[1] = a.data[1];
+    result.data[2] = b.data[0]; result.data[3] = b.data[1];
+    return result;
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 unpackhi_u64_as_u32_4(simd_u32x4 a, simd_u32x4 b) noexcept {
+    simd_u32x4 result;
+    result.data[0] = a.data[2]; result.data[1] = a.data[3];
+    result.data[2] = b.data[2]; result.data[3] = b.data[3];
     return result;
 }
 

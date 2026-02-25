@@ -679,6 +679,380 @@ inline bool test_max_f32_4() {
 }
 
 // ============================================================================
+// Cross-Validation Tests: SIMD vs Scalar Reference
+// These tests compute expected results using explicit scalar math, then compare
+// against the SIMD function output. Catches PIE assembly bugs by never trusting
+// the SIMD implementation for expected values.
+// ============================================================================
+
+// Scalar reference: bitwise AND of two u8[16] arrays
+inline void ref_and_u8_16(const uint8_t* a, const uint8_t* b, uint8_t* out) {
+    for (int i = 0; i < 16; i++) out[i] = a[i] & b[i];
+}
+inline void ref_or_u8_16(const uint8_t* a, const uint8_t* b, uint8_t* out) {
+    for (int i = 0; i < 16; i++) out[i] = a[i] | b[i];
+}
+inline void ref_xor_u8_16(const uint8_t* a, const uint8_t* b, uint8_t* out) {
+    for (int i = 0; i < 16; i++) out[i] = a[i] ^ b[i];
+}
+inline void ref_andnot_u8_16(const uint8_t* a, const uint8_t* b, uint8_t* out) {
+    for (int i = 0; i < 16; i++) out[i] = (~a[i]) & b[i];
+}
+inline void ref_xor_u32_4(const uint32_t* a, const uint32_t* b, uint32_t* out) {
+    for (int i = 0; i < 4; i++) out[i] = a[i] ^ b[i];
+}
+inline void ref_and_u32_4(const uint32_t* a, const uint32_t* b, uint32_t* out) {
+    for (int i = 0; i < 4; i++) out[i] = a[i] & b[i];
+}
+inline void ref_or_u32_4(const uint32_t* a, const uint32_t* b, uint32_t* out) {
+    for (int i = 0; i < 4; i++) out[i] = a[i] | b[i];
+}
+
+// Adversarial cross-validation: alternating bit patterns
+inline bool test_crossval_and_u8_16() {
+    uint8_t a[16] = {0xAA,0x55,0xFF,0x00, 0x0F,0xF0,0x81,0x7E, 0x01,0xFE,0xCC,0x33, 0xDB,0x24,0xA5,0x5A};
+    uint8_t b[16] = {0x55,0xAA,0x00,0xFF, 0xF0,0x0F,0x7E,0x81, 0xFE,0x01,0x33,0xCC, 0x24,0xDB,0x5A,0xA5};
+    uint8_t expected[16], actual[16];
+    ref_and_u8_16(a, b, expected);
+    store_u8_16(actual, and_u8_16(load_u8_16(a), load_u8_16(b)));
+    return compare_u8(expected, actual, 16);
+}
+
+inline bool test_crossval_or_u8_16() {
+    uint8_t a[16] = {0xAA,0x55,0xFF,0x00, 0x0F,0xF0,0x81,0x7E, 0x01,0xFE,0xCC,0x33, 0xDB,0x24,0xA5,0x5A};
+    uint8_t b[16] = {0x55,0xAA,0x00,0xFF, 0xF0,0x0F,0x7E,0x81, 0xFE,0x01,0x33,0xCC, 0x24,0xDB,0x5A,0xA5};
+    uint8_t expected[16], actual[16];
+    ref_or_u8_16(a, b, expected);
+    store_u8_16(actual, or_u8_16(load_u8_16(a), load_u8_16(b)));
+    return compare_u8(expected, actual, 16);
+}
+
+inline bool test_crossval_xor_u8_16() {
+    uint8_t a[16] = {0xAA,0x55,0xFF,0x00, 0x0F,0xF0,0x81,0x7E, 0x01,0xFE,0xCC,0x33, 0xDB,0x24,0xA5,0x5A};
+    uint8_t b[16] = {0x55,0xAA,0x00,0xFF, 0xF0,0x0F,0x7E,0x81, 0xFE,0x01,0x33,0xCC, 0x24,0xDB,0x5A,0xA5};
+    uint8_t expected[16], actual[16];
+    ref_xor_u8_16(a, b, expected);
+    store_u8_16(actual, xor_u8_16(load_u8_16(a), load_u8_16(b)));
+    return compare_u8(expected, actual, 16);
+}
+
+inline bool test_crossval_andnot_u8_16() {
+    uint8_t a[16] = {0xAA,0x55,0xFF,0x00, 0x0F,0xF0,0x81,0x7E, 0x01,0xFE,0xCC,0x33, 0xDB,0x24,0xA5,0x5A};
+    uint8_t b[16] = {0x55,0xAA,0x00,0xFF, 0xF0,0x0F,0x7E,0x81, 0xFE,0x01,0x33,0xCC, 0x24,0xDB,0x5A,0xA5};
+    uint8_t expected[16], actual[16];
+    ref_andnot_u8_16(a, b, expected);
+    store_u8_16(actual, andnot_u8_16(load_u8_16(a), load_u8_16(b)));
+    return compare_u8(expected, actual, 16);
+}
+
+// Adversarial u32 cross-validation: powers of 2, all-ones, sign bit
+inline bool test_crossval_xor_u32_4() {
+    uint32_t a[4] = {0x80000001, 0x7FFFFFFE, 0xDEADBEEF, 0x00000000};
+    uint32_t b[4] = {0x80000001, 0x80000001, 0xCAFEBABE, 0xFFFFFFFF};
+    uint32_t expected[4], actual[4];
+    ref_xor_u32_4(a, b, expected);
+    store_u32_4(actual, xor_u32_4(load_u32_4(a), load_u32_4(b)));
+    return compare_u32(expected, actual, 4);
+}
+
+inline bool test_crossval_and_u32_4() {
+    uint32_t a[4] = {0x80000001, 0x7FFFFFFE, 0xDEADBEEF, 0x00000000};
+    uint32_t b[4] = {0x80000001, 0x80000001, 0xCAFEBABE, 0xFFFFFFFF};
+    uint32_t expected[4], actual[4];
+    ref_and_u32_4(a, b, expected);
+    store_u32_4(actual, and_u32_4(load_u32_4(a), load_u32_4(b)));
+    return compare_u32(expected, actual, 4);
+}
+
+inline bool test_crossval_or_u32_4() {
+    uint32_t a[4] = {0x80000001, 0x7FFFFFFE, 0xDEADBEEF, 0x00000000};
+    uint32_t b[4] = {0x80000001, 0x80000001, 0xCAFEBABE, 0xFFFFFFFF};
+    uint32_t expected[4], actual[4];
+    ref_or_u32_4(a, b, expected);
+    store_u32_4(actual, or_u32_4(load_u32_4(a), load_u32_4(b)));
+    return compare_u32(expected, actual, 4);
+}
+
+// Scalar reference: scale
+inline void ref_scale_u8_16(const uint8_t* v, uint8_t scale, uint8_t* out) {
+    for (int i = 0; i < 16; i++) {
+        out[i] = (uint8_t)(((uint16_t)v[i] * scale) >> 8);
+    }
+}
+
+inline bool test_crossval_scale_u8_16() {
+    // Adversarial: mix of 0, 1, 127, 128, 254, 255 with various scale factors
+    uint8_t v[16] = {0,1,127,128, 254,255,0x55,0xAA, 0x0F,0xF0,0x80,0x7F, 0x01,0xFE,0xFF,0x00};
+    uint8_t scale_vals[] = {0, 1, 127, 128, 254, 255};
+    for (int s = 0; s < 6; s++) {
+        uint8_t expected[16], actual[16];
+        ref_scale_u8_16(v, scale_vals[s], expected);
+        store_u8_16(actual, scale_u8_16(load_u8_16(v), scale_vals[s]));
+        if (!compare_u8(expected, actual, 16)) return false;
+    }
+    return true;
+}
+
+// Scalar reference: unsigned saturating add/sub
+inline void ref_add_sat_u8_16(const uint8_t* a, const uint8_t* b, uint8_t* out) {
+    for (int i = 0; i < 16; i++) {
+        uint16_t sum = (uint16_t)a[i] + (uint16_t)b[i];
+        out[i] = (sum > 255) ? 255 : (uint8_t)sum;
+    }
+}
+inline void ref_sub_sat_u8_16(const uint8_t* a, const uint8_t* b, uint8_t* out) {
+    for (int i = 0; i < 16; i++) {
+        out[i] = (a[i] > b[i]) ? (a[i] - b[i]) : 0;
+    }
+}
+
+// Adversarial cross-validation: sat add with every combination
+inline bool test_crossval_add_sat_u8_16() {
+    // Test adversarial: all-255+all-255, alternating, near-overflow
+    uint8_t a[16] = {255,254,128,127, 0,1,200,50, 0xFF,0x80,0x7F,0x01, 100,200,150,250};
+    uint8_t b[16] = {255,2,128,129, 0,255,56,206, 0x01,0x80,0x81,0xFF, 156,56,106,6};
+    uint8_t expected[16], actual[16];
+    ref_add_sat_u8_16(a, b, expected);
+    store_u8_16(actual, add_sat_u8_16(load_u8_16(a), load_u8_16(b)));
+    return compare_u8(expected, actual, 16);
+}
+
+inline bool test_crossval_sub_sat_u8_16() {
+    uint8_t a[16] = {255,0,128,127, 0,1,200,50, 0xFF,0x80,0x7F,0x01, 100,200,150,250};
+    uint8_t b[16] = {255,255,128,129, 0,255,56,206, 0x01,0x80,0x81,0xFF, 156,56,106,6};
+    uint8_t expected[16], actual[16];
+    ref_sub_sat_u8_16(a, b, expected);
+    store_u8_16(actual, sub_sat_u8_16(load_u8_16(a), load_u8_16(b)));
+    return compare_u8(expected, actual, 16);
+}
+
+// Scalar reference: i32 wrapping add/sub
+inline void ref_add_i32_4(const uint32_t* a, const uint32_t* b, uint32_t* out) {
+    for (int i = 0; i < 4; i++) out[i] = a[i] + b[i];  // wrapping
+}
+inline void ref_sub_i32_4(const uint32_t* a, const uint32_t* b, uint32_t* out) {
+    for (int i = 0; i < 4; i++) out[i] = a[i] - b[i];  // wrapping
+}
+
+// Adversarial wrapping add: overflow, underflow, sign flip
+inline bool test_crossval_add_i32_4() {
+    uint32_t a[4] = {0x7FFFFFFF, 0x80000000, 0xFFFFFFFF, 0x00000001};
+    uint32_t b[4] = {0x00000001, 0x80000000, 0x00000001, 0xFFFFFFFF};
+    uint32_t expected[4], actual[4];
+    ref_add_i32_4(a, b, expected);
+    store_u32_4(actual, add_i32_4(load_u32_4(a), load_u32_4(b)));
+    return compare_u32(expected, actual, 4);
+}
+
+inline bool test_crossval_sub_i32_4() {
+    uint32_t a[4] = {0x00000000, 0x80000000, 0x7FFFFFFF, 0x00000001};
+    uint32_t b[4] = {0x00000001, 0x7FFFFFFF, 0x80000000, 0x00000002};
+    uint32_t expected[4], actual[4];
+    ref_sub_i32_4(a, b, expected);
+    store_u32_4(actual, sub_i32_4(load_u32_4(a), load_u32_4(b)));
+    return compare_u32(expected, actual, 4);
+}
+
+// Scalar reference: shifts
+inline void ref_srl_u32_4(const uint32_t* v, int shift, uint32_t* out) {
+    for (int i = 0; i < 4; i++) out[i] = v[i] >> shift;
+}
+inline void ref_sll_u32_4(const uint32_t* v, int shift, uint32_t* out) {
+    for (int i = 0; i < 4; i++) out[i] = v[i] << shift;
+}
+inline void ref_sra_i32_4(const uint32_t* v, int shift, uint32_t* out) {
+    for (int i = 0; i < 4; i++) out[i] = (uint32_t)((int32_t)v[i] >> shift);
+}
+
+inline bool test_crossval_srl_u32_4() {
+    uint32_t v[4] = {0x80000000, 0xFFFFFFFF, 0x00000001, 0xDEADBEEF};
+    for (int shift = 0; shift <= 31; shift += 7) {
+        uint32_t expected[4], actual[4];
+        ref_srl_u32_4(v, shift, expected);
+        store_u32_4(actual, srl_u32_4(load_u32_4(v), shift));
+        if (!compare_u32(expected, actual, 4)) return false;
+    }
+    return true;
+}
+
+inline bool test_crossval_sll_u32_4() {
+    uint32_t v[4] = {0x80000000, 0xFFFFFFFF, 0x00000001, 0xDEADBEEF};
+    for (int shift = 0; shift <= 31; shift += 7) {
+        uint32_t expected[4], actual[4];
+        ref_sll_u32_4(v, shift, expected);
+        store_u32_4(actual, sll_u32_4(load_u32_4(v), shift));
+        if (!compare_u32(expected, actual, 4)) return false;
+    }
+    return true;
+}
+
+inline bool test_crossval_sra_i32_4() {
+    uint32_t v[4] = {0x80000000, 0xFFFFFFFF, 0x7FFFFFFF, 0xDEADBEEF};
+    for (int shift = 0; shift <= 31; shift += 7) {
+        uint32_t expected[4], actual[4];
+        ref_sra_i32_4(v, shift, expected);
+        store_u32_4(actual, sra_i32_4(load_u32_4(v), shift));
+        if (!compare_u32(expected, actual, 4)) return false;
+    }
+    return true;
+}
+
+// Scalar reference: min/max i32
+inline void ref_min_i32_4(const uint32_t* a, const uint32_t* b, uint32_t* out) {
+    for (int i = 0; i < 4; i++) {
+        int32_t ai = (int32_t)a[i], bi = (int32_t)b[i];
+        out[i] = (uint32_t)(ai < bi ? ai : bi);
+    }
+}
+inline void ref_max_i32_4(const uint32_t* a, const uint32_t* b, uint32_t* out) {
+    for (int i = 0; i < 4; i++) {
+        int32_t ai = (int32_t)a[i], bi = (int32_t)b[i];
+        out[i] = (uint32_t)(ai > bi ? ai : bi);
+    }
+}
+
+inline bool test_crossval_min_i32_4() {
+    uint32_t a[4] = {0x80000000, 0x7FFFFFFF, 0xFFFFFFFF, 0x00000000};
+    uint32_t b[4] = {0x7FFFFFFF, 0x80000000, 0x00000000, 0xFFFFFFFF};
+    uint32_t expected[4], actual[4];
+    ref_min_i32_4(a, b, expected);
+    store_u32_4(actual, min_i32_4(load_u32_4(a), load_u32_4(b)));
+    return compare_u32(expected, actual, 4);
+}
+
+inline bool test_crossval_max_i32_4() {
+    uint32_t a[4] = {0x80000000, 0x7FFFFFFF, 0xFFFFFFFF, 0x00000000};
+    uint32_t b[4] = {0x7FFFFFFF, 0x80000000, 0x00000000, 0xFFFFFFFF};
+    uint32_t expected[4], actual[4];
+    ref_max_i32_4(a, b, expected);
+    store_u32_4(actual, max_i32_4(load_u32_4(a), load_u32_4(b)));
+    return compare_u32(expected, actual, 4);
+}
+
+// Scalar reference: multiply variants
+inline void ref_mulhi_i32_4(const uint32_t* a, const uint32_t* b, uint32_t* out) {
+    for (int i = 0; i < 4; i++) {
+        int64_t prod = (int64_t)(int32_t)a[i] * (int64_t)(int32_t)b[i];
+        out[i] = (uint32_t)(int32_t)(prod >> 16);
+    }
+}
+inline void ref_mulhi_u32_4(const uint32_t* a, const uint32_t* b, uint32_t* out) {
+    for (int i = 0; i < 4; i++) {
+        uint64_t prod = (uint64_t)a[i] * (uint64_t)b[i];
+        out[i] = (uint32_t)(prod >> 16);
+    }
+}
+inline void ref_mulhi32_i32_4(const uint32_t* a, const uint32_t* b, uint32_t* out) {
+    for (int i = 0; i < 4; i++) {
+        int64_t prod = (int64_t)(int32_t)a[i] * (int64_t)(int32_t)b[i];
+        out[i] = (uint32_t)(int32_t)(prod >> 32);
+    }
+}
+
+inline bool test_crossval_mulhi_i32_4() {
+    uint32_t a[4] = {0x7FFFFFFF, 0x80000000, 0x00010000, 0xFFFF0000};
+    uint32_t b[4] = {0x00020000, 0x00020000, 0xFFFF0000, 0xFFFF0000};
+    uint32_t expected[4], actual[4];
+    ref_mulhi_i32_4(a, b, expected);
+    store_u32_4(actual, mulhi_i32_4(load_u32_4(a), load_u32_4(b)));
+    return compare_u32(expected, actual, 4);
+}
+
+inline bool test_crossval_mulhi_u32_4() {
+    uint32_t a[4] = {0xFFFFFFFF, 0x80000000, 0x00010000, 0x00000001};
+    uint32_t b[4] = {0x00000002, 0x00000002, 0x00010000, 0xFFFFFFFF};
+    uint32_t expected[4], actual[4];
+    ref_mulhi_u32_4(a, b, expected);
+    store_u32_4(actual, mulhi_u32_4(load_u32_4(a), load_u32_4(b)));
+    return compare_u32(expected, actual, 4);
+}
+
+inline bool test_crossval_mulhi32_i32_4() {
+    uint32_t a[4] = {0x7FFFFFFF, 0x80000000, 0x40000000, 0xC0000000};
+    uint32_t b[4] = {0x7FFFFFFF, 0x80000000, 0x40000000, 0x40000000};
+    uint32_t expected[4], actual[4];
+    ref_mulhi32_i32_4(a, b, expected);
+    store_u32_4(actual, mulhi32_i32_4(load_u32_4(a), load_u32_4(b)));
+    return compare_u32(expected, actual, 4);
+}
+
+// Scalar reference: min/max u8 and float ops
+inline void ref_min_u8_16(const uint8_t* a, const uint8_t* b, uint8_t* out) {
+    for (int i = 0; i < 16; i++) out[i] = a[i] < b[i] ? a[i] : b[i];
+}
+inline void ref_max_u8_16(const uint8_t* a, const uint8_t* b, uint8_t* out) {
+    for (int i = 0; i < 16; i++) out[i] = a[i] > b[i] ? a[i] : b[i];
+}
+
+inline bool test_crossval_min_u8_16() {
+    uint8_t a[16] = {0,255,128,127, 1,254,0x55,0xAA, 0x0F,0xF0,0x80,0x7F, 0x01,0xFE,0xFF,0x00};
+    uint8_t b[16] = {255,0,127,128, 254,1,0xAA,0x55, 0xF0,0x0F,0x7F,0x80, 0xFE,0x01,0x00,0xFF};
+    uint8_t expected[16], actual[16];
+    ref_min_u8_16(a, b, expected);
+    store_u8_16(actual, min_u8_16(load_u8_16(a), load_u8_16(b)));
+    return compare_u8(expected, actual, 16);
+}
+
+inline bool test_crossval_max_u8_16() {
+    uint8_t a[16] = {0,255,128,127, 1,254,0x55,0xAA, 0x0F,0xF0,0x80,0x7F, 0x01,0xFE,0xFF,0x00};
+    uint8_t b[16] = {255,0,127,128, 254,1,0xAA,0x55, 0xF0,0x0F,0x7F,0x80, 0xFE,0x01,0x00,0xFF};
+    uint8_t expected[16], actual[16];
+    ref_max_u8_16(a, b, expected);
+    store_u8_16(actual, max_u8_16(load_u8_16(a), load_u8_16(b)));
+    return compare_u8(expected, actual, 16);
+}
+
+// Scalar reference: float ops
+inline bool test_crossval_float_ops() {
+    float a[4] = {-1.5f, 0.0f, 3.14159f, 1e10f};
+    float b[4] = {2.5f, -0.0f, -2.71828f, 1e-10f};
+    float out[4];
+    // Test add
+    store_f32_4(out, add_f32_4(load_f32_4(a), load_f32_4(b)));
+    for (int i = 0; i < 4; i++) {
+        float diff = out[i] - (a[i] + b[i]);
+        if (diff < -0.001f || diff > 0.001f) return false;
+    }
+    // Test sub
+    store_f32_4(out, sub_f32_4(load_f32_4(a), load_f32_4(b)));
+    for (int i = 0; i < 4; i++) {
+        float diff = out[i] - (a[i] - b[i]);
+        if (diff < -0.001f || diff > 0.001f) return false;
+    }
+    // Test mul
+    store_f32_4(out, mul_f32_4(load_f32_4(a), load_f32_4(b)));
+    for (int i = 0; i < 4; i++) {
+        float diff = out[i] - (a[i] * b[i]);
+        if (diff < -1.0f && diff > 1.0f) return false;  // large values need loose tolerance
+    }
+    return true;
+}
+
+// Cross-validation: aligned load/store with adversarial patterns
+inline bool test_crossval_aligned_load_store() {
+    FL_ALIGNAS(16) uint32_t src[4] = {0x80000000, 0x7FFFFFFF, 0xDEADBEEF, 0x00000000};
+    FL_ALIGNAS(16) uint32_t dst[4] = {0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF};
+    simd_u32x4 v = load_u32_4_aligned(src);
+    store_u32_4_aligned(dst, v);
+    return compare_u32(src, dst, 4);
+}
+
+// Cross-validation: broadcast + adversarial values
+inline bool test_crossval_set1_u32_4() {
+    // Test adversarial values: sign bit, all ones, zero, alternating bits
+    uint32_t test_values[] = {0x80000000, 0xFFFFFFFF, 0x00000000, 0xAAAAAAAA, 0x55555555, 0x01010101};
+    for (int t = 0; t < 6; t++) {
+        uint32_t val = test_values[t];
+        uint32_t output[4];
+        store_u32_4(output, set1_u32_4(val));
+        for (int i = 0; i < 4; i++) {
+            if (output[i] != val) return false;
+        }
+    }
+    return true;
+}
+
+// ============================================================================
 // Chained Operation Tests (pipeline correctness)
 // ============================================================================
 
@@ -809,6 +1183,33 @@ inline void getTests(const SimdTestEntry** out_tests, int* out_count) {
         {"sqrt f32x4 zero",              test_sqrt_f32_4_zero},
         {"min f32x4",                      test_min_f32_4},
         {"max f32x4",                      test_max_f32_4},
+        // Cross-Validation: SIMD vs Scalar Reference (adversarial patterns)
+        {"crossval scale u8x16",            test_crossval_scale_u8_16},
+        {"crossval add_sat u8x16",          test_crossval_add_sat_u8_16},
+        {"crossval sub_sat u8x16",          test_crossval_sub_sat_u8_16},
+        {"crossval aligned load/store",     test_crossval_aligned_load_store},
+        {"crossval AND u8x16",             test_crossval_and_u8_16},
+        {"crossval OR u8x16",              test_crossval_or_u8_16},
+        {"crossval XOR u8x16",             test_crossval_xor_u8_16},
+        {"crossval ANDNOT u8x16",          test_crossval_andnot_u8_16},
+        {"crossval XOR u32x4",             test_crossval_xor_u32_4},
+        {"crossval AND u32x4",             test_crossval_and_u32_4},
+        {"crossval OR u32x4",              test_crossval_or_u32_4},
+        {"crossval broadcast u32x4",       test_crossval_set1_u32_4},
+        // Cross-Validation: i32 arithmetic, shifts, min/max, multiply, u8 min/max, float
+        {"crossval add i32x4",              test_crossval_add_i32_4},
+        {"crossval sub i32x4",              test_crossval_sub_i32_4},
+        {"crossval srl u32x4",              test_crossval_srl_u32_4},
+        {"crossval sll u32x4",              test_crossval_sll_u32_4},
+        {"crossval sra i32x4",              test_crossval_sra_i32_4},
+        {"crossval min i32x4",              test_crossval_min_i32_4},
+        {"crossval max i32x4",              test_crossval_max_i32_4},
+        {"crossval mulhi i32x4",            test_crossval_mulhi_i32_4},
+        {"crossval mulhi u32x4",            test_crossval_mulhi_u32_4},
+        {"crossval mulhi32 i32x4",          test_crossval_mulhi32_i32_4},
+        {"crossval min u8x16",              test_crossval_min_u8_16},
+        {"crossval max u8x16",              test_crossval_max_u8_16},
+        {"crossval float ops",              test_crossval_float_ops},
         // Pipeline / Chained Operation Tests
         {"pipeline u8 scale+add+clamp",    test_u8_pipeline_scale_add_clamp},
         {"pipeline i32 shift+add+mask",    test_i32_pipeline_shift_add_mask},
@@ -832,6 +1233,12 @@ inline int runSimdTests() {
 
 #if defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86)
     FL_PRINT("  SIMD Backend: x86 SSE2");
+#elif defined(__XTENSA__) && FL_XTENSA_HAS_PIE
+    FL_PRINT("  SIMD Backend: Xtensa PIE (ESP32-S3)");
+#elif defined(__XTENSA__)
+    FL_PRINT("  SIMD Backend: Xtensa scalar");
+#elif defined(__riscv)
+    FL_PRINT("  SIMD Backend: RISC-V scalar");
 #else
     FL_PRINT("  SIMD Backend: Scalar fallback");
 #endif

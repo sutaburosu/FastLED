@@ -74,9 +74,6 @@ FASTLED_FORCE_INLINE FL_IRAM simd_u8x16 add_sat_u8_16(simd_u8x16 a, simd_u8x16 b
 }
 
 FASTLED_FORCE_INLINE FL_IRAM simd_u8x16 scale_u8_16(simd_u8x16 vec, u8 scale) noexcept {
-    if (scale == 255) {
-        return vec;  // Identity
-    }
     if (scale == 0) {
         return vdupq_n_u8(0);  // Zero vector
     }
@@ -109,6 +106,19 @@ FASTLED_FORCE_INLINE FL_IRAM simd_u8x16 scale_u8_16(simd_u8x16 vec, u8 scale) no
 
 FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 set1_u32_4(u32 value) noexcept {
     return vdupq_n_u32(value);
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 set_u32_4(u32 a, u32 b, u32 c, u32 d) noexcept {
+    u32 tmp[4] = {a, b, c, d};
+    return vld1q_u32(tmp);
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 load_u32_4_aligned(const u32* ptr) noexcept {
+    return vld1q_u32(ptr);  // NEON vld1q handles any alignment
+}
+
+FASTLED_FORCE_INLINE FL_IRAM void store_u32_4_aligned(u32* ptr, simd_u32x4 vec) noexcept {
+    vst1q_u32(ptr, vec);  // NEON vst1q handles any alignment
 }
 
 FASTLED_FORCE_INLINE FL_IRAM simd_u8x16 blend_u8_16(simd_u8x16 a, simd_u8x16 b, u8 amount) noexcept {
@@ -235,6 +245,147 @@ FASTLED_FORCE_INLINE FL_IRAM simd_f32x4 max_f32_4(simd_f32x4 a, simd_f32x4 b) no
     return vmaxq_f32(a, b);
 }
 
+//==============================================================================
+// Int32 SIMD Operations (NEON)
+//==============================================================================
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 xor_u32_4(simd_u32x4 a, simd_u32x4 b) noexcept {
+    return veorq_u32(a, b);
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 add_i32_4(simd_u32x4 a, simd_u32x4 b) noexcept {
+    return vaddq_u32(a, b);
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 sub_i32_4(simd_u32x4 a, simd_u32x4 b) noexcept {
+    return vsubq_u32(a, b);
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 mulhi_i32_4(simd_u32x4 a, simd_u32x4 b) noexcept {
+    // signed (a*b) >> 16
+    int32x4_t sa = vreinterpretq_s32_u32(a);
+    int32x4_t sb = vreinterpretq_s32_u32(b);
+    // Process each lane (NEON lacks a direct 32x32->64 high intrinsic for all 4)
+    i64 p0 = static_cast<i64>(vgetq_lane_s32(sa, 0)) * vgetq_lane_s32(sb, 0);
+    i64 p1 = static_cast<i64>(vgetq_lane_s32(sa, 1)) * vgetq_lane_s32(sb, 1);
+    i64 p2 = static_cast<i64>(vgetq_lane_s32(sa, 2)) * vgetq_lane_s32(sb, 2);
+    i64 p3 = static_cast<i64>(vgetq_lane_s32(sa, 3)) * vgetq_lane_s32(sb, 3);
+    u32 r[4] = {
+        static_cast<u32>(static_cast<i32>(p0 >> 16)),
+        static_cast<u32>(static_cast<i32>(p1 >> 16)),
+        static_cast<u32>(static_cast<i32>(p2 >> 16)),
+        static_cast<u32>(static_cast<i32>(p3 >> 16))
+    };
+    return vld1q_u32(r);
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 mulhi_u32_4(simd_u32x4 a, simd_u32x4 b) noexcept {
+    // unsigned (a*b) >> 16
+    u64 p0 = static_cast<u64>(vgetq_lane_u32(a, 0)) * vgetq_lane_u32(b, 0);
+    u64 p1 = static_cast<u64>(vgetq_lane_u32(a, 1)) * vgetq_lane_u32(b, 1);
+    u64 p2 = static_cast<u64>(vgetq_lane_u32(a, 2)) * vgetq_lane_u32(b, 2);
+    u64 p3 = static_cast<u64>(vgetq_lane_u32(a, 3)) * vgetq_lane_u32(b, 3);
+    u32 r[4] = {
+        static_cast<u32>(p0 >> 16),
+        static_cast<u32>(p1 >> 16),
+        static_cast<u32>(p2 >> 16),
+        static_cast<u32>(p3 >> 16)
+    };
+    return vld1q_u32(r);
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 mulhi_su32_4(simd_u32x4 a, simd_u32x4 b) noexcept {
+    return mulhi_i32_4(a, b);
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 srl_u32_4(simd_u32x4 vec, int shift) noexcept {
+    // NEON vshlq_u32 with negative shift = right shift
+    return vshlq_u32(vec, vdupq_n_s32(-shift));
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 sll_u32_4(simd_u32x4 vec, int shift) noexcept {
+    return vshlq_u32(vec, vdupq_n_s32(shift));
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 sra_i32_4(simd_u32x4 vec, int shift) noexcept {
+    // Arithmetic right shift on signed reinterpretation
+    int32x4_t sv = vreinterpretq_s32_u32(vec);
+    sv = vshlq_s32(sv, vdupq_n_s32(-shift));
+    return vreinterpretq_u32_s32(sv);
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 and_u32_4(simd_u32x4 a, simd_u32x4 b) noexcept {
+    return vandq_u32(a, b);
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 or_u32_4(simd_u32x4 a, simd_u32x4 b) noexcept {
+    return vorrq_u32(a, b);
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 min_i32_4(simd_u32x4 a, simd_u32x4 b) noexcept {
+    int32x4_t sa = vreinterpretq_s32_u32(a);
+    int32x4_t sb = vreinterpretq_s32_u32(b);
+    return vreinterpretq_u32_s32(vminq_s32(sa, sb));
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 max_i32_4(simd_u32x4 a, simd_u32x4 b) noexcept {
+    int32x4_t sa = vreinterpretq_s32_u32(a);
+    int32x4_t sb = vreinterpretq_s32_u32(b);
+    return vreinterpretq_u32_s32(vmaxq_s32(sa, sb));
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 mulhi32_i32_4(simd_u32x4 a, simd_u32x4 b) noexcept {
+    // signed (a*b) >> 32
+    int32x4_t sa = vreinterpretq_s32_u32(a);
+    int32x4_t sb = vreinterpretq_s32_u32(b);
+    i64 p0 = static_cast<i64>(vgetq_lane_s32(sa, 0)) * vgetq_lane_s32(sb, 0);
+    i64 p1 = static_cast<i64>(vgetq_lane_s32(sa, 1)) * vgetq_lane_s32(sb, 1);
+    i64 p2 = static_cast<i64>(vgetq_lane_s32(sa, 2)) * vgetq_lane_s32(sb, 2);
+    i64 p3 = static_cast<i64>(vgetq_lane_s32(sa, 3)) * vgetq_lane_s32(sb, 3);
+    u32 r[4] = {
+        static_cast<u32>(static_cast<i32>(p0 >> 32)),
+        static_cast<u32>(static_cast<i32>(p1 >> 32)),
+        static_cast<u32>(static_cast<i32>(p2 >> 32)),
+        static_cast<u32>(static_cast<i32>(p3 >> 32))
+    };
+    return vld1q_u32(r);
+}
+
+FASTLED_FORCE_INLINE FL_IRAM u32 extract_u32_4(simd_u32x4 vec, int lane) noexcept {
+    switch (lane) {
+        case 0: return vgetq_lane_u32(vec, 0);
+        case 1: return vgetq_lane_u32(vec, 1);
+        case 2: return vgetq_lane_u32(vec, 2);
+        default: return vgetq_lane_u32(vec, 3);
+    }
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 unpacklo_u32_4(simd_u32x4 a, simd_u32x4 b) noexcept {
+    // {a0, b0, a1, b1}
+    uint32x2_t a_lo = vget_low_u32(a);
+    uint32x2_t b_lo = vget_low_u32(b);
+    uint32x2x2_t zipped = vzip_u32(a_lo, b_lo);
+    return vcombine_u32(zipped.val[0], zipped.val[1]);
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 unpackhi_u32_4(simd_u32x4 a, simd_u32x4 b) noexcept {
+    // {a2, b2, a3, b3}
+    uint32x2_t a_hi = vget_high_u32(a);
+    uint32x2_t b_hi = vget_high_u32(b);
+    uint32x2x2_t zipped = vzip_u32(a_hi, b_hi);
+    return vcombine_u32(zipped.val[0], zipped.val[1]);
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 unpacklo_u64_as_u32_4(simd_u32x4 a, simd_u32x4 b) noexcept {
+    // {a0, a1, b0, b1}
+    return vcombine_u32(vget_low_u32(a), vget_low_u32(b));
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 unpackhi_u64_as_u32_4(simd_u32x4 a, simd_u32x4 b) noexcept {
+    // {a2, a3, b2, b3}
+    return vcombine_u32(vget_high_u32(a), vget_high_u32(b));
+}
+
 }  // namespace platforms
 }  // namespace simd
 }  // namespace fl
@@ -291,9 +442,25 @@ FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 load_u32_4(const u32* ptr) noexcept {
     return result;
 }
 
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 load_u32_4_aligned(const u32* ptr) noexcept {
+    const u32* p = FL_ASSUME_ALIGNED(ptr, 16);
+    simd_u32x4 result;
+    for (int i = 0; i < 4; ++i) {
+        result.data[i] = p[i];
+    }
+    return result;
+}
+
 FASTLED_FORCE_INLINE FL_IRAM void store_u32_4(u32* ptr, simd_u32x4 vec) noexcept {
     for (int i = 0; i < 4; ++i) {
         ptr[i] = vec.data[i];
+    }
+}
+
+FASTLED_FORCE_INLINE FL_IRAM void store_u32_4_aligned(u32* ptr, simd_u32x4 vec) noexcept {
+    u32* p = FL_ASSUME_ALIGNED(ptr, 16);
+    for (int i = 0; i < 4; ++i) {
+        p[i] = vec.data[i];
     }
 }
 
@@ -554,6 +721,116 @@ FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 and_u32_4(simd_u32x4 a, simd_u32x4 b) no
     for (int i = 0; i < 4; ++i) {
         result.data[i] = a.data[i] & b.data[i];
     }
+    return result;
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 or_u32_4(simd_u32x4 a, simd_u32x4 b) noexcept {
+    simd_u32x4 result;
+    for (int i = 0; i < 4; ++i) {
+        result.data[i] = a.data[i] | b.data[i];
+    }
+    return result;
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 sll_u32_4(simd_u32x4 vec, int shift) noexcept {
+    simd_u32x4 result;
+    for (int i = 0; i < 4; ++i) {
+        result.data[i] = vec.data[i] << shift;
+    }
+    return result;
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 sra_i32_4(simd_u32x4 vec, int shift) noexcept {
+    simd_u32x4 result;
+    for (int i = 0; i < 4; ++i) {
+        i32 signed_val = static_cast<i32>(vec.data[i]);
+        result.data[i] = static_cast<u32>(signed_val >> shift);
+    }
+    return result;
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 mulhi_u32_4(simd_u32x4 a, simd_u32x4 b) noexcept {
+    simd_u32x4 result;
+    for (int i = 0; i < 4; ++i) {
+        u64 prod = static_cast<u64>(a.data[i]) * static_cast<u64>(b.data[i]);
+        result.data[i] = static_cast<u32>(prod >> 16);
+    }
+    return result;
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 mulhi_su32_4(simd_u32x4 a, simd_u32x4 b) noexcept {
+    return mulhi_i32_4(a, b);
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 mulhi32_i32_4(simd_u32x4 a, simd_u32x4 b) noexcept {
+    simd_u32x4 result;
+    for (int i = 0; i < 4; ++i) {
+        i32 ai = static_cast<i32>(a.data[i]);
+        i32 bi = static_cast<i32>(b.data[i]);
+        i64 prod = static_cast<i64>(ai) * static_cast<i64>(bi);
+        result.data[i] = static_cast<u32>(static_cast<i32>(prod >> 32));
+    }
+    return result;
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 min_i32_4(simd_u32x4 a, simd_u32x4 b) noexcept {
+    simd_u32x4 result;
+    for (int i = 0; i < 4; ++i) {
+        i32 ai = static_cast<i32>(a.data[i]);
+        i32 bi = static_cast<i32>(b.data[i]);
+        result.data[i] = static_cast<u32>(ai < bi ? ai : bi);
+    }
+    return result;
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 max_i32_4(simd_u32x4 a, simd_u32x4 b) noexcept {
+    simd_u32x4 result;
+    for (int i = 0; i < 4; ++i) {
+        i32 ai = static_cast<i32>(a.data[i]);
+        i32 bi = static_cast<i32>(b.data[i]);
+        result.data[i] = static_cast<u32>(ai > bi ? ai : bi);
+    }
+    return result;
+}
+
+FASTLED_FORCE_INLINE FL_IRAM u32 extract_u32_4(simd_u32x4 vec, int lane) noexcept {
+    return vec.data[lane];
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 unpacklo_u32_4(simd_u32x4 a, simd_u32x4 b) noexcept {
+    simd_u32x4 result;
+    result.data[0] = a.data[0]; result.data[1] = b.data[0];
+    result.data[2] = a.data[1]; result.data[3] = b.data[1];
+    return result;
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 unpackhi_u32_4(simd_u32x4 a, simd_u32x4 b) noexcept {
+    simd_u32x4 result;
+    result.data[0] = a.data[2]; result.data[1] = b.data[2];
+    result.data[2] = a.data[3]; result.data[3] = b.data[3];
+    return result;
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 unpacklo_u64_as_u32_4(simd_u32x4 a, simd_u32x4 b) noexcept {
+    simd_u32x4 result;
+    result.data[0] = a.data[0]; result.data[1] = a.data[1];
+    result.data[2] = b.data[0]; result.data[3] = b.data[1];
+    return result;
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 unpackhi_u64_as_u32_4(simd_u32x4 a, simd_u32x4 b) noexcept {
+    simd_u32x4 result;
+    result.data[0] = a.data[2]; result.data[1] = a.data[3];
+    result.data[2] = b.data[2]; result.data[3] = b.data[3];
+    return result;
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 set_u32_4(u32 a, u32 b, u32 c, u32 d) noexcept {
+    simd_u32x4 result;
+    result.data[0] = a;
+    result.data[1] = b;
+    result.data[2] = c;
+    result.data[3] = d;
     return result;
 }
 
