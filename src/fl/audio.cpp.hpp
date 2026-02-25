@@ -184,6 +184,17 @@ void AudioSample::fft(FFTBins *out) const {
 }
 
 
+void AudioSample::applyGain(float gain) {
+    if (!isValid() || gain == 1.0f) return;
+    auto& samples = mImpl->pcm_mutable();
+    for (fl::size i = 0; i < samples.size(); ++i) {
+        fl::i32 val = static_cast<fl::i32>(static_cast<float>(samples[i]) * gain);
+        if (val > 32767) val = 32767;
+        if (val < -32768) val = -32768;
+        samples[i] = static_cast<fl::i16>(val);
+    }
+}
+
 AudioSample::AudioSample(fl::span<const fl::i16> span, fl::u32 timestamp) {
     mImpl = AudioSamplePool::instance().getOrCreate();
     auto begin = span.data();

@@ -172,6 +172,13 @@ public:
 
     AudioConfig(const AudioConfigI2S& config) : fl::variant<AudioConfigI2S, AudioConfigPdm>(config) {}
     AudioConfig(const AudioConfigPdm& config) : fl::variant<AudioConfigI2S, AudioConfigPdm>(config) {}
+
+    /// Digital gain applied to all input samples. Default 1.0 (no change).
+    void setGain(float gain) { mGain = gain; }
+    float getGain() const { return mGain; }
+
+private:
+    float mGain = 1.0f;
 };
 
 class IAudioInput {
@@ -201,13 +208,20 @@ public:
     // Returns invalid AudioSample on error or when no data is available.
     virtual AudioSample read() = 0;
 
+    /// Digital gain applied to raw PCM samples. Default 1.0 (no change).
+    void setGain(float gain) { mGain = gain; }
+    float getGain() const { return mGain; }
+
     // Read all available audio data and return as AudioSample. All AudioSamples
-    // returned by this will be valid.
+    // returned by this will be valid. Gain is applied to each sample.
     size_t readAll(fl::vector_inlined<AudioSample, 16> *out) {
         size_t count = 0;
         while (true) {
             AudioSample sample = read();
             if (sample.isValid()) {
+                if (mGain != 1.0f) {
+                    sample.applyGain(mGain);
+                }
                 out->push_back(sample);
                 count++;
             } else {
@@ -217,6 +231,8 @@ public:
         return count;
     }
 
+private:
+    float mGain = 1.0f;
 };
 
 

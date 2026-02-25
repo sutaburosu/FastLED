@@ -44,12 +44,9 @@ void AudioProcessor::update(const AudioSample& sample) {
         }
     }
 
-    // Stage 2: Automatic gain control
-    if (mAutoGainEnabled && conditioned.isValid()) {
-        conditioned = mAutoGain.process(conditioned);
-        if (!conditioned.isValid()) {
-            return;
-        }
+    // Stage 2: Digital gain (simple multiplier)
+    if (mGain != 1.0f && conditioned.isValid()) {
+        conditioned.applyGain(mGain);
     }
 
     // Stage 3: Noise floor tracking (passive — updates estimate but doesn't modify signal)
@@ -606,10 +603,17 @@ float AudioProcessor::getEqBin(int index) {
     return clamp01(getEqualizerDetector()->getBin(index));
 }
 
+float AudioProcessor::getEqAutoGain() {
+    return getEqualizerDetector()->getAutoGain();
+}
+
+bool AudioProcessor::getEqIsSilence() {
+    return getEqualizerDetector()->getIsSilence();
+}
+
 void AudioProcessor::setSampleRate(int sampleRate) {
     mSampleRate = sampleRate;
     mContext->setSampleRate(sampleRate);
-    mAutoGain.setSampleRate(sampleRate);
 
     // Propagate to all active detectors that are sample-rate-aware
     for (auto& d : mActiveDetectors) {
@@ -621,12 +625,16 @@ int AudioProcessor::getSampleRate() const {
     return mSampleRate;
 }
 
-void AudioProcessor::setSignalConditioningEnabled(bool enabled) {
-    mSignalConditioningEnabled = enabled;
+void AudioProcessor::setGain(float gain) {
+    mGain = gain;
 }
 
-void AudioProcessor::setAutoGainEnabled(bool enabled) {
-    mAutoGainEnabled = enabled;
+float AudioProcessor::getGain() const {
+    return mGain;
+}
+
+void AudioProcessor::setSignalConditioningEnabled(bool enabled) {
+    mSignalConditioningEnabled = enabled;
 }
 
 void AudioProcessor::setNoiseFloorTrackingEnabled(bool enabled) {
@@ -638,14 +646,13 @@ void AudioProcessor::configureSignalConditioner(const SignalConditionerConfig& c
     mSignalConditioningEnabled = true;
 }
 
-void AudioProcessor::configureAutoGain(const AutoGainConfig& config) {
-    mAutoGain.configure(config);
-    mAutoGainEnabled = config.enabled;
-}
-
 void AudioProcessor::configureNoiseFloorTracker(const NoiseFloorTrackerConfig& config) {
     mNoiseFloorTracker.configure(config);
     mNoiseFloorTrackingEnabled = config.enabled;
+}
+
+void AudioProcessor::configureEqualizer(const EqualizerConfig& config) {
+    getEqualizerDetector()->configure(config);
 }
 
 const AudioSample& AudioProcessor::getSample() const {
@@ -654,7 +661,6 @@ const AudioSample& AudioProcessor::getSample() const {
 
 void AudioProcessor::reset() {
     mSignalConditioner.reset();
-    mAutoGain.reset();
     mNoiseFloorTracker.reset();
     mContext->clearCache();
 

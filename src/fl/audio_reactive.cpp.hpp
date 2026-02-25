@@ -32,22 +32,14 @@ void AudioReactive::begin(const AudioReactiveConfig& config) {
     mSmoothedData = AudioData{};
     mLastBeatTime = 0;
     mPreviousVolume = 0.0f;
-    mAGCMultiplier = 1.0f;
-    mMaxSample = 0.0f;
-    mAverageLevel = 0.0f;
 
-    // Configure signal conditioning components (Phase 1 middleware)
+    // Configure signal conditioning components
     SignalConditionerConfig scConfig;
     scConfig.enableDCRemoval = config.enableSignalConditioning;
     scConfig.enableSpikeFilter = config.enableSignalConditioning;
     scConfig.enableNoiseGate = config.noiseGate && config.enableSignalConditioning;
     mSignalConditioner.configure(scConfig);
     mSignalConditioner.reset();
-
-    AutoGainConfig agConfig;
-    agConfig.enabled = config.enableAutoGain;
-    mAutoGain.configure(agConfig);
-    mAutoGain.reset();
 
     NoiseFloorTrackerConfig nfConfig;
     nfConfig.enabled = config.enableNoiseFloorTracking;
@@ -150,15 +142,7 @@ void AudioReactive::processSample(const AudioSample& sample) {
         }
     }
 
-    // Step 2: Automatic gain control
-    if (mConfig.enableAutoGain) {
-        processedSample = mAutoGain.process(processedSample);
-        if (!processedSample.isValid()) {
-            return;
-        }
-    }
-
-    // Step 3: Noise floor tracking (update tracker, but don't modify signal)
+    // Step 2: Noise floor tracking (update tracker, but don't modify signal)
     if (mConfig.enableNoiseFloorTracking) {
         float rms = processedSample.rms();
         mNoiseFloorTracker.update(rms);
@@ -290,40 +274,6 @@ void AudioReactive::updateVolumeAndPeak(const AudioSample& sample) {
     
     // Peak detection
     mCurrentData.peak = maxSample / 32768.0f * 255.0f;
-    
-    // Update AGC tracking
-    if (mConfig.agcEnabled) {
-        // AGC with attack/decay behavior
-        float agcAttackRate = mConfig.attack / 255.0f * 0.2f + 0.01f;  // 0.01 to 0.21
-        float agcDecayRate = mConfig.decay / 255.0f * 0.05f + 0.001f;  // 0.001 to 0.051
-        
-        // Track maximum level with attack/decay
-        if (maxSample > mMaxSample) {
-            // Rising - use attack rate (faster response)
-            mMaxSample = mMaxSample * (1.0f - agcAttackRate) + maxSample * agcAttackRate;
-        } else {
-            // Falling - use decay rate (slower response)
-            mMaxSample = mMaxSample * (1.0f - agcDecayRate) + maxSample * agcDecayRate;
-        }
-        
-        // Update AGC multiplier with proper bounds
-        if (mMaxSample > 1000.0f) {
-            float targetLevel = 16384.0f; // Half of full scale
-            float newMultiplier = targetLevel / mMaxSample;
-            
-            // Smooth AGC multiplier changes using attack/decay
-            if (newMultiplier > mAGCMultiplier) {
-                // Increasing gain - use attack rate
-                mAGCMultiplier = mAGCMultiplier * (1.0f - agcAttackRate) + newMultiplier * agcAttackRate;
-            } else {
-                // Decreasing gain - use decay rate  
-                mAGCMultiplier = mAGCMultiplier * (1.0f - agcDecayRate) + newMultiplier * agcDecayRate;
-            }
-            
-            // Clamp multiplier to reasonable bounds
-            mAGCMultiplier = (mAGCMultiplier < 0.1f) ? 0.1f : ((mAGCMultiplier > 10.0f) ? 10.0f : mAGCMultiplier);
-        }
-    }
 }
 
 void AudioReactive::detectBeat(fl::u32 currentTimeMs) {
@@ -361,24 +311,13 @@ void AudioReactive::detectBeat(fl::u32 currentTimeMs) {
 void AudioReactive::applyGain() {
     // Apply gain setting (0-255 maps to 0.0-2.0 multiplier)
     float gainMultiplier = static_cast<float>(mConfig.gain) / 128.0f;
-    
+
     mCurrentData.volume *= gainMultiplier;
     mCurrentData.volumeRaw *= gainMultiplier;
     mCurrentData.peak *= gainMultiplier;
-    
+
     for (int i = 0; i < 16; ++i) {
         mCurrentData.frequencyBins[i] *= gainMultiplier;
-    }
-    
-    // Apply AGC if enabled
-    if (mConfig.agcEnabled) {
-        mCurrentData.volume *= mAGCMultiplier;
-        mCurrentData.volumeRaw *= mAGCMultiplier;
-        mCurrentData.peak *= mAGCMultiplier;
-        
-        for (int i = 0; i < 16; ++i) {
-            mCurrentData.frequencyBins[i] *= mAGCMultiplier;
-        }
     }
 }
 
@@ -911,13 +850,20 @@ void PerceptualWeighting::applyLoudnessCompensation(AudioData& data, float refer
 #endif
 }
 
-// Signal conditioning stats accessors (Phase 1 middleware)
-const SignalConditioner::Stats& AudioReactive::getSignalConditionerStats() const {
-    return mSignalConditioner.getStats();
+void AudioReactive::setGain(float gain) {
+    ensureAudioProcessor().setGain(gain);
 }
 
-const AutoGain::Stats& AudioReactive::getAutoGainStats() const {
-    return mAutoGain.getStats();
+float AudioReactive::getGain() const {
+    if (mAudioProcessor) {
+        return mAudioProcessor->getGain();
+    }
+    return 1.0f;
+}
+
+// Signal conditioning stats accessors
+const SignalConditioner::Stats& AudioReactive::getSignalConditionerStats() const {
+    return mSignalConditioner.getStats();
 }
 
 const NoiseFloorTracker::Stats& AudioReactive::getNoiseFloorStats() const {

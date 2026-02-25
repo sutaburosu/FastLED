@@ -180,7 +180,6 @@ void setup() {
     fl::AudioReactiveConfig audioConfig;
     audioConfig.gain = 128;
     audioConfig.sensitivity = audioSensitivity.as_int();
-    audioConfig.agcEnabled = true;
     audioConfig.sampleRate = 22050;
     audioReactive.begin(audioConfig);
 

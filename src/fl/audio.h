@@ -52,6 +52,10 @@ class AudioSample {
     bool operator==(const AudioSample &other) const;
     bool operator!=(const AudioSample &other) const;
 
+    /// Apply a digital gain multiplier to all PCM samples in-place.
+    /// Clamps to i16 range to prevent overflow.
+    void applyGain(float gain);
+
   private:
     static const VectorPCM &empty();
     AudioSampleImplPtr mImpl;
@@ -120,6 +124,7 @@ class AudioSampleImpl {
         mRmsComputed = false;
     }
     const VectorPCM &pcm() const { return mSignedPcm; }
+    VectorPCM &pcm_mutable() { return mSignedPcm; }
     fl::u32 timestamp() const { return mTimestamp; }
 
     // For object pool - reset internal state for reuse

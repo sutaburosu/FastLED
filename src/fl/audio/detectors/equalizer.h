@@ -10,14 +10,27 @@
 
 namespace fl {
 
+/// Configuration for the equalizer detector.
+/// All fields have sensible defaults matching the original hardcoded values.
+struct EqualizerConfig {
+    float minFreq = 60.0f;           ///< Low end of spectrum (Hz)
+    float maxFreq = 5120.0f;         ///< High end of spectrum (Hz)
+    float smoothing = 0.05f;         ///< Bin temporal smoothing (ExponentialSmoother tau)
+    float normAttack = 0.001f;       ///< Normalization attack time (seconds)
+    float normDecay = 4.0f;          ///< Normalization decay time (seconds)
+    float silenceThreshold = 10.0f;  ///< Raw RMS threshold for silence detection
+};
+
 /// Snapshot of equalizer state, passed to onEqualizer callbacks.
 struct Equalizer {
     static constexpr int kNumBins = 16;
     float bass = 0;                          ///< 0.0-1.0
     float mid = 0;                           ///< 0.0-1.0
     float treble = 0;                        ///< 0.0-1.0
-    float volume = 0;                        ///< 0.0-1.0 (AGC-normalized RMS)
+    float volume = 0;                        ///< 0.0-1.0 (self-normalized RMS)
     float zcf = 0;                           ///< 0.0-1.0 (zero-crossing factor)
+    float autoGain = 1.0f;                   ///< Self-normalization gain factor (>=0). How much the volume was scaled to reach 0-1 range.
+    bool isSilence = false;                  ///< True when input signal is effectively silent
     span<const float, kNumBins> bins;        ///< 16 bins, each 0.0-1.0
 };
 
@@ -45,6 +58,9 @@ public:
     EqualizerDetector();
     ~EqualizerDetector() override;
 
+    /// Reconfigure equalizer tuning parameters at runtime.
+    void configure(const EqualizerConfig& config);
+
     // AudioDetector interface
     void update(shared_ptr<AudioContext> context) override;
     void fireCallbacks() override;
@@ -59,6 +75,8 @@ public:
     float getTreble() const { return mTreble; }
     float getVolume() const { return mVolume; }
     float getZcf() const { return mZcf; }
+    float getAutoGain() const { return mAutoGain; }
+    bool getIsSilence() const { return mIsSilence; }
     float getBin(int index) const;
     const float* getBins() const { return mBins; }
 
@@ -66,9 +84,12 @@ public:
     function_list<void(const Equalizer&)> onEqualizer;
 
 private:
+    EqualizerConfig mConfig;
     int mSampleRate = 44100;
     float mBins[kNumBins] = {};
     float mBass = 0, mMid = 0, mTreble = 0, mVolume = 0, mZcf = 0;
+    float mAutoGain = 1.0f;
+    bool mIsSilence = false;
 
     // Per-bin adaptive normalization (running max with slow decay)
     vector<AttackDecayFilter<float>> mBinMaxFilters;

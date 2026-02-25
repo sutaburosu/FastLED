@@ -4,7 +4,6 @@
 #include "fl/int.h"
 #include "fl/audio.h"
 #include "fl/audio/signal_conditioner.h"
-#include "fl/audio/auto_gain.h"
 #include "fl/audio/noise_floor_tracker.h"
 #include "fl/audio/frequency_bin_mapper.h"
 #include "fl/audio/spectral_equalizer.h"
@@ -49,7 +48,6 @@ struct AudioData {
 struct AudioReactiveConfig {
     fl::u8 gain = 128;              // Input gain (0-255)
     fl::u8 sensitivity = 128;       // AGC sensitivity
-    bool agcEnabled = true;          // Auto gain control
     bool noiseGate = true;           // Noise gate
     fl::u8 attack = 50;             // Attack time (ms) - how fast to respond to increases
     fl::u8 decay = 200;             // Decay time (ms) - how slow to respond to decreases
@@ -64,9 +62,8 @@ struct AudioReactiveConfig {
     float midThreshold = 0.12f;         // Threshold for mid beat detection
     float trebleThreshold = 0.08f;      // Threshold for treble beat detection
 
-    // Signal conditioning configuration (Phase 1 middleware)
+    // Signal conditioning configuration
     bool enableSignalConditioning = true;  // Enable DC removal, spike filter, noise gate
-    bool enableAutoGain = true;             // Enable adaptive gain control
     bool enableNoiseFloorTracking = true;   // Enable noise floor tracking
 
     // Frequency bin mapping configuration
@@ -194,14 +191,17 @@ public:
     float getMoodArousal();
     float getMoodValence();  // -1.0 to 1.0
 
+    // Gain control - delegates to internal AudioProcessor
+    void setGain(float gain);
+    float getGain() const;
+
     // Effect helpers
     fl::u8 volumeToScale255() const;
     CRGB volumeToColor(const CRGBPalette16& palette) const;
     fl::u8 frequencyToScale255(fl::u8 binIndex) const;
 
-    // Signal conditioning stats (Phase 1 middleware)
+    // Signal conditioning stats
     const SignalConditioner::Stats& getSignalConditionerStats() const;
-    const AutoGain::Stats& getAutoGainStats() const;
     const NoiseFloorTracker::Stats& getNoiseFloorStats() const;
 
     // Spectral equalizer stats (optional middleware - must be enabled first)
@@ -254,14 +254,8 @@ private:
         1.79f, 1.62f, 1.80f, 2.06f, 2.47f, 3.35f, 6.83f, 9.55f
     };
     
-    // AGC state
-    float mAGCMultiplier = 1.0f;
-    float mMaxSample = 0.0f;
-    float mAverageLevel = 0.0f;
-
-    // Signal conditioning components (Phase 1 middleware)
+    // Signal conditioning components
     SignalConditioner mSignalConditioner;
-    AutoGain mAutoGain;
     NoiseFloorTracker mNoiseFloorTracker;
     FrequencyBinMapper mFrequencyBinMapper;
 

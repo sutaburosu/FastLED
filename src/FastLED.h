@@ -737,7 +737,7 @@ public:
 	/// @code
 	/// auto config = fl::AudioConfig::CreateInmp441(WS, SD, CLK, fl::Both);
 	/// auto audio = FastLED.add(config);
-	/// audio->setAutoGainEnabled(true);
+	/// audio->setGain(2.0f);  // Optional: amplify input
 	/// audio->onBeat([]{ /* pulse leds */ });
 	/// @endcode
 	FL_NODISCARD static fl::shared_ptr<fl::AudioProcessor> add(const fl::AudioConfig& config);

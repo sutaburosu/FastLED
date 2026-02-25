@@ -6,10 +6,6 @@
 namespace fl {
 
 namespace {
-// WLED uses 60Hz-5120Hz range with 16 bins
-const float kEqMinFreq = 60.0f;
-const float kEqMaxFreq = 5120.0f;
-
 // Bin-to-band mapping (WLED style):
 // Bass:   bins 0-3   (~60-320 Hz)
 // Mid:    bins 4-10  (~320-2560 Hz)
@@ -28,12 +24,25 @@ EqualizerDetector::EqualizerDetector()
     mBinMaxFilters.reserve(kNumBins);
     mBinSmoothers.reserve(kNumBins);
     for (int i = 0; i < kNumBins; ++i) {
-        mBinMaxFilters.push_back(AttackDecayFilter<float>(0.001f, 4.0f, 0.0f));
-        mBinSmoothers.push_back(ExponentialSmoother<float>(0.05f));
+        mBinMaxFilters.push_back(AttackDecayFilter<float>(mConfig.normAttack, mConfig.normDecay, 0.0f));
+        mBinSmoothers.push_back(ExponentialSmoother<float>(mConfig.smoothing));
     }
+    mVolumeMax = AttackDecayFilter<float>(mConfig.normAttack, mConfig.normDecay, 0.0f);
 }
 
 EqualizerDetector::~EqualizerDetector() = default;
+
+void EqualizerDetector::configure(const EqualizerConfig& config) {
+    mConfig = config;
+    // Rebuild filters with new parameters
+    mBinMaxFilters.clear();
+    mBinSmoothers.clear();
+    for (int i = 0; i < kNumBins; ++i) {
+        mBinMaxFilters.push_back(AttackDecayFilter<float>(mConfig.normAttack, mConfig.normDecay, 0.0f));
+        mBinSmoothers.push_back(ExponentialSmoother<float>(mConfig.smoothing));
+    }
+    mVolumeMax = AttackDecayFilter<float>(mConfig.normAttack, mConfig.normDecay, 0.0f);
+}
 
 void EqualizerDetector::update(shared_ptr<AudioContext> context) {
     mSampleRate = context->getSampleRate();
@@ -44,7 +53,7 @@ void EqualizerDetector::update(shared_ptr<AudioContext> context) {
     const float dt = computeAudioDt(pcm.size(), mSampleRate);
 
     // Run 16-bin FFT
-    FFT_Args args(pcm.size(), kNumBins, kEqMinFreq, kEqMaxFreq, mSampleRate);
+    FFT_Args args(pcm.size(), kNumBins, mConfig.minFreq, mConfig.maxFreq, mSampleRate);
     mFFTBins.clear();
     mFFT.run(pcm, &mFFTBins, args);
 
@@ -78,11 +87,19 @@ void EqualizerDetector::update(shared_ptr<AudioContext> context) {
     for (int i = kTrebleStart; i <= kTrebleEnd; ++i) trebleSum += mBins[i];
     mTreble = trebleSum / static_cast<float>(kTrebleEnd - kTrebleStart + 1);
 
-    // Volume = RMS of (already AGC'd) sample, normalized to 0.0-1.0
+    // Volume = RMS of sample, normalized to 0.0-1.0
     float rms = context->getRMS();
     float volumeMax = mVolumeMax.update(rms, dt);
     if (volumeMax < 0.001f) volumeMax = 0.001f;
     mVolume = fl::min(1.0f, rms / volumeMax);
+
+    // AutoGain: the normalization factor applied to volume (1/volumeMax scaled)
+    // If volumeMax is the running max RMS, then autoGain = 1/volumeMax tells the
+    // caller how much the signal was scaled. Higher = quieter input was amplified more.
+    mAutoGain = (rms > 0.001f) ? (mVolume / rms) : 1.0f;
+
+    // Silence detection: signal is silent when RMS is very low
+    mIsSilence = (rms < mConfig.silenceThreshold);
 
     // Zero-crossing factor (already 0.0-1.0 from AudioSample)
     mZcf = context->getZCF();
@@ -96,6 +113,8 @@ void EqualizerDetector::fireCallbacks() {
         eq.treble = mTreble;
         eq.volume = mVolume;
         eq.zcf = mZcf;
+        eq.autoGain = mAutoGain;
+        eq.isSilence = mIsSilence;
         eq.bins = span<const float, Equalizer::kNumBins>(
             static_cast<const float*>(mBins), Equalizer::kNumBins);
         onEqualizer(eq);
@@ -113,6 +132,8 @@ void EqualizerDetector::reset() {
     mTreble = 0;
     mVolume = 0;
     mZcf = 0;
+    mAutoGain = 1.0f;
+    mIsSilence = false;
     mVolumeMax.reset(0.0f);
 }
 

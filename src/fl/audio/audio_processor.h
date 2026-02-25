@@ -4,7 +4,6 @@
 #include "fl/audio/audio_context.h"
 #include "fl/audio/audio_detector.h"
 #include "fl/audio/signal_conditioner.h"
-#include "fl/audio/auto_gain.h"
 #include "fl/audio/noise_floor_tracker.h"
 #include "fl/stl/shared_ptr.h"
 #include "fl/stl/function.h"
@@ -43,6 +42,7 @@ class DropDetector;
 struct Drop;
 class EqualizerDetector;
 struct Equalizer;
+struct EqualizerConfig;
 
 class AudioProcessor {
 public:
@@ -243,6 +243,8 @@ public:
     float getEqVolume();
     float getEqZcf();
     float getEqBin(int index);
+    float getEqAutoGain();
+    bool getEqIsSilence();
 
     // ----- Configuration -----
     /// Set the sample rate for all frequency-based calculations.
@@ -251,24 +253,27 @@ public:
     void setSampleRate(int sampleRate);
     int getSampleRate() const;
 
+    // ----- Gain Control -----
+    /// Set a simple digital gain multiplier applied to each sample before detectors.
+    /// Default: 1.0 (no change). Values > 1.0 amplify, < 1.0 attenuate.
+    void setGain(float gain);
+    float getGain() const;
+
     // ----- Signal Conditioning -----
     /// Enable/disable signal conditioning pipeline (DC removal, spike filter, noise gate)
     void setSignalConditioningEnabled(bool enabled);
-    /// Enable/disable automatic gain control
-    void setAutoGainEnabled(bool enabled);
     /// Enable/disable noise floor tracking
     void setNoiseFloorTrackingEnabled(bool enabled);
 
     /// Configure signal conditioner
     void configureSignalConditioner(const SignalConditionerConfig& config);
-    /// Configure auto gain
-    void configureAutoGain(const AutoGainConfig& config);
     /// Configure noise floor tracker
     void configureNoiseFloorTracker(const NoiseFloorTrackerConfig& config);
+    /// Configure equalizer detector tuning parameters
+    void configureEqualizer(const EqualizerConfig& config);
 
     /// Access signal conditioning statistics
     const SignalConditioner::Stats& getSignalConditionerStats() const { return mSignalConditioner.getStats(); }
-    const AutoGain::Stats& getAutoGainStats() const { return mAutoGain.getStats(); }
     const NoiseFloorTracker::Stats& getNoiseFloorStats() const { return mNoiseFloorTracker.getStats(); }
 
     // ----- State Access -----
@@ -278,11 +283,10 @@ public:
 
 private:
     int mSampleRate = 44100;
+    float mGain = 1.0f;
     bool mSignalConditioningEnabled = true;
-    bool mAutoGainEnabled = false;
     bool mNoiseFloorTrackingEnabled = false;
     SignalConditioner mSignalConditioner;
-    AutoGain mAutoGain;
     NoiseFloorTracker mNoiseFloorTracker;
     shared_ptr<AudioContext> mContext;
 

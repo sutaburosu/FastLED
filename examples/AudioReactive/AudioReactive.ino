@@ -23,7 +23,7 @@ void setup() {
 
     auto config = fl::AudioConfig::CreateInmp441(I2S_WS, I2S_SD, I2S_CLK, fl::Right);
     audio = FastLED.add(config);
-    audio->setAutoGainEnabled(true);
+    audio->setGain(2.0f);  // Boost input by 2x
 
     // Flash white on every beat
     audio->onBeat([] {

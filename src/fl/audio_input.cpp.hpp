@@ -111,7 +111,11 @@ fl::shared_ptr<IAudioInput> platform_create_audio_input(const AudioConfig &confi
 // Static method delegates to free function
 fl::shared_ptr<IAudioInput>
 IAudioInput::create(const AudioConfig &config, fl::string *error_message) {
-    return platform_create_audio_input(config, error_message);
+    auto input = platform_create_audio_input(config, error_message);
+    if (input) {
+        input->setGain(config.getGain());
+    }
+    return input;
 }
 
 }  // namespace fl
