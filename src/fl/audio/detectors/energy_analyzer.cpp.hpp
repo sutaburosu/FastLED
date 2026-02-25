@@ -36,8 +36,8 @@ void EnergyAnalyzer::update(shared_ptr<AudioContext> context) {
 
     // Compute normalized 0-1 RMS using adaptive range tracking.
     // AttackDecayFilter: instant attack (0.001s), slow decay (2.0s).
-    // dt is approximate frame interval (~23ms at 43fps).
-    float runningMax = mRunningMaxFilter.update(mCurrentRMS, 0.023f);
+    const float dt = computeAudioDt(context->getPCM().size(), context->getSampleRate());
+    float runningMax = mRunningMaxFilter.update(mCurrentRMS, dt);
     // Ensure running max doesn't decay below a minimum threshold
     if (runningMax < 1.0f) {
         runningMax = 1.0f;

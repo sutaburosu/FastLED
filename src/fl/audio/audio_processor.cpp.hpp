@@ -437,15 +437,27 @@ float AudioProcessor::getPeakLevel() {
 }
 
 float AudioProcessor::getBassLevel() {
-    return clamp01(getFrequencyBands()->getBass());
+    return clamp01(getFrequencyBands()->getBassNorm());
 }
 
 float AudioProcessor::getMidLevel() {
-    return clamp01(getFrequencyBands()->getMid());
+    return clamp01(getFrequencyBands()->getMidNorm());
 }
 
 float AudioProcessor::getTrebleLevel() {
-    return clamp01(getFrequencyBands()->getTreble());
+    return clamp01(getFrequencyBands()->getTrebleNorm());
+}
+
+float AudioProcessor::getBassRaw() {
+    return getFrequencyBands()->getBass();
+}
+
+float AudioProcessor::getMidRaw() {
+    return getFrequencyBands()->getMid();
+}
+
+float AudioProcessor::getTrebleRaw() {
+    return getFrequencyBands()->getTreble();
 }
 
 bool AudioProcessor::isSilent() {
@@ -567,6 +579,7 @@ float AudioProcessor::getMoodValence() {
 void AudioProcessor::setSampleRate(int sampleRate) {
     mSampleRate = sampleRate;
     mContext->setSampleRate(sampleRate);
+    mAutoGain.setSampleRate(sampleRate);
 
     // Propagate to all active detectors that are sample-rate-aware
     for (auto& d : mActiveDetectors) {

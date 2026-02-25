@@ -164,10 +164,15 @@ public:
     float getEnergy();
     float getPeakLevel();
 
-    // Frequency Bands
+    // Frequency Bands (normalized 0-1, per-band self-referential)
     float getBassLevel();
     float getMidLevel();
     float getTrebleLevel();
+
+    // Frequency Bands (raw unnormalized energy)
+    float getBassRaw();
+    float getMidRaw();
+    float getTrebleRaw();
 
     // Silence Detection
     bool isSilent();

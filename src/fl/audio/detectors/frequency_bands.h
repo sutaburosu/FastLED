@@ -26,10 +26,15 @@ public:
     function_list<void(float level)> onMidLevel;
     function_list<void(float level)> onTrebleLevel;
 
-    // State access
+    // State access (raw unnormalized values)
     float getBass() const { return mBass; }
     float getMid() const { return mMid; }
     float getTreble() const { return mTreble; }
+
+    // Per-band normalized values (0.0 - 1.0, self-referential via running max)
+    float getBassNorm() const { return mBassNorm; }
+    float getMidNorm() const { return mMidNorm; }
+    float getTrebleNorm() const { return mTrebleNorm; }
 
     // Configuration - set frequency ranges (in Hz)
     void setBassRange(float min, float max) { mBassMin = min; mBassMax = max; }
@@ -59,6 +64,14 @@ private:
     ExponentialSmoother<float> mBassSmoother{0.05f};
     ExponentialSmoother<float> mMidSmoother{0.05f};
     ExponentialSmoother<float> mTrebleSmoother{0.05f};
+
+    // Per-band adaptive normalization (same pattern as EnergyAnalyzer)
+    AttackDecayFilter<float> mBassMaxFilter{0.001f, 4.0f, 0.0f};
+    AttackDecayFilter<float> mMidMaxFilter{0.001f, 4.0f, 0.0f};
+    AttackDecayFilter<float> mTrebleMaxFilter{0.001f, 4.0f, 0.0f};
+    float mBassNorm = 0.0f;
+    float mMidNorm = 0.0f;
+    float mTrebleNorm = 0.0f;
 
     // Own FFT instance for computing with the correct frequency range
     FFT mFFT;

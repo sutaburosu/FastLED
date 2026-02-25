@@ -60,4 +60,12 @@ private:
     int mFFTHistoryIndex = 0;
 };
 
+/// Compute the time delta (in seconds) for an audio buffer.
+/// Each buffer of pcmSize samples at sampleRate Hz represents exactly
+/// pcmSize/sampleRate seconds of audio, regardless of when the CPU reads it.
+inline float computeAudioDt(fl::size pcmSize, int sampleRate) {
+    if (sampleRate <= 0 || pcmSize == 0) return 0.0f;
+    return static_cast<float>(pcmSize) / static_cast<float>(sampleRate);
+}
+
 } // namespace fl

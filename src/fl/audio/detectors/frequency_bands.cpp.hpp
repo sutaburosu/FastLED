@@ -54,11 +54,22 @@ void FrequencyBands::update(shared_ptr<AudioContext> context) {
     float midEnergy = calculateBandEnergy(mFFTBins, mMidMin, mMidMax, fftMin, fftMax);
     float trebleEnergy = calculateBandEnergy(mFFTBins, mTrebleMin, mTrebleMax, fftMin, fftMax);
 
-    // Apply time-aware smoothing (~23ms per frame at 43fps)
-    static constexpr float kFrameDt = 0.023f;
-    mBass = mBassSmoother.update(bassEnergy, kFrameDt);
-    mMid = mMidSmoother.update(midEnergy, kFrameDt);
-    mTreble = mTrebleSmoother.update(trebleEnergy, kFrameDt);
+    // Compute dt from actual audio buffer duration: pcmSize / sampleRate
+    const float dt = computeAudioDt(pcm.size(), mSampleRate);
+    mBass = mBassSmoother.update(bassEnergy, dt);
+    mMid = mMidSmoother.update(midEnergy, dt);
+    mTreble = mTrebleSmoother.update(trebleEnergy, dt);
+
+    // Per-band normalization — mirrors EnergyAnalyzer pattern
+    auto normalizeBand = [](float val, AttackDecayFilter<float>& filter,
+                            float frameDt) -> float {
+        float runningMax = filter.update(val, frameDt);
+        if (runningMax < 0.001f) runningMax = 0.001f;
+        return fl::min(1.0f, val / runningMax);
+    };
+    mBassNorm = normalizeBand(mBass, mBassMaxFilter, dt);
+    mMidNorm = normalizeBand(mMid, mMidMaxFilter, dt);
+    mTrebleNorm = normalizeBand(mTreble, mTrebleMaxFilter, dt);
 }
 
 void FrequencyBands::fireCallbacks() {
@@ -83,6 +94,12 @@ void FrequencyBands::reset() {
     mBassSmoother.reset();
     mMidSmoother.reset();
     mTrebleSmoother.reset();
+    mBassMaxFilter.reset(0.0f);
+    mMidMaxFilter.reset(0.0f);
+    mTrebleMaxFilter.reset(0.0f);
+    mBassNorm = 0.0f;
+    mMidNorm = 0.0f;
+    mTrebleNorm = 0.0f;
 }
 
 float FrequencyBands::calculateBandEnergy(const FFTBins& fft, float minFreq, float maxFreq,

@@ -223,9 +223,11 @@ FL_TEST_CASE("VocalDetector - vowel ah is vocal") {
     VocalDetector detector;
     detector.setSampleRate(44100);
 
-    for (int frame = 0; frame < 10; ++frame) {
+    // With correct dt (~11.6ms for 512 samples at 44100), the confidence
+    // smoother needs more frames to converge than with old hardcoded 23ms.
+    for (int frame = 0; frame < 20; ++frame) {
         auto sample = makeSyntheticVowel(150.0f, 700.0f, 1200.0f,
-                                          frame * 23, 16000.0f);
+                                          frame * 12, 16000.0f);
         auto ctx = fl::make_shared<AudioContext>(sample);
         ctx->setSampleRate(44100);
         ctx->getFFT(128);

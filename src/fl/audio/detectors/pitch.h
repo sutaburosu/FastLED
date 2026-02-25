@@ -78,6 +78,7 @@ private:
 
     // Adaptive pitch smoothing: low jitter when stable, low lag on changes
     OneEuroFilter<float> mPitchSmoother{1.0f, 0.5f};
+    float mLastDt = 0.023f; // Computed from pcmSize / sampleRate each frame
 
     // Autocorrelation parameters
     int mMinPeriod;           // Minimum period in samples

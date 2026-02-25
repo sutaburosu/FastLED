@@ -52,8 +52,8 @@ void PercussionDetector::update(shared_ptr<AudioContext> context) {
     for (fl::size i = 0; i < fft.raw().size(); ++i) {
         totalEnergy += fft.raw()[i];
     }
-    static constexpr float kFrameDt = 0.023f;
-    float envValue = mTotalEnvelope.update(totalEnergy, kFrameDt);
+    const float dt = computeAudioDt(context->getPCM().size(), context->getSampleRate());
+    float envValue = mTotalEnvelope.update(totalEnergy, dt);
     float flux = fl::max(0.0f, totalEnergy - envValue);
     mOnsetSharpness = (totalEnergy > 1e-6f) ? flux / totalEnergy : 0.0f;
 

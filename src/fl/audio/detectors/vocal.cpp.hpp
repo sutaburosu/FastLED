@@ -41,8 +41,8 @@ void VocalDetector::update(shared_ptr<AudioContext> context) {
         mSpectralCentroid, mSpectralRolloff, mFormantRatio,
         mSpectralFlatness, mHarmonicDensity, mVocalPresenceRatio,
         mSpectralFlux, mSpectralVariance);
-    static constexpr float kFrameDt = 0.023f;
-    float smoothedConfidence = mConfidenceSmoother.update(rawConfidence, kFrameDt);
+    const float dt = computeAudioDt(context->getPCM().size(), context->getSampleRate());
+    float smoothedConfidence = mConfidenceSmoother.update(rawConfidence, dt);
 
     // Hysteresis: use separate on/off thresholds to prevent chattering
     bool wantActive;

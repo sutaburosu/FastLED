@@ -31,6 +31,9 @@ void PitchDetector::update(shared_ptr<AudioContext> context) {
     span<const i16> pcm = context->getPCM();
     size numSamples = pcm.size();
 
+    // Compute dt from actual audio buffer duration
+    mLastDt = computeAudioDt(pcm.size(), static_cast<int>(mSampleRate));
+
     // Need at least 2x max period for autocorrelation
     if (numSamples < static_cast<size>(mMaxPeriod * 2)) {
         // Not enough samples for reliable pitch detection
@@ -223,8 +226,7 @@ int PitchDetector::frequencyToPeriod(float frequency) const {
 
 void PitchDetector::updatePitchSmoothing(float newPitch) {
     // OneEuroFilter: adaptive — low jitter when pitch stable, low lag on changes
-    static constexpr float kFrameDt = 0.023f;
-    mSmoothedPitch = mPitchSmoother.update(newPitch, kFrameDt);
+    mSmoothedPitch = mPitchSmoother.update(newPitch, mLastDt);
 }
 
 bool PitchDetector::shouldReportPitchChange(float newPitch) const {

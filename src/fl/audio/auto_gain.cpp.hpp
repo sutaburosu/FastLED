@@ -53,8 +53,10 @@ AudioSample AutoGain::process(const AudioSample& sample) {
 
     // Apply asymmetric smoothing: fast attack (reduce gain quickly on loud),
     // slow release (prevent gain pumping on quiet)
-    static constexpr float kFrameDt = 0.023f;
-    float smoothedGain = mGainFilter.update(targetGain, kFrameDt);
+    const float dt = (mSampleRate > 0 && sample.size() > 0)
+        ? static_cast<float>(sample.size()) / static_cast<float>(mSampleRate)
+        : 0.023f;
+    float smoothedGain = mGainFilter.update(targetGain, dt);
 
     // Clamp to configured range
     const float clampedGain = fl::max(mConfig.minGain,

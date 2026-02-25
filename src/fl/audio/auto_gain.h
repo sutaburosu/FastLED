@@ -93,6 +93,9 @@ public:
     /// Get current gain multiplier
     float getGain() const { return mStats.currentGain; }
 
+    /// Set sample rate for dt computation
+    void setSampleRate(int sampleRate) { mSampleRate = sampleRate; }
+
 private:
     /// Update percentile estimate using Robbins-Monro algorithm
     /// @param observedRMS Current RMS value
@@ -110,6 +113,7 @@ private:
 
     AutoGainConfig mConfig;
     Stats mStats;
+    int mSampleRate = 44100;
 
     /// Robbins-Monro percentile estimate (running estimate of target percentile RMS)
     float mPercentileEstimate = 1000.0f;  // Initial estimate
