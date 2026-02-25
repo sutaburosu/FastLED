@@ -119,20 +119,19 @@ class u0x32 {
 
     // ---- Scalar arithmetic (u0x32 × raw integer → u0x32) ------------------
 
-    FASTLED_FORCE_INLINE u0x32 operator*(u32 scalar) const {
+    constexpr FASTLED_FORCE_INLINE u0x32 operator*(u32 scalar) const {
         // UQ32 * scalar with saturation to prevent overflow
-        u64 result = static_cast<u64>(mValue) * scalar;
-        if (result > 0xFFFFFFFFULL) return from_raw(0xFFFFFFFFU);
-        return from_raw(static_cast<u32>(result));
+        return (static_cast<u64>(mValue) * scalar > 0xFFFFFFFFULL)
+            ? from_raw(0xFFFFFFFFU)
+            : from_raw(static_cast<u32>(static_cast<u64>(mValue) * scalar));
     }
 
     friend constexpr FASTLED_FORCE_INLINE u0x32 operator*(u32 scalar, u0x32 a) {
         return a * scalar;  // Commutative
     }
 
-    FASTLED_FORCE_INLINE u0x32 operator/(u32 scalar) const {
-        if (scalar == 0) return from_raw(0xFFFFFFFFU); // Division by zero, return max
-        return from_raw(mValue / scalar);
+    constexpr FASTLED_FORCE_INLINE u0x32 operator/(u32 scalar) const {
+        return (scalar == 0) ? from_raw(0xFFFFFFFFU) : from_raw(mValue / scalar);
     }
 
     // ---- Math functions ----------------------------------------------------

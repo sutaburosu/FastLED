@@ -4827,4 +4827,35 @@ FL_TEST_CASE("fixed-point scalar type alignment") {
     }
 }
 
+// ============================================================================
+// Constexpr Scalar Multiply/Divide Compile-Time Tests
+// ============================================================================
+// Validates that scalar operator* and operator/ are usable in constexpr
+// contexts (C++11 ternary-based clamping). If these fail to compile, the
+// constexpr annotations are broken.
+
+// s0x32 constexpr scalar multiply
+static constexpr s0x32 kS0x32Half = s0x32(0.5f);
+static constexpr s0x32 kS0x32ScalarMul = kS0x32Half * i32(2);
+static constexpr s0x32 kS0x32ScalarMulComm = i32(2) * kS0x32Half;
+static constexpr s0x32 kS0x32ScalarDiv = kS0x32Half / i32(2);
+
+// u0x32 constexpr scalar multiply
+static constexpr u0x32 kU0x32Quarter = u0x32(0.25f);
+static constexpr u0x32 kU0x32ScalarMul = kU0x32Quarter * u32(2);
+static constexpr u0x32 kU0x32ScalarMulComm = u32(2) * kU0x32Quarter;
+static constexpr u0x32 kU0x32ScalarDiv = kU0x32Quarter / u32(2);
+
+FL_TEST_CASE("constexpr scalar ops - s0x32 and u0x32") {
+    // s0x32: 0.5 * 2 should saturate or equal ~1.0
+    FL_CHECK(kS0x32ScalarMul.raw() != 0);
+    FL_CHECK(kS0x32ScalarMulComm.raw() == kS0x32ScalarMul.raw());
+    FL_CHECK(kS0x32ScalarDiv.raw() != 0);
+
+    // u0x32: 0.25 * 2 = 0.5
+    FL_CHECK(kU0x32ScalarMul.raw() != 0);
+    FL_CHECK(kU0x32ScalarMulComm.raw() == kU0x32ScalarMul.raw());
+    FL_CHECK(kU0x32ScalarDiv.raw() != 0);
+}
+
 } // anonymous namespace
