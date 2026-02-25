@@ -179,6 +179,21 @@ public:
     /// The request ID is automatically retrieved from internal storage and method is removed
     void sendStreamFinal(const char* method, const fl::Json& result);
 
+    // =========================================================================
+    // Error Reporting (Unsolicited Notifications)
+    // =========================================================================
+
+    /// Send an error notification to the remote peer. This is an unsolicited
+    /// JSON-RPC notification (no request ID) that bypasses normal RPC flow.
+    /// Use this for error-only state reporting where logging would fail due
+    /// to serial backpressure.
+    /// Format: {"jsonrpc":"2.0","method":"__error","params":{"message":"..."}}
+    void reportError(const fl::string& message);
+
+    /// Send an error notification with structured data
+    /// Format: {"jsonrpc":"2.0","method":"__error","params":<data>}
+    void reportError(const fl::Json& data);
+
 protected:
     // Storage for async request IDs (method name -> request ID)
     struct AsyncRequest {

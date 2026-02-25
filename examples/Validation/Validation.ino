@@ -226,8 +226,8 @@ constexpr int DEFAULT_PIN_RX = validation::defaultRxPin();
 // RX buffer sized for maximum expected strip size
 // Each LED = 24 bits = 24 symbols, plus headroom for RESET pulses
 // Maximum: 3000 LEDs (hardcoded for ESP32/S3 with PSRAM support)
-#if defined(FL_IS_TEENSY_4X)
-constexpr int RX_BUFFER_SIZE = 100 * 32 + 100;  // Teensy: 100 LEDs max for validation
+#if defined(FL_IS_TEENSY_4X) || defined(FL_IS_ESP_32C6) || defined(FL_IS_ESP_32H2) || defined(FL_IS_ESP_32C5)
+constexpr int RX_BUFFER_SIZE = 100 * 32 + 100;  // Memory-constrained: 100 LEDs max for validation
 #else
 constexpr int RX_BUFFER_SIZE = 3000 * 32 + 100;  // LEDs × 32:1 expansion + headroom
 #endif

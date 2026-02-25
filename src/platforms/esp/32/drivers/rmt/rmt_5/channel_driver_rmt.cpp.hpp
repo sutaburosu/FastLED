@@ -140,10 +140,13 @@ class ChannelEngineRMTImpl : public ChannelEngineRMT {
 
     ~ChannelEngineRMTImpl() override {
         // Wait for all active transmissions to complete (with timeout)
+        // Must wait for READY (not just !BUSY) since poll() can return DRAINING
         int timeout_iterations = 100000; // 10 seconds at 100us per iteration
-        while (poll() == DriverState::BUSY && timeout_iterations > 0) {
+        DriverState state = poll();
+        while (state.state != DriverState::READY && state.state != DriverState::ERROR && timeout_iterations > 0) {
             fl::delayMicroseconds(100);
             timeout_iterations--;
+            state = poll();
         }
         if (timeout_iterations == 0) {
             FL_WARN("ChannelEngineRMT destructor timeout - forcing cleanup");

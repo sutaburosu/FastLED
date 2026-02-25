@@ -41,6 +41,7 @@ FL_EXTERN_C_BEGIN
 // IWYU pragma: end_keep
 #include "esp_attr.h"
 #include "esp_err.h"
+#include "esp_heap_caps.h" // For esp_get_free_heap_size()
 #include "esp_log.h"   // For esp_log_timestamp()
 #include "esp_timer.h" // For esp_timer_get_time()
 // IWYU pragma: begin_keep
@@ -758,6 +759,7 @@ class RmtRxChannelImpl : public RmtRxChannel {
         // Handle skip phase using small discard buffer
         if (!handleSkipPhase()) {
             FL_WARN("Failed to handle skip phase in begin()");
+            rmt_disable(mChannel);
             rmt_del_channel(mChannel);
             mChannel = nullptr;
             return false;
@@ -766,6 +768,7 @@ class RmtRxChannelImpl : public RmtRxChannel {
         // Allocate buffer and arm receiver for actual capture
         if (!allocateAndArm()) {
             FL_WARN("Failed to arm receiver in begin()");
+            rmt_disable(mChannel);
             rmt_del_channel(mChannel);
             mChannel = nullptr;
             return false;
@@ -1140,12 +1143,22 @@ class RmtRxChannelImpl : public RmtRxChannel {
         }
 
         // Allocate accumulation buffer (full user-requested size)
+        // On memory-constrained devices (e.g. ESP32-C6 with 320KB SRAM),
+        // the full buffer may not fit. Cap at 25% of free heap to leave
+        // room for PARLIO DMA buffers, JSON responses, and other allocations.
         mAccumulationBuffer.clear();
-        mAccumulationBuffer.reserve(mBufferSize);
-        // Use actual capacity as effective size - reserve may have failed
-        // on memory-constrained devices (e.g. ESP32-C6 with 320KB SRAM
-        // can't allocate 768800*4 = 3MB). Using capacity avoids ~728K
-        // failed malloc calls that each traverse fragmented heap.
+        size_t target_size = mBufferSize;
+        size_t free_heap = esp_get_free_heap_size();
+        size_t max_alloc = free_heap / 4;  // Use at most 25% of free heap
+        size_t target_bytes = target_size * sizeof(RmtSymbol);
+        if (target_bytes > max_alloc && max_alloc > DMA_BUFFER_SIZE * sizeof(RmtSymbol)) {
+            target_size = max_alloc / sizeof(RmtSymbol);
+        }
+        mAccumulationBuffer.reserve(target_size);
+        // Fall back to DMA buffer size if reserve fails
+        if (mAccumulationBuffer.capacity() < DMA_BUFFER_SIZE) {
+            mAccumulationBuffer.reserve(DMA_BUFFER_SIZE);
+        }
         size_t effective_size = mAccumulationBuffer.capacity();
         if (effective_size < mBufferSize) {
             FL_WARN("allocateAndArm(): accumulation buffer reduced from "
@@ -1266,9 +1279,24 @@ class RmtRxChannelImpl : public RmtRxChannel {
         mCallbackCount = 0;      // Reset callback counter for debugging
 
         // Configure receive parameters (use values from begin())
+        // Clamp signal_range_max_ns to hardware limit: each RMT symbol duration
+        // field is 15 bits (max 32767 ticks). At the configured resolution,
+        // max_ns = 32767 * (1e9 / resolution_hz).
+        // ESP32-C6 at 40MHz: 32767 * 25 = 818675 ns (~819µs)
+        u32 max_signal_range_ns = mSignalRangeMaxNs;
+        if (mResolutionHz > 0) {
+            u64 tick_ns = 1000000000ULL / mResolutionHz;
+            u64 hw_max_ns = 32767ULL * tick_ns;
+            if (max_signal_range_ns > hw_max_ns) {
+                max_signal_range_ns = static_cast<u32>(hw_max_ns);
+                FL_LOG_RX("Clamped signal_range_max_ns from " << mSignalRangeMaxNs
+                       << " to " << max_signal_range_ns << " (hw limit at "
+                       << mResolutionHz << "Hz)");
+            }
+        }
         rmt_receive_config_t rx_params = {};
         rx_params.signal_range_min_ns = mSignalRangeMinNs;
-        rx_params.signal_range_max_ns = mSignalRangeMaxNs;
+        rx_params.signal_range_max_ns = max_signal_range_ns;
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 3, 0)
         rx_params.flags.en_partial_rx =
             true; // Enable partial reception for long data streams (>~250

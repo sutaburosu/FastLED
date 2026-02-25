@@ -286,7 +286,12 @@ ParlioEngine::ParlioEngine()
 
 ParlioEngine::~ParlioEngine() {
     // Wait for any active transmissions to complete
+    u32 start = fl::millis();
     while (isTransmitting()) {
+        if (fl::millis() - start >= 2000) {
+            FL_LOG_PARLIO("PARLIO: Engine destructor timeout waiting for transmission");
+            break;
+        }
         fl::delayMicroseconds(100);
     }
 

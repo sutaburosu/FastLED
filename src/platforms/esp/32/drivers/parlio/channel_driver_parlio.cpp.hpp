@@ -63,8 +63,16 @@ ChannelEnginePARLIOImpl::ChannelEnginePARLIOImpl(size_t data_width)
 
 ChannelEnginePARLIOImpl::~ChannelEnginePARLIOImpl() {
     // Wait for any active transmissions to complete
-    while (poll() == DriverState::BUSY) {
+    // Must check for READY (not just !BUSY) since poll() can return DRAINING
+    DriverState state = poll();
+    u32 start = fl::millis();
+    while (state.state != DriverState::READY && state.state != DriverState::ERROR) {
+        if (fl::millis() - start >= 2000) {
+            FL_ERROR("PARLIO: Destructor timeout waiting for READY");
+            break;
+        }
         fl::delayMicroseconds(100);
+        state = poll();
     }
 
     // Clear state

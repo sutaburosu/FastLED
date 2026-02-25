@@ -113,6 +113,25 @@ void Remote::sendStreamFinal(const char* method, const fl::Json& result) {
     }
 }
 
+// Error Reporting
+
+void Remote::reportError(const fl::string& message) {
+    fl::Json params = fl::Json::object();
+    params.set("message", message);
+    reportError(params);
+}
+
+void Remote::reportError(const fl::Json& data) {
+    if (!mResponseSink) {
+        return;
+    }
+    fl::Json notification = fl::Json::object();
+    notification.set("jsonrpc", "2.0");
+    notification.set("method", "__error");
+    notification.set("params", data);
+    mResponseSink(notification);
+}
+
 // RPC Processing
 
 fl::Json Remote::processRpc(const fl::Json& request) {
