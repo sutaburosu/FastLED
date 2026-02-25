@@ -22,6 +22,7 @@
 #include "fl/stl/optional.h"
 #include "fl/json.h"
 #include "fl/simd.h"
+#include "ValidationSimd.h"
 #include "fl/memory.h"
 #include <Arduino.h>
 
@@ -1144,8 +1145,8 @@ void ValidationRemoteControl::registerFunctions(fl::shared_ptr<ValidationState> 
         testSimd_fn.set("name", "testSimd");
         testSimd_fn.set("phase", "Phase 4: Utility");
         testSimd_fn.set("args", "[]");
-        testSimd_fn.set("returns", "{success, passed, message}");
-        testSimd_fn.set("description", "Test SIMD operations (add_sat_u8_16)");
+        testSimd_fn.set("returns", "{success, passed, totalTests, passedTests, failedTests, failures:[string]}");
+        testSimd_fn.set("description", "Run comprehensive SIMD test suite (60 tests)");
         functions.push_back(testSimd_fn);
 
         fl::Json response = fl::Json::object();
@@ -1155,52 +1156,37 @@ void ValidationRemoteControl::registerFunctions(fl::shared_ptr<ValidationState> 
         return response;
     });
 
-    // Register "testSimd" function - test SIMD operations
+    // Register "testSimd" function - run comprehensive SIMD test suite
     mRemote->bind("testSimd", [](const fl::Json& args) -> fl::Json {
         fl::Json response = fl::Json::object();
 
-        // Test data: 16 bytes each
-        FL_ALIGNAS(16) uint8_t a[16] = {200, 200, 200, 200, 200, 200, 200, 200,
-                                      100, 100, 100, 100, 100, 100, 100, 100};
-        FL_ALIGNAS(16) uint8_t b[16] = {100, 100, 100, 100, 100, 100, 100, 100,
-                                      200, 200, 200, 200, 200, 200, 200, 200};
-        FL_ALIGNAS(16) uint8_t result[16] = {0};
+        // Run the full test suite and collect per-test results
+        using validation::simd_check::SimdTestEntry;
+        const SimdTestEntry* tests = nullptr;
+        int num_tests = 0;
+        validation::simd_check::getTests(&tests, &num_tests);
 
-        // Expected: saturating add clamps at 255
-        // First 8: 200+100=255 (clamped), Last 8: 100+200=255 (clamped)
-        uint8_t expected[16] = {255, 255, 255, 255, 255, 255, 255, 255,
-                                255, 255, 255, 255, 255, 255, 255, 255};
+        int passed_count = 0;
+        int failed_count = 0;
+        fl::Json failures = fl::Json::array();
 
-        // Perform SIMD saturating add
-        fl::simd::simd_u8x16 va = fl::simd::load_u8_16(a);
-        fl::simd::simd_u8x16 vb = fl::simd::load_u8_16(b);
-        fl::simd::simd_u8x16 vr = fl::simd::add_sat_u8_16(va, vb);
-        fl::simd::store_u8_16(result, vr);
-
-        // Verify result
-        bool passed = true;
-        for (int i = 0; i < 16; i++) {
-            if (result[i] != expected[i]) {
-                passed = false;
-                break;
+        for (int i = 0; i < num_tests; i++) {
+            bool ok = tests[i].func();
+            if (ok) {
+                passed_count++;
+            } else {
+                failed_count++;
+                failures.push_back(fl::string(tests[i].name));
             }
         }
 
         response.set("success", true);
-        response.set("passed", passed);
-        if (passed) {
-            response.set("message", "SIMD add_sat_u8_16 test passed");
-        } else {
-            response.set("message", "SIMD add_sat_u8_16 test FAILED");
-            // Include actual vs expected for debugging
-            fl::Json actual = fl::Json::array();
-            fl::Json exp = fl::Json::array();
-            for (int i = 0; i < 16; i++) {
-                actual.push_back(static_cast<int64_t>(result[i]));
-                exp.push_back(static_cast<int64_t>(expected[i]));
-            }
-            response.set("actual", actual);
-            response.set("expected", exp);
+        response.set("passed", failed_count == 0);
+        response.set("totalTests", static_cast<int64_t>(num_tests));
+        response.set("passedTests", static_cast<int64_t>(passed_count));
+        response.set("failedTests", static_cast<int64_t>(failed_count));
+        if (failed_count > 0) {
+            response.set("failures", failures);
         }
         return response;
     });

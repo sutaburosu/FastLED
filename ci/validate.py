@@ -1961,56 +1961,74 @@ async def run(args: Args | None = None) -> int:  # pyright: ignore[reportGeneral
             print()
             return 0
 
-        # SIMD test mode - simple RPC call instead of full driver test
+        # SIMD test mode - run comprehensive SIMD test suite via RPC
         if simd_test_mode:
             print()
             print("=" * 60)
-            print("SIMD TEST MODE")
+            print("SIMD TEST MODE - Comprehensive Test Suite")
             print("=" * 60)
-            print("Running SIMD add_sat_u8_16 test...")
             print()
 
             client: RpcClient | None = None
             try:
                 # Use short boot_wait - device already rebooted and we waited for port
-                print("   ⏳ Connecting to device...", end="", flush=True)
+                print("   Connecting to device...", end="", flush=True)
                 client = RpcClient(
-                    upload_port, timeout=10.0, serial_interface=serial_iface
+                    upload_port, timeout=30.0, serial_interface=serial_iface
                 )
                 await client.connect(
                     boot_wait=1.0
                 )  # Reduced from 3.0s since we already waited
-                print(f" {Fore.GREEN}✓{Style.RESET_ALL}")
+                print(f" {Fore.GREEN}ok{Style.RESET_ALL}")
 
-                print("   📡 Sending test command...", end="", flush=True)
+                print("   Sending testSimd RPC...", end="", flush=True)
                 response = await client.send_and_match(
                     "testSimd", match_key="passed", retries=3
                 )
-                print(f" {Fore.GREEN}✓{Style.RESET_ALL}")
+                print(f" {Fore.GREEN}ok{Style.RESET_ALL}")
+                print()
 
+                total = response.get("totalTests", 0)
+                passed_count = response.get("passedTests", 0)
+                failed_count = response.get("failedTests", 0)
+                failures = response.get("failures", [])
+
+                print(f"   Results: {passed_count}/{total} passed", end="")
+                if failed_count > 0:
+                    print(f", {failed_count} FAILED")
+                else:
+                    print()
+
+                if failures:
+                    print()
+                    print(f"   {Fore.RED}Failed tests:{Style.RESET_ALL}")
+                    for name in failures:
+                        print(f"     - {name}")
+
+                print()
                 if response.get("passed", False):
-                    print(f"{Fore.GREEN}✅ SIMD TEST PASSED{Style.RESET_ALL}")
-                    print(f"   {response.get('message', '')}")
+                    print(
+                        f"{Fore.GREEN}SIMD TEST PASSED ({total} tests){Style.RESET_ALL}"
+                    )
                     return 0
                 else:
-                    print(f"{Fore.RED}❌ SIMD TEST FAILED{Style.RESET_ALL}")
-                    print(f"   {response.get('message', '')}")
-                    if "actual" in response:
-                        print(f"   Actual:   {response['actual']}")
-                        print(f"   Expected: {response['expected']}")
+                    print(
+                        f"{Fore.RED}SIMD TEST FAILED"
+                        f" ({failed_count}/{total} failures){Style.RESET_ALL}"
+                    )
                     return 1
 
             except RpcTimeoutError:
                 print()  # Newline after partial status line
-                print(f"{Fore.RED}❌ SIMD TEST TIMEOUT{Style.RESET_ALL}")
-                print("   No response from device within 10 seconds")
+                print(f"{Fore.RED}SIMD TEST TIMEOUT{Style.RESET_ALL}")
+                print("   No response from device within 30 seconds")
                 return 1
             except KeyboardInterrupt:
                 handle_keyboard_interrupt_properly()
                 raise
             except Exception as e:
                 print()  # Newline after partial status line
-                print(f"{Fore.RED}❌ SIMD TEST ERROR: {e}{Style.RESET_ALL}")
+                print(f"{Fore.RED}SIMD TEST ERROR: {e}{Style.RESET_ALL}")
                 return 1
             finally:
                 if client is not None:

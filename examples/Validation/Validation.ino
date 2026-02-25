@@ -185,6 +185,7 @@
 #include "ValidationRemote.h"
 #include "ValidationAsync.h"
 #include "ValidationPlatform.h"
+#include "ValidationSimd.h"
 
 // ============================================================================
 // Teensy Hardware Watchdog (crash recovery) - DISABLED
@@ -314,6 +315,14 @@ void setup() {
     ss << "  Color Order: RGB\n";
     ss << "  RX Buffer Size: " << RX_BUFFER_SIZE << " bytes";
     FL_PRINT(ss.str());
+
+    // ========================================================================
+    // SIMD Validation
+    // ========================================================================
+    int simd_failures = validation::simd_check::runSimdTests();
+    if (simd_failures > 0) {
+        FL_ERROR("SIMD validation failed - " << simd_failures << " test(s) failed");
+    }
 
     // ========================================================================
     // RX Channel Setup
