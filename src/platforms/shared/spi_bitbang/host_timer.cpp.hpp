@@ -28,12 +28,13 @@
 #include "fl/stl/thread.h"
 #include "fl/stl/chrono.h"
 #include "fl/stl/cstdio.h"
+#include "fl/stl/stdio.h"  // for fl::printf used by ISR_DBG
 #include "fl/stl/atomic.h"
 #include "fl/stl/mutex.h"
 #include "fl/stl/vector.h"
 
 // Simple printf-style debugging for thread mode
-#define ISR_DBG(...) std::printf("[ISR_THREAD] " __VA_ARGS__)  // okay std namespace
+#define ISR_DBG(...) fl::printf("[ISR_THREAD] " __VA_ARGS__)
 
 /* ISR context for thread-based execution */
 struct ISRContext {
