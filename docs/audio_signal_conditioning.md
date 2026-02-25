@@ -5,7 +5,7 @@
 Phase 1 of the FastLED audio middleware adds professional-grade signal conditioning to the audio processing pipeline. This addresses critical gaps identified in the core FastLED audio library by providing:
 
 1. **SignalConditioner** - DC offset removal, spike filtering, and noise gating
-2. **AutoGain** - Adaptive gain control using Robbins-Monro percentile estimation
+2. **AutoGain** - Adaptive gain control using PI controller with peak envelope tracking
 3. **NoiseFloorTracker** - Adaptive noise floor tracking with hysteresis
 
 These components work together to clean and normalize raw audio from I2S microphones before FFT analysis and beat detection.
@@ -98,24 +98,30 @@ Serial.printf("DC offset: %d, Spikes rejected: %u\n",
 
 ### 2. AutoGain
 
-Adaptive gain control using Robbins-Monro percentile estimation for memory-efficient streaming.
+Adaptive gain control using a PI (proportional-integral) controller with slow peak envelope tracking, inspired by WLED Sound Reactive.
 
 **Features:**
-- **Percentile tracking**: Estimates P90 (or other percentile) without storing history
-- **Adaptive gain**: Adjusts gain to maintain target RMS level
+- **Peak envelope tracking**: Fast attack (10ms), slow decay (3-7s depending on preset)
+- **PI controller**: Smoothly drives gain toward target with anti-windup
+- **WLED-style presets**: Normal, Vivid, Lazy for common use cases
+- **Source-level adaptation**: Adapts to mic sensitivity differences, not musical dynamics
 - **Configurable limits**: Min/max gain clamping prevents over-amplification
-- **Smooth transitions**: Exponential smoothing prevents abrupt gain changes
 
 **Configuration:**
 ```cpp
 AutoGainConfig config;
 config.enabled = true;
-config.targetPercentile = 0.9f;      // Track P90 (90th percentile)
-config.learningRate = 0.05f;         // Adaptation speed (0.01-0.1)
-config.targetRMSLevel = 8000.0f;     // Target RMS after gain
-config.minGain = 0.1f;               // Minimum gain multiplier
-config.maxGain = 10.0f;              // Maximum gain multiplier
-config.gainSmoothing = 0.95f;        // Smoothing factor (0-1)
+config.preset = AGCPreset_Normal;     // Normal, Vivid, Lazy, or Custom
+config.targetRMSLevel = 8000.0f;      // Target RMS after gain
+config.minGain = 1.0f / 64.0f;        // Minimum gain multiplier
+config.maxGain = 32.0f;               // Maximum gain multiplier
+
+// Custom preset (only used when preset == AGCPreset_Custom):
+// config.peakDecayTau = 3.3f;
+// config.kp = 0.6f;
+// config.ki = 1.7f;
+// config.gainFollowSlowTau = 12.3f;
+// config.gainFollowFastTau = 0.38f;
 ```
 
 **Example:**
@@ -131,8 +137,8 @@ for (int i = 0; i < 100; ++i) {
     // Monitor gain
     if (i % 10 == 0) {
         const auto& stats = agc.getStats();
-        Serial.printf("Gain: %.2f, Input RMS: %.1f, Output RMS: %.1f\n",
-                      stats.currentGain, stats.inputRMS, stats.outputRMS);
+        Serial.printf("Gain: %.2f, Peak: %.1f, Input RMS: %.1f, Output RMS: %.1f\n",
+                      stats.currentGain, stats.peakEnvelope, stats.inputRMS, stats.outputRMS);
     }
 }
 ```
@@ -286,7 +292,7 @@ bash test audio --cpp
 
 ## References
 
-- [Robbins-Monro Algorithm](https://en.wikipedia.org/wiki/Stochastic_approximation)
+- [WLED Sound Reactive AGC](https://github.com/atuline/WLED/wiki/Sound-Reactive)
 - [Noise Gate Design](https://en.wikipedia.org/wiki/Noise_gate)
 - [DC Offset Removal](https://en.wikipedia.org/wiki/DC_bias)
 

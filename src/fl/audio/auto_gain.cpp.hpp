@@ -18,13 +18,56 @@ AutoGain::~AutoGain() = default;
 
 void AutoGain::configure(const AutoGainConfig& config) {
     mConfig = config;
+    resolvePreset();
+    // Initialize peak envelope to targetRMSLevel so initial gain is ~1.0
+    mPeakEnvelope.reset(mConfig.targetRMSLevel);
+    mStats.peakEnvelope = mConfig.targetRMSLevel;
+}
+
+void AutoGain::resolvePreset() {
+    switch (mConfig.preset) {
+    case AGCPreset_Normal:
+        mPeakDecayTau = 3.3f;
+        mKp = 0.6f;
+        mKi = 1.7f;
+        mGainFollowSlowTau = 12.3f;
+        mGainFollowFastTau = 0.38f;
+        break;
+    case AGCPreset_Vivid:
+        mPeakDecayTau = 1.3f;
+        mKp = 1.5f;
+        mKi = 1.85f;
+        mGainFollowSlowTau = 8.2f;
+        mGainFollowFastTau = 0.26f;
+        break;
+    case AGCPreset_Lazy:
+        mPeakDecayTau = 6.7f;
+        mKp = 0.65f;
+        mKi = 1.2f;
+        mGainFollowSlowTau = 16.4f;
+        mGainFollowFastTau = 0.51f;
+        break;
+    case AGCPreset_Custom:
+        mPeakDecayTau = mConfig.peakDecayTau;
+        mKp = mConfig.kp;
+        mKi = mConfig.ki;
+        mGainFollowSlowTau = mConfig.gainFollowSlowTau;
+        mGainFollowFastTau = mConfig.gainFollowFastTau;
+        break;
+    }
+    // Reconfigure peak envelope filter with resolved decay tau
+    // Attack is always fast (10ms), decay varies by preset
+    mPeakEnvelope = AttackDecayFilter<float>(0.01f, mPeakDecayTau, mConfig.targetRMSLevel);
 }
 
 void AutoGain::reset() {
-    mPercentileEstimate = 1000.0f;  // Reset to initial estimate
-    mGainFilter.reset(1.0f);
+    mPeakEnvelope.reset(mConfig.targetRMSLevel);
+    mIntegrator = 0.0f;
+    mLastGain = 1.0f;
     mStats.currentGain = 1.0f;
-    mStats.percentileEstimate = 0.0f;
+    mStats.peakEnvelope = mConfig.targetRMSLevel;
+    mStats.targetGain = 1.0f;
+    mStats.integrator = 0.0f;
     mStats.inputRMS = 0.0f;
     mStats.outputRMS = 0.0f;
     mStats.samplesProcessed = 0;
@@ -45,26 +88,38 @@ AudioSample AutoGain::process(const AudioSample& sample) {
     const float inputRMS = sample.rms();
     mStats.inputRMS = inputRMS;
 
-    // Update percentile estimate using Robbins-Monro algorithm
-    updatePercentileEstimate(inputRMS);
-
-    // Calculate gain from percentile estimate
-    const float targetGain = calculateGain();
-
-    // Apply asymmetric smoothing: fast attack (reduce gain quickly on loud),
-    // slow release (prevent gain pumping on quiet)
+    // Compute dt from sample size and sample rate
     const float dt = (mSampleRate > 0 && sample.size() > 0)
         ? static_cast<float>(sample.size()) / static_cast<float>(mSampleRate)
         : 0.023f;
-    float smoothedGain = mGainFilter.update(targetGain, dt);
 
-    // Clamp to configured range
+    // Silence detection: spin down integrator when input is essentially silent
+    // (WLED: control_integrated *= 0.91 during silence)
+    const float silenceThreshold = 10.0f;
+    if (inputRMS < silenceThreshold) {
+        mIntegrator *= 0.91f;
+        if (fl::abs(mIntegrator) < 0.01f) mIntegrator = 0.0f;
+    }
+
+    // Step 1: Update peak envelope (fast attack, slow decay)
+    mPeakEnvelope.update(inputRMS, dt);
+    const float peakEnv = mPeakEnvelope.value();
+    mStats.peakEnvelope = peakEnv;
+
+    // Step 2: Compute target gain from peak envelope
+    const float targetGain = computeTargetGain();
+    mStats.targetGain = targetGain;
+
+    // Step 3: PI controller smoothly drives gain toward target
+    const float smoothedGain = updatePIController(targetGain, dt);
+
+    // Step 4: Clamp to configured range
     const float clampedGain = fl::max(mConfig.minGain,
                                        fl::min(mConfig.maxGain, smoothedGain));
-
     mStats.currentGain = clampedGain;
+    mLastGain = clampedGain;
 
-    // Apply gain to audio
+    // Step 5: Apply gain to audio
     const auto& pcm = sample.pcm();
     mOutputBuffer.clear();
     mOutputBuffer.reserve(pcm.size());
@@ -80,6 +135,7 @@ AudioSample AutoGain::process(const AudioSample& sample) {
 
     // Update stats
     mStats.samplesProcessed += sample.size();
+    mStats.integrator = mIntegrator;
 
     // Create new AudioSample from amplified PCM
     AudioSampleImplPtr impl = fl::make_shared<AudioSampleImpl>();
@@ -87,52 +143,55 @@ AudioSample AutoGain::process(const AudioSample& sample) {
     return AudioSample(impl);
 }
 
-void AutoGain::updatePercentileEstimate(float observedRMS) {
-    // Simplified percentile estimation using exponential moving average
-    // with directional bias based on target percentile
-    //
-    // For P90 (targetPercentile = 0.9):
-    // - We want the estimate to be at a level where 90% of samples are below it
-    // - When we see samples above the estimate, increase it faster (we're below P90)
-    // - When we see samples below the estimate, decrease it slower (we might be at or above P90)
+float AutoGain::computeTargetGain() {
+    const float peakEnv = mPeakEnvelope.value();
 
-    const float p = mConfig.targetPercentile;  // e.g., 0.9 for P90
-    const float lr = mConfig.learningRate;     // Learning rate
-
-    // Use an adaptive approach that moves toward observed values
-    // with asymmetric rates to converge to the desired percentile
-    if (observedRMS > mPercentileEstimate) {
-        // Observed value is above estimate - we're likely below the target percentile
-        // Increase estimate by moving toward the observed value
-        // Use learning rate scaled by (1 - p) for the target percentile
-        const float adaptiveRate = lr / (1.0f - p);  // Higher rate for high percentiles
-        mPercentileEstimate += adaptiveRate * (observedRMS - mPercentileEstimate);
-    } else {
-        // Observed value is below estimate - we might be above the target percentile
-        // Decrease estimate more slowly
-        const float adaptiveRate = lr / p;  // Lower rate for high percentiles
-        mPercentileEstimate += adaptiveRate * (observedRMS - mPercentileEstimate);
+    // Avoid division by very small numbers
+    if (peakEnv < 1.0f) {
+        return mConfig.maxGain;  // Signal is essentially silent
     }
 
-    // Prevent estimate from going to zero or negative
-    if (mPercentileEstimate < 1.0f) {
-        mPercentileEstimate = 1.0f;
-    }
-
-    mStats.percentileEstimate = mPercentileEstimate;
+    return mConfig.targetRMSLevel / peakEnv;
 }
 
-float AutoGain::calculateGain() {
-    // Calculate gain to bring percentile estimate to target RMS level
-    // gain = targetRMS / percentileEstimate
+float AutoGain::updatePIController(float targetGain, float dt) {
+    const float error = targetGain - mLastGain;
 
-    if (mPercentileEstimate < 1.0f) {
-        return 1.0f;  // Avoid division by very small numbers
+    // Bug 4 fix: Use absolute error threshold when gain is small to avoid
+    // huge errorRatio from dividing by tiny mLastGain
+    const bool largeError = (mLastGain > 0.1f)
+        ? (fl::abs(error) / mLastGain > 0.2f)  // Relative: >20% of current gain
+        : (fl::abs(error) > 0.1f);              // Absolute: >0.1 when gain is tiny
+    const float tau = largeError ? mGainFollowFastTau : mGainFollowSlowTau;
+
+    // Proportional term
+    const float pTerm = mKp * error;
+
+    // Bug 1 fix: PI target is where we WANT gain to be (not mLastGain + delta + delta)
+    // targetGain + pTerm + integrator = the desired gain level
+    const float piTarget = targetGain + pTerm + mIntegrator;
+
+    // Smooth with exponential filter using adaptive tau
+    float alpha = 1.0f;
+    if (tau > 0.0f && dt > 0.0f) {
+        alpha = 1.0f - fl::exp(-dt / tau);
     }
 
-    const float gain = mConfig.targetRMSLevel / mPercentileEstimate;
+    const float unclamped = mLastGain + alpha * (piTarget - mLastGain);
 
-    return gain;
+    // Bug 2 fix: Back-calculation anti-windup — only accumulate integrator
+    // when output is NOT clamped. Decay integrator when saturated (WLED: *= 0.91)
+    const bool saturated = (unclamped > mConfig.maxGain) || (unclamped < mConfig.minGain);
+    if (saturated) {
+        mIntegrator *= 0.91f;
+    } else {
+        mIntegrator += mKi * error * dt;
+    }
+    // Clamp integrator magnitude to prevent runaway in pathological cases
+    const float maxIntegral = 4.0f * mConfig.maxGain;
+    mIntegrator = fl::max(-maxIntegral, fl::min(maxIntegral, mIntegrator));
+
+    return unclamped;
 }
 
 void AutoGain::applyGain(const vector<i16>& input, float gain, vector<i16>& output) {

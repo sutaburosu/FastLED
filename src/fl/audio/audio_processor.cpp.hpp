@@ -18,6 +18,7 @@
 #include "fl/audio/detectors/mood_analyzer.h"
 #include "fl/audio/detectors/buildup.h"
 #include "fl/audio/detectors/drop.h"
+#include "fl/audio/detectors/equalizer.h"
 
 namespace fl {
 
@@ -127,6 +128,11 @@ void AudioProcessor::onTreble(function<void(float)> callback) {
 void AudioProcessor::onFrequencyBands(function<void(float, float, float)> callback) {
     auto detector = getFrequencyBands();
     detector->onLevelsUpdate.add(callback);
+}
+
+void AudioProcessor::onEqualizer(function<void(const Equalizer&)> callback) {
+    auto detector = getEqualizerDetector();
+    detector->onEqualizer.add(callback);
 }
 
 void AudioProcessor::onEnergy(function<void(float)> callback) {
@@ -576,6 +582,30 @@ float AudioProcessor::getMoodValence() {
     return clampNeg1To1(getMoodAnalyzer()->getValence());
 }
 
+float AudioProcessor::getEqBass() {
+    return clamp01(getEqualizerDetector()->getBass());
+}
+
+float AudioProcessor::getEqMid() {
+    return clamp01(getEqualizerDetector()->getMid());
+}
+
+float AudioProcessor::getEqTreble() {
+    return clamp01(getEqualizerDetector()->getTreble());
+}
+
+float AudioProcessor::getEqVolume() {
+    return clamp01(getEqualizerDetector()->getVolume());
+}
+
+float AudioProcessor::getEqZcf() {
+    return clamp01(getEqualizerDetector()->getZcf());
+}
+
+float AudioProcessor::getEqBin(int index) {
+    return clamp01(getEqualizerDetector()->getBin(index));
+}
+
 void AudioProcessor::setSampleRate(int sampleRate) {
     mSampleRate = sampleRate;
     mContext->setSampleRate(sampleRate);
@@ -652,6 +682,7 @@ void AudioProcessor::reset() {
     mMoodAnalyzer.reset();
     mBuildupDetector.reset();
     mDropDetector.reset();
+    mEqualizerDetector.reset();
 }
 
 shared_ptr<BeatDetector> AudioProcessor::getBeatDetector() {
@@ -803,6 +834,14 @@ shared_ptr<DropDetector> AudioProcessor::getDropDetector() {
         registerDetector(mDropDetector);
     }
     return mDropDetector;
+}
+
+shared_ptr<EqualizerDetector> AudioProcessor::getEqualizerDetector() {
+    if (!mEqualizerDetector) {
+        mEqualizerDetector = make_shared<EqualizerDetector>();
+        registerDetector(mEqualizerDetector);
+    }
+    return mEqualizerDetector;
 }
 
 shared_ptr<AudioProcessor> AudioProcessor::createWithAutoInput(

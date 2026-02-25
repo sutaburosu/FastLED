@@ -279,6 +279,63 @@ void loop() {
 }
 ```
 
+### WLED-Style Equalizer (16-Bin Spectrum)
+
+A dead-simple WLED-compatible equalizer: 16 frequency bins normalized to 0.0-1.0, plus bass/mid/treble/volume/zcf convenience getters. All values are pre-normalized — just multiply by 255 if you want bytes.
+
+```cpp
+#include "FastLED.h"
+
+#define NUM_LEDS 16
+CRGB leds[NUM_LEDS];
+fl::shared_ptr<fl::AudioProcessor> audio;
+
+void setup() {
+    FastLED.addLeds<WS2812B, 2, GRB>(leds, NUM_LEDS);
+
+    auto config = fl::AudioConfig::CreateInmp441(7, 8, 4, fl::Right);
+    audio = FastLED.add(config);
+
+    // Callback: get everything in one struct
+    audio->onEqualizer([](const fl::Equalizer& eq) {
+        // eq.bass, eq.mid, eq.treble, eq.volume, eq.zcf — all 0.0-1.0
+        // eq.bins — span<const float, 16>, each 0.0-1.0
+        for (int i = 0; i < 16; ++i) {
+            uint8_t brightness = static_cast<uint8_t>(eq.bins[i] * 255);
+            leds[i] = CHSV(i * 16, 255, brightness);
+        }
+    });
+}
+
+void loop() {
+    FastLED.show();
+}
+```
+
+Or use polling — no callbacks needed:
+
+```cpp
+void loop() {
+    // All return 0.0-1.0
+    float bass   = audio->getEqBass();
+    float mid    = audio->getEqMid();
+    float treble = audio->getEqTreble();
+    float volume = audio->getEqVolume();
+    float zcf    = audio->getEqZcf();
+    float bin5   = audio->getEqBin(5);  // 16 bins (0-15)
+
+    fill_solid(leds, NUM_LEDS, CHSV(bass * 160, 255, volume * 255));
+    FastLED.show();
+}
+```
+
+**Bin layout (WLED-compatible):**
+| Bins | Range | Getter |
+|------|-------|--------|
+| 0-3 | ~60-320 Hz (bass) | `getEqBass()` |
+| 4-10 | ~320-2560 Hz (mid) | `getEqMid()` |
+| 11-15 | ~2560-5120 Hz (treble) | `getEqTreble()` |
+
 ### Mid-Level: Custom Detector
 
 Create your own detector by subclassing `AudioDetector`. This gives you direct access to `AudioContext` for FFT data while integrating into the update loop.
@@ -643,6 +700,7 @@ Detectors are created only when you register a callback or call a polling getter
 | **Mood** | `onMood(Mood)`, `onMoodChange(Mood)`, `onValenceArousal(float, float)` |
 | **Buildup** | `onBuildupStart()`, `onBuildupProgress(float)`, `onBuildupPeak()`, `onBuildupEnd()`, `onBuildup(Buildup)` |
 | **Drop** | `onDrop()`, `onDropEvent(Drop)`, `onDropImpact(float)` |
+| **Equalizer** | `onEqualizer(const Equalizer&)` |
 
 ### Polling Getters
 
@@ -721,6 +779,14 @@ audio.hasKey();              // u8 - Key detected?
 audio.getKeyConfidence();    // u8 - Key confidence 0-255
 audio.getMoodValence();      // u8 - Happy/sad 0-255
 audio.getMoodArousal();      // u8 - Calm/energetic 0-255
+
+// Equalizer (WLED-style, all 0.0-1.0)
+audio.getEqBass();           // float - Bass level 0.0-1.0
+audio.getEqMid();            // float - Mid level 0.0-1.0
+audio.getEqTreble();         // float - Treble level 0.0-1.0
+audio.getEqVolume();         // float - Volume 0.0-1.0 (AGC-normalized)
+audio.getEqZcf();            // float - Zero-crossing factor 0.0-1.0
+audio.getEqBin(0);           // float - Bin 0 level 0.0-1.0 (16 bins total)
 ```
 
 ---
@@ -808,16 +874,29 @@ audio.setNoiseFloorTrackingEnabled(true);   // Adaptive noise floor
 | `noiseGateCloseThreshold` | `300` | Signal must fall below this to close the gate |
 | `dcRemovalAlpha` | `0.99f` | Time constant (higher = slower DC adaptation) |
 
-**AutoGainConfig** — Adaptive gain using Robbins-Monro percentile estimation:
+**AutoGainConfig** — Adaptive gain using PI controller with peak envelope tracking (WLED-style):
 
 | Field | Default | Description |
 |-------|---------|-------------|
-| `targetPercentile` | `0.9f` | Track P90 of signal distribution |
-| `learningRate` | `0.05f` | How quickly the estimate adapts (0.01-0.1 typical) |
-| `minGain` | `0.1f` | Minimum gain multiplier |
-| `maxGain` | `10.0f` | Maximum gain multiplier |
+| `preset` | `AGCPreset_Normal` | Behavior preset: Normal, Vivid, Lazy, or Custom |
+| `minGain` | `1/64` | Minimum gain multiplier |
+| `maxGain` | `32.0f` | Maximum gain multiplier |
 | `targetRMSLevel` | `8000.0f` | Target RMS level after gain (0-32767) |
-| `gainSmoothing` | `0.95f` | Smoothing factor for gain changes |
+| `peakDecayTau` | `3.3f` | Peak envelope decay (seconds, Custom only) |
+| `kp` | `0.6f` | PI proportional gain (Custom only) |
+| `ki` | `1.7f` | PI integral gain (Custom only) |
+| `gainFollowSlowTau` | `12.3f` | Slow gain-follow tau (seconds, Custom only) |
+| `gainFollowFastTau` | `0.38f` | Fast gain-follow tau (seconds, Custom only) |
+
+**AGC Presets:**
+
+| Parameter | Normal | Vivid | Lazy |
+|-----------|--------|-------|------|
+| peakDecayTau | 3.3s | 1.3s | 6.7s |
+| kp | 0.6 | 1.5 | 0.65 |
+| ki | 1.7 | 1.85 | 1.2 |
+| gainFollowSlowTau | 12.3s | 8.2s | 16.4s |
+| gainFollowFastTau | 0.38s | 0.26s | 0.51s |
 
 **NoiseFloorTrackerConfig** — Adaptive noise floor with hysteresis:
 
@@ -840,10 +919,9 @@ scConfig.noiseGateOpenThreshold = 1000;
 scConfig.noiseGateCloseThreshold = 700;
 audio.configureSignalConditioner(scConfig);
 
-// Quiet venue: aggressive auto-gain, fast adaptation
+// Quiet venue: vivid preset for faster adaptation
 AutoGainConfig agcConfig;
-agcConfig.learningRate = 0.1f;
-agcConfig.maxGain = 20.0f;
+agcConfig.preset = AGCPreset_Vivid;
 agcConfig.targetRMSLevel = 12000.0f;
 audio.configureAutoGain(agcConfig);
 
@@ -862,6 +940,7 @@ audio.configureNoiseFloorTracker(nfConfig);
 |----------|------|----------|---------------|-------------|
 | **BeatDetector** | Yes | No | `onBeat()`, `onOnset(float)` | `isBeat()`, `getBeatConfidence()` |
 | **TempoAnalyzer** | No | No | `onTempo(float)`, `onTempoStable()` | `getTempoBPM()`, `isTempoStable()` |
+| **EqualizerDetector** | Yes | No | `onEqualizer(const Equalizer&)` | `getEqBass()`, `getEqMid()`, `getEqTreble()`, `getEqVolume()`, `getEqZcf()`, `getEqBin(int)` |
 | **FrequencyBands** | Yes | No | `onBass(float)`, `onMid(float)`, `onTreble(float)` | `getBassLevel()`, `getMidLevel()`, `getTrebleLevel()` |
 | **EnergyAnalyzer** | No | No | `onEnergy(float)`, `onPeak(float)` | `getEnergy()`, `getPeakLevel()` |
 | **TransientDetector** | Yes | No | `onTransient()`, `onAttack(float)` | `isTransient()`, `getTransientStrength()` |
@@ -924,5 +1003,6 @@ fl/audio/
     ├── silence.h      # Silence detection
     ├── dynamics_analyzer.h # Crescendo / diminuendo
     ├── energy_analyzer.h   # RMS energy tracking
+    ├── equalizer.h    # WLED-style 16-bin equalizer (0.0-1.0)
     └── frequency_bands.h   # Bass/mid/treble splitting
 ```

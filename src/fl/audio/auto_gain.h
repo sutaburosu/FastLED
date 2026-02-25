@@ -7,56 +7,75 @@
 
 namespace fl {
 
-/// Configuration for automatic gain control
+/// AGC preset selection — derived from WLED Sound Reactive's proven approach.
+/// Normal/Vivid/Lazy control how quickly the AGC adapts to source-level changes.
+enum AGCPreset {
+    AGCPreset_Normal, ///< Balanced: 3.3s peak decay, moderate PI gains
+    AGCPreset_Vivid,  ///< Faster response: 1.3s peak decay, higher PI gains
+    AGCPreset_Lazy,   ///< Slower, more stable: 6.7s peak decay, lower PI gains
+    AGCPreset_Custom  ///< Use custom PI tuning fields below
+};
+
+/// Configuration for automatic gain control.
+///
+/// The AGC uses a PI (proportional-integral) controller with slow peak envelope
+/// tracking, inspired by WLED Sound Reactive. It adapts to source-level
+/// differences (MEMS mic vs line-in) rather than musical dynamics, avoiding
+/// cross-band coupling that plagues fast-tracking AGC designs.
 struct AutoGainConfig {
     /// Enable automatic gain adjustment
     bool enabled = true;
 
-    /// Target percentile for ceiling tracking (0.0-1.0)
-    /// Default: 0.9 (P90 - track 90th percentile)
-    float targetPercentile = 0.9f;
-
-    /// Learning rate for Robbins-Monro percentile estimation
-    /// Higher = faster adaptation to level changes
-    /// Lower = more stable but slower to adapt
-    /// Range: 0.0-1.0, typical: 0.01-0.1
-    float learningRate = 0.05f;
-
     /// Minimum gain multiplier (prevents over-attenuation)
-    float minGain = 0.1f;
+    float minGain = 1.0f / 64.0f;
 
     /// Maximum gain multiplier (prevents over-amplification)
-    float maxGain = 10.0f;
+    float maxGain = 32.0f;
 
     /// Target RMS level after gain (0-32767)
     /// The AGC will adjust gain to maintain this average level
     float targetRMSLevel = 8000.0f;
 
-    // Gain smoothing is handled internally by AttackDecayFilter
-    // (fast attack 10ms, slow release 300ms)
+    /// AGC behavior preset (default: Normal)
+    AGCPreset preset = AGCPreset_Normal;
+
+    // --- Custom PI tuning (only used when preset == AGCPreset_Custom) ---
+
+    /// Peak envelope decay time constant (seconds). Controls how quickly the
+    /// peak tracker forgets old peaks. Longer = more stable.
+    float peakDecayTau = 3.3f;
+
+    /// Proportional gain for PI controller
+    float kp = 0.6f;
+
+    /// Integral gain for PI controller
+    float ki = 1.7f;
+
+    /// Slow gain-follow time constant (seconds) — used when error is small
+    float gainFollowSlowTau = 12.3f;
+
+    /// Fast gain-follow time constant (seconds) — used when error is large
+    float gainFollowFastTau = 0.38f;
 };
 
-/// AutoGain implements adaptive gain control using Robbins-Monro percentile
-/// estimation to track the P90 ceiling (or other configurable percentile).
+/// AutoGain implements adaptive gain control using a PI (proportional-integral)
+/// controller with slow peak envelope tracking, inspired by WLED Sound Reactive.
 ///
-/// The algorithm continuously estimates the target percentile of the signal
-/// distribution without storing history, making it memory-efficient and
-/// suitable for real-time streaming applications.
+/// The algorithm:
+/// 1. Track peak envelope of input RMS (fast attack ~10ms, slow decay ~3-7s)
+/// 2. Compute target gain = targetRMSLevel / peakEnvelope
+/// 3. PI controller smoothly drives actual gain toward target gain
+/// 4. Large errors use fast time constant, small errors use slow time constant
+/// 5. Integrator has anti-windup clamping
 ///
-/// How it works:
-/// 1. For each incoming sample, compare RMS to current percentile estimate
-/// 2. If RMS > estimate, the estimate was too low → increase it
-/// 3. If RMS < estimate, the estimate was too high → decrease it
-/// 4. The learning rate controls how quickly the estimate adapts
-/// 5. Gain is calculated to bring the percentile estimate to target RMS level
+/// This design adapts to source-level differences (mic sensitivity, line-in
+/// voltage) without tracking musical dynamics, preventing cross-band coupling.
 ///
 /// Usage:
 /// @code
 /// AutoGain agc;
 /// AutoGainConfig config;
-/// config.targetPercentile = 0.9f;  // Track P90
-/// config.learningRate = 0.05f;
-/// config.targetRMSLevel = 8000.0f;
+/// config.preset = AGCPreset_Vivid;  // Faster response
 /// agc.configure(config);
 ///
 /// AudioSample sample = ...;
@@ -76,13 +95,15 @@ public:
     /// @return Gain-adjusted audio sample
     AudioSample process(const AudioSample& sample);
 
-    /// Reset internal state (percentile estimate, gain)
+    /// Reset internal state
     void reset();
 
     /// Get current statistics (for monitoring/debugging)
     struct Stats {
         float currentGain = 1.0f;           // Current gain multiplier
-        float percentileEstimate = 0.0f;    // Current percentile estimate (RMS)
+        float peakEnvelope = 0.0f;          // Current peak envelope estimate
+        float targetGain = 1.0f;            // Target gain from PI controller
+        float integrator = 0.0f;            // PI integrator state
         float inputRMS = 0.0f;              // Most recent input RMS
         float outputRMS = 0.0f;             // Most recent output RMS
         u32 samplesProcessed = 0;           // Total samples processed
@@ -97,13 +118,17 @@ public:
     void setSampleRate(int sampleRate) { mSampleRate = sampleRate; }
 
 private:
-    /// Update percentile estimate using Robbins-Monro algorithm
-    /// @param observedRMS Current RMS value
-    void updatePercentileEstimate(float observedRMS);
+    /// Resolve preset enum into concrete PI tuning parameters
+    void resolvePreset();
 
-    /// Calculate gain multiplier from percentile estimate
-    /// @return Gain multiplier to apply
-    float calculateGain();
+    /// Compute target gain from peak envelope
+    float computeTargetGain();
+
+    /// Update PI controller toward target gain
+    /// @param targetGain Desired gain
+    /// @param dt Time step in seconds
+    /// @return Smoothed gain output
+    float updatePIController(float targetGain, float dt);
 
     /// Apply gain to audio samples
     /// @param input Input PCM samples
@@ -115,11 +140,21 @@ private:
     Stats mStats;
     int mSampleRate = 44100;
 
-    /// Robbins-Monro percentile estimate (running estimate of target percentile RMS)
-    float mPercentileEstimate = 1000.0f;  // Initial estimate
+    // Resolved preset parameters (populated by resolvePreset())
+    float mPeakDecayTau = 3.3f;
+    float mKp = 0.6f;
+    float mKi = 1.7f;
+    float mGainFollowSlowTau = 12.3f;
+    float mGainFollowFastTau = 0.38f;
 
-    /// Asymmetric gain smoothing: fast attack (10ms), slow release (300ms)
-    AttackDecayFilter<float> mGainFilter{0.01f, 0.3f, 1.0f};
+    /// Peak envelope tracker: fast attack (10ms), slow decay (preset-dependent)
+    AttackDecayFilter<float> mPeakEnvelope{0.01f, 3.3f, 0.0f};
+
+    /// PI integrator state
+    float mIntegrator = 0.0f;
+
+    /// Last smoothed gain output
+    float mLastGain = 1.0f;
 
     /// Working buffer (reused to avoid allocations)
     vector<i16> mOutputBuffer;

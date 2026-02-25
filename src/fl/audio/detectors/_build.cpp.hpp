@@ -10,6 +10,7 @@
 #include "fl/audio/detectors/drop.cpp.hpp"
 #include "fl/audio/detectors/dynamics_analyzer.cpp.hpp"
 #include "fl/audio/detectors/energy_analyzer.cpp.hpp"
+#include "fl/audio/detectors/equalizer.cpp.hpp"
 #include "fl/audio/detectors/frequency_bands.cpp.hpp"
 #include "fl/audio/detectors/key.cpp.hpp"
 #include "fl/audio/detectors/mood_analyzer.cpp.hpp"

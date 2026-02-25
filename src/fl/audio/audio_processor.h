@@ -41,6 +41,8 @@ class BuildupDetector;
 struct Buildup;
 class DropDetector;
 struct Drop;
+class EqualizerDetector;
+struct Equalizer;
 
 class AudioProcessor {
 public:
@@ -67,6 +69,9 @@ public:
     void onMid(function<void(float level)> callback);
     void onTreble(function<void(float level)> callback);
     void onFrequencyBands(function<void(float bass, float mid, float treble)> callback);
+
+    // ----- Equalizer Events (WLED-style, all 0.0-1.0) -----
+    void onEqualizer(function<void(const Equalizer&)> callback);
 
     // ----- Energy/Level Events -----
     void onEnergy(function<void(float rms)> callback);
@@ -231,6 +236,14 @@ public:
     float getMoodArousal();
     float getMoodValence();  // -1.0 to 1.0
 
+    // Equalizer (WLED-style, all 0.0-1.0)
+    float getEqBass();
+    float getEqMid();
+    float getEqTreble();
+    float getEqVolume();
+    float getEqZcf();
+    float getEqBin(int index);
+
     // ----- Configuration -----
     /// Set the sample rate for all frequency-based calculations.
     /// This propagates to AudioContext and all detectors.
@@ -296,6 +309,7 @@ private:
     shared_ptr<MoodAnalyzer> mMoodAnalyzer;
     shared_ptr<BuildupDetector> mBuildupDetector;
     shared_ptr<DropDetector> mDropDetector;
+    shared_ptr<EqualizerDetector> mEqualizerDetector;
 
     // Lazy creation helpers
     shared_ptr<BeatDetector> getBeatDetector();
@@ -316,6 +330,7 @@ private:
     shared_ptr<MoodAnalyzer> getMoodAnalyzer();
     shared_ptr<BuildupDetector> getBuildupDetector();
     shared_ptr<DropDetector> getDropDetector();
+    shared_ptr<EqualizerDetector> getEqualizerDetector();
 
     // Auto-pump support (used by CFastLED::add(AudioConfig))
     fl::task mAutoTask;

@@ -212,6 +212,24 @@ void loop() {
 
 > **Platforms**: ESP32 (I2S / PDM) and Teensy. Code compiles on all platforms — callbacks are simply inert where hardware isn't available.
 
+### WLED-Style Equalizer
+
+A 16-bin frequency spectrum with everything normalized to 0.0-1.0 — just like WLED's `fftResult[]`, but as floats:
+
+```cpp
+// Callback: get all 16 bins + bass/mid/treble/volume/zcf in one struct
+audio->onEqualizer([](const fl::Equalizer& eq) {
+    for (int i = 0; i < 16; ++i) {
+        leds[i] = CHSV(i * 16, 255, eq.bins[i] * 255);
+    }
+});
+
+// Or poll directly — all 0.0-1.0
+float bass   = audio->getEqBass();
+float treble = audio->getEqTreble();
+float bin5   = audio->getEqBin(5);
+```
+
 **More examples & full API reference**: [src/fl/audio/README.md](src/fl/audio/README.md)
 
 ## 🆕 Latest Features
