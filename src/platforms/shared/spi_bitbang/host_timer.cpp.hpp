@@ -41,7 +41,7 @@ struct ISRContext {
     fl::u32 timer_hz;
     fl::atomic<bool> running;
     fl::atomic<bool> started;  // Signals when thread has begun execution
-    std::thread thread;  // okay std namespace
+    fl::thread thread;
 
     ISRContext(fl::u32 hz) : timer_hz(hz), running(false), started(false) {}
 };
@@ -64,11 +64,11 @@ static void isr_thread_func(ISRContext* ctx) {
     // Signal that thread has started
     ctx->started.store(true, fl::memory_order_release);
 
-    auto interval = std::chrono::nanoseconds(1000000000 / ctx->timer_hz);  // okay std namespace
+    auto interval = std::chrono::nanoseconds(1000000000 / ctx->timer_hz);  // okay std namespace (mixed-period arithmetic needs std::chrono)
     fl::u32 tick_count = 0;
 
     while (ctx->running.load(fl::memory_order_acquire)) {
-        auto start = std::chrono::steady_clock::now();  // okay std namespace
+        auto start = std::chrono::steady_clock::now();  // okay std namespace (mixed-period arithmetic needs std::chrono)
 
         // Acquire fence: ensure we see latest doorbell value from main thread
         std::atomic_thread_fence(std::memory_order_acquire);  // okay std namespace
@@ -88,11 +88,11 @@ static void isr_thread_func(ISRContext* ctx) {
         }
 
         // Compensate for ISR execution time
-        auto elapsed = std::chrono::steady_clock::now() - start;  // okay std namespace
+        auto elapsed = std::chrono::steady_clock::now() - start;  // okay std namespace (mixed-period arithmetic needs std::chrono)
         auto sleep_time = interval - elapsed;
 
-        if (sleep_time > std::chrono::nanoseconds(0)) {  // okay std namespace
-            std::this_thread::sleep_for(sleep_time);  // okay std namespace
+        if (sleep_time > std::chrono::nanoseconds(0)) {  // okay std namespace (mixed-period arithmetic needs std::chrono)
+            std::this_thread::sleep_for(sleep_time);  // okay std namespace (std::chrono duration)
         }
     }
     ISR_DBG("Thread stopped after %u ticks\n", tick_count);
@@ -112,11 +112,11 @@ int fl_spi_platform_isr_start(fl::u32 timer_hz) {
 
     // Launch thread
     ISR_DBG("Launching thread...\n");
-    ctx->thread = std::thread(isr_thread_func, ctx);  // okay std namespace
+    ctx->thread = fl::thread(isr_thread_func, ctx);
 
     // Wait for thread to actually start (prevents race condition)
     while (!ctx->started.load(fl::memory_order_acquire)) {
-        std::this_thread::yield();  // okay std namespace
+        fl::this_thread::yield();
     }
     ISR_DBG("Thread confirmed started\n");
 

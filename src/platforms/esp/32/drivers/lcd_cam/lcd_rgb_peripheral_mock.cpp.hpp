@@ -116,13 +116,13 @@ private:
     fl::vector<PendingDraw> mPendingQueue;
 
     // Thread synchronization
-    std::mutex mMutex;  // okay std namespace
-    std::condition_variable mCondVar;  // okay std namespace
+    fl::mutex mMutex;
+    fl::condition_variable mCondVar;
     fl::atomic<bool> mCallbackExecuting{false};
 
     // Simulation thread
     void simulationThreadFunc();
-    fl::unique_ptr<std::thread> mSimulationThread;  // okay std namespace
+    fl::unique_ptr<fl::thread> mSimulationThread;
     fl::atomic<bool> mSimulationThreadShouldStop;
 };
 
@@ -158,7 +158,7 @@ LcdRgbPeripheralMockImpl::LcdRgbPeripheralMockImpl()
       mSimulationThread(),
       mSimulationThreadShouldStop(false) {
     // Start simulation thread after all members initialized
-    mSimulationThread = fl::make_unique<std::thread>([this]() { simulationThreadFunc(); });  // okay std namespace
+    mSimulationThread = fl::make_unique<fl::thread>([this]() { simulationThreadFunc(); });
 }
 
 LcdRgbPeripheralMockImpl::~LcdRgbPeripheralMockImpl() {
@@ -188,7 +188,7 @@ bool LcdRgbPeripheralMockImpl::initialize(const LcdRgbPeripheralConfig& config) 
 }
 
 void LcdRgbPeripheralMockImpl::deinitialize() {
-    std::lock_guard<std::mutex> lock(mMutex);  // okay std namespace
+    fl::lock_guard<fl::mutex> lock(mMutex);
     mInitialized = false;
     mEnabled = false;
     mBusy = false;
@@ -274,7 +274,7 @@ bool LcdRgbPeripheralMockImpl::drawFrame(const u16* buffer, size_t size_bytes) {
 
     // Update state with mutex protection
     {
-        std::lock_guard<std::mutex> lock(mMutex);  // okay std namespace
+        fl::lock_guard<fl::mutex> lock(mMutex);
         mDrawCount++;
         mBusy = true;
         mPendingDraws++;
@@ -298,7 +298,7 @@ bool LcdRgbPeripheralMockImpl::waitFrameDone(u32 timeout_ms) {
 
     // Check if already complete
     {
-        std::lock_guard<std::mutex> lock(mMutex);  // okay std namespace
+        fl::lock_guard<fl::mutex> lock(mMutex);
         if (mPendingDraws == 0) {
             mBusy = false;
             return true;
@@ -315,7 +315,7 @@ bool LcdRgbPeripheralMockImpl::waitFrameDone(u32 timeout_ms) {
 
     while (true) {
         {
-            std::lock_guard<std::mutex> lock(mMutex);  // okay std namespace
+            fl::lock_guard<fl::mutex> lock(mMutex);
             if (mPendingDraws == 0) {
                 mBusy = false;
                 return true;
@@ -326,7 +326,7 @@ bool LcdRgbPeripheralMockImpl::waitFrameDone(u32 timeout_ms) {
             return false;  // Timeout
         }
 
-        std::this_thread::sleep_for(std::chrono::microseconds(10));  // okay std namespace
+        fl::this_thread::sleep_for(fl::chrono::microseconds(10));
     }
 }
 
@@ -343,7 +343,7 @@ bool LcdRgbPeripheralMockImpl::registerDrawCallback(void* callback, void* user_c
         return false;
     }
 
-    std::lock_guard<std::mutex> lock(mMutex);  // okay std namespace
+    fl::lock_guard<fl::mutex> lock(mMutex);
     mCallback = callback;
     mUserCtx = user_ctx;
     return true;
@@ -402,7 +402,7 @@ const fl::vector<LcdRgbPeripheralMock::FrameRecord>& LcdRgbPeripheralMockImpl::g
 }
 
 void LcdRgbPeripheralMockImpl::clearFrameHistory() {
-    std::lock_guard<std::mutex> lock(mMutex);  // okay std namespace
+    fl::lock_guard<fl::mutex> lock(mMutex);
     mHistory.clear();
     mPendingDraws = 0;
     mBusy = false;
@@ -426,7 +426,7 @@ size_t LcdRgbPeripheralMockImpl::getDrawCount() const {
 void LcdRgbPeripheralMockImpl::reset() {
     // Clear queue first
     {
-        std::lock_guard<std::mutex> lock(mMutex);  // okay std namespace
+        fl::lock_guard<fl::mutex> lock(mMutex);
         mPendingQueue.clear();
         mPendingDraws = 0;
         mBusy = false;
@@ -436,13 +436,13 @@ void LcdRgbPeripheralMockImpl::reset() {
 
     // Wait for callback to finish
     while (mCallbackExecuting.load(fl::memory_order_acquire)) {
-        std::this_thread::sleep_for(std::chrono::microseconds(10));  // okay std namespace
+        fl::this_thread::sleep_for(fl::chrono::microseconds(10));
     }
 
-    std::this_thread::sleep_for(std::chrono::microseconds(100));  // okay std namespace
+    fl::this_thread::sleep_for(fl::chrono::microseconds(100));
 
     // Reset all state
-    std::lock_guard<std::mutex> lock(mMutex);  // okay std namespace
+    fl::lock_guard<fl::mutex> lock(mMutex);
 
     mInitialized = false;
     mEnabled = false;
@@ -465,11 +465,11 @@ void LcdRgbPeripheralMockImpl::reset() {
 
 void LcdRgbPeripheralMockImpl::simulationThreadFunc() {
     while (!mSimulationThreadShouldStop) {
-        std::unique_lock<std::mutex> lock(mMutex);  // okay std namespace
+        fl::unique_lock<fl::mutex> lock(mMutex);
 
         // Wait when queue is empty
         if (mPendingQueue.empty()) {
-            mCondVar.wait_for(lock, std::chrono::milliseconds(10));  // okay std namespace
+            mCondVar.wait_for(lock, std::chrono::milliseconds(10));  // okay std namespace (std::condition_variable requires std::chrono)
             continue;
         }
 
@@ -508,7 +508,7 @@ void LcdRgbPeripheralMockImpl::simulationThreadFunc() {
         } else {
             // Wait until next completion time
             u64 wait_us = mPendingQueue[0].completion_time_us - now_us;
-            mCondVar.wait_for(lock, std::chrono::microseconds(wait_us));  // okay std namespace
+            mCondVar.wait_for(lock, std::chrono::microseconds(wait_us));  // okay std namespace (std::condition_variable requires std::chrono)
         }
     }
 }

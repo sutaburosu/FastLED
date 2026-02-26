@@ -71,7 +71,7 @@ FASTLED_SHARED_PTR(FileData);
 class FileData {
   public:
     FileData(size_t capacity) : mCapacity(capacity) { mData.reserve(capacity); }
-    FileData(const std::vector<u8> &data, size_t len)  // okay std namespace
+    FileData(const fl::vector<u8> &data, size_t len)
         : mData(data), mCapacity(len) {}
     FileData() = default;
 
@@ -88,9 +88,7 @@ class FileData {
         }
         size_t bytesAvailable = mData.size() - pos;
         size_t bytesToActuallyRead = FL_MIN(len, bytesAvailable);
-        auto begin_it = mData.begin() + pos;
-        auto end_it = begin_it + bytesToActuallyRead;
-        std::copy(begin_it, end_it, dst);  // okay std namespace
+        fl::memcpy(dst, mData.data() + pos, bytesToActuallyRead);
         return bytesToActuallyRead;
     }
 
@@ -110,7 +108,7 @@ class FileData {
     }
 
   private:
-    std::vector<u8> mData;  // okay std namespace
+    fl::vector<u8> mData;
     size_t mCapacity = 0;
     mutable fl::mutex mMutex;
 };

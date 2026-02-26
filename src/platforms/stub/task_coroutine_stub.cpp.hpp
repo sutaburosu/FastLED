@@ -23,12 +23,12 @@ namespace platforms {
 
 #ifdef TEST_DLL_MODE
 namespace {
-    fl::vector<std::thread> g_coroutine_threads;  // okay std namespace (stub platform only)
+    fl::vector<fl::thread> g_coroutine_threads;
     fl::mutex g_coroutine_mutex;
 
-    void register_coroutine_thread(std::thread&& t) {  // okay std namespace (stub platform only)
+    void register_coroutine_thread(fl::thread&& t) {
         fl::unique_lock<fl::mutex> lock(g_coroutine_mutex);
-        g_coroutine_threads.push_back(std::move(t));  // okay std namespace (stub platform only)
+        g_coroutine_threads.push_back(fl::move(t));
     }
 }
 #endif
@@ -102,7 +102,7 @@ public:
         // C++11 workaround: Create local copy since init-captures require C++14
         TaskFunction func = mFunction;
         fl::shared_ptr<fl::detail::CoroutineContext> ctx_shared = mContext;
-        std::thread t([ctx_shared, func]() {  // okay std namespace (stub platform only)
+        fl::thread t([ctx_shared, func]() {
             // FL_DBG("TaskCoroutineStub: Thread for context " << fl::hex << reinterpret_cast<uintptr_t>(ctx_shared.get()) << " started, waiting...");
             // Wait for executor to signal us
             ctx_shared->wait();
@@ -137,7 +137,7 @@ public:
 
 #ifdef TEST_DLL_MODE
         // In DLL mode: Store thread for cleanup (must join before DLL unload)
-        register_coroutine_thread(std::move(t));  // okay std namespace (stub platform only)
+        register_coroutine_thread(fl::move(t));
 #else
         // In normal mode: Detach thread (daemon-like, won't block exit)
         t.detach();
@@ -159,7 +159,7 @@ public:
 
         // Wait briefly for thread to acknowledge stop signal
         // This gives the thread time to set completed flag and exit cleanly
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));  // okay std namespace
+        fl::this_thread::sleep_for(fl::chrono::milliseconds(10));
 
         // Remove from queue (prevents dangling weak_ptr)
         runner.remove(mContext);

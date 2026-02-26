@@ -213,17 +213,17 @@ private:
     // first ensures they are fully initialized before the thread starts.
 
     // Mutex for thread-safe access to shared state
-    std::mutex mMutex;  // okay std namespace
+    fl::mutex mMutex;
 
     // Condition variable for efficient thread synchronization
-    std::condition_variable mCondVar;  // okay std namespace
+    fl::condition_variable mCondVar;
 
     // Flag to indicate callback is currently executing (outside mutex)
     fl::atomic<bool> mCallbackExecuting{false};
 
     // Simulation thread for automatic ISR callback
     void simulationThreadFunc();
-    fl::unique_ptr<std::thread> mSimulationThread;  // okay std namespace
+    fl::unique_ptr<fl::thread> mSimulationThread;
     fl::atomic<bool> mSimulationThreadShouldStop;
 };
 
@@ -270,7 +270,7 @@ ParlioPeripheralMockImpl::ParlioPeripheralMockImpl()
     //
     // By declaring mMutex/mCondVar/mCallbackExecuting BEFORE mSimulationThread in the class,
     // we ensure they are fully constructed before the thread starts accessing them.
-    mSimulationThread = fl::make_unique<std::thread>([this]() { simulationThreadFunc(); });  // okay std namespace
+    mSimulationThread = fl::make_unique<fl::thread>([this]() { simulationThreadFunc(); });
 }
 
 ParlioPeripheralMockImpl::~ParlioPeripheralMockImpl() {
@@ -405,7 +405,7 @@ bool ParlioPeripheralMockImpl::transmit(const u8* buffer, size_t bit_count, u16 
 
     // Update state with mutex protection
     {
-        std::lock_guard<std::mutex> lock(mMutex);  // okay std namespace
+        fl::lock_guard<fl::mutex> lock(mMutex);
         mTransmitCount++;
         mTransmitting = true;
         mPendingTransmissions++;
@@ -432,7 +432,7 @@ bool ParlioPeripheralMockImpl::waitAllDone(u32 timeout_ms) {
 
     // Check if instantly complete (no pending transmissions)
     {
-        std::lock_guard<std::mutex> lock(mMutex);  // okay std namespace
+        fl::lock_guard<fl::mutex> lock(mMutex);
         if (mPendingTransmissions == 0) {
             mTransmitting = false;
             return true;
@@ -454,7 +454,7 @@ bool ParlioPeripheralMockImpl::waitAllDone(u32 timeout_ms) {
 
         while (true) {
             {
-                std::lock_guard<std::mutex> lock(mMutex);  // okay std namespace
+                fl::lock_guard<fl::mutex> lock(mMutex);
                 if (mPendingTransmissions == 0) {
                     break;
                 }
@@ -465,12 +465,12 @@ bool ParlioPeripheralMockImpl::waitAllDone(u32 timeout_ms) {
             }
 
             // Yield to other threads
-            std::this_thread::sleep_for(std::chrono::microseconds(10));  // okay std namespace
+            fl::this_thread::sleep_for(fl::chrono::microseconds(10));
         }
     }
 
     {
-        std::lock_guard<std::mutex> lock(mMutex);  // okay std namespace
+        fl::lock_guard<fl::mutex> lock(mMutex);
         mTransmitting = false;
     }
     return true;
@@ -486,7 +486,7 @@ bool ParlioPeripheralMockImpl::registerTxDoneCallback(void* callback, void* user
         return false;
     }
 
-    std::lock_guard<std::mutex> lock(mMutex);  // okay std namespace
+    fl::lock_guard<fl::mutex> lock(mMutex);
     mCallback = callback;
     mUserCtx = user_ctx;
     return true;
@@ -613,7 +613,7 @@ const ParlioPeripheralConfig& ParlioPeripheralMockImpl::getConfig() const {
 
 void ParlioPeripheralMockImpl::clearTransmissionHistory() {
     // Lock mutex to prevent race condition with simulation thread
-    std::lock_guard<std::mutex> lock(mMutex);  // okay std namespace
+    fl::lock_guard<fl::mutex> lock(mMutex);
 
     mHistory.clear();
     mPerPinData.clear();
@@ -645,7 +645,7 @@ void ParlioPeripheralMockImpl::reset() {
 
     // Step 1: Acquire lock and signal simulation thread to stop processing
     {
-        std::lock_guard<std::mutex> lock(mMutex);  // okay std namespace
+        fl::lock_guard<fl::mutex> lock(mMutex);
         // Clear queue first so simulation thread has nothing to process
         mPendingQueue.clear();
         mPendingTransmissions = 0;
@@ -660,18 +660,18 @@ void ParlioPeripheralMockImpl::reset() {
     // This prevents race where simulation thread captured callback before we cleared queue
     // Use explicit atomic load with acquire ordering to prevent compiler optimization caching
     while (mCallbackExecuting.load(fl::memory_order_acquire)) {
-        std::this_thread::sleep_for(std::chrono::microseconds(10));  // okay std namespace
+        fl::this_thread::sleep_for(fl::chrono::microseconds(10));
     }
 
     // Step 4: Small delay to ensure simulation thread has seen the empty queue
     // and is now waiting in mCondVar.wait_for()
     // This prevents a race where the thread is between checking mPendingQueue.empty()
     // and calling mCondVar.wait_for()
-    std::this_thread::sleep_for(std::chrono::microseconds(100));  // okay std namespace
+    fl::this_thread::sleep_for(fl::chrono::microseconds(100));
 
     // Step 5: Lock mutex again and reset all state
     // At this point, simulation thread should be safely waiting in mCondVar.wait_for()
-    std::lock_guard<std::mutex> lock(mMutex);  // okay std namespace
+    fl::lock_guard<fl::mutex> lock(mMutex);
 
     mInitialized = false;
     mEnabled = false;
@@ -698,12 +698,12 @@ void ParlioPeripheralMockImpl::reset() {
 void ParlioPeripheralMockImpl::simulationThreadFunc() {
     while (!mSimulationThreadShouldStop) {
         // Lock mutex for thread-safe access to shared state
-        std::unique_lock<std::mutex> lock(mMutex);  // okay std namespace
+        fl::unique_lock<fl::mutex> lock(mMutex);
 
         // Wait efficiently when queue is empty, instead of busy-polling
         if (mPendingQueue.empty()) {
             // Wait for up to 10ms, or until notified by transmit()
-            mCondVar.wait_for(lock, std::chrono::milliseconds(10));  // okay std namespace
+            mCondVar.wait_for(lock, std::chrono::milliseconds(10));  // okay std namespace (std::condition_variable requires std::chrono)
             continue;  // Recheck condition after waking
         }
 
@@ -760,7 +760,7 @@ void ParlioPeripheralMockImpl::simulationThreadFunc() {
 
                 // Use condition variable with timeout for efficient waiting
                 // This avoids busy-polling while still waking up when the transmission should complete
-                mCondVar.wait_for(lock, std::chrono::microseconds(time_until_next));  // okay std namespace
+                mCondVar.wait_for(lock, std::chrono::microseconds(time_until_next));  // okay std namespace (std::condition_variable requires std::chrono)
                 // Loop will continue and recheck if transmission is ready
             }
         }

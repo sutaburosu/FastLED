@@ -23,15 +23,15 @@
 #include "fl/stl/condition_variable.h"
 #include "fl/numeric_limits.h"
 
-#include <chrono>
-#include <thread>
+#include "fl/stl/thread.h"
+#include "fl/stl/chrono.h"
 
 // Simple logging for stub/WASM platforms (avoid FL_WARN/FL_DBG due to exception issues)
-#include <iostream>
+#include "fl/stl/stdio.h"
 #if defined(FL_IS_WASM)
-    #define STUB_LOG(msg) std::cerr << "[fl::isr::wasm] " << msg << std::endl  // okay std namespace
+    #define STUB_LOG(msg) fl::printf("[fl::isr::wasm] %s\n", static_cast<const char*>(msg))
 #else
-    #define STUB_LOG(msg) std::cerr << "[fl::isr::stub] " << msg << std::endl  // okay std namespace
+    #define STUB_LOG(msg) fl::printf("[fl::isr::stub] %s\n", static_cast<const char*>(msg))
 #endif
 
 namespace fl {
@@ -123,7 +123,7 @@ public:
         // Start timer thread if not already running
         if (!mTimerThread) {
             mShouldStop = false;
-            mTimerThread = fl::make_unique<std::thread>(&TimerThreadManager::timer_thread_func, this);  // okay std namespace
+            mTimerThread = fl::make_unique<fl::thread>(&TimerThreadManager::timer_thread_func, this);
         } else {
             // Wake up the timer thread to process the new handler
             mCondVar.notify_one();
@@ -181,10 +181,8 @@ private:
     TimerThreadManager& operator=(const TimerThreadManager&) = delete;
 
     static u64 get_time_us() {
-        using clock = std::chrono::high_resolution_clock;  // okay std namespace
-        auto now = clock::now();
-        auto duration = now.time_since_epoch();
-        return std::chrono::duration_cast<std::chrono::microseconds>(duration).count();  // okay std namespace
+        auto tp = fl::chrono::steady_clock::now();
+        return static_cast<u64>(tp.time_since_epoch().count());
     }
 
     void timer_thread_func() {
@@ -248,10 +246,10 @@ private:
                 // Wait for exact duration until next handler fires
                 // Will wake immediately if notify_one() is called (handler added/removed/rescheduled)
                 u64 sleep_us = next_wake - now;
-                mCondVar.wait_for(lock, std::chrono::microseconds(sleep_us));  // okay std namespace
+                mCondVar.wait_for(lock, std::chrono::microseconds(sleep_us));  // okay std namespace (std::condition_variable requires std::chrono)
             } else if (!has_enabled_handlers) {
                 // No enabled handlers - wait indefinitely until notified (handler added/rescheduled)
-                mCondVar.wait(lock);  // okay std namespace
+                mCondVar.wait(lock);
             }
         }
     }
@@ -259,7 +257,7 @@ private:
     fl::mutex mMutex;
     fl::condition_variable mCondVar;
     fl::vector<stub_isr_handle_data*> mHandlers;
-    fl::unique_ptr<std::thread> mTimerThread;  // okay std namespace
+    fl::unique_ptr<fl::thread> mTimerThread;
     fl::atomic<bool> mShouldStop;
     u32 mNextHandleId;
 

@@ -2,26 +2,15 @@
 
 // IWYU pragma: private
 
-// IWYU pragma: begin_keep
-#include <string>
-// IWYU pragma: end_keep
-
 namespace fl {
 
 /**
  * Async-aware UI component update function
  * Updates UI components from JavaScript with JSON data using async patterns.
  *
- * This function now supports async operations and provides better error handling.
- * When called from JavaScript via Asyncify-enabled WASM, it can handle both
- * synchronous and asynchronous UI update operations.
- *
- * @param jsonStr JSON string containing UI component updates
- *
- * Note: This function may be called from async JavaScript contexts and
- * includes comprehensive error handling for async operations.
+ * @param jsonStr JSON string containing UI component updates (null-terminated)
  */
-void jsUpdateUiComponents(const std::string &jsonStr);  // okay std namespace
+void jsUpdateUiComponents(const char* jsonStr);
 
 /**
  * Async-aware WASM UI system initializer

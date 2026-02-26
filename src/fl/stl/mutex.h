@@ -20,8 +20,9 @@ namespace fl {
 using mutex = fl::platforms::mutex;
 using recursive_mutex = fl::platforms::recursive_mutex;
 
-// Bind unique_lock from platform layer
+// Bind unique_lock and lock_guard from platform layer
 using fl::platforms::unique_lock;
+using fl::platforms::lock_guard;
 
 // Bring lock constructor tags into fl:: namespace
 using fl::platforms::defer_lock;

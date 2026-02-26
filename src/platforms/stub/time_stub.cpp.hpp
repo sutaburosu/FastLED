@@ -40,7 +40,7 @@ void yield() {
     // POSIX thread yield to allow other threads to run
     sched_yield();
 #else
-    std::this_thread::yield();  // okay std namespace
+    fl::this_thread::yield();
 #endif
 }
 

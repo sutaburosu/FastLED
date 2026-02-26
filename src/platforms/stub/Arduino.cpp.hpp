@@ -7,14 +7,12 @@
 // STUB platform implementation - excluded for WASM builds which provide their own Arduino.cpp
 // Also excluded when FASTLED_NO_ARDUINO_STUBS is defined (for compatibility with ArduinoFake, etc.)
 
-// Stdlib headers included first
-#include <random>
-
 #include "platforms/stub/Arduino.h"  // ok include
 
 #include "fl/stl/map.h"
 #include "fl/stl/stdio.h"
 #include "fl/map_range.h"
+#include "fl/stl/cstdlib.h"
 
 // Arduino map() function - in global namespace (NOT in fl::)
 // fl::map refers to the map container (red-black tree)
@@ -28,13 +26,18 @@ long random(long min, long max) {
     if (min == max) {
         return min;
     }
-    std::random_device rd;  // okay std namespace
-    std::mt19937 gen(rd());  // okay std namespace
-    // Arduino random is exclusive of the max value, but
-    // std::uniform_int_distribution is inclusive. So we subtract 1 from the max
-    // value.
-    std::uniform_int_distribution<> dis(min, max - 1);  // okay std namespace
-    return dis(gen);
+    if (min > max) {
+        // Swap if inverted (Arduino behavior)
+        long tmp = min;
+        min = max;
+        max = tmp;
+    }
+    // Arduino random() is exclusive of max
+    long range = max - min;
+    if (range <= 0) {
+        return min;
+    }
+    return min + (rand() % range);
 }
 
 long random(long max) {

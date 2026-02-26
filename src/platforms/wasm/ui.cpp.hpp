@@ -70,7 +70,7 @@ extern "C" void checkUpdateEngineState() {
  * Async-aware UI component updater
  * Now handles async operations and provides better error handling
  */
-void jsUpdateUiComponents(const std::string &jsonStr) {  // okay std namespace
+void jsUpdateUiComponents(const char* jsonStr) {
     // FL_WARN("*** jsUpdateUiComponents ASYNC ENTRY ***");
     // FL_WARN("*** jsUpdateUiComponents ASYNC RECEIVED JSON: " << jsonStr.c_str());
     // FL_WARN("*** jsUpdateUiComponents ASYNC JSON LENGTH: " << jsonStr.length());
@@ -89,7 +89,7 @@ void jsUpdateUiComponents(const std::string &jsonStr) {  // okay std namespace
         
         // Call the backend function - handle errors via early return
         if (getUpdateEngineState()) {
-            getUpdateEngineState()(jsonStr.c_str());
+            getUpdateEngineState()(jsonStr);
             //FL_WARN("*** ASYNC WASM BACKEND CALL COMPLETED SUCCESSFULLY");
         } else {
             FL_WARN("*** ASYNC WASM BACKEND CALL FAILED: updateEngineState is null");
@@ -107,7 +107,7 @@ void jsUpdateUiComponents(const std::string &jsonStr) {  // okay std namespace
         
         if (getUpdateEngineState()) {
             FL_WARN("*** ASYNC EMERGENCY REINIT SUCCESSFUL - retrying JSON processing");
-            getUpdateEngineState()(jsonStr.c_str());
+            getUpdateEngineState()(jsonStr);
             FL_WARN("*** ASYNC EMERGENCY RETRY COMPLETED SUCCESSFULLY");
         } else {
             FL_WARN("*** ASYNC EMERGENCY REINIT FAILED - g_updateEngineState still nullptr");
@@ -202,7 +202,7 @@ extern "C" {
         }
         
         // Call the async-aware C++ implementation
-        fl::jsUpdateUiComponents(std::string(jsonStr));  // okay std namespace
+        fl::jsUpdateUiComponents(jsonStr);
     }
 }
 

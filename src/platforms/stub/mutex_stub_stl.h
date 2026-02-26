@@ -19,9 +19,11 @@ namespace platforms {
 using mutex = std::mutex;  // okay std namespace
 using recursive_mutex = std::recursive_mutex;  // okay std namespace
 
-// Use std::unique_lock for full compatibility with condition variables
+// Use std::unique_lock/lock_guard for full compatibility with condition variables
 template<typename Mutex>
 using unique_lock = std::unique_lock<Mutex>;  // okay std namespace
+template<typename Mutex>
+using lock_guard = std::lock_guard<Mutex>;  // okay std namespace
 
 // Lock constructor tag types (re-export from std)
 using std::defer_lock_t;  // okay std namespace

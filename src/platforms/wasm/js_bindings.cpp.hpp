@@ -32,7 +32,6 @@
 #include <emscripten.h>
 #include <emscripten/emscripten.h>
 #include <emscripten/html5.h>
-#include <string>
 // IWYU pragma: end_keep
 #include "fl/numeric_limits.h"  // ok include - for FLT_MAX and other float limits
 
@@ -68,7 +67,7 @@ EM_JS(void, js_notify_screenmap_update, (const char* jsonData), {
 
 // Forward declarations for functions used in this file
 namespace fl {
-void jsUpdateUiComponents(const std::string &jsonStr);  // okay std namespace
+void jsUpdateUiComponents(const char* jsonStr);
 }
 
 namespace fl {
@@ -208,7 +207,7 @@ EMSCRIPTEN_KEEPALIVE void processUiInput(const char* jsonInput) {
     
     // Process UI input from JavaScript
     // Forward to existing UI system
-    fl::jsUpdateUiComponents(std::string(jsonInput));  // okay std namespace
+    fl::jsUpdateUiComponents(jsonInput);
 }
 
 } // extern "C"

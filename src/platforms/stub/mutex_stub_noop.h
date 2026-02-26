@@ -96,6 +96,24 @@ public:
 using mutex = MutexFake;
 using recursive_mutex = RecursiveMutexFake;
 
+// Single-threaded mode: custom lock_guard implementation
+template<typename Mutex>
+class lock_guard {
+public:
+    using mutex_type = Mutex;
+
+    explicit lock_guard(Mutex& m) : mMutex(m) { mMutex.lock(); }
+    lock_guard(Mutex& m, adopt_lock_t) noexcept : mMutex(m) {}
+
+    ~lock_guard() { mMutex.unlock(); }
+
+    lock_guard(const lock_guard&) = delete;
+    lock_guard& operator=(const lock_guard&) = delete;
+
+private:
+    Mutex& mMutex;
+};
+
 // Single-threaded mode: custom unique_lock implementation
 template<typename Mutex>
 class unique_lock {

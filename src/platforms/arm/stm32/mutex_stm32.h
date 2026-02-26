@@ -26,9 +26,11 @@ class RecursiveMutexSTM32;
 using mutex = MutexSTM32;
 using recursive_mutex = RecursiveMutexSTM32;
 
-// Use std::unique_lock for full compatibility with std::condition_variable
+// Use std::unique_lock/lock_guard for full compatibility with std::condition_variable
 template<typename Mutex>
 using unique_lock = std::unique_lock<Mutex>;  // okay std namespace
+template<typename Mutex>
+using lock_guard = std::lock_guard<Mutex>;  // okay std namespace
 
 // Lock constructor tag types (re-export from std)
 using std::defer_lock_t;  // okay std namespace

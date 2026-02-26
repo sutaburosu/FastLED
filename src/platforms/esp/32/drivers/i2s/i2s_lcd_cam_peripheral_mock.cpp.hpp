@@ -116,13 +116,13 @@ private:
     fl::vector<PendingTransmit> mPendingQueue;
 
     // Thread synchronization
-    std::mutex mMutex;  // okay std namespace
-    std::condition_variable mCondVar;  // okay std namespace
+    fl::mutex mMutex;
+    fl::condition_variable mCondVar;
     fl::atomic<bool> mCallbackExecuting{false};
 
     // Simulation thread
     void simulationThreadFunc();
-    fl::unique_ptr<std::thread> mSimulationThread;  // okay std namespace
+    fl::unique_ptr<fl::thread> mSimulationThread;
     fl::atomic<bool> mSimulationThreadShouldStop;
 };
 
@@ -158,7 +158,7 @@ I2sLcdCamPeripheralMockImpl::I2sLcdCamPeripheralMockImpl()
       mSimulationThread(),
       mSimulationThreadShouldStop(false) {
     // Start simulation thread after all members initialized
-    mSimulationThread = fl::make_unique<std::thread>([this]() { simulationThreadFunc(); });  // okay std namespace
+    mSimulationThread = fl::make_unique<fl::thread>([this]() { simulationThreadFunc(); });
 }
 
 I2sLcdCamPeripheralMockImpl::~I2sLcdCamPeripheralMockImpl() {
@@ -188,7 +188,7 @@ bool I2sLcdCamPeripheralMockImpl::initialize(const I2sLcdCamConfig& config) {
 }
 
 void I2sLcdCamPeripheralMockImpl::deinitialize() {
-    std::lock_guard<std::mutex> lock(mMutex);  // okay std namespace
+    fl::lock_guard<fl::mutex> lock(mMutex);
     mInitialized = false;
     mEnabled = false;
     mBusy = false;
@@ -274,7 +274,7 @@ bool I2sLcdCamPeripheralMockImpl::transmit(const u16* buffer, size_t size_bytes)
 
     // Update state with mutex protection
     {
-        std::lock_guard<std::mutex> lock(mMutex);  // okay std namespace
+        fl::lock_guard<fl::mutex> lock(mMutex);
         mTransmitCount++;
         mBusy = true;
         mPendingTransmits++;
@@ -298,7 +298,7 @@ bool I2sLcdCamPeripheralMockImpl::waitTransmitDone(u32 timeout_ms) {
 
     // Check if already complete
     {
-        std::lock_guard<std::mutex> lock(mMutex);  // okay std namespace
+        fl::lock_guard<fl::mutex> lock(mMutex);
         if (mPendingTransmits == 0) {
             mBusy = false;
             return true;
@@ -315,7 +315,7 @@ bool I2sLcdCamPeripheralMockImpl::waitTransmitDone(u32 timeout_ms) {
 
     while (true) {
         {
-            std::lock_guard<std::mutex> lock(mMutex);  // okay std namespace
+            fl::lock_guard<fl::mutex> lock(mMutex);
             if (mPendingTransmits == 0) {
                 mBusy = false;
                 return true;
@@ -326,7 +326,7 @@ bool I2sLcdCamPeripheralMockImpl::waitTransmitDone(u32 timeout_ms) {
             return false;  // Timeout
         }
 
-        std::this_thread::sleep_for(std::chrono::microseconds(10));  // okay std namespace
+        fl::this_thread::sleep_for(fl::chrono::microseconds(10));
     }
 }
 
@@ -343,7 +343,7 @@ bool I2sLcdCamPeripheralMockImpl::registerTransmitCallback(void* callback, void*
         return false;
     }
 
-    std::lock_guard<std::mutex> lock(mMutex);  // okay std namespace
+    fl::lock_guard<fl::mutex> lock(mMutex);
     mCallback = callback;
     mUserCtx = user_ctx;
     return true;
@@ -402,7 +402,7 @@ const fl::vector<I2sLcdCamPeripheralMock::TransmitRecord>& I2sLcdCamPeripheralMo
 }
 
 void I2sLcdCamPeripheralMockImpl::clearTransmitHistory() {
-    std::lock_guard<std::mutex> lock(mMutex);  // okay std namespace
+    fl::lock_guard<fl::mutex> lock(mMutex);
     mHistory.clear();
     mPendingTransmits = 0;
     mBusy = false;
@@ -426,7 +426,7 @@ size_t I2sLcdCamPeripheralMockImpl::getTransmitCount() const {
 void I2sLcdCamPeripheralMockImpl::reset() {
     // Clear queue first
     {
-        std::lock_guard<std::mutex> lock(mMutex);  // okay std namespace
+        fl::lock_guard<fl::mutex> lock(mMutex);
         mPendingQueue.clear();
         mPendingTransmits = 0;
         mBusy = false;
@@ -436,13 +436,13 @@ void I2sLcdCamPeripheralMockImpl::reset() {
 
     // Wait for callback to finish
     while (mCallbackExecuting.load(fl::memory_order_acquire)) {
-        std::this_thread::sleep_for(std::chrono::microseconds(10));  // okay std namespace
+        fl::this_thread::sleep_for(fl::chrono::microseconds(10));
     }
 
-    std::this_thread::sleep_for(std::chrono::microseconds(100));  // okay std namespace
+    fl::this_thread::sleep_for(fl::chrono::microseconds(100));
 
     // Reset all state
-    std::lock_guard<std::mutex> lock(mMutex);  // okay std namespace
+    fl::lock_guard<fl::mutex> lock(mMutex);
 
     mInitialized = false;
     mEnabled = false;
@@ -465,11 +465,11 @@ void I2sLcdCamPeripheralMockImpl::reset() {
 
 void I2sLcdCamPeripheralMockImpl::simulationThreadFunc() {
     while (!mSimulationThreadShouldStop) {
-        std::unique_lock<std::mutex> lock(mMutex);  // okay std namespace
+        fl::unique_lock<fl::mutex> lock(mMutex);
 
         // Wait when queue is empty
         if (mPendingQueue.empty()) {
-            mCondVar.wait_for(lock, std::chrono::milliseconds(10));  // okay std namespace
+            mCondVar.wait_for(lock, std::chrono::milliseconds(10));  // okay std namespace (std::condition_variable requires std::chrono)
             continue;
         }
 
@@ -508,7 +508,7 @@ void I2sLcdCamPeripheralMockImpl::simulationThreadFunc() {
         } else {
             // Wait until next completion time
             u64 wait_us = mPendingQueue[0].completion_time_us - now_us;
-            mCondVar.wait_for(lock, std::chrono::microseconds(wait_us));  // okay std namespace
+            mCondVar.wait_for(lock, std::chrono::microseconds(wait_us));  // okay std namespace (std::condition_variable requires std::chrono)
         }
     }
 }

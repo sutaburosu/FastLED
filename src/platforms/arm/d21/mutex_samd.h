@@ -39,9 +39,11 @@ class RecursiveMutexSAMD;
 using mutex = MutexSAMD;
 using recursive_mutex = RecursiveMutexSAMD;
 
-// Use std::unique_lock for compatibility (works with our mutex interface)
+// Use std::unique_lock/lock_guard for compatibility (works with our mutex interface)
 template<typename Mutex>
 using unique_lock = std::unique_lock<Mutex>;  // okay std namespace
+template<typename Mutex>
+using lock_guard = std::lock_guard<Mutex>;  // okay std namespace
 
 // Lock constructor tag types (re-export from std)
 using std::defer_lock_t;  // okay std namespace
