@@ -53,6 +53,7 @@ Architecture:
 import argparse
 import asyncio
 import json
+import os
 import subprocess
 import sys
 import time
@@ -81,6 +82,7 @@ from ci.util.port_utils import (
     detect_attached_chip,
     kill_port_users,
 )
+from ci.validate_net import run_net_validation
 
 
 # Try to import fbuild ledger for cached chip detection
@@ -578,6 +580,10 @@ class Args:
     # Chipset selection
     chipset: str
 
+    # Network validation modes
+    net_server: bool
+    net_client: bool
+
     @staticmethod
     def parse_args() -> "Args":
         """Parse command-line arguments and return Args dataclass instance."""
@@ -707,6 +713,22 @@ See Also:
             "--simd",
             action="store_true",
             help="Test SIMD operations only (no LED drivers)",
+        )
+
+        # Network validation modes
+        net_group = parser.add_argument_group(
+            "Network Validation (ESP32 WiFi + HTTP)",
+            "Test ESP32 WiFi soft AP and HTTP server/client functionality.",
+        )
+        net_group.add_argument(
+            "--net-server",
+            action="store_true",
+            help="ESP32 starts WiFi AP + HTTP server; host connects and validates endpoints",
+        )
+        net_group.add_argument(
+            "--net-client",
+            action="store_true",
+            help="ESP32 starts WiFi AP; host starts HTTP server; ESP32 fetches from host",
         )
 
         # Standard options
@@ -908,6 +930,8 @@ See Also:
             color_pattern=parsed.color_pattern,  # NEW
             legacy=parsed.legacy,
             chipset=parsed.chipset,
+            net_server=parsed.net_server,
+            net_client=parsed.net_client,
         )
 
 
@@ -1124,8 +1148,29 @@ async def run(args: Args | None = None) -> int:  # pyright: ignore[reportGeneral
         if args.object_fled:
             drivers.append("OBJECTFLED")
 
-    # GPIO-only mode: no drivers and not SIMD — just run GPIO pre-test
-    gpio_only_mode = not drivers and not simd_test_mode
+    # Network validation modes
+    net_server_mode = args.net_server
+    net_client_mode = args.net_client
+
+    # Validate mutual exclusivity of net modes with driver modes
+    if (net_server_mode or net_client_mode) and (drivers or simd_test_mode):
+        print(
+            f"{Fore.RED}❌ Error: --net-server/--net-client cannot be combined with driver flags or --simd{Style.RESET_ALL}"
+        )
+        return 1
+    if net_server_mode and net_client_mode:
+        print(
+            f"{Fore.RED}❌ Error: --net-server and --net-client are mutually exclusive{Style.RESET_ALL}"
+        )
+        return 1
+
+    # GPIO-only mode: no drivers, not SIMD, not net — just run GPIO pre-test
+    gpio_only_mode = (
+        not drivers
+        and not simd_test_mode
+        and not net_server_mode
+        and not net_client_mode
+    )
     if gpio_only_mode:
         print(
             f"\n{Fore.CYAN}ℹ️  No driver specified — running GPIO-only mode (pin discovery + toggle capture test){Style.RESET_ALL}"
@@ -1409,8 +1454,6 @@ async def run(args: Args | None = None) -> int:  # pyright: ignore[reportGeneral
         return 1
 
     # Set sketch to Validation
-    import os
-
     sketch_path = build_dir / "examples" / "Validation"
     if not sketch_path.exists():
         print(f"❌ Error: Validation sketch not found at {sketch_path}")
@@ -1643,8 +1686,6 @@ async def run(args: Args | None = None) -> int:  # pyright: ignore[reportGeneral
             print("=" * 60)
             print("📦 Using direct PlatformIO commands (no daemon)")
 
-            import subprocess
-
             from ci.compiler.build_utils import get_utf8_env
 
             cmd = ["pio", "pkg", "install", "--project-dir", str(build_dir)]
@@ -1864,9 +1905,11 @@ async def run(args: Args | None = None) -> int:  # pyright: ignore[reportGeneral
         # Store discovery client for reuse (keep connection open!)
         discovery_client: RpcClient | None = None
 
-        # Skip pin discovery and GPIO pre-test for SIMD mode (no hardware needed)
+        # Skip pin discovery and GPIO pre-test for SIMD and network modes
         if simd_test_mode:
             print("\n📌 SIMD mode: skipping pin discovery and GPIO pre-test")
+        elif net_server_mode or net_client_mode:
+            print("\n📌 Network mode: skipping pin discovery and GPIO pre-test")
         # CLI args take priority - skip discovery if user specified pins
         elif args.tx_pin is not None or args.rx_pin is not None:
             effective_tx_pin = args.tx_pin if args.tx_pin is not None else PIN_TX
@@ -1922,8 +1965,10 @@ async def run(args: Args | None = None) -> int:  # pyright: ignore[reportGeneral
         # ============================================================
         # Phase 3.6: GPIO Connectivity Pre-Test
         # ============================================================
-        # Skip GPIO pre-test if pins were just discovered (already verified) or SIMD mode
+        # Skip GPIO pre-test if pins were just discovered (already verified), SIMD, or net mode
         if simd_test_mode:
+            pass  # Already printed skip message above
+        elif net_server_mode or net_client_mode:
             pass  # Already printed skip message above
         elif pins_discovered:
             print("\n✅ Skipping GPIO pre-test (pins verified during discovery)")
@@ -1960,6 +2005,18 @@ async def run(args: Args | None = None) -> int:  # pyright: ignore[reportGeneral
             print("No driver tests requested — skipping RPC test matrix.")
             print()
             return 0
+
+        # ============================================================
+        # Network Validation Mode (--net-server or --net-client)
+        # ============================================================
+        if net_server_mode or net_client_mode:
+            return await run_net_validation(
+                upload_port=upload_port,
+                serial_iface=serial_iface,
+                net_server_mode=net_server_mode,
+                net_client_mode=net_client_mode,
+                timeout=timeout_seconds,
+            )
 
         # SIMD test mode - run comprehensive SIMD test suite via RPC
         if simd_test_mode:

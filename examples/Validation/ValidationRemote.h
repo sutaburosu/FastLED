@@ -42,6 +42,8 @@ struct ValidationState {
     RxDeviceFactory rx_factory;
     bool gpio_baseline_test_done = false;  // Track whether GPIO baseline test has run in loop()
     bool debug_enabled = false;  // Runtime debug logging toggle (default: off)
+    bool net_server_active = false;  // Network server validation active
+    bool net_client_active = false;  // Network client validation active
 };
 
 /// @brief Print JSON directly to Serial, bypassing fl::println and ScopedLogDisable

@@ -183,6 +183,7 @@
 #include "ValidationTest.h"
 #include "ValidationHelpers.h"
 #include "ValidationRemote.h"
+#include "ValidationNet.h"
 #include "ValidationAsync.h"
 #include "ValidationPlatform.h"
 #include "ValidationSimd.h"

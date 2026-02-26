@@ -3,6 +3,7 @@
 
 #include "fl/int.h"  // for FastLED integer types
 #include "fl/stl/cstring.h"  // for memcopy (FastLED equivalent)
+#include "platforms/avr/is_avr.h"  // for FL_IS_AVR
 
 // Guard against PROGMEM redefinition on platforms that have their own definition
 #if !defined(PROGMEM) && !defined(__IMXRT1062__) && !defined(__MK20DX128__) && !defined(__MK20DX256__) && !defined(__MK66FX1M0__) && !defined(__MK64FX512__) && !defined(__MKL26Z64__)
@@ -13,7 +14,11 @@
 // Ensure PROGMEM is available before using it
 #if defined(PROGMEM)
 #define FL_PROGMEM PROGMEM
+#if defined(FL_IS_AVR)
+// IWYU pragma: begin_keep
 #include <avr/pgmspace.h>
+// IWYU pragma: end_keep
+#endif
 #else
 // Fallback for platforms without PROGMEM - just use empty attribute
 #define FL_PROGMEM

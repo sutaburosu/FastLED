@@ -38,6 +38,7 @@
 #include "fl/json.h"
 #include "fl/async.h"
 #include "fl/engine_events.h"
+#include "platforms/esp/is_esp.h"  // ok platform headers - for FL_IS_ESP32  // IWYU pragma: keep
 
 namespace fl {
 namespace net {
@@ -261,6 +262,14 @@ private:
     optional<RouteHandler> find_handler(const string& method, const string& path) const;
     void close_client(size_t index);
     void cleanup_stale_connections();
+
+#ifdef FL_IS_ESP32
+public:
+    // ESP32: Static handler bridging esp_http_server callbacks to RouteHandlers.
+    // Declared public so the C callback wrapper can call it.
+    // Parameter is httpd_req_t* cast to void* to avoid ESP-IDF header dependency.
+    static int handle_esp_request(void* req);
+#endif
 };
 
 } // namespace http

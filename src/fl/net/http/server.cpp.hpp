@@ -4,10 +4,15 @@
 #pragma once
 
 #include "fl/net/http/server.h"
+#include "platforms/esp/is_esp.h"  // ok platform headers - for FL_IS_ESP32  // IWYU pragma: keep
+
+// Common includes needed by both POSIX/Windows and ESP32 implementations
+#include "fl/stl/cctype.h"
+#include "fl/stl/cstring.h"
+#include "fl/warn.h"
 
 #ifdef FASTLED_HAS_NETWORKING
 
-#include "fl/stl/cctype.h"
 #include "platforms/time_platform.h"
 
 // Platform-specific socket includes
@@ -602,7 +607,325 @@ void Server::cleanup_stale_connections() {
 } // namespace net
 } // namespace fl
 
-#else // !FASTLED_HAS_NETWORKING
+#elif defined(FL_IS_ESP32)
+
+// ============================================================================
+// ESP32 Implementation using esp_http_server.h
+// ============================================================================
+
+// IWYU pragma: begin_keep
+#include <esp_http_server.h>  // nolint
+// IWYU pragma: end_keep
+
+namespace fl {
+namespace net {
+namespace http {
+
+// ========== ESP32 Helpers ==========
+
+namespace {
+
+// Map method string to httpd_method_t
+httpd_method_t to_httpd_method(const string& method) {
+    if (method == "GET") return HTTP_GET;
+    if (method == "POST") return HTTP_POST;
+    if (method == "PUT") return HTTP_PUT;
+    if (method == "DELETE") return HTTP_DELETE;
+    return HTTP_GET;
+}
+
+// Context passed to ESP-IDF URI handler callback
+struct EspRouteContext {
+    Server* server;
+    size_t route_index;
+};
+
+// Forward declaration - implemented as Server static method for private access
+esp_err_t esp_route_handler(httpd_req_t* req);
+
+} // anonymous namespace
+
+// Static method on Server - has access to private members of Request/Response.
+// Signature uses void* to avoid ESP-IDF types in header; cast to httpd_req_t* here.
+// This is called from the ESP-IDF HTTP server task.
+int Server::handle_esp_request(void* raw_req) {
+    auto* req = static_cast<httpd_req_t*>(raw_req);
+    auto* ctx = static_cast<EspRouteContext*>(req->user_ctx);
+    if (!ctx || !ctx->server) {
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "No context");
+        return ESP_FAIL;
+    }
+
+    // Build fl::net::http::Request from httpd_req_t
+    Request fl_req;
+    fl_req.mPath = req->uri;
+    switch (req->method) {
+        case HTTP_GET:    fl_req.mMethod = "GET"; break;
+        case HTTP_POST:   fl_req.mMethod = "POST"; break;
+        case HTTP_PUT:    fl_req.mMethod = "PUT"; break;
+        case HTTP_DELETE: fl_req.mMethod = "DELETE"; break;
+        default:          fl_req.mMethod = "GET"; break;
+    }
+    fl_req.mHttpVersion = "HTTP/1.1";
+
+    // Strip query string from path
+    size_t q = fl_req.mPath.find('?');
+    if (q != string::npos) {
+        fl_req.mPath = fl_req.mPath.substr(0, q);
+    }
+
+    // Read POST body if present
+    if (req->content_len > 0 && req->content_len <= 8192) {
+        int total_len = req->content_len;
+        char* buf = static_cast<char*>(malloc(total_len + 1));
+        if (buf) {
+            int received = 0;
+            while (received < total_len) {
+                int ret = httpd_req_recv(req, buf + received, total_len - received);
+                if (ret <= 0) {
+                    break;
+                }
+                received += ret;
+            }
+            buf[received] = '\0';
+            fl_req.mBody = string(buf, received);
+            free(buf);
+        }
+    }
+
+    // Call the RouteHandler
+    if (ctx->route_index >= ctx->server->mRoutes.size()) {
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Invalid route");
+        return ESP_FAIL;
+    }
+
+    Response resp = ctx->server->mRoutes[ctx->route_index].handler(fl_req);
+
+    // Send response using Response::to_string() which serializes to HTTP format
+    // Use esp_http_server APIs to send the response parts
+    char status_str[32];
+    snprintf(status_str, sizeof(status_str), "%d", resp.mStatusCode);
+    httpd_resp_set_status(req, status_str);
+
+    for (auto it = resp.mHeaders.begin(); it != resp.mHeaders.end(); ++it) {
+        httpd_resp_set_hdr(req, it->first.c_str(), it->second.c_str());
+    }
+
+    httpd_resp_send(req, resp.mBody.c_str(), resp.mBody.size());
+    return ESP_OK;
+}
+
+namespace {
+
+// ESP-IDF URI handler callback - delegates to Server::handle_esp_request
+esp_err_t esp_route_handler(httpd_req_t* req) {
+    return static_cast<esp_err_t>(Server::handle_esp_request(static_cast<void*>(req)));
+}
+
+} // anonymous namespace
+
+// ========== Request implementation ==========
+
+optional<string> Request::header(const string& name) const {
+    for (auto it = mHeaders.begin(); it != mHeaders.end(); ++it) {
+        if (it->first == name) {
+            return it->second;
+        }
+    }
+    return nullopt;
+}
+
+optional<string> Request::query(const string& param) const {
+    auto it = mQuery.find(param);
+    if (it != mQuery.end()) {
+        return it->second;
+    }
+    return nullopt;
+}
+
+// ========== Response implementation ==========
+
+Response::Response() {
+    mHeaders["Content-Type"] = "text/plain";
+}
+
+Response& Response::status(int code) {
+    mStatusCode = code;
+    return *this;
+}
+
+Response& Response::header(const string& name, const string& value) {
+    mHeaders[name] = value;
+    return *this;
+}
+
+Response& Response::body(const string& content) {
+    mBody = content;
+    return *this;
+}
+
+Response& Response::json(const Json& data) {
+    mBody = data.to_string();
+    mHeaders["Content-Type"] = "application/json";
+    return *this;
+}
+
+Response Response::ok(const string& body) {
+    Response resp;
+    resp.status(200).body(body);
+    return resp;
+}
+
+Response Response::not_found() {
+    Response resp;
+    resp.status(404).body("Not Found\n");
+    return resp;
+}
+
+Response Response::bad_request(const string& message) {
+    Response resp;
+    resp.status(400).body(message + "\n");
+    return resp;
+}
+
+Response Response::internal_error(const string& message) {
+    Response resp;
+    resp.status(500).body(message + "\n");
+    return resp;
+}
+
+string Response::to_string() const {
+    // Not used on ESP32 (responses sent via httpd_resp_send)
+    return mBody;
+}
+
+// ========== Server implementation (ESP32) ==========
+
+// ESP32 stores httpd_handle_t and route contexts via mListenSocket as an opaque int
+// and mClientSockets is unused. We use a static map for the httpd handle.
+
+// We store the httpd_handle_t in a file-scoped variable since the Server class
+// members (mListenSocket, mClientSockets) are typed for POSIX sockets.
+static httpd_handle_t s_esp_httpd = nullptr;
+static fl::vector<EspRouteContext*> s_esp_route_contexts;
+
+Server::Server() {
+    EngineEvents::addListener(this);
+}
+
+Server::~Server() {
+    EngineEvents::removeListener(this);
+    stop();
+}
+
+void Server::onExit() {
+    stop();
+}
+
+bool Server::start(int port) {
+    if (mRunning) {
+        mLastError = "Server already running";
+        return false;
+    }
+
+    httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+    config.server_port = static_cast<u16>(port);
+
+    esp_err_t err = httpd_start(&s_esp_httpd, &config);
+    if (err != ESP_OK) {
+        mLastError = "httpd_start failed";
+        FL_WARN("[HTTP] httpd_start failed: " << esp_err_to_name(err));
+        return false;
+    }
+
+    // Register all routes that were added before start()
+    for (size_t i = 0; i < mRoutes.size(); ++i) {
+        auto* ctx = new EspRouteContext{this, i};
+        s_esp_route_contexts.push_back(ctx);
+
+        httpd_uri_t uri_handler = {};
+        uri_handler.uri = mRoutes[i].path.c_str();
+        uri_handler.method = to_httpd_method(mRoutes[i].method);
+        uri_handler.handler = esp_route_handler;
+        uri_handler.user_ctx = ctx;
+
+        esp_err_t reg_err = httpd_register_uri_handler(s_esp_httpd, &uri_handler);
+        if (reg_err != ESP_OK) {
+            FL_WARN("[HTTP] Failed to register route " << mRoutes[i].path.c_str());
+        }
+    }
+
+    mPort = port;
+    mRunning = true;
+    mLastError.clear();
+
+    FL_WARN("[HTTP] Server started on port " << port);
+    return true;
+}
+
+void Server::stop() {
+    if (!mRunning) return;
+
+    if (s_esp_httpd) {
+        httpd_stop(s_esp_httpd);
+        s_esp_httpd = nullptr;
+    }
+
+    // Clean up route contexts
+    for (auto* ctx : s_esp_route_contexts) {
+        delete ctx;
+    }
+    s_esp_route_contexts.clear();
+
+    mRunning = false;
+    FL_WARN("[HTTP] Server stopped");
+}
+
+void Server::route(const string& method, const string& path, RouteHandler handler) {
+    mRoutes.push_back({method, path, handler});
+
+    // If server is already running, register the route immediately
+    if (mRunning && s_esp_httpd) {
+        size_t idx = mRoutes.size() - 1;
+        auto* ctx = new EspRouteContext{this, idx};
+        s_esp_route_contexts.push_back(ctx);
+
+        httpd_uri_t uri_handler = {};
+        uri_handler.uri = mRoutes[idx].path.c_str();
+        uri_handler.method = to_httpd_method(method);
+        uri_handler.handler = esp_route_handler;
+        uri_handler.user_ctx = ctx;
+
+        httpd_register_uri_handler(s_esp_httpd, &uri_handler);
+    }
+}
+
+void Server::get(const string& path, RouteHandler handler) {
+    route("GET", path, handler);
+}
+
+void Server::post(const string& path, RouteHandler handler) {
+    route("POST", path, handler);
+}
+
+void Server::put(const string& path, RouteHandler handler) {
+    route("PUT", path, handler);
+}
+
+void Server::del(const string& path, RouteHandler handler) {
+    route("DELETE", path, handler);
+}
+
+size_t Server::update() {
+    // ESP-IDF HTTP server runs in its own task, no polling needed
+    return 0;
+}
+
+} // namespace http
+} // namespace net
+} // namespace fl
+
+#else // !FASTLED_HAS_NETWORKING && !FL_IS_ESP32
 
 // Stub implementation for platforms without networking
 namespace fl {
@@ -625,7 +948,9 @@ Response Response::internal_error(const string&) { return Response(); }
 
 string Response::to_string() const { return ""; }
 
+Server::Server() {}
 Server::~Server() = default;
+void Server::onExit() {}
 bool Server::start(int) { return false; }
 void Server::stop() {}
 void Server::route(const string&, const string&, RouteHandler) {}

@@ -12,6 +12,7 @@
 #define DEBUG_PRINTLN(x) do {} while(0)
 
 #include "ValidationRemote.h"
+#include "ValidationNet.h"
 #include "fl/remote/transport/serial.h"
 #include "fl/memory.h"
 #include "Common.h"
@@ -1322,6 +1323,56 @@ void ValidationRemoteControl::registerFunctions(fl::shared_ptr<ValidationState> 
         response.set("message", msg.str().c_str());
 
         return response;
+    });
+
+    // ========================================================================
+    // Network Validation RPC Functions
+    // ========================================================================
+
+    // Register "startNetServer" - Start WiFi AP + HTTP server for net-server validation
+    mRemote->bind("startNetServer", [this](const fl::Json& args) -> fl::Json {
+        mState->net_server_active = true;
+        return startNetServer();
+    });
+
+    // Register "startNetClient" - Start WiFi AP only for net-client validation
+    mRemote->bind("startNetClient", [this](const fl::Json& args) -> fl::Json {
+        mState->net_client_active = true;
+        return startNetClient();
+    });
+
+    // Register "runNetClientTest" - ESP32 fetches from host HTTP server
+    // Args: {host_ip: string, port: int}
+    mRemote->bind("runNetClientTest", [](const fl::Json& args) -> fl::Json {
+        fl::Json response = fl::Json::object();
+
+        // Parse arguments - args is the config object
+        if (!args.is_object()) {
+            response.set("success", false);
+            response.set("error", "Expected object with host_ip and port");
+            return response;
+        }
+
+        fl::Json host_ip_val = args[fl::string("host_ip")];
+        fl::Json port_val = args[fl::string("port")];
+
+        if (!host_ip_val.is_string() || !port_val.is_int()) {
+            response.set("success", false);
+            response.set("error", "Expected {host_ip: string, port: int}");
+            return response;
+        }
+
+        fl::string host_ip = host_ip_val.as_string().value();
+        uint16_t port = static_cast<uint16_t>(port_val.as_int().value());
+
+        return runNetClientTest(host_ip.c_str(), port);
+    });
+
+    // Register "stopNet" - Stop WiFi AP and HTTP server/client
+    mRemote->bind("stopNet", [this](const fl::Json& args) -> fl::Json {
+        mState->net_server_active = false;
+        mState->net_client_active = false;
+        return stopNet();
     });
 }
 
