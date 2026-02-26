@@ -181,11 +181,11 @@ void SerialEmulation::write(const char *s) {
 }
 
 void SerialEmulation::write(const fl::u8 *s, size_t n) {
-    fwrite(s, 1, n, stdout);
+    fl::write_bytes(s, n);
 }
 
 void SerialEmulation::write(const char *s, size_t n) {
-    fwrite(s, 1, n, stdout);
+    fl::write_bytes(reinterpret_cast<const fl::u8 *>(s), n); // ok reinterpret cast
 }
 
 void SerialEmulation::flush() {}
