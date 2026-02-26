@@ -30,6 +30,7 @@ from ci.lint_cpp.check_platforms_fl_namespace import PlatformsFlNamespaceChecker
 from ci.lint_cpp.check_using_namespace import UsingNamespaceChecker
 from ci.lint_cpp.cpp_hpp_includes_checker import CppHppIncludesChecker
 from ci.lint_cpp.cpp_include_checker import CppIncludeChecker
+from ci.lint_cpp.ctype_global_checker import CtypeGlobalChecker
 from ci.lint_cpp.fastled_header_usage_checker import FastLEDHeaderUsageChecker
 from ci.lint_cpp.fl_is_defined_checker import FlIsDefinedChecker
 from ci.lint_cpp.google_member_style_checker import GoogleMemberStyleChecker
@@ -172,6 +173,7 @@ def create_checkers(
         RelativeIncludeChecker(),
         FastLEDHeaderUsageChecker(),
         StdintTypeChecker(),  # Covers all src/ (excludes third_party/ internally)
+        CtypeGlobalChecker(),  # Checks for global-scope ctype functions (use fl:: variants)
     ]
 
     # Platforms-specific checkers

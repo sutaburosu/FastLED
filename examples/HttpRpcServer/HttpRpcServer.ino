@@ -1,4 +1,4 @@
-// @filter: (memory is high) && (not avr)
+// @filter: (platform is native)
 
 /// @file HttpRpcServer.ino
 /// @brief Example demonstrating fl::Remote with HTTP streaming transport (server side)
@@ -30,18 +30,18 @@
 ///       -d '{"jsonrpc":"2.0","method":"streamData","params":[10],"id":3}'
 ///
 /// @see fl/remote/remote.h for full API documentation
-/// @see fl/remote/transport/http/PROTOCOL.md for protocol specification
+/// @see fl/net/http/PROTOCOL.md for protocol specification
 
 #include <FastLED.h>
 #include "fl/remote/remote.h"
 #include "fl/remote/rpc/response_send.h"
-#include "fl/remote/transport/http/stream_server.h"
-#include "fl/remote/transport/http/stream_server.cpp.hpp"
-#include "fl/remote/transport/http/stream_transport.cpp.hpp"
-#include "fl/remote/transport/http/connection.cpp.hpp"
-#include "fl/remote/transport/http/chunked_encoding.cpp.hpp"
-#include "fl/remote/transport/http/http_parser.cpp.hpp"
-#include "fl/remote/transport/http/native_server.cpp.hpp"
+#include "fl/net/http/stream_server.h"
+#include "fl/net/http/stream_server.cpp.hpp"
+#include "fl/net/http/stream_transport.cpp.hpp"
+#include "fl/net/http/connection.cpp.hpp"
+#include "fl/net/http/chunked_encoding.cpp.hpp"
+#include "fl/net/http/http_parser.cpp.hpp"
+#include "fl/net/http/native_server.cpp.hpp"
 
 #define NUM_LEDS 10
 #define DATA_PIN 3

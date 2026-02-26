@@ -16,21 +16,21 @@
 /// - Demonstrating full HTTP streaming RPC capabilities
 ///
 /// @see fl/remote/remote.h for full API documentation
-/// @see fl/remote/transport/http/PROTOCOL.md for protocol specification
+/// @see fl/net/http/PROTOCOL.md for protocol specification
 
 #include <FastLED.h>
 #include "fl/remote/remote.h"
 #include "fl/remote/rpc/response_send.h"
-#include "fl/remote/transport/http/stream_server.h"
-#include "fl/remote/transport/http/stream_client.h"
-#include "fl/remote/transport/http/stream_server.cpp.hpp"
-#include "fl/remote/transport/http/stream_client.cpp.hpp"
-#include "fl/remote/transport/http/stream_transport.cpp.hpp"
-#include "fl/remote/transport/http/connection.cpp.hpp"
-#include "fl/remote/transport/http/chunked_encoding.cpp.hpp"
-#include "fl/remote/transport/http/http_parser.cpp.hpp"
-#include "fl/remote/transport/http/native_server.cpp.hpp"
-#include "fl/remote/transport/http/native_client.cpp.hpp"
+#include "fl/net/http/stream_server.h"
+#include "fl/net/http/stream_client.h"
+#include "fl/net/http/stream_server.cpp.hpp"
+#include "fl/net/http/stream_client.cpp.hpp"
+#include "fl/net/http/stream_transport.cpp.hpp"
+#include "fl/net/http/connection.cpp.hpp"
+#include "fl/net/http/chunked_encoding.cpp.hpp"
+#include "fl/net/http/http_parser.cpp.hpp"
+#include "fl/net/http/native_server.cpp.hpp"
+#include "fl/net/http/native_client.cpp.hpp"
 #include <thread>  // ok include
 #include <atomic>  // ok include
 #include "fl/stl/chrono.h"

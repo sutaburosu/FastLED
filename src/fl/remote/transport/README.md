@@ -248,18 +248,18 @@ TEST(Transport, MockSerial) {
 
 ## Adding New Transports
 
-To add a new transport (e.g., HTTP, WebSocket):
+To add a new transport (e.g., WebSocket):
 
-1. Create `src/fl/remote/transport/http.h`
+1. Create header/implementation in `src/fl/net/` (see `src/fl/net/http/` for reference)
 2. Implement factory functions:
    ```cpp
    namespace fl {
-       fl::function<fl::optional<fl::Json>()> createHttpRequestSource(const char* url);
-       fl::function<void(const fl::Json&)> createHttpResponseSink(const char* url);
+       fl::function<fl::optional<fl::Json>()> createWsRequestSource(const char* url);
+       fl::function<void(const fl::Json&)> createWsResponseSink(const char* url);
    }
    ```
 3. Reuse parsing functions: `parseJsonRpcRequest`, `formatJsonRpcResponse`
-4. Add to `_build.hpp`
+4. Add to `_build.cpp.hpp`
 
 ## Platform Support
 

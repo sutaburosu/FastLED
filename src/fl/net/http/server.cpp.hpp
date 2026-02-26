@@ -61,7 +61,7 @@ constexpr u32 CONNECTION_TIMEOUT_MS = 30000;
 bool iequals(const string& a, const string& b) {
     if (a.size() != b.size()) return false;
     for (size_t i = 0; i < a.size(); ++i) {
-        if (tolower(a[i]) != tolower(b[i])) return false;
+        if (fl::tolower(a[i]) != fl::tolower(b[i])) return false;
     }
     return true;
 }
@@ -69,9 +69,9 @@ bool iequals(const string& a, const string& b) {
 // Helper: Trim whitespace from string
 string trim(const string& s) {
     size_t start = 0;
-    while (start < s.size() && isspace(s[start])) ++start;
+    while (start < s.size() && fl::isspace(s[start])) ++start;
     size_t end = s.size();
-    while (end > start && isspace(s[end - 1])) --end;
+    while (end > start && fl::isspace(s[end - 1])) --end;
     return s.substr(start, end - start);
 }
 

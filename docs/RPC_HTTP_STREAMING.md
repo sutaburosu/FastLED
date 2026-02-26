@@ -62,15 +62,15 @@ This enables real-time communication between FastLED devices and web-based or de
 #include <FastLED.h>
 #include "fl/remote/remote.h"
 #include "fl/remote/rpc/response_send.h"
-#include "fl/remote/transport/http/stream_server.h"
+#include "fl/net/http/stream_server.h"
 
 // Include implementations
-#include "fl/remote/transport/http/stream_server.cpp.hpp"
-#include "fl/remote/transport/http/stream_transport.cpp.hpp"
-#include "fl/remote/transport/http/connection.cpp.hpp"
-#include "fl/remote/transport/http/chunked_encoding.cpp.hpp"
-#include "fl/remote/transport/http/http_parser.cpp.hpp"
-#include "fl/remote/transport/http/native_server.cpp.hpp"
+#include "fl/net/http/stream_server.cpp.hpp"
+#include "fl/net/http/stream_transport.cpp.hpp"
+#include "fl/net/http/connection.cpp.hpp"
+#include "fl/net/http/chunked_encoding.cpp.hpp"
+#include "fl/net/http/http_parser.cpp.hpp"
+#include "fl/net/http/native_server.cpp.hpp"
 
 #define SERVER_PORT 8080
 
@@ -181,7 +181,7 @@ void loop() {
 
 ```cpp
 #include "fl/remote/remote.h"
-#include "fl/remote/transport/http/stream_server.h"
+#include "fl/net/http/stream_server.h"
 // ... include .cpp.hpp files
 
 #define SERVER_PORT 8080
@@ -948,7 +948,7 @@ bash test --docker --cpp loopback  # Runs with ASAN enabled
 
 ## See Also
 
-- [Protocol Specification](../src/fl/remote/transport/http/PROTOCOL.md) - Detailed HTTP streaming RPC protocol
+- [Protocol Specification](../src/fl/net/http/PROTOCOL.md) - Detailed HTTP streaming RPC protocol
 - [Architecture Document](../src/fl/remote/ARCHITECTURE.md) - fl::Remote architecture overview
 - [HttpRpcServer Example](../examples/HttpRpcServer/HttpRpcServer.ino) - Complete server example
 - [HttpRpcClient Example](../examples/HttpRpcClient/HttpRpcClient.ino) - Complete client example

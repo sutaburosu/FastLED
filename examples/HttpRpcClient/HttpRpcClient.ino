@@ -15,18 +15,18 @@
 ///   2. Then run this client to connect and send requests
 ///
 /// @see fl/remote/remote.h for full API documentation
-/// @see fl/remote/transport/http/PROTOCOL.md for protocol specification
+/// @see fl/net/http/PROTOCOL.md for protocol specification
 
 #include <FastLED.h>
 #include "fl/remote/remote.h"
 #include "fl/remote/rpc/response_send.h"
-#include "fl/remote/transport/http/stream_client.h"
-#include "fl/remote/transport/http/stream_client.cpp.hpp"
-#include "fl/remote/transport/http/stream_transport.cpp.hpp"
-#include "fl/remote/transport/http/connection.cpp.hpp"
-#include "fl/remote/transport/http/chunked_encoding.cpp.hpp"
-#include "fl/remote/transport/http/http_parser.cpp.hpp"
-#include "fl/remote/transport/http/native_client.cpp.hpp"
+#include "fl/net/http/stream_client.h"
+#include "fl/net/http/stream_client.cpp.hpp"
+#include "fl/net/http/stream_transport.cpp.hpp"
+#include "fl/net/http/connection.cpp.hpp"
+#include "fl/net/http/chunked_encoding.cpp.hpp"
+#include "fl/net/http/http_parser.cpp.hpp"
+#include "fl/net/http/native_client.cpp.hpp"
 
 // Client configuration
 #define SERVER_HOST "localhost"
