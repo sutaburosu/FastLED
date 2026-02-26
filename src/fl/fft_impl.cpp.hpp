@@ -170,8 +170,8 @@ class FFTContext {
 };
 
 FFTImpl::FFTImpl(const FFT_Args &args) {
-    mContext.reset(new FFTContext(args.samples, args.bands, args.fmin,
-                                  args.fmax, args.sample_rate));
+    mContext = fl::make_unique<FFTContext>(args.samples, args.bands, args.fmin,
+                                          args.fmax, args.sample_rate);
 }
 
 FFTImpl::~FFTImpl() { mContext.reset(); }

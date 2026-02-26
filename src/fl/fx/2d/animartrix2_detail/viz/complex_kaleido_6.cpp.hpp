@@ -9,7 +9,7 @@ FL_OPTIMIZATION_LEVEL_O3_BEGIN
 namespace fl {
 
 void Complex_Kaleido_6::draw(Context &ctx) {
-    auto *e = ctx.mEngine;
+    auto *e = ctx.mEngine.get();
     e->get_ready();
 
     e->timings.master_speed = 0.01;
@@ -65,7 +65,7 @@ void Complex_Kaleido_6::draw(Context &ctx) {
 // ============================================================================
 
 void Complex_Kaleido_6_FP::draw(Context &ctx) {
-    auto *e = ctx.mEngine;
+    auto *e = ctx.mEngine.get();
     e->get_ready();
     mState.ensureCache(e);
     const fl::i32 *fade_lut = fl::assume_aligned<16>(mState.fade_lut);

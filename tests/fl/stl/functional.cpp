@@ -298,7 +298,7 @@ FL_TEST_CASE("fl::invoke with scoped_ptr smart pointers") {
     };
 
     // Test with scoped_ptr
-    fl::scoped_ptr<TestScopedPtrClass> scopedPtr(new TestScopedPtrClass);
+    fl::scoped_ptr<TestScopedPtrClass> scopedPtr(new TestScopedPtrClass);  // ok bare allocation
 
     // Member function: const getter
     FL_CHECK_EQ(42, invoke(&TestScopedPtrClass::getValue, scopedPtr));
@@ -321,11 +321,11 @@ FL_TEST_CASE("fl::invoke with scoped_ptr smart pointers") {
     // Test with custom deleter
     struct CustomDeleter {
         void operator()(TestScopedPtrClass* ptr) {
-            delete ptr;
+            delete ptr;  // ok bare allocation
         }
     };
 
-    fl::scoped_ptr<TestScopedPtrClass, CustomDeleter> customScopedPtr(new TestScopedPtrClass, CustomDeleter{});
+    fl::scoped_ptr<TestScopedPtrClass, CustomDeleter> customScopedPtr(new TestScopedPtrClass, CustomDeleter{});  // ok bare allocation
 
     // Member function with custom deleter scoped_ptr
     FL_CHECK_EQ(42, invoke(&TestScopedPtrClass::getValue, customScopedPtr));
@@ -368,7 +368,7 @@ FL_TEST_CASE("fl::invoke with fl::function objects") {
     FL_CHECK_EQ(200, obj.value);
 
     // 5. Test fl::function with member function bound to scoped_ptr
-    fl::scoped_ptr<TestFunctionClass> scoped_ptr(new TestFunctionClass);
+    fl::scoped_ptr<TestFunctionClass> scoped_ptr(new TestFunctionClass);  // ok bare allocation
     scoped_ptr->setValue(300);
 
     // Create function bound to scoped_ptr

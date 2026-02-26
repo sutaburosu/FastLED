@@ -33,7 +33,7 @@ public:
 
 // Static factory method implementation
 fl::unique_ptr<IAdafruitNeoPixelDriver> IAdafruitNeoPixelDriver::create() {
-    return fl::unique_ptr<IAdafruitNeoPixelDriver>(new AdafruitNeoPixelDriverFake());
+    return fl::unique_ptr<IAdafruitNeoPixelDriver>(new AdafruitNeoPixelDriverFake());  // ok bare allocation
 }
 
 } // namespace fl

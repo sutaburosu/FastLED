@@ -103,7 +103,7 @@ void setup() {
     // ========== SERVER SETUP ==========
     Serial.println("Starting HTTP server on port 8080...");
 
-    serverTransport = new fl::HttpStreamServer(SERVER_PORT);
+    serverTransport = new fl::HttpStreamServer(SERVER_PORT);  // ok bare allocation
     serverTransport->setHeartbeatInterval(30000);
     serverTransport->setTimeout(60000);
 
@@ -121,7 +121,7 @@ void setup() {
     });
 
     // Create server Remote
-    serverRemote = new fl::Remote(
+    serverRemote = new fl::Remote(  // ok bare allocation
         []() { return serverTransport->readRequest(); },
         [](const fl::Json& response) { serverTransport->writeResponse(response); }
     );
@@ -228,7 +228,7 @@ void setup() {
 
     Serial.println("Connecting client to server...");
 
-    clientTransport = new fl::HttpStreamClient("localhost", SERVER_PORT);
+    clientTransport = new fl::HttpStreamClient("localhost", SERVER_PORT);  // ok bare allocation
     clientTransport->setHeartbeatInterval(30000);
     clientTransport->setTimeout(60000);
 
@@ -247,7 +247,7 @@ void setup() {
     });
 
     // Create client Remote
-    clientRemote = new fl::Remote(
+    clientRemote = new fl::Remote(  // ok bare allocation
         []() { return clientTransport->readRequest(); },
         [](const fl::Json& response) { clientTransport->writeResponse(response); }
     );

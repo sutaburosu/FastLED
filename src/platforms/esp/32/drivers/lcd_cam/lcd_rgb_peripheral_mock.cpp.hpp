@@ -10,6 +10,7 @@
 
 #include "lcd_rgb_peripheral_mock.h"
 #include "fl/warn.h"
+#include "fl/stl/allocator.h"
 #include "fl/stl/cstring.h"
 #include "fl/singleton.h"
 #include "fl/stl/atomic.h"
@@ -227,7 +228,7 @@ void LcdRgbPeripheralMockImpl::freeFrameBuffer(u16* buffer) {
 #ifdef FL_IS_WIN
         _aligned_free(buffer);
 #else
-        free(buffer);
+        fl::free(buffer);
 #endif
     }
 }

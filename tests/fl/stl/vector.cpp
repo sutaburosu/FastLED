@@ -683,13 +683,13 @@ FL_TEST_CASE("Automatic realloc optimization for trivially copyable types") {
         // Default allocator should automatically use allocate-copy-deallocate
         struct NonTriviallyCopyable {
             int* ptr;
-            NonTriviallyCopyable(int val = 0) : ptr(new int(val)) {}
-            ~NonTriviallyCopyable() { delete ptr; }
-            NonTriviallyCopyable(const NonTriviallyCopyable& other) : ptr(new int(*other.ptr)) {}
+            NonTriviallyCopyable(int val = 0) : ptr(new int(val)) {}  // ok bare allocation
+            ~NonTriviallyCopyable() { delete ptr; }  // ok bare allocation
+            NonTriviallyCopyable(const NonTriviallyCopyable& other) : ptr(new int(*other.ptr)) {}  // ok bare allocation
             NonTriviallyCopyable& operator=(const NonTriviallyCopyable& other) {
                 if (this != &other) {
-                    delete ptr;
-                    ptr = new int(*other.ptr);
+                    delete ptr;  // ok bare allocation
+                    ptr = new int(*other.ptr);  // ok bare allocation
                 }
                 return *this;
             }
@@ -777,7 +777,7 @@ FL_TEST_CASE("is_trivially_copyable trait") {
         struct NonTriviallyCopyable {
             int* ptr;
             NonTriviallyCopyable() : ptr(nullptr) {}
-            ~NonTriviallyCopyable() { delete ptr; }
+            ~NonTriviallyCopyable() { delete ptr; }  // ok bare allocation
         };
         FL_CHECK_FALSE(fl::is_trivially_copyable<NonTriviallyCopyable>::value);
     }

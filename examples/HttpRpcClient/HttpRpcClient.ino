@@ -82,7 +82,7 @@ void setup() {
     FastLED.show();
 
     // Create HTTP streaming client transport
-    transport = new fl::HttpStreamClient(SERVER_HOST, SERVER_PORT);
+    transport = new fl::HttpStreamClient(SERVER_HOST, SERVER_PORT);  // ok bare allocation
 
     // Configure heartbeat and timeout
     transport->setHeartbeatInterval(30000); // 30 seconds
@@ -105,7 +105,7 @@ void setup() {
     });
 
     // Create Remote with transport callbacks
-    remote = new fl::Remote(
+    remote = new fl::Remote(  // ok bare allocation
         []() { return transport->readRequest(); },
         [](const fl::Json& response) { transport->writeResponse(response); }
     );

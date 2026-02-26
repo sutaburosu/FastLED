@@ -20,6 +20,7 @@
 #include "fl/isr.h"
 #include "fl/compiler_control.h"
 #include "fl/stl/assert.h"
+#include "fl/stl/unique_ptr.h"
 #include "fl/dbg.h"
 
 // Include SAMD SDK headers
@@ -388,7 +389,8 @@ int attach_timer_handler(const isr_config_t& config, isr_handle_t* out_handle) {
     }
 
     // Allocate handle data
-    samd_isr_handle_data* handle_data = new samd_isr_handle_data();
+    auto handle_owner = fl::make_unique<samd_isr_handle_data>();
+    auto* handle_data = handle_owner.get();
     if (!handle_data) {
         free_timer(timer_idx);
         FL_WARN("attachTimerHandler: failed to allocate handle data");
@@ -503,6 +505,9 @@ int attach_timer_handler(const isr_config_t& config, isr_handle_t* out_handle) {
 
     FL_DBG("Timer started at " << config.frequency_hz << " Hz on TC" << static_cast<int>(timer_idx));
 
+    // Release ownership - pointer is now managed by the C API (timer_handles + out_handle)
+    handle_owner.release();
+
     // Populate output handle
     if (out_handle) {
         out_handle->platform_handle = handle_data;
@@ -528,7 +533,8 @@ int attach_external_handler(u8 pin, const isr_config_t& config, isr_handle_t* ou
     }
 
     // Allocate handle data
-    samd_isr_handle_data* handle_data = new samd_isr_handle_data();
+    auto handle_owner = fl::make_unique<samd_isr_handle_data>();
+    auto* handle_data = handle_owner.get();
     if (!handle_data) {
         free_eic_channel(eic_ch);
         FL_WARN("attachExternalHandler: failed to allocate handle data");
@@ -633,6 +639,9 @@ int attach_external_handler(u8 pin, const isr_config_t& config, isr_handle_t* ou
     FL_DBG("EIC interrupt attached on pin " << static_cast<int>(pin)
            << " EIC channel " << static_cast<int>(eic_ch));
 
+    // Release ownership - pointer is now managed by the C API (eic_handles + out_handle)
+    handle_owner.release();
+
     // Populate output handle
     if (out_handle) {
         out_handle->platform_handle = handle_data;
@@ -675,7 +684,7 @@ int detach_handler(isr_handle_t& handle) {
         }
     }
 
-    delete handle_data;
+    delete handle_data;  // ok bare allocation (C API teardown)
     handle.platform_handle = nullptr;
     handle.platform_id = 0;
 

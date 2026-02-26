@@ -12,6 +12,7 @@
 #if defined(FL_IS_NRF52840) || defined(FL_IS_NRF52833)
 
 #include "spi_hw_4_nrf52.h"
+#include "fl/stl/allocator.h"
 #include "fl/stl/cstring.h"
 #include "fl/numeric_limits.h"
 #include "platforms/shared/spi_manager.h"  // For DMABuffer, TransmitMode, SPIError
@@ -212,54 +213,54 @@ bool SPIQuadNRF52::allocateDMABuffers(size_t required_size) {
 
     // Free old buffers if they exist
     if (mLane0Buffer != nullptr) {
-        free(mLane0Buffer);
+        fl::free(mLane0Buffer);
         mLane0Buffer = nullptr;
     }
     if (mLane1Buffer != nullptr) {
-        free(mLane1Buffer);
+        fl::free(mLane1Buffer);
         mLane1Buffer = nullptr;
     }
     if (mLane2Buffer != nullptr) {
-        free(mLane2Buffer);
+        fl::free(mLane2Buffer);
         mLane2Buffer = nullptr;
     }
     if (mLane3Buffer != nullptr) {
-        free(mLane3Buffer);
+        fl::free(mLane3Buffer);
         mLane3Buffer = nullptr;
     }
     mBufferSize = 0;
 
     // Allocate new buffers in RAM (required for EasyDMA)
-    mLane0Buffer = (u8*)malloc(required_size);
+    mLane0Buffer = (u8*)fl::malloc(required_size);
     if (mLane0Buffer == nullptr) {
         FL_WARN("SPIQuadNRF52: Failed to allocate lane 0 DMA buffer");
         return false;
     }
 
-    mLane1Buffer = (u8*)malloc(required_size);
+    mLane1Buffer = (u8*)fl::malloc(required_size);
     if (mLane1Buffer == nullptr) {
         FL_WARN("SPIQuadNRF52: Failed to allocate lane 1 DMA buffer");
-        free(mLane0Buffer);
+        fl::free(mLane0Buffer);
         mLane0Buffer = nullptr;
         return false;
     }
 
-    mLane2Buffer = (u8*)malloc(required_size);
+    mLane2Buffer = (u8*)fl::malloc(required_size);
     if (mLane2Buffer == nullptr) {
         FL_WARN("SPIQuadNRF52: Failed to allocate lane 2 DMA buffer");
-        free(mLane0Buffer);
-        free(mLane1Buffer);
+        fl::free(mLane0Buffer);
+        fl::free(mLane1Buffer);
         mLane0Buffer = nullptr;
         mLane1Buffer = nullptr;
         return false;
     }
 
-    mLane3Buffer = (u8*)malloc(required_size);
+    mLane3Buffer = (u8*)fl::malloc(required_size);
     if (mLane3Buffer == nullptr) {
         FL_WARN("SPIQuadNRF52: Failed to allocate lane 3 DMA buffer");
-        free(mLane0Buffer);
-        free(mLane1Buffer);
-        free(mLane2Buffer);
+        fl::free(mLane0Buffer);
+        fl::free(mLane1Buffer);
+        fl::free(mLane2Buffer);
         mLane0Buffer = nullptr;
         mLane1Buffer = nullptr;
         mLane2Buffer = nullptr;
@@ -429,19 +430,19 @@ void SPIQuadNRF52::cleanup() {
 
         // Free lane buffers
         if (mLane0Buffer != nullptr) {
-            free(mLane0Buffer);
+            fl::free(mLane0Buffer);
             mLane0Buffer = nullptr;
         }
         if (mLane1Buffer != nullptr) {
-            free(mLane1Buffer);
+            fl::free(mLane1Buffer);
             mLane1Buffer = nullptr;
         }
         if (mLane2Buffer != nullptr) {
-            free(mLane2Buffer);
+            fl::free(mLane2Buffer);
             mLane2Buffer = nullptr;
         }
         if (mLane3Buffer != nullptr) {
-            free(mLane3Buffer);
+            fl::free(mLane3Buffer);
             mLane3Buffer = nullptr;
         }
         mBufferSize = 0;

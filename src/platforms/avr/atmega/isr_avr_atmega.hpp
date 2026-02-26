@@ -35,6 +35,7 @@
 #include "fl/dbg.h"
 #include "fl/warn.h"
 #include "fl/compiler_control.h"
+#include "fl/stl/unique_ptr.h"
 
 // AVR libc headers
 FL_EXTERN_C_BEGIN
@@ -173,7 +174,8 @@ int attach_timer_handler(const isr_config_t& config, isr_handle_t* out_handle) {
     }
 
     // Allocate handle data
-    avr_isr_handle_data* handle_data = new avr_isr_handle_data();
+    auto handle_owner = fl::make_unique<avr_isr_handle_data>();
+    auto* handle_data = handle_owner.get();
     if (!handle_data) {
         FL_WARN("AVR ISR: failed to allocate handle data");
         return -3;  // Out of memory
@@ -184,7 +186,6 @@ int attach_timer_handler(const isr_config_t& config, isr_handle_t* out_handle) {
     u16 ocr_value;
     if (!calculate_timer_config(config.frequency_hz, prescaler_idx, ocr_value)) {
         FL_WARN("AVR ISR: frequency " << config.frequency_hz << " Hz out of range");
-        delete handle_data;
         return -2;  // Invalid frequency (out of range)
     }
 
@@ -210,8 +211,9 @@ int attach_timer_handler(const isr_config_t& config, isr_handle_t* out_handle) {
     handle_data->mPrescalerIndex = prescaler_idx;
     handle_data->mOcrValue = ocr_value;
 
-    // Store global pointer for ISR access
+    // Release ownership - pointer is now managed by the C API (g_avr_timer_data + out_handle)
     g_avr_timer_data = handle_data;
+    handle_owner.release();
 
     // Disable interrupts during timer configuration
     u8 oldSREG = SREG;
@@ -289,7 +291,7 @@ int detach_handler(isr_handle_t& handle) {
         }
     }
 
-    delete handle_data;
+    delete handle_data;  // ok bare allocation (C API teardown)
     handle.platform_handle = nullptr;
     handle.platform_id = 0;
 

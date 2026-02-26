@@ -173,7 +173,7 @@ public:
     /// @brief Free allocated memory for a channel
     /// @param channel_id RMT channel ID
     /// @param is_tx true for TX channel, false for RX channel
-    void free(u8 channel_id, bool is_tx);
+    void free(u8 channel_id, bool is_tx);  // ok bare allocation
 
     /// @brief Record allocation after recovery (channel already created externally)
     /// @param channel_id RMT channel ID

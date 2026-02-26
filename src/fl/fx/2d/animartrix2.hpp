@@ -108,7 +108,7 @@ struct Animartrix2Entry {
 
 // Factory helper: creates a heap-allocated instance of any IAnimartrix2Viz subclass.
 template<typename T>
-static IAnimartrix2Viz* makeViz() { return new T(); }
+static IAnimartrix2Viz* makeViz() { return new T(); }  // ok bare allocation
 
 // The animation dispatch table
 static const Animartrix2Entry ANIMATION2_TABLE[] = {

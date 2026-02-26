@@ -40,7 +40,7 @@ class TestFx2D : public fl::Fx2d {
   public:
     TestFx2D(uint16_t width, uint16_t height)
         : fl::Fx2d(fl::XYMap::constructRectangularGrid(width, height)) {
-        mLeds.reset(new CRGB[width * height]);
+        mLeds.reset(new CRGB[width * height]);  // ok bare allocation
     }
 
     void set(uint16_t x, uint16_t y, CRGB color) {

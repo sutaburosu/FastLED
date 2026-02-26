@@ -9,7 +9,7 @@ FL_OPTIMIZATION_LEVEL_O3_BEGIN
 namespace fl {
 
 void Center_Field::draw(Context &ctx) {
-    auto *e = ctx.mEngine;
+    auto *e = ctx.mEngine.get();
     e->get_ready();
 
     // Perlin noise is periodic with period 256 at integer coordinates.
@@ -67,7 +67,7 @@ void Center_Field::draw(Context &ctx) {
 void Center_Field_FP::draw(Context &ctx) {
     using FP = fl::s16x16;
 
-    auto *e = ctx.mEngine;
+    auto *e = ctx.mEngine.get();
     e->get_ready();
 
     // Same timing setup as float

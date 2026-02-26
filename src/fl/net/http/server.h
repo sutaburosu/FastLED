@@ -30,6 +30,7 @@
 #pragma once
 
 #include "fl/int.h"
+#include "fl/stl/unique_ptr.h"
 #include "fl/stl/function.h"
 #include "fl/stl/string.h"
 #include "fl/stl/vector.h"
@@ -252,7 +253,7 @@ private:
     vector<ClientConnection> mClientSockets;
 
     // Async system integration
-    ServerAsyncRunner* mAsyncRunner = nullptr;
+    fl::unique_ptr<ServerAsyncRunner> mAsyncRunner;
 
     bool setup_listen_socket(int port);
     void accept_connections();

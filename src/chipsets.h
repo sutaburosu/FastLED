@@ -224,7 +224,7 @@ class RGBWEmulatedController
     };
 
     /// @brief Destructor - cleans up the internal RGBW buffer
-    ~RGBWEmulatedController() { delete[] mRGBWPixels; }
+    ~RGBWEmulatedController() = default;
 
 	virtual void *beginShowLeds(int size) override {
 		return mController.callBeginShowLeds(Rgbw::size_as_rgb(size));
@@ -245,7 +245,7 @@ class RGBWEmulatedController
         // Ensure buffer is large enough
         ensureBuffer(pixels.size());
 		Rgbw rgbw = this->getRgbw();
-        fl::u8 *data = fl::bit_cast_ptr<fl::u8>(mRGBWPixels);
+        fl::u8 *data = fl::bit_cast_ptr<fl::u8>(mRGBWPixels.get());
         while (pixels.has(1)) {
             pixels.stepDithering();
             pixels.loadAndScaleRGBW(rgbw, data, data + 1, data + 2, data + 3);
@@ -267,7 +267,7 @@ class RGBWEmulatedController
 		mController.setDither(DISABLE_DITHER);
 
 		mController.setEnabled(true);
-		mController.callShow(mRGBWPixels, Rgbw::size_as_rgb(pixels.size()), 255);
+		mController.callShow(mRGBWPixels.get(), Rgbw::size_as_rgb(pixels.size()), 255);
 		mController.setEnabled(false);
     }
 
@@ -292,18 +292,17 @@ class RGBWEmulatedController
             // add pad bytes so that the delegate controller doesn't walk off the end
             // of the array and invoke a buffer overflow panic.
             fl::u32 new_size = Rgbw::size_as_rgb(num_leds);
-            delete[] mRGBWPixels;
-            mRGBWPixels = new CRGB[new_size];
+            mRGBWPixels.reset(new CRGB[new_size]);  // ok bare allocation (array new)
 			// showPixels may never clear the last two pixels.
 			for (fl::u32 i = 0; i < new_size; i++) {
 				mRGBWPixels[i] = CRGB(0, 0, 0);
 			}
 
-			mController.setLeds(mRGBWPixels, new_size);
+			mController.setLeds(mRGBWPixels.get(), new_size);
         }
     }
 
-    CRGB *mRGBWPixels = nullptr;        ///< Internal buffer for packed RGBW data
+    fl::unique_ptr<CRGB[]> mRGBWPixels; ///< Internal buffer for packed RGBW data
     fl::i32 mNumRGBLeds = 0;            ///< Number of RGB LEDs in the original array
     fl::i32 mNumRGBWLeds = 0;           ///< Number of RGBW pixels the buffer can hold
     ControllerT mController;             ///< The underlying RGB controller instance

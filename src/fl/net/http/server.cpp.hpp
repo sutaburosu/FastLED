@@ -273,8 +273,8 @@ bool Server::start(int port) {
 
     // Register with async system for automatic updates
     if (!mAsyncRunner) {
-        mAsyncRunner = new ServerAsyncRunner(this);
-        AsyncManager::instance().register_runner(mAsyncRunner);
+        mAsyncRunner = fl::make_unique<ServerAsyncRunner>(this);
+        AsyncManager::instance().register_runner(mAsyncRunner.get());
     }
 
     return true;
@@ -285,9 +285,8 @@ void Server::stop() {
 
     // Unregister from async system
     if (mAsyncRunner) {
-        AsyncManager::instance().unregister_runner(mAsyncRunner);
-        delete mAsyncRunner;
-        mAsyncRunner = nullptr;
+        AsyncManager::instance().unregister_runner(mAsyncRunner.get());
+        mAsyncRunner.reset();
     }
 
     // Close all client connections
@@ -931,6 +930,9 @@ size_t Server::update() {
 namespace fl {
 namespace net {
 namespace http {
+
+// Minimal definition for unique_ptr<ServerAsyncRunner> destruction
+class Server::ServerAsyncRunner {};
 
 optional<string> Request::header(const string&) const { return nullopt; }
 optional<string> Request::query(const string&) const { return nullopt; }

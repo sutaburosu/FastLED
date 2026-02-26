@@ -15,7 +15,7 @@ constexpr fl::size MAX_PCM_SAMPLES = 2304;
 
 // Mp3HelixDecoder implementation
 Mp3HelixDecoder::Mp3HelixDecoder()
-    : mPcmBuffer(nullptr), mDecoder(nullptr) {
+    : mDecoder(nullptr) {
     fl::memset(&mFrameInfo, 0, sizeof(mFrameInfo));
 }
 
@@ -35,7 +35,7 @@ bool Mp3HelixDecoder::init() {
     }
 
     // Allocate PCM buffer
-    mPcmBuffer = new fl::i16[MAX_PCM_SAMPLES];
+    mPcmBuffer.reset(new fl::i16[MAX_PCM_SAMPLES]);  // ok bare allocation (array new)
     if (!mPcmBuffer) {
         MP3FreeDecoder(static_cast<HMP3Decoder>(mDecoder));
         mDecoder = nullptr;
@@ -51,10 +51,7 @@ void Mp3HelixDecoder::reset() {
         mDecoder = nullptr;
     }
 
-    if (mPcmBuffer) {
-        delete[] mPcmBuffer;
-        mPcmBuffer = nullptr;
-    }
+    mPcmBuffer.reset();
 
     fl::memset(&mFrameInfo, 0, sizeof(mFrameInfo));
 }
@@ -74,7 +71,7 @@ int Mp3HelixDecoder::decodeFrame(const fl::u8** inbuf, fl::size* bytes_left) {
         static_cast<HMP3Decoder>(mDecoder),
         inbuf,
         bytes_left,
-        fl::bit_cast<short*>(mPcmBuffer),
+        fl::bit_cast<short*>(mPcmBuffer.get()),
         0  // useSize = 0 (use default)
     );
 
@@ -145,7 +142,7 @@ class Mp3StreamDecoderImpl {
     bool findAndDecodeFrame(AudioSample* out_sample);
 
     fl::ByteStreamPtr mStream;
-    Mp3HelixDecoder* mDecoder;
+    fl::unique_ptr<Mp3HelixDecoder> mDecoder;
     fl::vector<fl::u8> mBuffer;
     fl::size mBufferPos;
     fl::size mBufferFilled;
@@ -158,7 +155,7 @@ class Mp3StreamDecoderImpl {
 };
 
 Mp3StreamDecoderImpl::Mp3StreamDecoderImpl()
-    : mStream(nullptr), mDecoder(nullptr), mBufferPos(0), mBufferFilled(0),
+    : mStream(nullptr), mBufferPos(0), mBufferFilled(0),
       mBytesProcessed(0), mHasError(false), mEndOfStream(false),
       mHasDecodedFirstFrame(false) {
     mBuffer.reserve(BUFFER_SIZE);
@@ -176,12 +173,11 @@ bool Mp3StreamDecoderImpl::begin(fl::ByteStreamPtr stream) {
     }
 
     mStream = stream;
-    mDecoder = new Mp3HelixDecoder();
+    mDecoder = fl::make_unique<Mp3HelixDecoder>();
     if (!mDecoder->init()) {
         mErrorMsg = "Failed to initialize MP3 decoder";
         mHasError = true;
-        delete mDecoder;
-        mDecoder = nullptr;
+        mDecoder.reset();
         return false;
     }
 
@@ -197,10 +193,7 @@ bool Mp3StreamDecoderImpl::begin(fl::ByteStreamPtr stream) {
 }
 
 void Mp3StreamDecoderImpl::end() {
-    if (mDecoder) {
-        delete mDecoder;
-        mDecoder = nullptr;
-    }
+    mDecoder.reset();
     if (mStream) {
         mStream->close();
         mStream = nullptr;
@@ -292,7 +285,7 @@ bool Mp3StreamDecoderImpl::findAndDecodeFrame(AudioSample* out_sample) {
     if (result == 0) {
         // Successfully decoded a frame
         Mp3Frame frame;
-        frame.pcm = mDecoder->mPcmBuffer;
+        frame.pcm = mDecoder->mPcmBuffer.get();
         frame.samples = mDecoder->mFrameInfo.outputSamps / mDecoder->mFrameInfo.nChans;
         frame.channels = mDecoder->mFrameInfo.nChans;
         frame.sample_rate = mDecoder->mFrameInfo.samprate;
@@ -366,11 +359,9 @@ bool Mp3StreamDecoderImpl::decodeNextFrame(AudioSample* out_sample) {
 }  // namespace third_party
 
 // Mp3Decoder implementation
-Mp3Decoder::Mp3Decoder() : mImpl(new third_party::Mp3StreamDecoderImpl()) {}
+Mp3Decoder::Mp3Decoder() : mImpl(fl::make_unique<third_party::Mp3StreamDecoderImpl>()) {}
 
-Mp3Decoder::~Mp3Decoder() {
-    delete mImpl;
-}
+Mp3Decoder::~Mp3Decoder() = default;
 
 bool Mp3Decoder::begin(fl::ByteStreamPtr stream) {
     return mImpl->begin(stream);

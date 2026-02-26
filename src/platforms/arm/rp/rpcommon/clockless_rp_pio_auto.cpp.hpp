@@ -198,7 +198,7 @@ class RP2040ParallelGroup {
             }
 
             // Create group
-            fl::unique_ptr<PinGroup> group(new PinGroup());
+            fl::unique_ptr<PinGroup> group(new PinGroup());  // ok bare allocation
             group->base_pin = start_pin;
             group->num_pins = group_size;
 
@@ -324,7 +324,7 @@ class RP2040ParallelGroup {
         // RGBW: 32 bytes per LED (8 bits * 4 channels)
         fl::u32 needed_buffer_size = max_leds * (bytes_per_pixel * 8);
         if (group->buffer_size < needed_buffer_size) {
-            group->transpose_buffer.reset(new fl::u8[needed_buffer_size]);
+            group->transpose_buffer.reset(new fl::u8[needed_buffer_size]);  // ok bare allocation
             group->buffer_size = needed_buffer_size;
             fl::memset(group->transpose_buffer.get(), 0, needed_buffer_size);
         }

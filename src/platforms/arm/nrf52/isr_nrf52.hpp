@@ -34,6 +34,7 @@
 #include "fl/isr.h"
 #include "fl/compiler_control.h"
 #include "fl/stl/assert.h"
+#include "fl/stl/unique_ptr.h"
 #include "fl/dbg.h"
 
 // Include NRF52 SDK headers
@@ -367,7 +368,8 @@ int attach_timer_handler(const isr_config_t& config, isr_handle_t* out_handle) {
     }
 
     // Allocate handle data
-    nrf52_isr_handle_data* handle_data = new nrf52_isr_handle_data();
+    auto handle_owner = fl::make_unique<nrf52_isr_handle_data>();
+    auto* handle_data = handle_owner.get();
     if (!handle_data) {
         free_timer_channel(timer_idx, channel);
         FL_WARN("attachTimerHandler: failed to allocate handle data");
@@ -467,6 +469,9 @@ int attach_timer_handler(const isr_config_t& config, isr_handle_t* out_handle) {
     FL_DBG("Timer started at " << config.frequency_hz << " Hz on TIMER" << timer_idx
            << " channel " << static_cast<int>(channel));
 
+    // Release ownership - pointer is now managed by the C API (timer_handles + out_handle)
+    handle_owner.release();
+
     // Populate output handle
     if (out_handle) {
         out_handle->platform_handle = handle_data;
@@ -492,7 +497,8 @@ int attach_external_handler(u8 pin, const isr_config_t& config, isr_handle_t* ou
     }
 
     // Allocate handle data
-    nrf52_isr_handle_data* handle_data = new nrf52_isr_handle_data();
+    auto handle_owner = fl::make_unique<nrf52_isr_handle_data>();
+    auto* handle_data = handle_owner.get();
     if (!handle_data) {
         free_gpiote_channel(gpiote_ch);
         FL_WARN("attachExternalHandler: failed to allocate handle data");
@@ -537,6 +543,9 @@ int attach_external_handler(u8 pin, const isr_config_t& config, isr_handle_t* ou
     FL_DBG("GPIO interrupt attached on pin " << static_cast<int>(pin)
            << " GPIOTE channel " << static_cast<int>(gpiote_ch));
 
+    // Release ownership - pointer is now managed by the C API (gpiote_handles + out_handle)
+    handle_owner.release();
+
     // Populate output handle
     if (out_handle) {
         out_handle->platform_handle = handle_data;
@@ -579,7 +588,7 @@ int detach_handler(isr_handle_t& handle) {
         }
     }
 
-    delete handle_data;
+    delete handle_data;  // ok bare allocation (C API teardown)
     handle.platform_handle = nullptr;
     handle.platform_id = 0;
 

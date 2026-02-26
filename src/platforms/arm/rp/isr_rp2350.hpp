@@ -41,6 +41,7 @@
 
 #include "fl/isr.h"
 #include "fl/compiler_control.h"
+#include "fl/stl/unique_ptr.h"
 #include "fl/dbg.h"
 #include "fl/stl/charconv.h"
 
@@ -252,7 +253,8 @@ int attach_timer_handler(const isr_config_t& config, isr_handle_t* out_handle) {
     }
 
     // Allocate handle data
-    rp2350_isr_handle_data* handle_data = new rp2350_isr_handle_data();
+    auto handle_owner = fl::make_unique<rp2350_isr_handle_data>();
+    auto* handle_data = handle_owner.get();
     if (!handle_data) {
         free_alarm(alarm_num);
         FL_WARN("attachTimerHandler: failed to allocate handle data");
@@ -279,7 +281,7 @@ int attach_timer_handler(const isr_config_t& config, isr_handle_t* out_handle) {
     if (handle_data->alarm_id == 0 || handle_data->alarm_id == -1) {
         // Alarm creation failed
         free_alarm(alarm_num);
-        delete handle_data;
+        alarm_handles[alarm_num] = nullptr;
         FL_WARN("attachTimerHandler: add_alarm_in_us failed");
         return -4;  // Internal error
     }
@@ -294,6 +296,9 @@ int attach_timer_handler(const isr_config_t& config, isr_handle_t* out_handle) {
 
     FL_DBG("Timer started at " << config.frequency_hz << " Hz on alarm "
            << static_cast<int>(alarm_num));
+
+    // Release ownership - pointer is now managed by the C API (alarm_handles + out_handle)
+    handle_owner.release();
 
     // Populate output handle
     if (out_handle) {
@@ -326,7 +331,8 @@ int attach_external_handler(u8 pin, const isr_config_t& config, isr_handle_t* ou
     }
 
     // Allocate handle data
-    rp2350_isr_handle_data* handle_data = new rp2350_isr_handle_data();
+    auto handle_owner = fl::make_unique<rp2350_isr_handle_data>();
+    auto* handle_data = handle_owner.get();
     if (!handle_data) {
         FL_WARN("attachExternalHandler: failed to allocate handle data");
         return -5;  // Out of memory
@@ -378,6 +384,9 @@ int attach_external_handler(u8 pin, const isr_config_t& config, isr_handle_t* ou
     FL_DBG("GPIO interrupt attached on pin " << static_cast<int>(pin)
            << " with events 0x" << fl::to_hex(events));
 
+    // Release ownership - pointer is now managed by the C API (gpio_handles + out_handle)
+    handle_owner.release();
+
     // Populate output handle
     if (out_handle) {
         out_handle->platform_handle = handle_data;
@@ -417,7 +426,7 @@ int detach_handler(isr_handle_t& handle) {
         }
     }
 
-    delete handle_data;
+    delete handle_data;  // ok bare allocation (C API teardown)
     handle.platform_handle = nullptr;
     handle.platform_id = 0;
 

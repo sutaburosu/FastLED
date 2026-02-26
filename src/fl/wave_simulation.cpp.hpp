@@ -46,7 +46,7 @@ void WaveSimulation2D::init(u32 width, u32 height, SuperSample factor,
     mSim.reset(); // clear out memory first.
     u32 w = width * mMultiplier;
     u32 h = height * mMultiplier;
-    mSim.reset(new WaveSimulation2D_Real(w, h, speed, dampening));
+    mSim = fl::make_unique<WaveSimulation2D_Real>(w, h, speed, dampening);
     // Only allocate change grid if it's enabled (saves memory when disabled)
     if (mUseChangeGrid) {
         mChangeGrid.reset(w, h);
@@ -270,8 +270,7 @@ void WaveSimulation1D::init(u32 length, SuperSample factor, float speed,
     mOuterLength = length;
     mMultiplier = static_cast<u32>(factor);
     mSim.reset(); // clear out memory first.
-    mSim.reset(
-        new WaveSimulation1D_Real(length * mMultiplier, speed, dampening));
+    mSim = fl::make_unique<WaveSimulation1D_Real>(length * mMultiplier, speed, dampening);
     // Extra updates (frames) are applied because the simulation slows down in
     // proportion to the supersampling factor.
     mExtraFrames = static_cast<u8>(factor) - 1;

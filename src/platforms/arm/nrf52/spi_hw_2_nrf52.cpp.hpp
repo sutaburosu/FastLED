@@ -11,6 +11,7 @@
 #ifdef FL_IS_NRF52
 
 #include "spi_hw_2_nrf52.h"
+#include "fl/stl/allocator.h"
 #include "fl/stl/cstring.h"
 #include "fl/numeric_limits.h"
 #include "platforms/shared/spi_manager.h"  // For DMABuffer, TransmitMode, SPIError
@@ -193,26 +194,26 @@ bool SPIDualNRF52::allocateDMABuffers(size_t required_size) {
 
     // Free old buffers if they exist
     if (mLane0Buffer != nullptr) {
-        free(mLane0Buffer);
+        fl::free(mLane0Buffer);
         mLane0Buffer = nullptr;
     }
     if (mLane1Buffer != nullptr) {
-        free(mLane1Buffer);
+        fl::free(mLane1Buffer);
         mLane1Buffer = nullptr;
     }
     mBufferSize = 0;
 
     // Allocate new buffers in RAM (required for EasyDMA)
-    mLane0Buffer = (u8*)malloc(required_size);
+    mLane0Buffer = (u8*)fl::malloc(required_size);
     if (mLane0Buffer == nullptr) {
         FL_WARN("SPIDualNRF52: Failed to allocate lane 0 DMA buffer");
         return false;
     }
 
-    mLane1Buffer = (u8*)malloc(required_size);
+    mLane1Buffer = (u8*)fl::malloc(required_size);
     if (mLane1Buffer == nullptr) {
         FL_WARN("SPIDualNRF52: Failed to allocate lane 1 DMA buffer");
-        free(mLane0Buffer);
+        fl::free(mLane0Buffer);
         mLane0Buffer = nullptr;
         return false;
     }
@@ -363,11 +364,11 @@ void SPIDualNRF52::cleanup() {
 
         // Free lane buffers
         if (mLane0Buffer != nullptr) {
-            free(mLane0Buffer);
+            fl::free(mLane0Buffer);
             mLane0Buffer = nullptr;
         }
         if (mLane1Buffer != nullptr) {
-            free(mLane1Buffer);
+            fl::free(mLane1Buffer);
             mLane1Buffer = nullptr;
         }
         mBufferSize = 0;

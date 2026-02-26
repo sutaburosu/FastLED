@@ -36,6 +36,7 @@
 
 #include "platforms/shared/spi_hw_4.h"
 #include "fl/warn.h"
+#include "fl/stl/allocator.h"
 #include "fl/stl/chrono.h"
 #include "fl/numeric_limits.h"
 // IWYU pragma: begin_keep
@@ -345,12 +346,12 @@ DMABuffer SPIQuadSAMD51::acquireDMABuffer(size_t bytes_per_lane) {
     // Reallocate buffer only if we need more capacity
     if (bytes_per_lane > mMaxBytesPerLane) {
         if (!mDMABuffer.empty()) {
-            free(mDMABuffer.data());
+            fl::free(mDMABuffer.data());
             mDMABuffer = fl::span<u8>();
         }
 
         // Allocate DMA-capable memory (SAMD51 uses regular malloc)
-        u8* ptr = static_cast<u8*>(malloc(total_size));
+        u8* ptr = static_cast<u8*>(fl::malloc(total_size));
         if (!ptr) {
             return SPIError::ALLOCATION_FAILED;
         }
@@ -539,7 +540,7 @@ void SPIQuadSAMD51::cleanup() {
 
         // Free DMA buffer
         if (!mDMABuffer.empty()) {
-            free(mDMABuffer.data());
+            fl::free(mDMABuffer.data());
             mDMABuffer = fl::span<u8>();
             mMaxBytesPerLane = 0;
             mCurrentTotalSize = 0;

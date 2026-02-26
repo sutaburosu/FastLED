@@ -9,6 +9,7 @@
 #include "rmt5_peripheral_mock.h"
 #include "fl/warn.h"
 #include "fl/dbg.h"
+#include "fl/stl/allocator.h"
 #include "fl/stl/bit_cast.h"
 #include "fl/stl/cstring.h"
 #include "fl/singleton.h"
@@ -159,10 +160,10 @@ Rmt5PeripheralMockImpl::Rmt5PeripheralMockImpl()
 Rmt5PeripheralMockImpl::~Rmt5PeripheralMockImpl() {
     // Delete all allocated channels and encoders
     for (auto pair : mChannels) {
-        delete pair.second;
+        delete pair.second;  // ok bare allocation
     }
     for (auto pair : mEncoders) {
-        delete pair.second;
+        delete pair.second;  // ok bare allocation
     }
 }
 
@@ -238,7 +239,7 @@ bool Rmt5PeripheralMockImpl::createTxChannel(const Rmt5ChannelConfig& config,
 
     // Create mock channel
     int channel_id = mNextChannelId++;
-    MockChannel* channel = new MockChannel();
+    MockChannel* channel = new MockChannel();  // ok bare allocation
     channel->id = channel_id;
     channel->config = config;
     channel->enabled = false;
@@ -265,7 +266,7 @@ bool Rmt5PeripheralMockImpl::deleteChannel(void* channel_handle) {
     }
 
     int id = channel->id;
-    delete channel;  // Free the allocated memory
+    delete channel;  // Free the allocated memory  // ok bare allocation
     mChannels.erase(id);
 
     FL_DBG("RMT5_MOCK: Deleted channel " << id);
@@ -415,7 +416,7 @@ void* Rmt5PeripheralMockImpl::createEncoder(const ChipsetTiming& timing,
                                               u32 resolution_hz) {
     // Create mock encoder
     int encoder_id = mNextEncoderId++;
-    MockEncoder* encoder = new MockEncoder();
+    MockEncoder* encoder = new MockEncoder();  // ok bare allocation
     encoder->id = encoder_id;
     encoder->timing = timing;
     encoder->resolution_hz = resolution_hz;
@@ -438,7 +439,7 @@ void Rmt5PeripheralMockImpl::deleteEncoder(void* encoder_handle) {
     }
 
     int id = encoder->id;
-    delete encoder;  // Free the allocated memory
+    delete encoder;  // Free the allocated memory  // ok bare allocation
     mEncoders.erase(id);
 
     FL_DBG("RMT5_MOCK: Deleted encoder " << id);
@@ -495,7 +496,7 @@ void Rmt5PeripheralMockImpl::freeDmaBuffer(u8* buffer) {
     #ifdef FL_IS_WIN
     _aligned_free(buffer);
     #else
-    free(buffer);
+    fl::free(buffer);
     #endif
 
     FL_DBG("RMT5_MOCK: Freed DMA buffer");
@@ -568,13 +569,13 @@ bool Rmt5PeripheralMockImpl::isChannelEnabled(void* channel_handle) const {
 void Rmt5PeripheralMockImpl::reset() {
     // Delete all allocated channels
     for (auto pair : mChannels) {
-        delete pair.second;
+        delete pair.second;  // ok bare allocation
     }
     mChannels.clear();
 
     // Delete all allocated encoders
     for (auto pair : mEncoders) {
-        delete pair.second;
+        delete pair.second;  // ok bare allocation
     }
     mEncoders.clear();
 

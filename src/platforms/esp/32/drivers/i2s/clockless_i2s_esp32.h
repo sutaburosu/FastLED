@@ -111,6 +111,7 @@
 #include "i2s_esp32dev.h"
 #include "fl/chipsets/led_timing.h"
 #include "fl/chipsets/timing_traits.h"
+#include "fl/stl/allocator.h"
 #include "fastled_delay.h"
 namespace fl {
 
@@ -180,7 +181,7 @@ class ClocklessI2S : public CPixelLEDController<RGB_ORDER> {
     void init() {
         // -- Allocate space to save the pixel controller
         //    during parallel output
-        mPixels = (PixelController<RGB_ORDER> *)malloc(
+        mPixels = (PixelController<RGB_ORDER> *)fl::malloc(
             sizeof(PixelController<RGB_ORDER>));
 
         // -- Construct the bit patterns for ones and zeros

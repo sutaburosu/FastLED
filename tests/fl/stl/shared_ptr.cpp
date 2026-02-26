@@ -51,7 +51,7 @@ struct CustomDeleter {
 
     void operator()(TestClass* ptr) const {
         *called_flag = true;
-        delete ptr;
+        delete ptr;  // ok bare allocation
     }
 
     bool called() const { return *called_flag; }

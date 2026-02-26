@@ -236,7 +236,7 @@ const char* getOtaHtmlPage() {
             status.innerHTML = '';
 
             try {
-                const xhr = new XMLHttpRequest();
+                const xhr = new XMLHttpRequest();  // ok bare allocation
 
                 xhr.upload.addEventListener('progress', (e) => {
                     if (e.lengthComputable) {
@@ -367,21 +367,21 @@ bool checkBasicAuth(httpd_req_t *req, const char* password) {
     }
 
     // Get the auth header value
-    char* auth_value = (char*)malloc(auth_len + 1);
+    char* auth_value = (char*)malloc(auth_len + 1);  // ok bare allocation
     if (!auth_value) {
         httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Memory allocation failed");
         return false;
     }
 
     if (httpd_req_get_hdr_value_str(req, "Authorization", auth_value, auth_len + 1) != ESP_OK) {
-        free(auth_value);
+        free(auth_value);  // ok bare allocation
         httpd_resp_send_err(req, HTTPD_401_UNAUTHORIZED, "Invalid authentication");
         return false;
     }
 
     // Verify Basic Auth format: "Basic <base64>"
     if (strncmp(auth_value, "Basic ", 6) != 0) {
-        free(auth_value);
+        free(auth_value);  // ok bare allocation
         httpd_resp_set_hdr(req, "WWW-Authenticate", "Basic realm=\"OTA Update\"");
         httpd_resp_send_err(req, HTTPD_401_UNAUTHORIZED, "Invalid authentication format");
         return false;
@@ -390,7 +390,7 @@ bool checkBasicAuth(httpd_req_t *req, const char* password) {
     // Decode Base64 credentials
     char decoded[256];
     int decoded_len = decodeBase64(auth_value + 6, decoded, sizeof(decoded));
-    free(auth_value);
+    free(auth_value);  // ok bare allocation
 
     if (decoded_len < 0) {
         httpd_resp_set_hdr(req, "WWW-Authenticate", "Basic realm=\"OTA Update\"");

@@ -7,6 +7,7 @@
 #include "fl/stl/stdint.h"
 #include "fl/bytestream.h"
 #include "fl/stl/shared_ptr.h"
+#include "fl/stl/unique_ptr.h"
 #include "fl/stl/string.h"
 
 namespace fl {
@@ -84,7 +85,7 @@ namespace third_party {
                 if (result == 0) {
                     // Successfully decoded a frame
                     Mp3Frame frame;
-                    frame.pcm = mPcmBuffer;
+                    frame.pcm = mPcmBuffer.get();
                     frame.samples = mFrameInfo.outputSamps / mFrameInfo.nChans;
                     frame.channels = mFrameInfo.nChans;
                     frame.sample_rate = mFrameInfo.samprate;
@@ -113,7 +114,7 @@ namespace third_party {
         int findSyncWord(const fl::u8* buf, fl::size len);
         int decodeFrame(const fl::u8** inbuf, fl::size* bytes_left);
 
-        fl::i16* mPcmBuffer;
+        fl::unique_ptr<fl::i16[]> mPcmBuffer;
         struct FrameInfo {
             int bitrate;
             int nChans;
@@ -164,7 +165,7 @@ public:
     Mp3Info getInfo() const;
 
 private:
-    fl::third_party::Mp3StreamDecoderImpl* mImpl;
+    fl::unique_ptr<fl::third_party::Mp3StreamDecoderImpl> mImpl;
 };
 
 FASTLED_SHARED_PTR(Mp3Decoder);

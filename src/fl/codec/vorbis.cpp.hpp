@@ -249,8 +249,8 @@ void VorbisDecoderImpl::reset() {
 }
 
 // VorbisDecoder public implementation
-VorbisDecoder::VorbisDecoder() : mImpl(new VorbisDecoderImpl()) {}
-VorbisDecoder::~VorbisDecoder() { delete mImpl; }
+VorbisDecoder::VorbisDecoder() : mImpl(fl::make_unique<VorbisDecoderImpl>()) {}
+VorbisDecoder::~VorbisDecoder() = default;
 
 bool VorbisDecoder::begin(fl::ByteStreamPtr stream) { return mImpl->begin(stream); }
 void VorbisDecoder::end() { mImpl->end(); }

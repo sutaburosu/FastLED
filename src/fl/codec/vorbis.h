@@ -7,6 +7,7 @@
 #include "fl/stl/stdint.h"
 #include "fl/bytestream.h"
 #include "fl/stl/shared_ptr.h"
+#include "fl/stl/unique_ptr.h"
 #include "fl/stl/string.h"
 
 namespace fl {
@@ -108,7 +109,7 @@ public:
     VorbisInfo getInfo() const;
 
 private:
-    VorbisDecoderImpl* mImpl;
+    fl::unique_ptr<VorbisDecoderImpl> mImpl;
 };
 
 FASTLED_SHARED_PTR(VorbisDecoder);

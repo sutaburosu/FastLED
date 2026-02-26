@@ -4,6 +4,7 @@
 #define __INC_WS2812SERIAL_CONTROLLER_H
 
 #ifdef USE_WS2812SERIAL
+#include "fl/stl/allocator.h"
 namespace fl {
 template<int DATA_PIN, EOrder RGB_ORDER>
 class CWS2812SerialController : public CPixelLEDController<RGB_ORDER, 8, 0xFF> {
@@ -12,9 +13,9 @@ class CWS2812SerialController : public CPixelLEDController<RGB_ORDER, 8, 0xFF> {
 
     void _init(int nLeds) {
         if (pserial == nullptr) {
-            drawbuffer = (u8*)malloc(nLeds * 3);
-            framebuffer = (u8*)malloc(nLeds * 12);
-            pserial = new WS2812Serial(nLeds, framebuffer, drawbuffer, DATA_PIN, WS2812_RGB);
+            drawbuffer = (u8*)fl::malloc(nLeds * 3);
+            framebuffer = (u8*)fl::malloc(nLeds * 12);
+            pserial = new WS2812Serial(nLeds, framebuffer, drawbuffer, DATA_PIN, WS2812_RGB);  // ok bare allocation
             pserial->begin();
         }
     }

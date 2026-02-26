@@ -53,7 +53,7 @@ template <typename T> class ThreadLocalReal {
             ThreadStorage* storage = getStorage();
             if (storage) {
                 pthread_setspecific(mKey, nullptr);
-                delete storage;
+                delete storage;  // ok bare allocation
             }
             pthread_key_delete(mKey);
         }
@@ -165,10 +165,10 @@ template <typename T> class ThreadLocalReal {
             return nullptr;
         }
         
-        ThreadStorage* storage = new ThreadStorage();
+        ThreadStorage* storage = new ThreadStorage();  // ok bare allocation
         int result = pthread_setspecific(mKey, storage);
         if (result != 0) {
-            delete storage;
+            delete storage;  // ok bare allocation
             return nullptr;
         }
         return storage;
@@ -177,7 +177,7 @@ template <typename T> class ThreadLocalReal {
     // Cleanup function called when thread exits
     static void cleanupThreadStorage(void* data) {
         if (data) {
-            delete static_cast<ThreadStorage*>(data);
+            delete static_cast<ThreadStorage*>(data);  // ok bare allocation
         }
     }
 };

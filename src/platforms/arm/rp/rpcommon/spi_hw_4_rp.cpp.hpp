@@ -28,6 +28,7 @@
 #include "fl/warn.h"
 #include "fl/numeric_limits.h"
 // IWYU pragma: begin_keep
+#include "fl/stl/allocator.h"
 #include "fl/stl/cstring.h"
 #include "fl/stl/chrono.h"
 #include "platforms/shared/spi_manager.h"  // For DMABuffer, TransmitMode, SPIError
@@ -403,12 +404,12 @@ DMABuffer SPIQuadRP2040::acquireDMABuffer(size_t bytes_per_lane) {
     // Reallocate buffer only if we need more capacity
     if (bytes_per_lane > mMaxBytesPerLane) {
         if (!mDMABuffer.empty()) {
-            free(mDMABuffer.data());
+            fl::free(mDMABuffer.data());
             mDMABuffer = fl::span<u8>();
         }
 
         // Allocate DMA-capable memory (regular malloc for RP2040)
-        u8* ptr = (u8*)malloc(buffer_size_bytes);
+        u8* ptr = (u8*)fl::malloc(buffer_size_bytes);
         if (!ptr) {
             return DMABuffer(SPIError::ALLOCATION_FAILED);
         }
@@ -541,7 +542,7 @@ void SPIQuadRP2040::cleanup() {
 
         // Free DMA buffer
         if (!mDMABuffer.empty()) {
-            free(mDMABuffer.data());
+            fl::free(mDMABuffer.data());
             mDMABuffer = fl::span<u8>();
             mMaxBytesPerLane = 0;
             mCurrentTotalSize = 0;

@@ -31,6 +31,7 @@
 #pragma GCC diagnostic pop
 
 #include "pio_gen.h"
+#include "fl/stl/allocator.h"
 #include "fl/stl/cstring.h"
 #endif
 
@@ -309,9 +310,9 @@ public:
         // just give up on failure
         if (dma_buf_size < req_buf_size) {
             if (dma_buf != nullptr)
-                free(dma_buf);
+                fl::free(dma_buf);
 
-            dma_buf = malloc(req_buf_size * 4);
+            dma_buf = fl::malloc(req_buf_size * 4);
             if (dma_buf == nullptr) {
                 dma_buf_size = 0;
                 return;

@@ -9,7 +9,7 @@ FL_OPTIMIZATION_LEVEL_O3_BEGIN
 namespace fl {
 
 void Fluffy_Blobs::draw(Context &ctx) {
-    auto *e = ctx.mEngine;
+    auto *e = ctx.mEngine.get();
 
     e->timings.master_speed = 0.015;
     float size = 0.15;
@@ -116,7 +116,7 @@ void Fluffy_Blobs::draw(Context &ctx) {
 // ============================================================================
 
 void Fluffy_Blobs_FP::draw(Context &ctx) {
-    auto *e = ctx.mEngine;
+    auto *e = ctx.mEngine.get();
     mState.ensureCache(e);
     const fl::i32 *fade_lut = fl::assume_aligned<16>(mState.fade_lut);
     const fl::u8 *perm = PERLIN_NOISE;

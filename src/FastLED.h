@@ -1134,39 +1134,39 @@ public:
 	static ::CLEDController &addLeds(CRGB *data, int nLedsOrOffset, int nLedsIfOffset = 0) {
 		switch(CHIPSET) {
 		#ifdef PORTA_FIRST_PIN
-				case WS2811_PORTA: return addLeds(new fl::InlineBlockClocklessController<NUM_LANES, PORTA_FIRST_PIN, fl::TIMING_WS2811_800KHZ_LEGACY, RGB_ORDER>(), data, nLedsOrOffset, nLedsIfOffset);
-				case WS2811_400_PORTA: return addLeds(new fl::InlineBlockClocklessController<NUM_LANES, PORTA_FIRST_PIN, fl::TIMING_WS2811_400KHZ, RGB_ORDER>(), data, nLedsOrOffset, nLedsIfOffset);
-        case WS2813_PORTA: return addLeds(new fl::InlineBlockClocklessController<NUM_LANES, PORTA_FIRST_PIN, fl::TIMING_WS2813, RGB_ORDER, 0, false>(), data, nLedsOrOffset, nLedsIfOffset);
-				case TM1803_PORTA: return addLeds(new fl::InlineBlockClocklessController<NUM_LANES, PORTA_FIRST_PIN, fl::TIMING_TM1803_400KHZ, RGB_ORDER>(), data, nLedsOrOffset, nLedsIfOffset);
-				case UCS1903_PORTA: return addLeds(new fl::InlineBlockClocklessController<NUM_LANES, PORTA_FIRST_PIN, fl::TIMING_UCS1903_400KHZ, RGB_ORDER>(), data, nLedsOrOffset, nLedsIfOffset);
+				case WS2811_PORTA: return addLeds(new fl::InlineBlockClocklessController<NUM_LANES, PORTA_FIRST_PIN, fl::TIMING_WS2811_800KHZ_LEGACY, RGB_ORDER>(), data, nLedsOrOffset, nLedsIfOffset);  // ok bare allocation
+				case WS2811_400_PORTA: return addLeds(new fl::InlineBlockClocklessController<NUM_LANES, PORTA_FIRST_PIN, fl::TIMING_WS2811_400KHZ, RGB_ORDER>(), data, nLedsOrOffset, nLedsIfOffset);  // ok bare allocation
+        case WS2813_PORTA: return addLeds(new fl::InlineBlockClocklessController<NUM_LANES, PORTA_FIRST_PIN, fl::TIMING_WS2813, RGB_ORDER, 0, false>(), data, nLedsOrOffset, nLedsIfOffset);  // ok bare allocation
+				case TM1803_PORTA: return addLeds(new fl::InlineBlockClocklessController<NUM_LANES, PORTA_FIRST_PIN, fl::TIMING_TM1803_400KHZ, RGB_ORDER>(), data, nLedsOrOffset, nLedsIfOffset);  // ok bare allocation
+				case UCS1903_PORTA: return addLeds(new fl::InlineBlockClocklessController<NUM_LANES, PORTA_FIRST_PIN, fl::TIMING_UCS1903_400KHZ, RGB_ORDER>(), data, nLedsOrOffset, nLedsIfOffset);  // ok bare allocation
 		#endif
 		#ifdef PORTB_FIRST_PIN
-				case WS2811_PORTB: return addLeds(new fl::InlineBlockClocklessController<NUM_LANES, PORTB_FIRST_PIN, fl::TIMING_WS2811_800KHZ_LEGACY, RGB_ORDER>(), data, nLedsOrOffset, nLedsIfOffset);
-				case WS2811_400_PORTB: return addLeds(new fl::InlineBlockClocklessController<NUM_LANES, PORTB_FIRST_PIN, fl::TIMING_WS2811_400KHZ, RGB_ORDER>(), data, nLedsOrOffset, nLedsIfOffset);
-        case WS2813_PORTB: return addLeds(new fl::InlineBlockClocklessController<NUM_LANES, PORTB_FIRST_PIN, fl::TIMING_WS2813, RGB_ORDER, 0, false>(), data, nLedsOrOffset, nLedsIfOffset);
-				case TM1803_PORTB: return addLeds(new fl::InlineBlockClocklessController<NUM_LANES, PORTB_FIRST_PIN, fl::TIMING_TM1803_400KHZ, RGB_ORDER>(), data, nLedsOrOffset, nLedsIfOffset);
-				case UCS1903_PORTB: return addLeds(new fl::InlineBlockClocklessController<NUM_LANES, PORTB_FIRST_PIN, fl::TIMING_UCS1903_400KHZ, RGB_ORDER>(), data, nLedsOrOffset, nLedsIfOffset);
+				case WS2811_PORTB: return addLeds(new fl::InlineBlockClocklessController<NUM_LANES, PORTB_FIRST_PIN, fl::TIMING_WS2811_800KHZ_LEGACY, RGB_ORDER>(), data, nLedsOrOffset, nLedsIfOffset);  // ok bare allocation
+				case WS2811_400_PORTB: return addLeds(new fl::InlineBlockClocklessController<NUM_LANES, PORTB_FIRST_PIN, fl::TIMING_WS2811_400KHZ, RGB_ORDER>(), data, nLedsOrOffset, nLedsIfOffset);  // ok bare allocation
+        case WS2813_PORTB: return addLeds(new fl::InlineBlockClocklessController<NUM_LANES, PORTB_FIRST_PIN, fl::TIMING_WS2813, RGB_ORDER, 0, false>(), data, nLedsOrOffset, nLedsIfOffset);  // ok bare allocation
+				case TM1803_PORTB: return addLeds(new fl::InlineBlockClocklessController<NUM_LANES, PORTB_FIRST_PIN, fl::TIMING_TM1803_400KHZ, RGB_ORDER>(), data, nLedsOrOffset, nLedsIfOffset);  // ok bare allocation
+				case UCS1903_PORTB: return addLeds(new fl::InlineBlockClocklessController<NUM_LANES, PORTB_FIRST_PIN, fl::TIMING_UCS1903_400KHZ, RGB_ORDER>(), data, nLedsOrOffset, nLedsIfOffset);  // ok bare allocation
 		#endif
 		#ifdef PORTC_FIRST_PIN
-				case WS2811_PORTC: return addLeds(new fl::InlineBlockClocklessController<NUM_LANES, PORTC_FIRST_PIN, fl::TIMING_WS2811_800KHZ_LEGACY, RGB_ORDER>(), data, nLedsOrOffset, nLedsIfOffset);
-				case WS2811_400_PORTC: return addLeds(new fl::InlineBlockClocklessController<NUM_LANES, PORTC_FIRST_PIN, fl::TIMING_WS2811_400KHZ, RGB_ORDER>(), data, nLedsOrOffset, nLedsIfOffset);
-        case WS2813_PORTC: return addLeds(new fl::InlineBlockClocklessController<NUM_LANES, PORTC_FIRST_PIN, fl::TIMING_WS2813, RGB_ORDER, 0, false>(), data, nLedsOrOffset, nLedsIfOffset);
-				case TM1803_PORTC: return addLeds(new fl::InlineBlockClocklessController<NUM_LANES, PORTC_FIRST_PIN, fl::TIMING_TM1803_400KHZ, RGB_ORDER>(), data, nLedsOrOffset, nLedsIfOffset);
-				case UCS1903_PORTC: return addLeds(new fl::InlineBlockClocklessController<NUM_LANES, PORTC_FIRST_PIN, fl::TIMING_UCS1903_400KHZ, RGB_ORDER>(), data, nLedsOrOffset, nLedsIfOffset);
+				case WS2811_PORTC: return addLeds(new fl::InlineBlockClocklessController<NUM_LANES, PORTC_FIRST_PIN, fl::TIMING_WS2811_800KHZ_LEGACY, RGB_ORDER>(), data, nLedsOrOffset, nLedsIfOffset);  // ok bare allocation
+				case WS2811_400_PORTC: return addLeds(new fl::InlineBlockClocklessController<NUM_LANES, PORTC_FIRST_PIN, fl::TIMING_WS2811_400KHZ, RGB_ORDER>(), data, nLedsOrOffset, nLedsIfOffset);  // ok bare allocation
+        case WS2813_PORTC: return addLeds(new fl::InlineBlockClocklessController<NUM_LANES, PORTC_FIRST_PIN, fl::TIMING_WS2813, RGB_ORDER, 0, false>(), data, nLedsOrOffset, nLedsIfOffset);  // ok bare allocation
+				case TM1803_PORTC: return addLeds(new fl::InlineBlockClocklessController<NUM_LANES, PORTC_FIRST_PIN, fl::TIMING_TM1803_400KHZ, RGB_ORDER>(), data, nLedsOrOffset, nLedsIfOffset);  // ok bare allocation
+				case UCS1903_PORTC: return addLeds(new fl::InlineBlockClocklessController<NUM_LANES, PORTC_FIRST_PIN, fl::TIMING_UCS1903_400KHZ, RGB_ORDER>(), data, nLedsOrOffset, nLedsIfOffset);  // ok bare allocation
 		#endif
 		#ifdef PORTD_FIRST_PIN
-				case WS2811_PORTD: return addLeds(new fl::InlineBlockClocklessController<NUM_LANES, PORTD_FIRST_PIN, fl::TIMING_WS2811_800KHZ_LEGACY, RGB_ORDER>(), data, nLedsOrOffset, nLedsIfOffset);
-				case WS2811_400_PORTD: return addLeds(new fl::InlineBlockClocklessController<NUM_LANES, PORTD_FIRST_PIN, fl::TIMING_WS2811_400KHZ, RGB_ORDER>(), data, nLedsOrOffset, nLedsIfOffset);
-        case WS2813_PORTD: return addLeds(new fl::InlineBlockClocklessController<NUM_LANES, PORTD_FIRST_PIN, fl::TIMING_WS2813, RGB_ORDER, 0, false>(), data, nLedsOrOffset, nLedsIfOffset);
-				case TM1803_PORTD: return addLeds(new fl::InlineBlockClocklessController<NUM_LANES, PORTD_FIRST_PIN, fl::TIMING_TM1803_400KHZ, RGB_ORDER>(), data, nLedsOrOffset, nLedsIfOffset);
-				case UCS1903_PORTD: return addLeds(new fl::InlineBlockClocklessController<NUM_LANES, PORTD_FIRST_PIN, fl::TIMING_UCS1903_400KHZ, RGB_ORDER>(), data, nLedsOrOffset, nLedsIfOffset);
+				case WS2811_PORTD: return addLeds(new fl::InlineBlockClocklessController<NUM_LANES, PORTD_FIRST_PIN, fl::TIMING_WS2811_800KHZ_LEGACY, RGB_ORDER>(), data, nLedsOrOffset, nLedsIfOffset);  // ok bare allocation
+				case WS2811_400_PORTD: return addLeds(new fl::InlineBlockClocklessController<NUM_LANES, PORTD_FIRST_PIN, fl::TIMING_WS2811_400KHZ, RGB_ORDER>(), data, nLedsOrOffset, nLedsIfOffset);  // ok bare allocation
+        case WS2813_PORTD: return addLeds(new fl::InlineBlockClocklessController<NUM_LANES, PORTD_FIRST_PIN, fl::TIMING_WS2813, RGB_ORDER, 0, false>(), data, nLedsOrOffset, nLedsIfOffset);  // ok bare allocation
+				case TM1803_PORTD: return addLeds(new fl::InlineBlockClocklessController<NUM_LANES, PORTD_FIRST_PIN, fl::TIMING_TM1803_400KHZ, RGB_ORDER>(), data, nLedsOrOffset, nLedsIfOffset);  // ok bare allocation
+				case UCS1903_PORTD: return addLeds(new fl::InlineBlockClocklessController<NUM_LANES, PORTD_FIRST_PIN, fl::TIMING_UCS1903_400KHZ, RGB_ORDER>(), data, nLedsOrOffset, nLedsIfOffset);  // ok bare allocation
 		#endif
 		#ifdef HAS_PORTDC
-				case WS2811_PORTDC: return addLeds(new fl::SixteenWayInlineBlockClocklessController<NUM_LANES, fl::TIMING_WS2811_800KHZ_LEGACY, RGB_ORDER>(), data, nLedsOrOffset, nLedsIfOffset);
-				case WS2811_400_PORTDC: return addLeds(new fl::SixteenWayInlineBlockClocklessController<NUM_LANES, fl::TIMING_WS2811_400KHZ, RGB_ORDER>(), data, nLedsOrOffset, nLedsIfOffset);
-        case WS2813_PORTDC: return addLeds(new fl::SixteenWayInlineBlockClocklessController<NUM_LANES, fl::TIMING_WS2813, RGB_ORDER, 0, false>(), data, nLedsOrOffset, nLedsIfOffset);
-				case TM1803_PORTDC: return addLeds(new fl::SixteenWayInlineBlockClocklessController<NUM_LANES, fl::TIMING_TM1803_400KHZ, RGB_ORDER>(), data, nLedsOrOffset, nLedsIfOffset);
-				case UCS1903_PORTDC: return addLeds(new fl::SixteenWayInlineBlockClocklessController<NUM_LANES, fl::TIMING_UCS1903_400KHZ, RGB_ORDER>(), data, nLedsOrOffset, nLedsIfOffset);
+				case WS2811_PORTDC: return addLeds(new fl::SixteenWayInlineBlockClocklessController<NUM_LANES, fl::TIMING_WS2811_800KHZ_LEGACY, RGB_ORDER>(), data, nLedsOrOffset, nLedsIfOffset);  // ok bare allocation
+				case WS2811_400_PORTDC: return addLeds(new fl::SixteenWayInlineBlockClocklessController<NUM_LANES, fl::TIMING_WS2811_400KHZ, RGB_ORDER>(), data, nLedsOrOffset, nLedsIfOffset);  // ok bare allocation
+        case WS2813_PORTDC: return addLeds(new fl::SixteenWayInlineBlockClocklessController<NUM_LANES, fl::TIMING_WS2813, RGB_ORDER, 0, false>(), data, nLedsOrOffset, nLedsIfOffset);  // ok bare allocation
+				case TM1803_PORTDC: return addLeds(new fl::SixteenWayInlineBlockClocklessController<NUM_LANES, fl::TIMING_TM1803_400KHZ, RGB_ORDER>(), data, nLedsOrOffset, nLedsIfOffset);  // ok bare allocation
+				case UCS1903_PORTDC: return addLeds(new fl::SixteenWayInlineBlockClocklessController<NUM_LANES, fl::TIMING_UCS1903_400KHZ, RGB_ORDER>(), data, nLedsOrOffset, nLedsIfOffset);  // ok bare allocation
 		#endif
 		}
 	}

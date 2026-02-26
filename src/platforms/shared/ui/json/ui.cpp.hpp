@@ -36,7 +36,7 @@ JsonUiUpdateInput setJsonUiHandlers(const JsonUiUpdateOutput& updateJsHandler) {
         // This prevents destroying existing components when called multiple times
 
         if (!manager) {
-            manager.reset(new JsonUiManager(updateJsHandler));
+            manager = fl::make_unique<JsonUiManager>(updateJsHandler);
         } else {
             manager->resetCallback(updateJsHandler);
         }

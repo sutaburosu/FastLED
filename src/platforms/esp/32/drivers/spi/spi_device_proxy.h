@@ -17,6 +17,7 @@
 #include "platforms/is_platform.h"
 #if defined(FL_IS_ESP32)
 
+#include "fl/stl/unique_ptr.h"
 #include "fl/stl/vector.h"
 #include "platforms/shared/spi_manager.h"
 #include "platforms/esp/32/core/fastspi_esp32.h"
@@ -42,7 +43,7 @@ class SPIDeviceProxy {
 private:
     SPIBusHandle mHandle;                    // Handle from SPIBusManager
     SPIBusManager* mBusManager;              // Pointer to global bus manager
-    ESP32SPIOutput<DATA_PIN, CLOCK_PIN, SPI_SPEED>* mSingleSPI;  // Owned single-SPI backend
+    fl::unique_ptr<ESP32SPIOutput<DATA_PIN, CLOCK_PIN, SPI_SPEED>> mSingleSPI;
     fl::vector<u8> mWriteBuffer;        // Buffered writes (for Quad-SPI)
     bool mInitialized;                       // Whether init() was called
     bool mBusInitialized;                    // Whether bus manager has been initialized
@@ -53,7 +54,6 @@ public:
     SPIDeviceProxy()
         : mHandle()
         , mBusManager(nullptr)
-        , mSingleSPI(nullptr)
         , mInitialized(false)
         , mBusInitialized(false)
         , mInTransaction(false)
@@ -68,11 +68,7 @@ public:
             mHandle = SPIBusHandle();  // Invalidate handle
         }
 
-        // Clean up owned single-SPI backend
-        if (mSingleSPI) {
-            delete mSingleSPI;
-            mSingleSPI = nullptr;
-        }
+        mSingleSPI.reset();
     }
 
     /// Initialize SPI device and register with bus manager
@@ -121,7 +117,7 @@ public:
         const SPIBusInfo* bus = mBusManager->getBusInfo(mHandle.bus_id);
         if (bus && bus->bus_type == SPIBusType::SINGLE_SPI && !mSingleSPI) {
             // We're using single-SPI - create owned ESP32SPIOutput instance
-            mSingleSPI = new ESP32SPIOutput<DATA_PIN, CLOCK_PIN, SPI_SPEED>();
+            mSingleSPI = fl::make_unique<ESP32SPIOutput<DATA_PIN, CLOCK_PIN, SPI_SPEED>>();
             mSingleSPI->init();
         }
         // For Quad-SPI, bus manager handles hardware - we just buffer writes

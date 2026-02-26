@@ -192,7 +192,7 @@ void AnimartrixLoop(Animartrix &self, fl::u32 now) {
         self.prev_animation = self.current_animation;
     }
     if (!self.impl) {
-        self.impl.reset(new FastLEDANIMartRIX(&self));
+        self.impl = fl::make_unique<FastLEDANIMartRIX>(&self);
     }
     self.impl->setTime(now);
     self.impl->loop();

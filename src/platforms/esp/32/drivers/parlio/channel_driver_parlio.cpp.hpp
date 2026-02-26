@@ -502,7 +502,7 @@ void ChannelEnginePARLIO::beginTransmission(
     } else if (mCurrentDataWidth != required_width) {
         // Width changed - need to reconfigure
         // Reset unique_ptr - automatically deletes old driver, creates new one
-        mDriver.reset(new ChannelEnginePARLIOImpl(required_width));
+        mDriver = fl::make_unique<ChannelEnginePARLIOImpl>(required_width);
         mCurrentDataWidth = required_width;
     }
 

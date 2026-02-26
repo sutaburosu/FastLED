@@ -22,6 +22,7 @@
 
 #if defined(FL_IS_TEENSY_4X)
 
+#include "fl/stl/unique_ptr.h"
 #include "fl/stl/vector.h"
 #include "platforms/shared/spi_manager.h"
 #include "platforms/arm/mxrt1062/fastspi_arm_mxrt1062.h"
@@ -52,7 +53,7 @@ class SPIDeviceProxy {
 private:
     SPIBusHandle mHandle;                    // Handle from SPIBusManager
     SPIBusManager* mBusManager;              // Pointer to global bus manager
-    Teensy4HardwareSPIOutput<DATA_PIN, CLOCK_PIN, SPI_CLOCK_RATE, SPIObject, SPI_INDEX>* mSingleSPI;
+    fl::unique_ptr<Teensy4HardwareSPIOutput<DATA_PIN, CLOCK_PIN, SPI_CLOCK_RATE, SPIObject, SPI_INDEX>> mSingleSPI;
     fl::vector<u8> mWriteBuffer;        // Buffered writes (for Dual/Quad-SPI)
     bool mInitialized;                       // Whether init() was called
     bool mInTransaction;                     // Whether select() was called
@@ -62,7 +63,6 @@ public:
     SPIDeviceProxy()
         : mHandle()
         , mBusManager(nullptr)
-        , mSingleSPI(nullptr)
         , mInitialized(false)
         , mInTransaction(false)
     {
@@ -76,11 +76,7 @@ public:
             mHandle = SPIBusHandle();  // Invalidate handle
         }
 
-        // Clean up owned single-SPI backend
-        if (mSingleSPI) {
-            delete mSingleSPI;
-            mSingleSPI = nullptr;
-        }
+        mSingleSPI.reset();
     }
 
     /// Initialize SPI device and register with bus manager
@@ -111,7 +107,7 @@ public:
         const SPIBusInfo* bus = mBusManager->getBusInfo(mHandle.bus_id);
         if (bus && bus->bus_type == SPIBusType::SINGLE_SPI) {
             // We're using single-SPI - create owned Teensy4HardwareSPIOutput instance
-            mSingleSPI = new Teensy4HardwareSPIOutput<DATA_PIN, CLOCK_PIN, SPI_CLOCK_RATE, SPIObject, SPI_INDEX>();
+            mSingleSPI = fl::make_unique<Teensy4HardwareSPIOutput<DATA_PIN, CLOCK_PIN, SPI_CLOCK_RATE, SPIObject, SPI_INDEX>>();
             mSingleSPI->init();
         }
         // For Dual/Quad-SPI, bus manager handles hardware - we just buffer writes

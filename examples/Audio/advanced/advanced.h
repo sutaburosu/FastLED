@@ -478,7 +478,7 @@ void setup() {
 
     // Initialize pitch detection
     pitchConfig.sample_rate_hz = SAMPLE_RATE;
-    pitchEngine = new fl::SoundToMIDIEngine(pitchConfig);
+    pitchEngine = new fl::SoundToMIDIEngine(pitchConfig);  // ok bare allocation
     pitchEngine->onNoteOn = [](uint8_t note, uint8_t velocity) {
         currentMIDINote = note;
         currentVelocity = velocity;

@@ -50,6 +50,7 @@
 #include "platforms/shared/spi_hw_2.h"
 #include "fl/warn.h"
 #include "fl/dbg.h"
+#include "fl/stl/allocator.h"
 #include "fl/stl/cstring.h"
 
 // Allow software-mode testing without hardware Timer/DMA
@@ -388,12 +389,12 @@ DMABuffer SPIDualSTM32::acquireDMABuffer(size_t bytes_per_lane) {
     // Reallocate buffer only if we need more capacity
     if (bytes_per_lane > mMaxBytesPerLane) {
         if (!mDMABuffer.empty()) {
-            free(mDMABuffer.data());
+            fl::free(mDMABuffer.data());
             mDMABuffer = fl::span<u8>();
         }
 
         // Allocate DMA-capable memory (regular malloc for STM32)
-        u8* ptr = static_cast<u8*>(malloc(total_size));
+        u8* ptr = static_cast<u8*>(fl::malloc(total_size));
         if (!ptr) {
             return DMABuffer(SPIError::ALLOCATION_FAILED);
         }
@@ -416,27 +417,27 @@ bool SPIDualSTM32::allocateDMABuffer(size_t required_size) {
 
     // Free old buffers if they exist
     if (mDMABuffer0 != nullptr) {
-        free(mDMABuffer0);
+        fl::free(mDMABuffer0);
         mDMABuffer0 = nullptr;
     }
     if (mDMABuffer1 != nullptr) {
-        free(mDMABuffer1);
+        fl::free(mDMABuffer1);
         mDMABuffer1 = nullptr;
     }
     mDMABufferSize = 0;
 
     // Allocate new buffers (word-aligned for DMA requirements)
     // Using malloc with alignment - consider using aligned_alloc() or memalign() if available
-    mDMABuffer0 = malloc(required_size);
+    mDMABuffer0 = fl::malloc(required_size);
     if (mDMABuffer0 == nullptr) {
         FL_WARN("SPIDualSTM32: Failed to allocate DMA buffer 0");
         return false;
     }
 
-    mDMABuffer1 = malloc(required_size);
+    mDMABuffer1 = fl::malloc(required_size);
     if (mDMABuffer1 == nullptr) {
         FL_WARN("SPIDualSTM32: Failed to allocate DMA buffer 1");
-        free(mDMABuffer0);
+        fl::free(mDMABuffer0);
         mDMABuffer0 = nullptr;
         return false;
     }
@@ -716,7 +717,7 @@ void SPIDualSTM32::cleanup() {
 
         // Free main DMA buffer
         if (!mDMABuffer.empty()) {
-            free(mDMABuffer.data());
+            fl::free(mDMABuffer.data());
             mDMABuffer = fl::span<u8>();
             mMaxBytesPerLane = 0;
             mCurrentTotalSize = 0;
@@ -725,11 +726,11 @@ void SPIDualSTM32::cleanup() {
 
         // Free legacy DMA buffers
         if (mDMABuffer0 != nullptr) {
-            free(mDMABuffer0);
+            fl::free(mDMABuffer0);
             mDMABuffer0 = nullptr;
         }
         if (mDMABuffer1 != nullptr) {
-            free(mDMABuffer1);
+            fl::free(mDMABuffer1);
             mDMABuffer1 = nullptr;
         }
         mDMABufferSize = 0;

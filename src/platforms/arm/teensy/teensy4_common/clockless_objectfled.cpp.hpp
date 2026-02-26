@@ -73,7 +73,7 @@ ObjectFLEDGroupBase::ObjectFLEDGroupBase(const ObjectFLEDTimingConfig& timing)
 }
 
 ObjectFLEDGroupBase::~ObjectFLEDGroupBase() {
-    delete static_cast<fl::ObjectFLED*>(mObjectFLED);
+    delete static_cast<fl::ObjectFLED*>(mObjectFLED);  // ok bare allocation
 }
 
 void ObjectFLEDGroupBase::onQueuingStart() {
@@ -179,7 +179,7 @@ void ObjectFLEDGroupBase::flush() {
 }
 
 void ObjectFLEDGroupBase::rebuildObjectFLED() {
-    delete static_cast<fl::ObjectFLED*>(mObjectFLED);
+    delete static_cast<fl::ObjectFLED*>(mObjectFLED);  // ok bare allocation
     mObjectFLED = nullptr;
 
     // Build pin list from draw list
@@ -206,7 +206,7 @@ void ObjectFLEDGroupBase::rebuildObjectFLED() {
     #endif
 
     // Pass nullptr so ObjectFLED allocates frameBufferLocal internally
-    auto* objectfled = new fl::ObjectFLED(
+    auto* objectfled = new fl::ObjectFLED(  // ok bare allocation
         totalLeds,
         nullptr,
         hasRgbw ? CORDER_RGBW : CORDER_RGB,

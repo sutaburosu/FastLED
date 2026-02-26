@@ -85,7 +85,7 @@ public:
     ~ClocklessController_ezWS2812_SPI() {
         if (mOwnsDriver && mDriver) {
             mDriver->end();
-            delete mDriver;
+            delete mDriver;  // ok bare allocation
         }
     }
 
@@ -106,7 +106,7 @@ protected:
         // Create driver on first use
         if (!mDriver) {
             mNumLeds = pixels.size();
-            mDriver = new fl::third_party::ezWS2812(mNumLeds);
+            mDriver = new fl::third_party::ezWS2812(mNumLeds);  // ok bare allocation
             mOwnsDriver = true;
             mDriver->begin();
         }

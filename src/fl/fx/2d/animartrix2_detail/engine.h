@@ -127,14 +127,12 @@ struct Engine {
 
 inline Engine::~Engine() = default;
 
-inline Context::~Context() {
-    delete mEngine;
-}
+inline Context::~Context() = default;
 
 // Initialize context with grid dimensions
 inline void init(Context &ctx, int w, int h) {
     if (!ctx.mEngine) {
-        ctx.mEngine = new Engine(&ctx);
+        ctx.mEngine = fl::make_unique<Engine>(&ctx);
     }
     ctx.num_x = w;
     ctx.num_y = h;

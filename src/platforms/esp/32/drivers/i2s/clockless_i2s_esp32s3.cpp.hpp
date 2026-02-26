@@ -83,7 +83,7 @@ class I2SEsp32S3_Group {
         bool needs_validation = !mDriver.get() || drawlist_changed;
         if (needs_validation) {
             mDriver.reset();
-            mDriver.reset(new fl::I2SClocklessLedDriveresp32S3());
+            mDriver = fl::make_unique<fl::I2SClocklessLedDriveresp32S3>();
             fl::FixedVector<int, 16> pinList;
             for (auto it = mRectDrawBuffer.mDrawList.begin();
                  it != mRectDrawBuffer.mDrawList.end(); ++it) {
@@ -192,7 +192,7 @@ InternalI2SDriver *InternalI2SDriver::create() {
             log_e("PSRAM initialization failed, I2S driver may crash.");
         }
     }
-    return new Driver();
+    return new Driver();  // ok bare allocation
 }
 
 } // namespace fl

@@ -107,7 +107,7 @@ int fl_spi_platform_isr_start(fl::u32 timer_hz) {
 
     fl_gpio_sim_init();
 
-    ISRContext* ctx = new ISRContext(timer_hz);
+    ISRContext* ctx = new ISRContext(timer_hz);  // ok bare allocation
     ctx->running.store(true);
 
     // Launch thread
@@ -138,7 +138,7 @@ void fl_spi_platform_isr_stop(void) {
             ctx->thread.join();
             ISR_DBG("Thread joined\n");
         }
-        delete ctx;
+        delete ctx;  // ok bare allocation
     }
     get_isr_contexts().clear();
     ISR_DBG("All threads stopped and cleared\n");

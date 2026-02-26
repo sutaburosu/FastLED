@@ -27,7 +27,7 @@ public:
         : mObjectFLED(ofled), mTotalBytes(totalBytes) {}
 
     ~ObjectFLEDInstanceReal() override {
-        delete mObjectFLED;
+        delete mObjectFLED;  // ok bare allocation
     }
 
     u8* getFrameBuffer() override {
@@ -65,7 +65,7 @@ public:
             int totalLeds, bool isRgbw, u32 numPins, const u8* pinList,
             u32 t1_ns, u32 t2_ns, u32 t3_ns, u32 reset_us) override {
 
-        auto* ofled = new ObjectFLED(
+        auto* ofled = new ObjectFLED(  // ok bare allocation
             totalLeds,
             nullptr,  // ObjectFLED allocates frameBufferLocal
             isRgbw ? CORDER_RGBW : CORDER_RGB,

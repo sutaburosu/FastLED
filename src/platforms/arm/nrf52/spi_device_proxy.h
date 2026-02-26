@@ -31,6 +31,7 @@
 
 #if defined(FL_IS_NRF52)
 
+#include "fl/stl/unique_ptr.h"
 #include "fl/stl/vector.h"
 #include "platforms/shared/spi_manager.h"
 #include "platforms/arm/nrf52/fastspi_arm_nrf52.h"
@@ -55,7 +56,7 @@ class SPIDeviceProxy {
 private:
     SPIBusHandle mHandle;                    // Handle from SPIBusManager
     SPIBusManager* mBusManager;              // Pointer to global bus manager
-    NRF52HardwareSPIOutput<DATA_PIN, CLOCK_PIN, SPI_CLOCK_DIVIDER>* mSingleSPI;  // Owned single-SPI backend
+    fl::unique_ptr<NRF52HardwareSPIOutput<DATA_PIN, CLOCK_PIN, SPI_CLOCK_DIVIDER>> mSingleSPI;
     fl::vector<u8> mWriteBuffer;        // Buffered writes (for multi-lane SPI)
     bool mInitialized;                       // Whether init() was called
     bool mInTransaction;                     // Whether select() was called
@@ -65,7 +66,6 @@ public:
     SPIDeviceProxy()
         : mHandle()
         , mBusManager(nullptr)
-        , mSingleSPI(nullptr)
         , mInitialized(false)
         , mInTransaction(false)
     {
@@ -79,11 +79,7 @@ public:
             mHandle = SPIBusHandle();  // Invalidate handle
         }
 
-        // Clean up owned single-SPI backend
-        if (mSingleSPI) {
-            delete mSingleSPI;
-            mSingleSPI = nullptr;
-        }
+        mSingleSPI.reset();
     }
 
     /// Initialize SPI device and register with bus manager
@@ -115,7 +111,7 @@ public:
         const SPIBusInfo* bus = mBusManager->getBusInfo(mHandle.bus_id);
         if (bus && bus->bus_type == SPIBusType::SINGLE_SPI) {
             // We're using single-SPI - create owned NRF52HardwareSPIOutput instance
-            mSingleSPI = new NRF52HardwareSPIOutput<DATA_PIN, CLOCK_PIN, SPI_CLOCK_DIVIDER>();
+            mSingleSPI = fl::make_unique<NRF52HardwareSPIOutput<DATA_PIN, CLOCK_PIN, SPI_CLOCK_DIVIDER>>();
             mSingleSPI->init();
         }
         // For multi-lane SPI, bus manager handles hardware - we just buffer writes

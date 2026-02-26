@@ -57,6 +57,7 @@
 #include "platforms/shared/spi_hw_8.h"
 #include "fl/warn.h"
 #include "fl/dbg.h"
+#include "fl/stl/allocator.h"
 #include "fl/stl/cstring.h"
 #include "platforms/shared/spi_manager.h"  // For DMABuffer, TransmitMode, SPIError
 #include "platforms/arm/stm32/stm32_gpio_timer_helpers.h"  // Centralized GPIO/Timer/DMA helpers
@@ -332,12 +333,12 @@ DMABuffer SPIOctalSTM32::acquireDMABuffer(size_t bytes_per_lane) {
     // Reallocate buffer only if we need more capacity
     if (bytes_per_lane > mMaxBytesPerLane) {
         if (!mDMABuffer.empty()) {
-            free(mDMABuffer.data());
+            fl::free(mDMABuffer.data());
             mDMABuffer = fl::span<u8>();
         }
 
         // Allocate DMA-capable memory (regular malloc for STM32)
-        u8* ptr = static_cast<u8*>(malloc(total_size));
+        u8* ptr = static_cast<u8*>(fl::malloc(total_size));
         if (!ptr) {
             return DMABuffer(SPIError::ALLOCATION_FAILED);
         }
@@ -361,7 +362,7 @@ bool SPIOctalSTM32::allocateDMABuffer(size_t required_size) {
     // Free old buffers if they exist
     for (int i = 0; i < 8; ++i) {
         if (mDMABuffers[i] != nullptr) {
-            free(mDMABuffers[i]);
+            fl::free(mDMABuffers[i]);
             mDMABuffers[i] = nullptr;
         }
     }
@@ -369,12 +370,12 @@ bool SPIOctalSTM32::allocateDMABuffer(size_t required_size) {
 
     // Allocate new buffers for all 8 lanes (word-aligned for DMA)
     for (int i = 0; i < 8; ++i) {
-        mDMABuffers[i] = (u8*)malloc(required_size);
+        mDMABuffers[i] = (u8*)fl::malloc(required_size);
         if (mDMABuffers[i] == nullptr) {
             FL_WARN("SPIOctalSTM32: Failed to allocate DMA buffer for lane " << i);
             // Free any buffers that were successfully allocated
             for (int j = 0; j < i; ++j) {
-                free(mDMABuffers[j]);
+                fl::free(mDMABuffers[j]);
                 mDMABuffers[j] = nullptr;
             }
             return false;
@@ -576,7 +577,7 @@ void SPIOctalSTM32::cleanup() {
 
         // Free main DMA buffer
         if (!mDMABuffer.empty()) {
-            free(mDMABuffer.data());
+            fl::free(mDMABuffer.data());
             mDMABuffer = fl::span<u8>();
             mMaxBytesPerLane = 0;
             mCurrentTotalSize = 0;
@@ -586,7 +587,7 @@ void SPIOctalSTM32::cleanup() {
         // Free legacy DMA buffers
         for (int i = 0; i < 8; ++i) {
             if (mDMABuffers[i] != nullptr) {
-                free(mDMABuffers[i]);
+                fl::free(mDMABuffers[i]);
                 mDMABuffers[i] = nullptr;
             }
         }

@@ -96,7 +96,7 @@ ITaskCoroutine* createTaskCoroutine(fl::string name,
                                      ITaskCoroutine::TaskFunction function,
                                      size_t stack_size,
                                      u8 priority) {
-    return new TaskCoroutineESP32(fl::move(name), fl::move(function), stack_size, priority);
+    return new TaskCoroutineESP32(fl::move(name), fl::move(function), stack_size, priority);  // ok bare allocation
 }
 
 //=============================================================================

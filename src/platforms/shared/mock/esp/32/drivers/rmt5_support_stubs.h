@@ -95,7 +95,7 @@ public:
     static fl::size calculateMemoryBlocks(bool) { return 2; }
 
     AllocationResult allocateTx(u8, bool, bool) { return AllocationResult{}; }
-    void free(u8, bool) {}
+    void free(u8, bool) {}  // ok bare allocation
     void recordRecoveryAllocation(u8, fl::size, bool) {}
     bool isDMAAvailable() { return false; }
     bool allocateDMA(u8, bool) { return false; }

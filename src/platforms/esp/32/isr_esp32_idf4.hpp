@@ -23,6 +23,7 @@
 
 #include "fl/isr.h"
 #include "fl/compiler_control.h"
+#include "fl/stl/unique_ptr.h"
 
 FL_EXTERN_C_BEGIN
 #include "esp_intr_alloc.h"
@@ -173,7 +174,8 @@ inline int attach_timer_handler(const isr_config_t& config, isr_handle_t* out_ha
     }
 
     // Allocate handle data
-    esp32_idf4_isr_handle_data* handle_data = new esp32_idf4_isr_handle_data();
+    auto handle_owner = fl::make_unique<esp32_idf4_isr_handle_data>();
+    auto* handle_data = handle_owner.get();
     if (!handle_data) {
         ESP_LOGW(ESP32_IDF4_ISR_TAG, "attachTimerHandler: failed to allocate handle data");
         return -3;  // Out of memory
@@ -182,7 +184,6 @@ inline int attach_timer_handler(const isr_config_t& config, isr_handle_t* out_ha
     // Allocate a timer
     if (!allocate_timer(&handle_data->timer_group, &handle_data->timer_idx)) {
         ESP_LOGW(ESP32_IDF4_ISR_TAG, "attachTimerHandler: no free timers available");
-        delete handle_data;
         return -4;  // No timers available
     }
 
@@ -220,7 +221,6 @@ inline int attach_timer_handler(const isr_config_t& config, isr_handle_t* out_ha
         ESP_LOGW(ESP32_IDF4_ISR_TAG, "attachTimerHandler: frequency too high (%lu Hz)",
                  (unsigned long)config.frequency_hz);
         free_timer(handle_data->timer_group, handle_data->timer_idx);
-        delete handle_data;
         return -2;  // Invalid frequency
     }
 
@@ -237,7 +237,6 @@ inline int attach_timer_handler(const isr_config_t& config, isr_handle_t* out_ha
     if (ret != ESP_OK) {
         ESP_LOGW(ESP32_IDF4_ISR_TAG, "attachTimerHandler: timer_init failed: %s", esp_err_to_name(ret));
         free_timer(handle_data->timer_group, handle_data->timer_idx);
-        delete handle_data;
         return -4;  // Timer init failed
     }
 
@@ -247,7 +246,6 @@ inline int attach_timer_handler(const isr_config_t& config, isr_handle_t* out_ha
         ESP_LOGW(ESP32_IDF4_ISR_TAG, "attachTimerHandler: timer_set_counter_value failed: %s", esp_err_to_name(ret));
         timer_deinit(handle_data->timer_group, handle_data->timer_idx);
         free_timer(handle_data->timer_group, handle_data->timer_idx);
-        delete handle_data;
         return -5;  // Counter value set failed
     }
 
@@ -257,7 +255,6 @@ inline int attach_timer_handler(const isr_config_t& config, isr_handle_t* out_ha
         ESP_LOGW(ESP32_IDF4_ISR_TAG, "attachTimerHandler: timer_set_alarm_value failed: %s", esp_err_to_name(ret));
         timer_deinit(handle_data->timer_group, handle_data->timer_idx);
         free_timer(handle_data->timer_group, handle_data->timer_idx);
-        delete handle_data;
         return -5;  // Alarm value set failed
     }
 
@@ -267,7 +264,6 @@ inline int attach_timer_handler(const isr_config_t& config, isr_handle_t* out_ha
         ESP_LOGW(ESP32_IDF4_ISR_TAG, "attachTimerHandler: timer_enable_intr failed: %s", esp_err_to_name(ret));
         timer_deinit(handle_data->timer_group, handle_data->timer_idx);
         free_timer(handle_data->timer_group, handle_data->timer_idx);
-        delete handle_data;
         return -6;  // Enable intr failed
     }
 
@@ -280,7 +276,6 @@ inline int attach_timer_handler(const isr_config_t& config, isr_handle_t* out_ha
         timer_disable_intr(handle_data->timer_group, handle_data->timer_idx);
         timer_deinit(handle_data->timer_group, handle_data->timer_idx);
         free_timer(handle_data->timer_group, handle_data->timer_idx);
-        delete handle_data;
         return -6;  // Callback registration failed
     }
 
@@ -292,13 +287,15 @@ inline int attach_timer_handler(const isr_config_t& config, isr_handle_t* out_ha
         timer_disable_intr(handle_data->timer_group, handle_data->timer_idx);
         timer_deinit(handle_data->timer_group, handle_data->timer_idx);
         free_timer(handle_data->timer_group, handle_data->timer_idx);
-        delete handle_data;
         return -8;  // Timer start failed
     }
 
     ESP_LOGD(ESP32_IDF4_ISR_TAG, "Timer started: group=%d, idx=%d, freq=%lu Hz, alarm=%llu",
              handle_data->timer_group, handle_data->timer_idx,
              (unsigned long)config.frequency_hz, (unsigned long long)alarm_value);
+
+    // Release ownership - pointer is now managed by the C API (timer ISR + out_handle)
+    handle_owner.release();
 
     // Populate output handle
     if (out_handle) {
@@ -318,7 +315,8 @@ inline int attach_external_handler(u8 pin, const isr_config_t& config, isr_handl
     }
 
     // Allocate handle data
-    esp32_idf4_isr_handle_data* handle_data = new esp32_idf4_isr_handle_data();
+    auto handle_owner = fl::make_unique<esp32_idf4_isr_handle_data>();
+    auto* handle_data = handle_owner.get();
     if (!handle_data) {
         ESP_LOGW(ESP32_IDF4_ISR_TAG, "attachExternalHandler: failed to allocate handle data");
         return -3;  // Out of memory
@@ -352,7 +350,6 @@ inline int attach_external_handler(u8 pin, const isr_config_t& config, isr_handl
     esp_err_t ret = gpio_config(&io_conf);
     if (ret != ESP_OK) {
         ESP_LOGW(ESP32_IDF4_ISR_TAG, "attachExternalHandler: gpio_config failed: %s", esp_err_to_name(ret));
-        delete handle_data;
         return -9;  // GPIO config failed
     }
 
@@ -367,7 +364,6 @@ inline int attach_external_handler(u8 pin, const isr_config_t& config, isr_handl
             if (ret != ESP_OK && ret != ESP_ERR_INVALID_STATE) {
                 taskEXIT_CRITICAL(&gpio_isr_service_mutex_idf4);
                 ESP_LOGW(ESP32_IDF4_ISR_TAG, "attachExternalHandler: gpio_install_isr_service failed: %s", esp_err_to_name(ret));
-                delete handle_data;
                 return -10;  // ISR service installation failed
             }
             gpio_isr_service_installed = true;
@@ -379,7 +375,6 @@ inline int attach_external_handler(u8 pin, const isr_config_t& config, isr_handl
     ret = gpio_isr_handler_add(static_cast<gpio_num_t>(pin), gpio_isr_wrapper_idf4, handle_data);
     if (ret != ESP_OK) {
         ESP_LOGW(ESP32_IDF4_ISR_TAG, "attachExternalHandler: gpio_isr_handler_add failed: %s", esp_err_to_name(ret));
-        delete handle_data;
         return -11;  // ISR handler add failed
     }
 
@@ -387,6 +382,9 @@ inline int attach_external_handler(u8 pin, const isr_config_t& config, isr_handl
     handle_data->gpio_pin = pin;
 
     ESP_LOGD(ESP32_IDF4_ISR_TAG, "GPIO interrupt attached on pin %d", pin);
+
+    // Release ownership - pointer is now managed by the C API (GPIO ISR + out_handle)
+    handle_owner.release();
 
     // Populate output handle
     if (out_handle) {
@@ -425,7 +423,7 @@ inline int detach_handler(isr_handle_t& handle) {
         }
     }
 
-    delete handle_data;
+    delete handle_data;  // ok bare allocation (C API teardown)
     handle.platform_handle = nullptr;
     handle.platform_id = 0;
 

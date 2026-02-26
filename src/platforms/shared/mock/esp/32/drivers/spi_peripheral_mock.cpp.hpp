@@ -12,6 +12,7 @@
 
 #include "spi_peripheral_mock.h"
 #include "fl/warn.h"
+#include "fl/stl/allocator.h"
 #include "fl/stl/cstring.h"
 #include "fl/singleton.h"
 
@@ -369,7 +370,7 @@ void SpiPeripheralMockImpl::freeDma(u8* buffer) {
 #ifdef FL_IS_WIN
         _aligned_free(buffer);
 #else
-        free(buffer);
+        fl::free(buffer);
 #endif
     }
 }

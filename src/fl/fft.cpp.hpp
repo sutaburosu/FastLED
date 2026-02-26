@@ -26,19 +26,17 @@ struct FFT::HashMap : public HashMapLru<FFT_Args, fl::shared_ptr<FFTImpl>> {
         : fl::HashMapLru<FFT_Args, fl::shared_ptr<FFTImpl>>(max_size) {}
 };
 
-FFT::FFT() { mMap.reset(new HashMap(8)); };
+FFT::FFT() { mMap = fl::make_unique<HashMap>(8); };
 
 FFT::~FFT() = default;
 
 FFT::FFT(const FFT &other) {
     // copy the map
-    mMap.reset();
-    mMap.reset(new HashMap(*other.mMap));
+    mMap = fl::make_unique<HashMap>(*other.mMap);
 }
 
 FFT &FFT::operator=(const FFT &other) {
-    mMap.reset();
-    mMap.reset(new HashMap(*other.mMap));
+    mMap = fl::make_unique<HashMap>(*other.mMap);
     return *this;
 }
 

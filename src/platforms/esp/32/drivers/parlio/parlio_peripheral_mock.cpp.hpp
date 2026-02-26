@@ -11,6 +11,7 @@
 #include "parlio_peripheral_mock.h"
 #include "parlio_engine.h"
 #include "fl/warn.h"
+#include "fl/stl/allocator.h"
 #include "fl/stl/cstring.h"
 #include "fl/singleton.h"
 #include "fl/stl/atomic.h"
@@ -524,7 +525,7 @@ void ParlioPeripheralMockImpl::freeDmaBuffer(u8* buffer) {
 #ifdef FL_IS_WIN
         _aligned_free(buffer);
 #else
-        free(buffer);
+        fl::free(buffer);
 #endif
     }
 }
@@ -544,7 +545,7 @@ u64 ParlioPeripheralMockImpl::getMicroseconds() {
 void ParlioPeripheralMockImpl::freeDmaBuffer(void* ptr) {
     // Mock uses standard heap allocation, so use standard free()
     if (ptr) {
-        free(ptr);
+        fl::free(ptr);
     }
 }
 

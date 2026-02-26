@@ -148,7 +148,7 @@ simd::simd_u32x4 simd4_processChannel(
 // Builds SoA geometry cache lazily (once when grid size changes).
 // state is the caller's per-instance ChasingSpiralState member (not a global).
 FrameSetup setupChasingSpiralFrame(Context &ctx, ChasingSpiralState &state) {
-    auto *e = ctx.mEngine;
+    auto *e = ctx.mEngine.get();
     e->get_ready();
 
     // Timing (once per frame, float is fine here)
@@ -290,7 +290,7 @@ FrameSetup setupChasingSpiralFrame(Context &ctx, ChasingSpiralState &state) {
 // ============================================================================
 
 void Chasing_Spirals_Float::draw(Context &ctx) {
-    auto *e = ctx.mEngine;
+    auto *e = ctx.mEngine.get();
     e->get_ready();
 
     // Perlin noise is periodic with period 256 at integer coordinates.

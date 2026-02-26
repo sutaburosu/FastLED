@@ -961,7 +961,7 @@ FL_TEST_CASE("Container move semantics with shared_ptr") {
 
 FL_TEST_CASE("Smart pointer and wrapper move semantics") {
     FL_SUBCASE("fl::unique_ptr") {
-        fl::unique_ptr<int> source(new int(42));
+        fl::unique_ptr<int> source(new int(42));  // ok bare allocation
         FL_REQUIRE(source.get() != nullptr);
         FL_REQUIRE(*source == 42);
 
@@ -977,7 +977,7 @@ FL_TEST_CASE("Smart pointer and wrapper move semantics") {
     }
 
     FL_SUBCASE("fl::unique_ptr array") {
-        fl::unique_ptr<int[]> source(new int[5]{1, 2, 3, 4, 5});
+        fl::unique_ptr<int[]> source(new int[5]{1, 2, 3, 4, 5});  // ok bare allocation
         FL_REQUIRE(source.get() != nullptr);
         FL_REQUIRE(source[0] == 1);
         FL_REQUIRE(source[4] == 5);

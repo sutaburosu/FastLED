@@ -246,7 +246,7 @@ static bool flexio_dma_init() {
     if (sDmaChannel) {
         return true;
     }
-    sDmaChannel = new DMAChannel();
+    sDmaChannel = new DMAChannel();  // ok bare allocation
     if (!sDmaChannel) {
         FL_LOG_FLEXIO("FlexIO: Failed to allocate DMA channel");
         return false;
@@ -355,7 +355,7 @@ void flexio_deinit() {
     FLEXIO2_SHIFTSDEN = 0;
     if (sDmaChannel) {
         sDmaChannel->disable();
-        delete sDmaChannel;
+        delete sDmaChannel;  // ok bare allocation
         sDmaChannel = nullptr;
     }
     sInitialized = false;

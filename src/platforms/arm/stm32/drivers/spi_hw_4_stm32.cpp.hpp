@@ -50,6 +50,7 @@
 #include "platforms/shared/spi_hw_4.h"
 #include "fl/warn.h"
 #include "fl/dbg.h"
+#include "fl/stl/allocator.h"
 #include "fl/stl/cstring.h"
 #include "platforms/shared/spi_manager.h"  // For DMABuffer, TransmitMode, SPIError
 #include "platforms/arm/stm32/stm32_gpio_timer_helpers.h"  // Centralized GPIO/Timer/DMA helpers
@@ -342,12 +343,12 @@ DMABuffer SPIQuadSTM32::acquireDMABuffer(size_t bytes_per_lane) {
     // Reallocate buffer only if we need more capacity
     if (bytes_per_lane > mMaxBytesPerLane) {
         if (!mDMABuffer.empty()) {
-            free(mDMABuffer.data());
+            fl::free(mDMABuffer.data());
             mDMABuffer = fl::span<u8>();
         }
 
         // Allocate DMA-capable memory (regular malloc for STM32)
-        u8* ptr = static_cast<u8*>(malloc(total_size));
+        u8* ptr = static_cast<u8*>(fl::malloc(total_size));
         if (!ptr) {
             return DMABuffer(SPIError::ALLOCATION_FAILED);
         }
@@ -370,54 +371,54 @@ bool SPIQuadSTM32::allocateDMABuffer(size_t required_size) {
 
     // Free old buffers if they exist
     if (mDMABuffer0 != nullptr) {
-        free(mDMABuffer0);
+        fl::free(mDMABuffer0);
         mDMABuffer0 = nullptr;
     }
     if (mDMABuffer1 != nullptr) {
-        free(mDMABuffer1);
+        fl::free(mDMABuffer1);
         mDMABuffer1 = nullptr;
     }
     if (mDMABuffer2 != nullptr) {
-        free(mDMABuffer2);
+        fl::free(mDMABuffer2);
         mDMABuffer2 = nullptr;
     }
     if (mDMABuffer3 != nullptr) {
-        free(mDMABuffer3);
+        fl::free(mDMABuffer3);
         mDMABuffer3 = nullptr;
     }
     mDMABufferSize = 0;
 
     // Allocate new buffers (word-aligned for DMA requirements)
-    mDMABuffer0 = malloc(required_size);
+    mDMABuffer0 = fl::malloc(required_size);
     if (mDMABuffer0 == nullptr) {
         FL_WARN("SPIQuadSTM32: Failed to allocate DMA buffer 0");
         return false;
     }
 
-    mDMABuffer1 = malloc(required_size);
+    mDMABuffer1 = fl::malloc(required_size);
     if (mDMABuffer1 == nullptr) {
         FL_WARN("SPIQuadSTM32: Failed to allocate DMA buffer 1");
-        free(mDMABuffer0);
+        fl::free(mDMABuffer0);
         mDMABuffer0 = nullptr;
         return false;
     }
 
-    mDMABuffer2 = malloc(required_size);
+    mDMABuffer2 = fl::malloc(required_size);
     if (mDMABuffer2 == nullptr) {
         FL_WARN("SPIQuadSTM32: Failed to allocate DMA buffer 2");
-        free(mDMABuffer0);
-        free(mDMABuffer1);
+        fl::free(mDMABuffer0);
+        fl::free(mDMABuffer1);
         mDMABuffer0 = nullptr;
         mDMABuffer1 = nullptr;
         return false;
     }
 
-    mDMABuffer3 = malloc(required_size);
+    mDMABuffer3 = fl::malloc(required_size);
     if (mDMABuffer3 == nullptr) {
         FL_WARN("SPIQuadSTM32: Failed to allocate DMA buffer 3");
-        free(mDMABuffer0);
-        free(mDMABuffer1);
-        free(mDMABuffer2);
+        fl::free(mDMABuffer0);
+        fl::free(mDMABuffer1);
+        fl::free(mDMABuffer2);
         mDMABuffer0 = nullptr;
         mDMABuffer1 = nullptr;
         mDMABuffer2 = nullptr;
@@ -601,7 +602,7 @@ void SPIQuadSTM32::cleanup() {
 
         // Free main DMA buffer
         if (!mDMABuffer.empty()) {
-            free(mDMABuffer.data());
+            fl::free(mDMABuffer.data());
             mDMABuffer = fl::span<u8>();
             mMaxBytesPerLane = 0;
             mCurrentTotalSize = 0;
@@ -610,19 +611,19 @@ void SPIQuadSTM32::cleanup() {
 
         // Free legacy DMA buffers
         if (mDMABuffer0 != nullptr) {
-            free(mDMABuffer0);
+            fl::free(mDMABuffer0);
             mDMABuffer0 = nullptr;
         }
         if (mDMABuffer1 != nullptr) {
-            free(mDMABuffer1);
+            fl::free(mDMABuffer1);
             mDMABuffer1 = nullptr;
         }
         if (mDMABuffer2 != nullptr) {
-            free(mDMABuffer2);
+            fl::free(mDMABuffer2);
             mDMABuffer2 = nullptr;
         }
         if (mDMABuffer3 != nullptr) {
-            free(mDMABuffer3);
+            fl::free(mDMABuffer3);
             mDMABuffer3 = nullptr;
         }
         mDMABufferSize = 0;

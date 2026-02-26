@@ -81,6 +81,7 @@
 // IWYU pragma: begin_keep
 #include "hardware/gpio.h"
 // IWYU pragma: end_keep
+#include "fl/stl/allocator.h"
 #include "fl/stl/cstring.h"
 #endif
 namespace fl {
@@ -169,7 +170,7 @@ public:
 
         // Allocate transposition buffer
         mBufferSize = mMaxLeds * 24;
-        mTransposeBuffer = fl::bit_cast<u8*>(malloc(mBufferSize));
+        mTransposeBuffer = fl::bit_cast<u8*>(fl::malloc(mBufferSize));
         if (mTransposeBuffer == nullptr) {
             return;
         }
@@ -190,14 +191,14 @@ public:
 
         mSm = pio_claim_unused_sm(mPio, false);
         if (mSm == -1) {
-            free(mTransposeBuffer);
+            fl::free(mTransposeBuffer);
             return;
         }
 
         mDmaChan = dma_claim_unused_channel(false);
         if (mDmaChan == -1) {
             pio_sm_unclaim(mPio, mSm);
-            free(mTransposeBuffer);
+            fl::free(mTransposeBuffer);
             return;
         }
 #endif
@@ -232,7 +233,7 @@ private:
     void prepareTransposedData() {
         // Allocate temporary buffer for padded RGB data
         u32 padded_size = mMaxLeds * 3 * NUM_LANES;
-        u8* padded_rgb = fl::bit_cast<u8*>(malloc(padded_size));
+        u8* padded_rgb = fl::bit_cast<u8*>(fl::malloc(padded_size));
         if (padded_rgb == nullptr) {
             return;
         }
@@ -278,7 +279,7 @@ private:
                 break;
         }
 
-        free(padded_rgb);
+        fl::free(padded_rgb);
     }
 
     /// @brief Clean up resources
@@ -295,7 +296,7 @@ private:
         }
 #endif
         if (mTransposeBuffer != nullptr) {
-            free(mTransposeBuffer);
+            fl::free(mTransposeBuffer);
             mTransposeBuffer = nullptr;
         }
     }

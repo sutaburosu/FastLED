@@ -1002,13 +1002,13 @@ bool ParlioEngine::allocateRingBuffers() {
     // Create ring buffer with unique_ptr and cleanup callback
     // Capture mPeripheral pointer for cleanup lambda
     auto* peripheral = mPeripheral;
-    mRingBuffer.reset(new ParlioRingBuffer3(
+    mRingBuffer = fl::make_unique<ParlioRingBuffer3>(
         buffers[0], buffers[1], buffers[2],
         mRingBufferCapacity,
         [peripheral](u8* ptr) {
             peripheral->freeDmaBuffer(ptr);
         }
-    ));
+    );
 
     if (!mRingBuffer) {
         FL_LOG_PARLIO("PARLIO: Failed to allocate ring buffer structure");

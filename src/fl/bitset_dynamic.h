@@ -1,6 +1,7 @@
 #pragma once
 
 #include "fl/stl/stdint.h"
+#include "fl/stl/unique_ptr.h"
 #include "fl/int.h"
 
 #include "fl/math_macros.h"
@@ -21,7 +22,7 @@ class bitset_dynamic {
     static constexpr fl::u32 bits_per_block = 8 * sizeof(fl::u16);
     using block_type = fl::u16;
 
-    block_type *_blocks = nullptr;
+    fl::unique_ptr<block_type[]> _blocks;
     fl::u32 _block_count = 0;
     fl::u32 _size = 0;
 
@@ -41,15 +42,14 @@ class bitset_dynamic {
     bitset_dynamic(const bitset_dynamic &other) {
         if (other._size > 0) {
             resize(other._size);
-            fl::memcpy(_blocks, other._blocks, _block_count * sizeof(block_type));
+            fl::memcpy(_blocks.get(), other._blocks.get(), _block_count * sizeof(block_type));
         }
     }
 
     // Move constructor
     bitset_dynamic(bitset_dynamic &&other) noexcept
-        : _blocks(other._blocks), _block_count(other._block_count),
+        : _blocks(fl::move(other._blocks)), _block_count(other._block_count),
           _size(other._size) {
-        other._blocks = nullptr;
         other._block_count = 0;
         other._size = 0;
     }
@@ -59,7 +59,7 @@ class bitset_dynamic {
         if (this != &other) {
             if (other._size > 0) {
                 resize(other._size);
-                fl::memcpy(_blocks, other._blocks,
+                fl::memcpy(_blocks.get(), other._blocks.get(),
                        _block_count * sizeof(block_type));
             } else {
                 clear();
@@ -71,11 +71,9 @@ class bitset_dynamic {
     // Move assignment
     bitset_dynamic &operator=(bitset_dynamic &&other) noexcept {
         if (this != &other) {
-            delete[] _blocks;
-            _blocks = other._blocks;
+            _blocks = fl::move(other._blocks);
             _block_count = other._block_count;
             _size = other._size;
-            other._blocks = nullptr;
             other._block_count = 0;
             other._size = 0;
         }
@@ -83,7 +81,7 @@ class bitset_dynamic {
     }
 
     // Destructor
-    ~bitset_dynamic() { delete[] _blocks; }
+    ~bitset_dynamic() = default;
 
     // Assign n bits to the value specified
     FL_DISABLE_WARNING_PUSH
@@ -123,16 +121,15 @@ class bitset_dynamic {
         fl::u32 new_block_count = (new_size + bits_per_block - 1) / bits_per_block;
 
         if (new_block_count != _block_count) {
-            block_type *new_blocks = new block_type[new_block_count];
+            block_type *new_blocks = new block_type[new_block_count];  // ok bare allocation (array new for unique_ptr)
             fl::memset(new_blocks, 0, new_block_count * sizeof(block_type));
 
             if (_blocks) {
                 fl::u32 copy_blocks = FL_MIN(_block_count, new_block_count);
-                fl::memcpy(new_blocks, _blocks, copy_blocks * sizeof(block_type));
+                fl::memcpy(new_blocks, _blocks.get(), copy_blocks * sizeof(block_type));
             }
 
-            delete[] _blocks;
-            _blocks = new_blocks;
+            _blocks.reset(new_blocks);
             _block_count = new_block_count;
         }
 
@@ -151,8 +148,7 @@ class bitset_dynamic {
 
     // Clear the bitset (reset to empty)
     void clear() {
-        delete[] _blocks;
-        _blocks = nullptr;
+        _blocks.reset();
         _block_count = 0;
         _size = 0;
     }
@@ -162,7 +158,7 @@ class bitset_dynamic {
     FL_DISABLE_WARNING_NULL_DEREFERENCE
     void reset() noexcept {
         if (_blocks && _block_count > 0) {
-            fl::memset(_blocks, 0, _block_count * sizeof(block_type));
+            fl::memset(_blocks.get(), 0, _block_count * sizeof(block_type));
         }
     }
     FL_DISABLE_WARNING_POP
@@ -383,7 +379,7 @@ class bitset_dynamic {
         if (!_blocks || !other._blocks || !result._blocks) {
             return result;
         }
-        
+
         fl::u32 min_blocks = FL_MIN(_block_count, other._block_count);
 
         for (fl::u32 i = 0; i < min_blocks; ++i) {
@@ -392,7 +388,7 @@ class bitset_dynamic {
 
         // Copy remaining blocks from the larger bitset
         if (_block_count > min_blocks) {
-            fl::memcpy(result._blocks + min_blocks, _blocks + min_blocks,
+            fl::memcpy(result._blocks.get() + min_blocks, _blocks.get() + min_blocks,
                    (_block_count - min_blocks) * sizeof(block_type));
         }
 
@@ -402,11 +398,11 @@ class bitset_dynamic {
     // Bitwise XOR operator
     bitset_dynamic operator^(const bitset_dynamic &other) const {
         bitset_dynamic result(_size);
-        
+
         if (!_blocks || !other._blocks || !result._blocks) {
             return result;
         }
-        
+
         fl::u32 min_blocks = FL_MIN(_block_count, other._block_count);
 
         for (fl::u32 i = 0; i < min_blocks; ++i) {
@@ -415,7 +411,7 @@ class bitset_dynamic {
 
         // Copy remaining blocks from the larger bitset
         if (_block_count > min_blocks) {
-            fl::memcpy(result._blocks + min_blocks, _blocks + min_blocks,
+            fl::memcpy(result._blocks.get() + min_blocks, _blocks.get() + min_blocks,
                    (_block_count - min_blocks) * sizeof(block_type));
         }
 

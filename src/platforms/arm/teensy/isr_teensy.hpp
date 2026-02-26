@@ -23,6 +23,7 @@
 
 #include "fl/isr.h"
 #include "fl/warn.h"
+#include "fl/stl/unique_ptr.h"
 // IWYU pragma: begin_keep
 #include <IntervalTimer.h>
 // IWYU pragma: end_keep
@@ -95,7 +96,8 @@ int teensy_attach_timer_handler(const isr_config_t& config, isr_handle_t* handle
     }
 
     // Allocate platform handle data
-    teensy_isr_handle_data* data = new teensy_isr_handle_data();
+    auto data_owner = fl::make_unique<teensy_isr_handle_data>();
+    auto* data = data_owner.get();
     if (!data) {
         return -3;  // Allocation failed
     }
@@ -113,7 +115,6 @@ int teensy_attach_timer_handler(const isr_config_t& config, isr_handle_t* handle
 
     // Begin timer
     if (!data->timer.begin(teensy_isr_trampoline, interval_us)) {
-        delete data;
         g_active_timer_data = nullptr;
         return -4;  // Timer begin failed
     }
@@ -143,6 +144,9 @@ int teensy_attach_timer_handler(const isr_config_t& config, isr_handle_t* handle
     data->timer.priority(teensy_priority);
 
     data->enabled = true;
+
+    // Release ownership - pointer is now managed by the C API (global + handle)
+    data_owner.release();
 
     // Fill in handle
     if (handle) {
@@ -179,7 +183,7 @@ int teensy_detach_handler(isr_handle_t& handle) {
         }
     }
 
-    delete data;
+    delete data;  // ok bare allocation (C API teardown)
     handle.platform_handle = nullptr;
     handle.handler = nullptr;
     handle.user_data = nullptr;

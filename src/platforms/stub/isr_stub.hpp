@@ -282,7 +282,8 @@ inline int stub_attach_timer_handler(const isr_config_t& config, isr_handle_t* o
         }
 
         // Allocate handle data
-        auto handle_data = new stub_isr_handle_data();
+        auto handle_owner = fl::make_unique<stub_isr_handle_data>();
+        auto* handle_data = handle_owner.get();
         if (!handle_data) {
             STUB_LOG("attachTimerHandler: failed to allocate handle data");
             return -3;  // Out of memory
@@ -298,6 +299,9 @@ inline int stub_attach_timer_handler(const isr_config_t& config, isr_handle_t* o
         if (!(config.flags & ISR_FLAG_MANUAL_TICK)) {
             TimerThreadManager::instance().add_handler(handle_data);
         }
+
+        // Release ownership - pointer is now managed by the C API (TimerThreadManager + out_handle)
+        handle_owner.release();
 
         // Populate output handle
         if (out_handle) {
@@ -318,7 +322,8 @@ inline int stub_attach_external_handler(u8 pin, const isr_config_t& config, isr_
         }
 
         // Allocate handle data
-        auto handle_data = new stub_isr_handle_data();
+        auto handle_owner = fl::make_unique<stub_isr_handle_data>();
+        auto* handle_data = handle_owner.get();
         if (!handle_data) {
             STUB_LOG("attachExternalHandler: failed to allocate handle data");
             return -3;  // Out of memory
@@ -329,6 +334,9 @@ inline int stub_attach_external_handler(u8 pin, const isr_config_t& config, isr_
         handle_data->mUserData = config.user_data;
 
         //STUB_LOG("GPIO interrupt attached on pin " << static_cast<int>(pin));
+
+        // Release ownership - pointer is now managed by the C API (out_handle)
+        handle_owner.release();
 
         // Populate output handle
         if (out_handle) {
@@ -358,7 +366,7 @@ inline int stub_detach_handler(isr_handle_t& handle) {
             TimerThreadManager::instance().remove_handler(handle_data);
         }
 
-        delete handle_data;
+        delete handle_data;  // ok bare allocation (C API teardown)
         handle.platform_handle = nullptr;
         handle.platform_id = 0;
 

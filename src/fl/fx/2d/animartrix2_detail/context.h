@@ -5,6 +5,7 @@
 
 #include "crgb.h"
 #include "fl/stl/optional.h"
+#include "fl/stl/unique_ptr.h"
 #include "fl/stl/stdint.h"
 
 namespace fl {
@@ -32,7 +33,7 @@ struct Context {
     fl::optional<fl::u32> currentTime;
 
     // Internal engine (reuses original implementation for bit-identical output)
-    Engine *mEngine = nullptr;
+    fl::unique_ptr<Engine> mEngine;
 
     Context() = default;
     ~Context();

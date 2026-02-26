@@ -382,7 +382,7 @@ bool Rmt5PeripheralESPImpl::registerTxCallback(void* channel_handle,
     // lives for the lifetime of the channel and is not freed (channels are
     // typically created once and reused). For strict correctness, this could
     // be tracked and freed in deleteChannel(), but the overhead is minimal.
-    TxCallbackContext* ctx = new TxCallbackContext();
+    TxCallbackContext* ctx = new TxCallbackContext();  // ok bare allocation
     ctx->callback = callback;
     ctx->user_ctx = user_ctx;
 
@@ -395,7 +395,7 @@ bool Rmt5PeripheralESPImpl::registerTxCallback(void* channel_handle,
     esp_err_t err = rmt_tx_register_event_callbacks(channel, &cbs, ctx);
     if (err != ESP_OK) {
         FL_LOG_RMT("RMT5_PERIPH: Failed to register callback: " << esp_err_to_name(err));
-        delete ctx;
+        delete ctx;  // ok bare allocation
         return false;
     }
 
@@ -557,14 +557,14 @@ struct Rmt5EncoderImpl {
 
     // Factory method to create encoder instance
     static Rmt5EncoderImpl* create(const ChipsetTiming& timing, u32 resolution_hz) {
-        Rmt5EncoderImpl* impl = new Rmt5EncoderImpl(timing, resolution_hz);
+        Rmt5EncoderImpl* impl = new Rmt5EncoderImpl(timing, resolution_hz);  // ok bare allocation
         if (impl == nullptr) {
             FL_WARN("Rmt5EncoderImpl::create: Failed to allocate encoder");
             return nullptr;
         }
         if (impl->getHandle() == nullptr) {
             FL_WARN("Rmt5EncoderImpl::create: Encoder initialization failed");
-            delete impl;
+            delete impl;  // ok bare allocation
             return nullptr;
         }
         return impl;
@@ -744,7 +744,7 @@ private:
 
     static esp_err_t delCallback(rmt_encoder_t* encoder) {
         Rmt5EncoderImpl* impl = fl::bit_cast<Rmt5EncoderImpl*>(encoder);
-        delete impl;
+        delete impl;  // ok bare allocation
         return ESP_OK;
     }
 };

@@ -112,7 +112,7 @@ EM_JS(void, js_fetch_async, (u32 request_id, const char* url), {
         .then(response => {
             console.log('🌐 Fetch response received for request', request_id, 'status:', response.status);
             if (!response.ok) {
-                throw new Error('HTTP ' + response.status + ': ' + response.statusText);
+                throw new Error('HTTP ' + response.status + ': ' + response.statusText);  // ok bare allocation
             }
             return response.text();
         })

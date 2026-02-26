@@ -7,6 +7,7 @@
 
 #include "OctoWS2811.h"
 #include "bitswap.h"
+#include "fl/stl/allocator.h"
 namespace fl {
 template<EOrder RGB_ORDER = GRB, u8 CHIP = WS2811_800kHz>
 class COctoWS2811Controller : public CPixelLEDController<RGB_ORDER, 8, 0xFF> {
@@ -15,14 +16,14 @@ class COctoWS2811Controller : public CPixelLEDController<RGB_ORDER, 8, 0xFF> {
 
   void _init(int nLeds) {
     if(pocto == nullptr) {
-      drawbuffer = (u8*)malloc(nLeds * 8 * 3);
-      framebuffer = (u8*)malloc(nLeds * 8 * 3);
+      drawbuffer = (u8*)fl::malloc(nLeds * 8 * 3);
+      framebuffer = (u8*)fl::malloc(nLeds * 8 * 3);
 
       // byte ordering is handled in show by the pixel controller
       int config = WS2811_RGB;
       config |= CHIP;
 
-      pocto = new OctoWS2811(nLeds, framebuffer, drawbuffer, config);
+      pocto = new OctoWS2811(nLeds, framebuffer, drawbuffer, config);  // ok bare allocation
 
       pocto->begin();
     }

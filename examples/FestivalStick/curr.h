@@ -354,8 +354,8 @@ void setup() {
 
     // Initialize fl::Animartrix effect
     fl::XYMap animartrixXyMap = fl::XYMap::constructRectangularGrid(width, height, 0);
-    animartrix.reset(new fl::Animartrix(animartrixXyMap, fl::POLAR_WAVES));
-    fxEngine.reset(new fl::FxEngine(width * height));
+    animartrix.reset(new fl::Animartrix(animartrixXyMap, fl::POLAR_WAVES));  // ok bare allocation
+    fxEngine.reset(new fl::FxEngine(width * height));  // ok bare allocation
     fxEngine->addFx(*animartrix);
     
     // Demonstrate fl::UIGroup functionality for noise controls

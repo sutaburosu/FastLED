@@ -66,10 +66,10 @@ void setup() {
     FastLED.addLeds<WS2812, DATA_PIN, GRB>(leds, NUM_LEDS);
 
     // Allocate transport and remote on heap
-    pTransport = new fl::shared_ptr<fl::HttpStreamServer>(fl::make_shared<fl::HttpStreamServer>(SERVER_PORT));
+    pTransport = new fl::shared_ptr<fl::HttpStreamServer>(fl::make_shared<fl::HttpStreamServer>(SERVER_PORT));  // ok bare allocation
     auto& transport = *pTransport;
 
-    pRemote = new fl::Remote(
+    pRemote = new fl::Remote(  // ok bare allocation
         // RequestSource: read from HTTP server
         [&transport]() { return transport->readRequest(); },
         // ResponseSink: write to HTTP server

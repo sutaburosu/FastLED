@@ -22,6 +22,7 @@ from ci.lint_cpp.banned_headers_checker import (
 )
 from ci.lint_cpp.banned_macros_checker import BannedMacrosChecker
 from ci.lint_cpp.banned_namespace_checker import BannedNamespaceChecker
+from ci.lint_cpp.bare_allocation_checker import BareAllocationChecker
 
 # Import all checker classes
 from ci.lint_cpp.check_namespace_includes import NamespaceIncludesChecker
@@ -159,6 +160,7 @@ def create_checkers(
         BannedNamespaceChecker(),  # Checks for banned namespace patterns like fl::fl
         SingletonInHeadersChecker(),  # Checks for Singleton<T> in headers (must use SingletonShared<T>)
         SpanFromPointerChecker(),  # Checks for span<T>(container.data(), container.size()) → span<T>(container)
+        BareAllocationChecker(),  # Checks for bare new/delete/malloc/free — use fl::unique_ptr/fl::shared_ptr
         # Note: Private libc++ headers checking is now integrated into BannedHeadersChecker
         # Note: _build.hpp hierarchy checking is now integrated into test_unity_build.py
     ]

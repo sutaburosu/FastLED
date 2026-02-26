@@ -22,7 +22,7 @@ void to_string(const fl::u16 *bit_data, fl::u32 bit_count, string* dst) {
 
 // Implementation for bitset_dynamic::to_string
 void bitset_dynamic::to_string(string* dst) const {
-    detail::to_string(_blocks, _size, dst);
+    detail::to_string(_blocks.get(), _size, dst);
 }
 
 } // namespace fl

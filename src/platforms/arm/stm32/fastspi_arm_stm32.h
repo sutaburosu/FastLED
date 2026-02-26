@@ -88,7 +88,7 @@ public:
     // Destructor for Arduino Mbed - clean up allocated SPIClass
     ~STM32SPIOutput() {
         if (m_spi) {
-            delete m_spi;
+            delete m_spi;  // ok bare allocation
             m_spi = nullptr;
         }
     }
@@ -110,7 +110,7 @@ public:
                 if (!m_spi) {
                     // Arduino Mbed requires MbedSPI with pin parameters
                     // SPIClass is abstract, so we use MbedSPI(MISO, MOSI, SCK)
-                    m_spi = new arduino::MbedSPI(SPI_MISO, SPI_MOSI, SPI_SCK);
+                    m_spi = new arduino::MbedSPI(SPI_MISO, SPI_MOSI, SPI_SCK);  // ok bare allocation
                 }
                 m_spi->begin();
             #else

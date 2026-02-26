@@ -10,12 +10,12 @@ namespace fl {
 Fx2dTo1d::Fx2dTo1d(u16 numLeds, Fx2dPtr fx2d, const ScreenMap &screenMap,
                    InterpolationMode mode)
     : Fx1d(numLeds), mFx2d(fx2d), mScreenMap(screenMap),
-      mInterpolationMode(mode), mGrid(new CRGB[fx2d->getNumLeds()]) {}
+      mInterpolationMode(mode), mGrid(new CRGB[fx2d->getNumLeds()]) {}  // ok bare allocation (array new)
 
 void Fx2dTo1d::setFx2d(Fx2dPtr fx2d) {
     mFx2d = fx2d;
     // Reallocate grid buffer if needed
-    mGrid.reset(new CRGB[fx2d->getNumLeds()]);
+    mGrid.reset(new CRGB[fx2d->getNumLeds()]);  // ok bare allocation (array new)
 }
 
 void Fx2dTo1d::draw(DrawContext context) {

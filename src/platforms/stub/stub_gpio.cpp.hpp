@@ -18,7 +18,7 @@ namespace {
 
 /// Per-pin callback storage: map from pin number to callback
 static fl::map<int, PinEdgeCallback>& pinCallbackMap() {
-    static fl::map<int, PinEdgeCallback>* m = new fl::map<int, PinEdgeCallback>();
+    static fl::map<int, PinEdgeCallback>* m = new fl::map<int, PinEdgeCallback>();  // ok bare allocation
     return *m;
 }
 
@@ -26,7 +26,7 @@ static fl::map<int, PinEdgeCallback>& pinCallbackMap() {
 static fl::map<int, int>& pinStateMap() {
     // Heap-allocated and never freed: avoids static destructor ordering issues
     // on Windows where fl::allocator_slab may be destroyed before this map.
-    static fl::map<int, int>* state = new fl::map<int, int>();
+    static fl::map<int, int>* state = new fl::map<int, int>();  // ok bare allocation
     return *state;
 }
 
@@ -38,7 +38,7 @@ struct PinEdgeBuffer {
 
 static fl::map<int, PinEdgeBuffer>& edgeBufferMap() {
     // Heap-allocated and never freed: avoids static destructor ordering issues.
-    static fl::map<int, PinEdgeBuffer>* buffers = new fl::map<int, PinEdgeBuffer>();
+    static fl::map<int, PinEdgeBuffer>* buffers = new fl::map<int, PinEdgeBuffer>();  // ok bare allocation
     return *buffers;
 }
 

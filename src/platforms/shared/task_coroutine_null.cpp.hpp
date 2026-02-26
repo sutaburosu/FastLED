@@ -56,7 +56,7 @@ TaskCoroutineNull* TaskCoroutineNull::create(fl::string name,
                                               TaskFunction function,
                                               size_t stack_size,
                                               u8 priority) {
-    return new TaskCoroutineNullImpl(fl::move(name), fl::move(function), stack_size, priority);
+    return new TaskCoroutineNullImpl(fl::move(name), fl::move(function), stack_size, priority);  // ok bare allocation
 }
 
 //=============================================================================

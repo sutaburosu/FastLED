@@ -39,11 +39,7 @@ public:
         : mImpl(platforms::createTaskCoroutine(fl::move(name), fl::move(function), stack_size, priority)) {
     }
 
-    ~TaskCoroutine() {
-        if (mImpl) {
-            delete mImpl;
-        }
-    }
+    ~TaskCoroutine() = default;
 
     TaskCoroutine(const TaskCoroutine&) = delete;
     TaskCoroutine& operator=(const TaskCoroutine&) = delete;
@@ -65,7 +61,7 @@ public:
     }
 
 private:
-    platforms::ITaskCoroutine* mImpl;
+    fl::unique_ptr<platforms::ITaskCoroutine> mImpl;
 };
 
 } // namespace fl
