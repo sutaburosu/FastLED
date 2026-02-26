@@ -46,6 +46,11 @@ fl::Json startNetClient();
 /// @return JSON with {success, tests_passed, tests_failed, results[]}
 fl::Json runNetClientTest(const char* host_ip, uint16_t port);
 
+/// @brief Run self-contained loopback test: start HTTP server, client GETs localhost.
+/// No WiFi needed — purely TCP over localhost (127.0.0.1).
+/// @return JSON with {success, tests_passed, tests_failed, results[]}
+fl::Json runNetLoopback();
+
 /// @brief Stop WiFi AP and HTTP server/client, release all resources.
 /// @return JSON with {success: true} on success
 fl::Json stopNet();

@@ -1368,6 +1368,12 @@ void ValidationRemoteControl::registerFunctions(fl::shared_ptr<ValidationState> 
         return runNetClientTest(host_ip.c_str(), port);
     });
 
+    // Register "runNetLoopback" - Self-contained loopback test (no WiFi needed)
+    // Starts HTTP server on localhost, client GETs 127.0.0.1 endpoints
+    mRemote->bind("runNetLoopback", [](const fl::Json& args) -> fl::Json {
+        return runNetLoopback();
+    });
+
     // Register "stopNet" - Stop WiFi AP and HTTP server/client
     mRemote->bind("stopNet", [this](const fl::Json& args) -> fl::Json {
         mState->net_server_active = false;

@@ -328,6 +328,112 @@ class _HostHttpServer:
         print("  Host HTTP server stopped")
 
 
+async def run_net_loopback_validation(
+    upload_port: str,
+    serial_iface: "SerialInterface | None",
+    timeout: float = 60.0,
+) -> int:
+    """Run self-contained loopback network validation (--net).
+
+    The ESP32 starts an HTTP server and uses its own HTTP client to fetch
+    from 127.0.0.1 (localhost). No WiFi, no host involvement.
+
+    Args:
+        upload_port: Serial port for RPC communication
+        serial_iface: Pre-created serial interface
+        timeout: RPC timeout in seconds
+
+    Returns:
+        Exit code (0 = success, 1 = failure)
+    """
+    print()
+    print("=" * 60)
+    print("NETWORK VALIDATION MODE: LOOPBACK (self-contained)")
+    print("=" * 60)
+    print()
+
+    client: RpcClient | None = None
+
+    try:
+        # Connect to device via RPC
+        print(f"  Connecting to device on {upload_port}...")
+        client = RpcClient(upload_port, timeout=timeout, serial_interface=serial_iface)
+        await client.connect(boot_wait=3.0, drain_boot=True)
+        print(f"  {Fore.GREEN}Connected to device{Style.RESET_ALL}")
+
+        # Send the loopback test command
+        print("\n--- Running loopback HTTP test on ESP32 ---")
+        print("  ESP32 will start HTTP server and GET its own endpoints via 127.0.0.1")
+        print()
+
+        response = await client.send("runNetLoopback", timeout=30.0)
+        test_result = response.data
+
+        if not isinstance(test_result, dict):
+            print(f"  {Fore.RED}Unexpected response: {test_result}{Style.RESET_ALL}")
+            return 1
+
+        # Display results
+        tests_passed = test_result.get("tests_passed", 0)
+        tests_failed = test_result.get("tests_failed", 0)
+        total = tests_passed + tests_failed
+        results = test_result.get("results", [])
+
+        if test_result.get("error"):
+            print(f"  {Fore.RED}Error: {test_result['error']}{Style.RESET_ALL}")
+            return 1
+
+        for r in results:
+            test_name = r.get("test", "?")
+            passed = r.get("passed", False)
+            status = (
+                f"{Fore.GREEN}PASS{Style.RESET_ALL}"
+                if passed
+                else f"{Fore.RED}FAIL{Style.RESET_ALL}"
+            )
+            error = r.get("error", "")
+            status_code = r.get("status_code", "")
+            detail = f" (status={status_code})" if status_code else ""
+            error_str = f" - {error}" if error else ""
+            print(f"  {test_name}: {status}{detail}{error_str}")
+
+        # Summary
+        print()
+        print("=" * 60)
+        if test_result.get("success"):
+            print(
+                f"{Fore.GREEN}NET LOOPBACK VALIDATION PASSED ({tests_passed}/{total} tests){Style.RESET_ALL}"
+            )
+            return 0
+        else:
+            print(
+                f"{Fore.RED}NET LOOPBACK VALIDATION FAILED ({tests_passed}/{total} passed, {tests_failed} failed){Style.RESET_ALL}"
+            )
+            return 1
+
+    except KeyboardInterrupt:
+        print("\n\n  Interrupted by user")
+        handle_keyboard_interrupt_properly()
+        return 130
+    except RpcTimeoutError:
+        print(
+            f"\n  {Fore.RED}Timeout waiting for loopback test response{Style.RESET_ALL}"
+        )
+        return 1
+    except Exception as e:
+        print(f"\n  {Fore.RED}Network loopback validation error: {e}{Style.RESET_ALL}")
+        return 1
+    finally:
+        if client:
+            try:
+                await client.send("stopNet", timeout=10.0)
+            except KeyboardInterrupt:
+                handle_keyboard_interrupt_properly()
+            except Exception:
+                pass
+            await client.close()
+
+
 async def run_net_validation(
     upload_port: str,
     serial_iface: "SerialInterface | None",

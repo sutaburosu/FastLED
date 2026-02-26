@@ -82,7 +82,7 @@ from ci.util.port_utils import (
     detect_attached_chip,
     kill_port_users,
 )
-from ci.validate_net import run_net_validation
+from ci.validate_net import run_net_loopback_validation, run_net_validation
 
 
 # Try to import fbuild ledger for cached chip detection
@@ -583,6 +583,7 @@ class Args:
     # Network validation modes
     net_server: bool
     net_client: bool
+    net: bool
 
     @staticmethod
     def parse_args() -> "Args":
@@ -729,6 +730,11 @@ See Also:
             "--net-client",
             action="store_true",
             help="ESP32 starts WiFi AP; host starts HTTP server; ESP32 fetches from host",
+        )
+        net_group.add_argument(
+            "--net",
+            action="store_true",
+            help="Self-contained loopback test: ESP32 starts HTTP server, then GETs localhost (no WiFi needed)",
         )
 
         # Standard options
@@ -932,6 +938,7 @@ See Also:
             chipset=parsed.chipset,
             net_server=parsed.net_server,
             net_client=parsed.net_client,
+            net=parsed.net,
         )
 
 
@@ -1151,16 +1158,20 @@ async def run(args: Args | None = None) -> int:  # pyright: ignore[reportGeneral
     # Network validation modes
     net_server_mode = args.net_server
     net_client_mode = args.net_client
+    net_loopback_mode = args.net
 
     # Validate mutual exclusivity of net modes with driver modes
-    if (net_server_mode or net_client_mode) and (drivers or simd_test_mode):
+    if (net_server_mode or net_client_mode or net_loopback_mode) and (
+        drivers or simd_test_mode
+    ):
         print(
-            f"{Fore.RED}❌ Error: --net-server/--net-client cannot be combined with driver flags or --simd{Style.RESET_ALL}"
+            f"{Fore.RED}❌ Error: --net/--net-server/--net-client cannot be combined with driver flags or --simd{Style.RESET_ALL}"
         )
         return 1
-    if net_server_mode and net_client_mode:
+    net_mode_count = sum([net_server_mode, net_client_mode, net_loopback_mode])
+    if net_mode_count > 1:
         print(
-            f"{Fore.RED}❌ Error: --net-server and --net-client are mutually exclusive{Style.RESET_ALL}"
+            f"{Fore.RED}❌ Error: --net, --net-server, and --net-client are mutually exclusive{Style.RESET_ALL}"
         )
         return 1
 
@@ -1170,6 +1181,7 @@ async def run(args: Args | None = None) -> int:  # pyright: ignore[reportGeneral
         and not simd_test_mode
         and not net_server_mode
         and not net_client_mode
+        and not net_loopback_mode
     )
     if gpio_only_mode:
         print(
@@ -1908,7 +1920,7 @@ async def run(args: Args | None = None) -> int:  # pyright: ignore[reportGeneral
         # Skip pin discovery and GPIO pre-test for SIMD and network modes
         if simd_test_mode:
             print("\n📌 SIMD mode: skipping pin discovery and GPIO pre-test")
-        elif net_server_mode or net_client_mode:
+        elif net_server_mode or net_client_mode or net_loopback_mode:
             print("\n📌 Network mode: skipping pin discovery and GPIO pre-test")
         # CLI args take priority - skip discovery if user specified pins
         elif args.tx_pin is not None or args.rx_pin is not None:
@@ -1968,7 +1980,7 @@ async def run(args: Args | None = None) -> int:  # pyright: ignore[reportGeneral
         # Skip GPIO pre-test if pins were just discovered (already verified), SIMD, or net mode
         if simd_test_mode:
             pass  # Already printed skip message above
-        elif net_server_mode or net_client_mode:
+        elif net_server_mode or net_client_mode or net_loopback_mode:
             pass  # Already printed skip message above
         elif pins_discovered:
             print("\n✅ Skipping GPIO pre-test (pins verified during discovery)")
@@ -2015,6 +2027,16 @@ async def run(args: Args | None = None) -> int:  # pyright: ignore[reportGeneral
                 serial_iface=serial_iface,
                 net_server_mode=net_server_mode,
                 net_client_mode=net_client_mode,
+                timeout=timeout_seconds,
+            )
+
+        # ============================================================
+        # Network Loopback Mode (--net)
+        # ============================================================
+        if net_loopback_mode:
+            return await run_net_loopback_validation(
+                upload_port=upload_port,
+                serial_iface=serial_iface,
                 timeout=timeout_seconds,
             )
 

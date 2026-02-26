@@ -37,7 +37,8 @@ Driver Selection (optional - omit for GPIO-only mode):
   --all               Test all drivers (equivalent to --parlio --rmt --spi --uart --i2s)
   --simd              Test SIMD operations only (no LED drivers needed)
 
-Network Validation (ESP32 WiFi + HTTP):
+Network Validation (ESP32 HTTP):
+  --net               Self-contained loopback test: ESP32 HTTP server + client on localhost (no WiFi)
   --net-server        ESP32 starts WiFi AP + HTTP server; host validates endpoints
   --net-client        ESP32 starts WiFi AP; host starts HTTP server; ESP32 fetches from host
 
@@ -83,6 +84,7 @@ Examples:
   bash validate --i2s --lane-counts 100,200,300  # Test I2S with 3 lanes (100, 200, 300 LEDs)
   bash validate --rmt --color-pattern ff00aa     # Test RMT with custom color (pink)
   bash validate --parlio --no-fbuild             # Force PlatformIO (skip fbuild)
+  bash validate --net                             # ESP32 self-contained HTTP loopback test
   bash validate --net-server                     # ESP32 WiFi AP + HTTP server validation
   bash validate --net-client                     # ESP32 WiFi AP + HTTP client validation
 
