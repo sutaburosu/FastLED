@@ -497,16 +497,24 @@ def run_meson_build_and_test(
                 # Default: 10 minutes (600s), Debug: 45 minutes (2700s)
                 compile_timeout = 2700 if use_debug else 600
 
-                # Run streaming compilation and testing for UNIT TESTS
+                # Determine compile target: build everything (tests + examples) in
+                # a single Ninja invocation when examples are included, or just
+                # default targets (unit tests only) when examples are excluded.
+                include_examples = not (
+                    exclude_suites and "fastled:examples" in exclude_suites
+                )
+                compile_target = "all-with-examples" if include_examples else None
+
+                # Run streaming compilation and testing
                 (
-                    overall_success_tests,
-                    num_passed_tests,
-                    num_failed_tests,
-                    compile_output_tests,
+                    overall_success,
+                    num_passed,
+                    num_failed,
+                    compile_output,
                 ) = stream_compile_and_run_tests(
                     build_dir=build_dir,
                     test_callback=test_callback,
-                    target=None,  # Build all default test targets (unit tests)
+                    target=compile_target,
                     verbose=verbose,
                     compile_timeout=compile_timeout,
                     build_optimizer=build_optimizer,
@@ -514,71 +522,24 @@ def run_meson_build_and_test(
 
                 # SELF-HEALING: If compilation failed due to stale build state,
                 # recover and retry once
-                if not overall_success_tests and is_stale_build_error(
-                    compile_output_tests
-                ):
+                if not overall_success and is_stale_build_error(compile_output):
                     if _recover_stale_build(
                         source_dir, build_dir, use_debug, check, build_mode, verbose
                     ):
                         # Retry compilation after recovery
                         (
-                            overall_success_tests,
-                            num_passed_tests,
-                            num_failed_tests,
-                            compile_output_tests,
+                            overall_success,
+                            num_passed,
+                            num_failed,
+                            compile_output,
                         ) = stream_compile_and_run_tests(
                             build_dir=build_dir,
                             test_callback=test_callback,
-                            target=None,
+                            target=compile_target,
                             verbose=verbose,
                             compile_timeout=compile_timeout,
                             build_optimizer=build_optimizer,
                         )
-
-                # Run streaming compilation and testing for EXAMPLES
-                if verbose:
-                    _ts_print("[MESON] Starting examples compilation and execution...")
-                (
-                    overall_success_examples,
-                    num_passed_examples,
-                    num_failed_examples,
-                    compile_output_examples,
-                ) = stream_compile_and_run_tests(
-                    build_dir=build_dir,
-                    test_callback=test_callback,
-                    target="examples-host",  # Build examples explicitly
-                    verbose=verbose,
-                    compile_timeout=compile_timeout,
-                    build_optimizer=build_optimizer,
-                )
-
-                # SELF-HEALING: If examples compilation failed due to stale build state,
-                # recover and retry once
-                if not overall_success_examples and is_stale_build_error(
-                    compile_output_examples
-                ):
-                    if _recover_stale_build(
-                        source_dir, build_dir, use_debug, check, build_mode, verbose
-                    ):
-                        # Retry compilation after recovery
-                        (
-                            overall_success_examples,
-                            num_passed_examples,
-                            num_failed_examples,
-                            compile_output_examples,
-                        ) = stream_compile_and_run_tests(
-                            build_dir=build_dir,
-                            test_callback=test_callback,
-                            target="examples-host",
-                            verbose=verbose,
-                            compile_timeout=compile_timeout,
-                            build_optimizer=build_optimizer,
-                        )
-
-                # Combine results
-                overall_success = overall_success_tests and overall_success_examples
-                num_passed = num_passed_tests + num_passed_examples
-                num_failed = num_failed_tests + num_failed_examples
 
                 # Save binary fingerprints of libfastled.a and all DLLs after a
                 # successful build so future runs can suppress unnecessary relinking.

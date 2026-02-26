@@ -93,6 +93,13 @@ if not is_wasm_build
 
   # Build examples subdirectory (provides meson targets for example compilation)
   subdir('examples')
+
+  # Combined alias: builds all test DLLs + example DLLs + both runner executables
+  # in a single Ninja invocation, sharing PCH and libfastled compilation.
+  if example_executables.length() > 0
+    alias_target('all-with-examples',
+      all_test_dlls + example_executables + [runner_exe, example_runner_exe])
+  endif
 else
   # WASM build: emscripten cross-compilation with different flags and targets
   subdir('ci/meson/wasm')

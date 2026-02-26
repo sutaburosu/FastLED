@@ -1449,7 +1449,18 @@ def runner(
         # The examples_change parameter respects fingerprint caching:
         # - False when fingerprint matches (no code changes in examples/ or src/)
         # - True when fingerprint differs OR user explicitly requested examples
-        should_compile_examples = examples_change and not test_categories.py_only
+        #
+        # Skip the separate examples process when run_meson_build_and_test()
+        # already compiled and executed examples in a single Ninja invocation
+        # (mixed mode: unit + examples with cpp_test_change).
+        examples_already_handled = (
+            test_categories.unit and not test_categories.unit_only and cpp_test_change
+        )
+        should_compile_examples = (
+            examples_change
+            and not test_categories.py_only
+            and not examples_already_handled
+        )
         if should_compile_examples:
             processes.append(create_examples_test_process(args, enable_stack_trace))
 
