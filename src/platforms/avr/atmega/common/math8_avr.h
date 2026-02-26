@@ -35,7 +35,7 @@ FL_ALWAYS_INLINE u8 qadd8(u8 i, u8 j) {
         "brcc L_%=     \n\t"
         "ser %0        \n\t"
         "L_%=: "
-        : "+r"(i)
+        : "+d"(i)      // "d" = r16-r31 (required by ser instruction)
         : "r"(j));
     return i;
 }
@@ -58,7 +58,7 @@ FL_ALWAYS_INLINE i8 qadd7(i8 i, i8 j) {
         Adding it to make result negative. */
         "adc %0, __zero_reg__\n\t"
         "L_%=: "
-        : "+r"(i)
+        : "+d"(i)      // "d" = r16-r31 (required by ser instruction)
         : "r"(j));
     return i;
 }
@@ -318,7 +318,7 @@ FL_ALWAYS_INLINE u8 qmul8(u8 i, u8 j) {
         "Lnospill_%=:          \n\t"
         /* Restore r1 to "0"; it's expected to always be that */
         "  clr __zero_reg__    \n\t"
-        : "+r"(i)
+        : "+d"(i)     // "d" = r16-r31 (required by ser instruction)
         : "r"(j)
         : "r0", "r1");
     return i;
