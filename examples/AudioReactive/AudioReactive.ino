@@ -1,4 +1,4 @@
-// @filter: (platform is teensy) or (platform is esp32)
+// @filter: (mem is high) and ((platform is teensy) or (platform is esp32))
 
 // Audio Reactive LEDs using FastLED.add(AudioConfig)
 // Demonstrates the auto-pumped audio pipeline: mic → processor → callbacks → LEDs
