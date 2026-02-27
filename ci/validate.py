@@ -83,6 +83,7 @@ from ci.util.port_utils import (
     kill_port_users,
 )
 from ci.validate_net import run_net_loopback_validation, run_net_validation
+from ci.validate_ota import run_ota_validation
 
 
 # Try to import fbuild ledger for cached chip detection
@@ -585,6 +586,9 @@ class Args:
     net_client: bool
     net: bool
 
+    # OTA validation mode
+    ota: bool
+
     @staticmethod
     def parse_args() -> "Args":
         """Parse command-line arguments and return Args dataclass instance."""
@@ -735,6 +739,17 @@ See Also:
             "--net",
             action="store_true",
             help="Self-contained loopback test: ESP32 starts HTTP server, then GETs localhost (no WiFi needed)",
+        )
+
+        # OTA validation mode
+        ota_group = parser.add_argument_group(
+            "OTA Validation (ESP32 WiFi + OTA HTTP)",
+            "Test ESP32 OTA (Over-The-Air) firmware update web interface.",
+        )
+        ota_group.add_argument(
+            "--ota",
+            action="store_true",
+            help="ESP32 starts WiFi AP + OTA HTTP server; host validates auth and update endpoints",
         )
 
         # Standard options
@@ -939,6 +954,7 @@ See Also:
             net_server=parsed.net_server,
             net_client=parsed.net_client,
             net=parsed.net,
+            ota=parsed.ota,
         )
 
 
@@ -1160,12 +1176,15 @@ async def run(args: Args | None = None) -> int:  # pyright: ignore[reportGeneral
     net_client_mode = args.net_client
     net_loopback_mode = args.net
 
-    # Validate mutual exclusivity of net modes with driver modes
-    if (net_server_mode or net_client_mode or net_loopback_mode) and (
+    # OTA validation mode
+    ota_mode = args.ota
+
+    # Validate mutual exclusivity of net/ota modes with driver modes
+    if (net_server_mode or net_client_mode or net_loopback_mode or ota_mode) and (
         drivers or simd_test_mode
     ):
         print(
-            f"{Fore.RED}❌ Error: --net/--net-server/--net-client cannot be combined with driver flags or --simd{Style.RESET_ALL}"
+            f"{Fore.RED}❌ Error: --net/--net-server/--net-client/--ota cannot be combined with driver flags or --simd{Style.RESET_ALL}"
         )
         return 1
     net_mode_count = sum([net_server_mode, net_client_mode, net_loopback_mode])
@@ -1174,14 +1193,20 @@ async def run(args: Args | None = None) -> int:  # pyright: ignore[reportGeneral
             f"{Fore.RED}❌ Error: --net, --net-server, and --net-client are mutually exclusive{Style.RESET_ALL}"
         )
         return 1
+    if ota_mode and net_mode_count > 0:
+        print(
+            f"{Fore.RED}❌ Error: --ota cannot be combined with --net/--net-server/--net-client{Style.RESET_ALL}"
+        )
+        return 1
 
-    # GPIO-only mode: no drivers, not SIMD, not net — just run GPIO pre-test
+    # GPIO-only mode: no drivers, not SIMD, not net, not OTA — just run GPIO pre-test
     gpio_only_mode = (
         not drivers
         and not simd_test_mode
         and not net_server_mode
         and not net_client_mode
         and not net_loopback_mode
+        and not ota_mode
     )
     if gpio_only_mode:
         print(
@@ -1917,11 +1942,13 @@ async def run(args: Args | None = None) -> int:  # pyright: ignore[reportGeneral
         # Store discovery client for reuse (keep connection open!)
         discovery_client: RpcClient | None = None
 
-        # Skip pin discovery and GPIO pre-test for SIMD and network modes
+        # Skip pin discovery and GPIO pre-test for SIMD, network, and OTA modes
         if simd_test_mode:
             print("\n📌 SIMD mode: skipping pin discovery and GPIO pre-test")
         elif net_server_mode or net_client_mode or net_loopback_mode:
             print("\n📌 Network mode: skipping pin discovery and GPIO pre-test")
+        elif ota_mode:
+            print("\n📌 OTA mode: skipping pin discovery and GPIO pre-test")
         # CLI args take priority - skip discovery if user specified pins
         elif args.tx_pin is not None or args.rx_pin is not None:
             effective_tx_pin = args.tx_pin if args.tx_pin is not None else PIN_TX
@@ -1977,10 +2004,12 @@ async def run(args: Args | None = None) -> int:  # pyright: ignore[reportGeneral
         # ============================================================
         # Phase 3.6: GPIO Connectivity Pre-Test
         # ============================================================
-        # Skip GPIO pre-test if pins were just discovered (already verified), SIMD, or net mode
+        # Skip GPIO pre-test if pins were just discovered (already verified), SIMD, net, or OTA mode
         if simd_test_mode:
             pass  # Already printed skip message above
         elif net_server_mode or net_client_mode or net_loopback_mode:
+            pass  # Already printed skip message above
+        elif ota_mode:
             pass  # Already printed skip message above
         elif pins_discovered:
             print("\n✅ Skipping GPIO pre-test (pins verified during discovery)")
@@ -2035,6 +2064,16 @@ async def run(args: Args | None = None) -> int:  # pyright: ignore[reportGeneral
         # ============================================================
         if net_loopback_mode:
             return await run_net_loopback_validation(
+                upload_port=upload_port,
+                serial_iface=serial_iface,
+                timeout=timeout_seconds,
+            )
+
+        # ============================================================
+        # OTA Validation Mode (--ota)
+        # ============================================================
+        if ota_mode:
+            return await run_ota_validation(
                 upload_port=upload_port,
                 serial_iface=serial_iface,
                 timeout=timeout_seconds,

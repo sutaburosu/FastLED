@@ -14,8 +14,7 @@
 // OTA support detection flag
 // OTA requires IDF 4.0+ for HTTP server and OTA APIs
 // ESP32-H2 and ESP32-P4 lack WiFi hardware
-// Arduino framework uses different OTA implementation
-#if ESP_IDF_VERSION_4_OR_HIGHER && !defined(FL_IS_ESP_32H2) && !defined(FL_IS_ESP_32P4) && !defined(ARDUINO)
+#if ESP_IDF_VERSION_4_OR_HIGHER && !defined(FL_IS_ESP_32H2) && !defined(FL_IS_ESP_32P4)
 #define FL_ESP_OTA_SUPPORTED
 #endif
 
@@ -32,14 +31,12 @@
 #include <esp_event.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
-#include <lwip/sockets.h>
-#include <lwip/netdb.h>
+#include "platforms/esp/32/ota/ota_lwip.h"
 #include <mbedtls/md.h>
 #include <mbedtls/md5.h>
 #include <mbedtls/sha256.h>
 // IWYU pragma: end_keep
 #include "fl/stl/cstring.h"  // ok include - for string functions
-// IWYU pragma: end_keep
 
 // FastLED headers
 #include "fl/stl/string.h"
@@ -799,7 +796,11 @@ private:
         } else if (event_base == IP_EVENT) {
             if (event_id == IP_EVENT_STA_GOT_IP) {
                 ip_event_got_ip_t* event = static_cast<ip_event_got_ip_t*>(event_data);
-                FL_DBG("WiFi: Got IP address: " << ip4addr_ntoa(&event->ip_info.ip));
+                // esp_ip4_addr_t and ip4_addr_t are layout-compatible but may
+                // differ across IDF versions; route through void* to avoid
+                // reinterpret_cast (project lint forbids it).
+                const void* ip_ptr = &event->ip_info.ip;
+                FL_DBG("WiFi: Got IP address: " << ip4addr_ntoa(static_cast<const ip4_addr_t*>(ip_ptr)));
                 self->mWifiConnected = true;
             }
         }
@@ -954,7 +955,7 @@ private:
 
         // Derive key using simple iteration (simplified PBKDF2-like)
         unsigned char derived_key[32];
-        memcpy(derived_key, pass_hash, 32);
+        fl::memcpy(derived_key, pass_hash, 32);
         for (int i = 0; i < 1000; i++) {  // 1000 iterations (lighter than 10000)
             mbedtls_sha256(derived_key, 32, derived_key, 0);
         }
@@ -1007,7 +1008,7 @@ private:
         }
 
         // Create TCP socket to connect to client
-        int tcp_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+        int tcp_socket = lwip_socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
         if (tcp_socket < 0) {
             FL_WARN("OTA: Failed to create TCP socket");
             if (mErrorCb) {
@@ -1023,20 +1024,20 @@ private:
         struct timeval timeout;
         timeout.tv_sec = 10;
         timeout.tv_usec = 0;
-        setsockopt(tcp_socket, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+        lwip_setsockopt(tcp_socket, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
 
         // Connect to client's TCP server
         struct sockaddr_in tcp_addr;
-        memcpy(&tcp_addr, client_addr, sizeof(struct sockaddr_in));
-        tcp_addr.sin_port = htons(port);
+        fl::memcpy(&tcp_addr, client_addr, sizeof(struct sockaddr_in));
+        tcp_addr.sin_port = lwip_htons(port);
 
         FL_DBG("OTA: Connecting to client TCP server on port " << port);
-        if (connect(tcp_socket, (struct sockaddr*)&tcp_addr, sizeof(tcp_addr)) < 0) {
+        if (lwip_connect(tcp_socket, (struct sockaddr*)&tcp_addr, sizeof(tcp_addr)) < 0) {
             FL_WARN("OTA: Failed to connect to client TCP server");
             if (mErrorCb) {
                 mErrorCb("TCP connection failed");
             }
-            close(tcp_socket);
+            lwip_close(tcp_socket);
             if (mStateCb) {
                 mStateCb(3);  // OTA_ERROR
             }
@@ -1052,7 +1053,7 @@ private:
             if (mErrorCb) {
                 mErrorCb("No OTA partition");
             }
-            close(tcp_socket);
+            lwip_close(tcp_socket);
             if (mStateCb) {
                 mStateCb(3);  // OTA_ERROR
             }
@@ -1067,7 +1068,7 @@ private:
             if (mErrorCb) {
                 mErrorCb("OTA begin failed");
             }
-            close(tcp_socket);
+            lwip_close(tcp_socket);
             if (mStateCb) {
                 mStateCb(3);  // OTA_ERROR
             }
@@ -1088,7 +1089,7 @@ private:
             int remaining = expected_size - total_received;
             int to_recv = (remaining < (int)sizeof(buffer)) ? remaining : (int)sizeof(buffer);
 
-            int received = recv(tcp_socket, buffer, to_recv, 0);
+            int received = lwip_recv(tcp_socket, buffer, to_recv, 0);
             if (received <= 0) {
                 FL_WARN("OTA: TCP receive error or timeout");
                 if (mErrorCb) {
@@ -1120,7 +1121,7 @@ private:
             }
         }
 
-        close(tcp_socket);
+        lwip_close(tcp_socket);
 
         // Check for errors
         if (write_error) {
@@ -1209,7 +1210,7 @@ private:
         ESP32OTA* self = static_cast<ESP32OTA*>(pvParameters);
 
         // Create UDP socket
-        self->mOtaUdpSocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+        self->mOtaUdpSocket = lwip_socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
         if (self->mOtaUdpSocket < 0) {
             FL_WARN("OTA: Failed to create UDP socket");
             self->mOtaRunning = false;
@@ -1219,14 +1220,14 @@ private:
 
         // Bind to port 3232
         struct sockaddr_in addr;
-        memset(&addr, 0, sizeof(addr));
+        fl::memset(&addr, 0, sizeof(addr));
         addr.sin_family = AF_INET;
-        addr.sin_port = htons(3232);
-        addr.sin_addr.s_addr = htonl(INADDR_ANY);
+        addr.sin_port = lwip_htons(3232);
+        addr.sin_addr.s_addr = lwip_htonl(INADDR_ANY);
 
-        if (bind(self->mOtaUdpSocket, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
+        if (lwip_bind(self->mOtaUdpSocket, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
             FL_WARN("OTA: Failed to bind UDP socket to port 3232");
-            close(self->mOtaUdpSocket);
+            lwip_close(self->mOtaUdpSocket);
             self->mOtaUdpSocket = -1;
             self->mOtaRunning = false;
             vTaskDelete(nullptr);
@@ -1239,14 +1240,14 @@ private:
         struct timeval timeout;
         timeout.tv_sec = 1;
         timeout.tv_usec = 0;
-        setsockopt(self->mOtaUdpSocket, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+        lwip_setsockopt(self->mOtaUdpSocket, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
 
         char buffer[512];
         struct sockaddr_in client_addr;
         socklen_t client_len = sizeof(client_addr);
 
         while (self->mOtaRunning) {
-            int len = recvfrom(self->mOtaUdpSocket, buffer, sizeof(buffer) - 1, 0,
+            int len = lwip_recvfrom(self->mOtaUdpSocket, buffer, sizeof(buffer) - 1, 0,
                               (struct sockaddr*)&client_addr, &client_len);
 
             if (len <= 0) {
@@ -1274,7 +1275,7 @@ private:
 
                 char auth_response[128];
                 snprintf(auth_response, sizeof(auth_response), "AUTH %s", nonce);
-                sendto(self->mOtaUdpSocket, auth_response, strlen(auth_response), 0,
+                lwip_sendto(self->mOtaUdpSocket, auth_response, strlen(auth_response), 0,
                       (struct sockaddr*)&client_addr, client_len);
                 FL_DBG("OTA: Sent AUTH challenge");
 
@@ -1294,7 +1295,7 @@ private:
                 char cnonce[65], auth_hash[65];
                 if (sscanf(buffer, "%d %64s %64s", &auth_cmd, cnonce, auth_hash) != 3 || auth_cmd != 200) {
                     FL_WARN("OTA: Invalid auth response format");
-                    sendto(self->mOtaUdpSocket, "FAIL", 4, 0,
+                    lwip_sendto(self->mOtaUdpSocket, "FAIL", 4, 0,
                           (struct sockaddr*)&client_addr, client_len);
                     continue;
                 }
@@ -1305,7 +1306,7 @@ private:
                     if (self->mErrorCb) {
                         self->mErrorCb("Auth Failed");
                     }
-                    sendto(self->mOtaUdpSocket, "FAIL", 4, 0,
+                    lwip_sendto(self->mOtaUdpSocket, "FAIL", 4, 0,
                           (struct sockaddr*)&client_addr, client_len);
                     continue;
                 }
@@ -1314,7 +1315,7 @@ private:
             }
 
             // Send OK response
-            sendto(self->mOtaUdpSocket, "OK", 2, 0,
+            lwip_sendto(self->mOtaUdpSocket, "OK", 2, 0,
                   (struct sockaddr*)&client_addr, client_len);
 
             // Handle TCP connection for firmware upload
@@ -1322,7 +1323,7 @@ private:
             self->handleFirmwareUpload(&client_addr, port, size, md5, cmd);
         }
 
-        close(self->mOtaUdpSocket);
+        lwip_close(self->mOtaUdpSocket);
         self->mOtaUdpSocket = -1;
         FL_DBG("OTA: UDP server stopped");
         vTaskDelete(nullptr);
@@ -1350,7 +1351,7 @@ private:
         if (result != pdPASS) {
             FL_WARN("OTA: Failed to create server task");
             mOtaRunning = false;
-            mFailedServices |= static_cast<u8>(OTAService::IDE);
+            mFailedServices |= static_cast<u8>(fl::OTAService::ARDUINO_OTA_FAILED);
         } else {
             FL_DBG("OTA: Custom server started (port 3232)");
         }
@@ -1381,7 +1382,7 @@ private:
 
             // Close socket if still open
             if (mOtaUdpSocket >= 0) {
-                close(mOtaUdpSocket);
+                lwip_close(mOtaUdpSocket);
                 mOtaUdpSocket = -1;
             }
 

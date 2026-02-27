@@ -42,6 +42,9 @@ Network Validation (ESP32 HTTP):
   --net-server        ESP32 starts WiFi AP + HTTP server; host validates endpoints
   --net-client        ESP32 starts WiFi AP; host starts HTTP server; ESP32 fetches from host
 
+OTA Validation (ESP32 WiFi + OTA HTTP):
+  --ota               ESP32 starts WiFi AP + OTA HTTP server; host validates auth and update endpoints
+
 Options:
   -h, --help          Show this help message
   --timeout SECONDS   Override default timeout (default: 60s)
@@ -87,6 +90,7 @@ Examples:
   bash validate --net                             # ESP32 self-contained HTTP loopback test
   bash validate --net-server                     # ESP32 WiFi AP + HTTP server validation
   bash validate --net-client                     # ESP32 WiFi AP + HTTP client validation
+  bash validate --ota                            # ESP32 WiFi AP + OTA HTTP server validation
 
 Exit Codes:
   0   Success (all patterns found, no failures)

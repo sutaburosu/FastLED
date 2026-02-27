@@ -9,7 +9,15 @@
 // Common includes needed by both POSIX/Windows and ESP32 implementations
 #include "fl/stl/cctype.h"
 #include "fl/stl/cstring.h"
+#include "fl/stl/malloc.h"
 #include "fl/warn.h"
+
+// ESP32 HTTP server header (must be before namespace declarations)
+#if defined(FL_IS_ESP32) && !defined(FASTLED_HAS_NETWORKING)
+// IWYU pragma: begin_keep
+#include <esp_http_server.h>
+// IWYU pragma: end_keep
+#endif
 
 #ifdef FASTLED_HAS_NETWORKING
 
@@ -612,10 +620,6 @@ void Server::cleanup_stale_connections() {
 // ESP32 Implementation using esp_http_server.h
 // ============================================================================
 
-// IWYU pragma: begin_keep
-#include <esp_http_server.h>  // nolint
-// IWYU pragma: end_keep
-
 namespace fl {
 namespace net {
 namespace http {
@@ -676,7 +680,7 @@ int Server::handle_esp_request(void* raw_req) {
     // Read POST body if present
     if (req->content_len > 0 && req->content_len <= 8192) {
         int total_len = req->content_len;
-        char* buf = static_cast<char*>(malloc(total_len + 1));
+        char* buf = static_cast<char*>(fl::malloc(total_len + 1));
         if (buf) {
             int received = 0;
             while (received < total_len) {
@@ -688,7 +692,7 @@ int Server::handle_esp_request(void* raw_req) {
             }
             buf[received] = '\0';
             fl_req.mBody = string(buf, received);
-            free(buf);
+            fl::free(buf);
         }
     }
 
@@ -806,7 +810,7 @@ string Response::to_string() const {
 // We store the httpd_handle_t in a file-scoped variable since the Server class
 // members (mListenSocket, mClientSockets) are typed for POSIX sockets.
 static httpd_handle_t s_esp_httpd = nullptr;
-static fl::vector<EspRouteContext*> s_esp_route_contexts;
+static fl::vector<fl::unique_ptr<EspRouteContext>> s_esp_route_contexts;
 
 Server::Server() {
     EngineEvents::addListener(this);
@@ -839,19 +843,19 @@ bool Server::start(int port) {
 
     // Register all routes that were added before start()
     for (size_t i = 0; i < mRoutes.size(); ++i) {
-        auto* ctx = new EspRouteContext{this, i};
-        s_esp_route_contexts.push_back(ctx);
+        auto ctx = fl::make_unique<EspRouteContext>(EspRouteContext{this, i});
 
         httpd_uri_t uri_handler = {};
         uri_handler.uri = mRoutes[i].path.c_str();
         uri_handler.method = to_httpd_method(mRoutes[i].method);
         uri_handler.handler = esp_route_handler;
-        uri_handler.user_ctx = ctx;
+        uri_handler.user_ctx = ctx.get();
 
         esp_err_t reg_err = httpd_register_uri_handler(s_esp_httpd, &uri_handler);
         if (reg_err != ESP_OK) {
             FL_WARN("[HTTP] Failed to register route " << mRoutes[i].path.c_str());
         }
+        s_esp_route_contexts.push_back(fl::move(ctx));
     }
 
     mPort = port;
@@ -870,10 +874,7 @@ void Server::stop() {
         s_esp_httpd = nullptr;
     }
 
-    // Clean up route contexts
-    for (auto* ctx : s_esp_route_contexts) {
-        delete ctx;
-    }
+    // Clean up route contexts (unique_ptr auto-deletes on clear)
     s_esp_route_contexts.clear();
 
     mRunning = false;
@@ -886,16 +887,16 @@ void Server::route(const string& method, const string& path, RouteHandler handle
     // If server is already running, register the route immediately
     if (mRunning && s_esp_httpd) {
         size_t idx = mRoutes.size() - 1;
-        auto* ctx = new EspRouteContext{this, idx};
-        s_esp_route_contexts.push_back(ctx);
+        auto ctx = fl::make_unique<EspRouteContext>(EspRouteContext{this, idx});
 
         httpd_uri_t uri_handler = {};
         uri_handler.uri = mRoutes[idx].path.c_str();
         uri_handler.method = to_httpd_method(method);
         uri_handler.handler = esp_route_handler;
-        uri_handler.user_ctx = ctx;
+        uri_handler.user_ctx = ctx.get();
 
         httpd_register_uri_handler(s_esp_httpd, &uri_handler);
+        s_esp_route_contexts.push_back(fl::move(ctx));
     }
 }
 
