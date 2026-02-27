@@ -624,6 +624,10 @@ namespace fl {
 namespace net {
 namespace http {
 
+// Minimal definition for unique_ptr<ServerAsyncRunner> destruction
+// (ESP32 uses esp_http_server tasks, not async_runner)
+class Server::ServerAsyncRunner {};
+
 // ========== ESP32 Helpers ==========
 
 namespace {

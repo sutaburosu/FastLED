@@ -11,6 +11,9 @@ namespace fl {
 template<typename T>
 struct default_delete {
     void operator()(T* ptr) const {
+        static_assert(sizeof(T) > 0,
+            "Cannot delete pointer to incomplete type. "
+            "Ensure the type is fully defined where unique_ptr destructor is instantiated.");
         delete ptr;
     }
     
