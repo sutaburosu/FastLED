@@ -181,7 +181,7 @@ void FetchRequest::handle_dns_lookup() {
     sockaddr_in server_addr{};
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons(static_cast<u16>(port));
-    ::memcpy(&server_addr.sin_addr, dns_result->h_addr, dns_result->h_length);
+    fl::memcpy(&server_addr.sin_addr, dns_result->h_addr, dns_result->h_length);
 
     FL_WARN("[FETCH] Waiting for connection to " << hostname << ":" << port);
 
