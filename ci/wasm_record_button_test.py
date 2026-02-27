@@ -179,8 +179,6 @@ async def check_worker_state(page: Page) -> dict[str, bool | None]:
                     isWorkerActive: window.fastLEDWorkerManager?.isWorkerActive ?? null,
                     controllerExists: typeof window.fastLEDController !== 'undefined',
                     controllerWorkerMode: window.fastLEDController?.workerMode ?? null,
-                    asyncControllerExists: typeof window.fastLEDAsyncController !== 'undefined',
-                    asyncControllerWorkerMode: window.fastLEDAsyncController?.workerMode ?? null,
                 };
             }
         """
@@ -253,16 +251,6 @@ def print_state_table(worker_state: dict[str, Any], button_state: dict[str, Any]
         "Controller",
         "workerMode",
         str(worker_state.get("controllerWorkerMode", "unknown")),  # pyright: ignore[reportUnknownMemberType, reportUnknownArgumentType]
-    )
-    table.add_row(
-        "AsyncController",
-        "exists",
-        str(worker_state.get("asyncControllerExists", "unknown")),  # pyright: ignore[reportUnknownMemberType, reportUnknownArgumentType]
-    )
-    table.add_row(
-        "AsyncController",
-        "workerMode",
-        str(worker_state.get("asyncControllerWorkerMode", "unknown")),  # pyright: ignore[reportUnknownMemberType, reportUnknownArgumentType]
     )
 
     # Button state
@@ -347,16 +335,13 @@ async def test_record_button(page: Page, log_capture: ConsoleLogCapture) -> bool
             """
             () => {
                 return {
-                    isRecording: window.fastLEDController?.isRecording ?? null,
-                    asyncIsRecording: window.fastLEDAsyncController?.isRecording ?? null,
+                    isRecording: window.videoRecorder?.getIsRecording?.() ?? null,
                 };
             }
         """
         )
 
-        if recording_state.get("isRecording") or recording_state.get(
-            "asyncIsRecording"
-        ):
+        if recording_state.get("isRecording"):
             console.print("[bold green]✓ Recording started successfully![/bold green]")
             return True
         else:
@@ -518,5 +503,3 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         handle_keyboard_interrupt_properly()
         raise
-        console.print("\n[yellow]Interrupted[/yellow]")
-        sys.exit(130)

@@ -400,31 +400,72 @@ def link_wasm(
     return True
 
 
-def copy_templates(output_dir: Path) -> None:
-    """Copy template files to the output directory."""
-    template_dir = PROJECT_ROOT / "src" / "platforms" / "wasm" / "compiler"
-
-    # Individual files
-    for name in [
-        "index.html",
-        "index.css",
-        "index.js",
-        "jsconfig.json",
-        "types.d.ts",
-        "emscripten.d.ts",
-    ]:
-        src = template_dir / name
-        if src.exists():
-            shutil.copy2(src, output_dir / name)
-
-    # Directories
-    for dirname in ["modules", "vendor"]:
-        src = template_dir / dirname
-        dst = output_dir / dirname
-        if src.exists():
+def _copy_from_dist(dist_dir: Path, output_dir: Path) -> None:
+    """Copy Vite build output from dist/ to the output directory."""
+    for item in dist_dir.iterdir():
+        dst = output_dir / item.name
+        if item.is_dir():
             if dst.exists():
                 shutil.rmtree(dst)
-            shutil.copytree(src, dst)
+            shutil.copytree(item, dst)
+        else:
+            shutil.copy2(item, dst)
+
+
+def _copy_templates_legacy(output_dir: Path) -> None:  # noqa: ARG001
+    """Legacy direct copy — no longer supported after TypeScript migration.
+
+    Raises RuntimeError because raw .ts files cannot be executed by browsers.
+    Vite is required to transpile and bundle the TypeScript frontend.
+    """
+    raise RuntimeError(
+        "Legacy template copy is no longer supported. "
+        "The frontend source files are TypeScript and require Vite to build. "
+        "Run 'npm install' in src/platforms/wasm/compiler/ to install dependencies, "
+        "then re-run the build."
+    )
+
+
+def copy_templates(output_dir: Path) -> None:
+    """Copy template files to the output directory.
+
+    Requires Vite to build the TypeScript frontend into browser-runnable JS.
+    Raises RuntimeError if Vite build is not possible.
+    """
+    template_dir = PROJECT_ROOT / "src" / "platforms" / "wasm" / "compiler"
+
+    if not (template_dir / "node_modules").exists():
+        raise RuntimeError(
+            "node_modules not found in src/platforms/wasm/compiler/. "
+            "Run 'npm install' in that directory to install dependencies "
+            "(required for TypeScript frontend build)."
+        )
+
+    npx = shutil.which("npx")
+    if not npx:
+        raise RuntimeError(
+            "npx not found on PATH. Node.js is required to build the "
+            "TypeScript frontend with Vite."
+        )
+
+    print("[WASM] Building frontend with Vite...")
+    result = subprocess.run(
+        [npx, "vite", "build"],
+        cwd=template_dir,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"Vite build failed (exit code {result.returncode}):\n{result.stderr}"
+        )
+
+    dist_dir = template_dir / "dist"
+    if not dist_dir.exists():
+        raise RuntimeError("Vite build succeeded but dist/ directory was not created.")
+
+    print("[WASM] Copying Vite build output...")
+    _copy_from_dist(dist_dir, output_dir)
 
 
 def generate_manifest(example_name: str, output_dir: Path) -> None:

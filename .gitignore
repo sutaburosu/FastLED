@@ -96,4 +96,8 @@ ci/docker_utils/.build_timestamps.json
 examples/**/*.ino.cpp
 ./*.log
 .loop
-.fbuild/* 
+.fbuild/*
+
+# WASM frontend build (Vite)
+src/platforms/wasm/compiler/dist/
+src/platforms/wasm/compiler/node_modules/

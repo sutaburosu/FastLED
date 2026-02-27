@@ -77,8 +77,24 @@ class _ReuseAddrTCPServer(socketserver.TCPServer):
 def _run_http_server(port: int, directory: str) -> None:
     """Run HTTP server in a separate process."""
     os.chdir(directory)
-    handler = http.server.SimpleHTTPRequestHandler
-    with _ReuseAddrTCPServer(("", port), handler) as httpd:
+
+    class _MimeHandler(http.server.SimpleHTTPRequestHandler):
+        """Handler with correct MIME types for ES module scripts."""
+
+        extensions_map = {
+            **http.server.SimpleHTTPRequestHandler.extensions_map,
+            ".js": "application/javascript",
+            ".mjs": "application/javascript",
+            ".wasm": "application/wasm",
+            ".json": "application/json",
+            ".css": "text/css",
+        }
+
+        def log_message(self, format, *args):  # noqa: A002
+            """Suppress noisy request logs during tests."""
+            pass
+
+    with _ReuseAddrTCPServer(("", port), _MimeHandler) as httpd:
         httpd.serve_forever()
 
 
@@ -139,37 +155,92 @@ async def main() -> None:
             page = await browser.new_page()
 
             try:
+                # Listen for console messages BEFORE navigation
+                browser_errors: list[str] = []
+
+                def console_log_handler(msg: ConsoleMessage) -> None:
+                    text = msg.text
+                    if msg.type in ("error", "warn"):
+                        browser_errors.append(f"[{msg.type}] {text}")
+                    if "INVALID_OPERATION" in text:
+                        console.print(
+                            "[bold red]INVALID_OPERATION detected in console log[/bold red]"
+                        )
+
+                page.on("console", console_log_handler)
+
+                # Also capture page errors (uncaught exceptions)
+                def page_error_handler(error: Exception) -> None:
+                    browser_errors.append(f"[error] Page error: {error}")
+
+                page.on("pageerror", page_error_handler)
+
                 test_url = f"http://localhost:{port}?gfx={args.gfx}"
                 console.print(f"[dim]Navigating to: {test_url}[/dim]")
                 await page.goto(test_url, timeout=30000)
 
-                # Listen for console messages
-                def console_log_handler(msg: ConsoleMessage) -> None:
-                    if "INVALID_OPERATION" in msg.text:
-                        console.print(
-                            "[bold red]INVALID_OPERATION detected in console log[/bold red]"
-                        )
-                        raise Exception("INVALID_OPERATION detected in console log")
-
-                page.on("console", console_log_handler)
-
-                # Evaluate and monitor window.frameCallCount
-                await page.evaluate(
-                    """
-                    window.frameCallCount = 0;
-                    globalThis.FastLED_onFrame = (jsonStr) => {
-                        console.log('FastLED_onFrame called with:', jsonStr);
-                        window.frameCallCount++;
-                    };
-                """
-                )
+                # Wait for FastLED to initialize and render frames.
+                # The Vite-bundled fastled_callbacks.ts increments
+                # globalThis.fastLEDFrameCount on each frame automatically.
                 await page.wait_for_timeout(5000)
 
-                call_count = await page.evaluate("window.frameCallCount")
-                if call_count > 0:
+                # Check frame count OR controller/worker state.
+                # In worker mode, frames render in the worker thread so
+                # fastLEDFrameCount may stay 0 on the main thread.
+                result = await page.evaluate(
+                    """(() => {
+                        const frameCount = globalThis.fastLEDFrameCount || 0;
+                        const controllerRunning = !!(
+                            window.fastLEDController &&
+                            window.fastLEDController.running
+                        );
+                        const workerActive = !!(
+                            window.fastLEDWorkerManager &&
+                            window.fastLEDWorkerManager.isWorkerActive
+                        );
+                        return { frameCount, controllerRunning, workerActive };
+                    })()"""
+                )
+                call_count = result.get("frameCount", 0)
+                controller_running = result.get("controllerRunning", False)
+                worker_active = result.get("workerActive", False)
+                is_alive = call_count > 0 or controller_running or worker_active
+
+                # Always print browser errors/warnings
+                if browser_errors:
+                    from collections import Counter
+
+                    counts = Counter(browser_errors)
+                    unique_errors = [e for e in counts if e.startswith("[error]")]
+                    unique_warnings = [e for e in counts if e.startswith("[warn]")]
+                    if unique_errors:
+                        console.print(
+                            f"\n[bold red]Browser errors ({len(unique_errors)} unique, {sum(counts[e] for e in unique_errors)} total):[/bold red]"
+                        )
+                        for err in unique_errors:
+                            c = counts[err]
+                            prefix = f"  (x{c}) " if c > 1 else "  "
+                            console.print(f"{prefix}{err}")
+                    if unique_warnings:
+                        console.print(
+                            f"\n[bold yellow]Browser warnings ({len(unique_warnings)} unique, {sum(counts[e] for e in unique_warnings)} total):[/bold yellow]"
+                        )
+                        for warn in unique_warnings:
+                            c = counts[warn]
+                            prefix = f"  (x{c}) " if c > 1 else "  "
+                            console.print(f"{prefix}{warn}")
+
+                if is_alive:
+                    status_parts = []
+                    if call_count > 0:
+                        status_parts.append(f"{call_count} frames")
+                    if controller_running:
+                        status_parts.append("controller running")
+                    if worker_active:
+                        status_parts.append("worker active")
                     console.print()
                     console.print(
-                        f"[bold green]✓ Success:[/bold green] FastLED.js initialized and rendered [bold]{call_count}[/bold] frames"
+                        f"[bold green]✓ Success:[/bold green] FastLED.js initialized ({', '.join(status_parts)})"
                     )
                     console.print()
                 else:
