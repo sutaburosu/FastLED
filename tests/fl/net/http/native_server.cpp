@@ -18,6 +18,11 @@ static const int kSocketPort4 = 47224;
 static const int kSocketPort5 = 47225;
 static const int kSocketPort6 = 47226;
 static const int kSocketPort7 = 47227;
+// Additional ports for new socket tests
+static const int kSocketPort8 = 47231;
+static const int kSocketPort9 = 47232;
+static const int kSocketPort10 = 47233;
+static const int kSocketPort11 = 47234;
 
 FL_TEST_CASE("NativeHttpServer - Construction and destruction") {
     NativeHttpServer server(kTestPort);
@@ -529,4 +534,303 @@ FL_TEST_CASE("NativeHttpServer - Update removes disconnected clients") {
 
     // Cleanup
     server.stop();
+}
+
+// =============================================================================
+// Additional POSIX socket tests - HTTP-like patterns over real sockets
+// =============================================================================
+
+FL_TEST_CASE("NativeHttpServer - HTTP-like request/response exchange") {
+    NativeHttpServer server(kSocketPort8);
+    server.setNonBlocking(true);
+    server.start();
+
+    NativeHttpClient client("localhost", kSocketPort8);
+    client.setNonBlocking(true);
+    client.connect();
+
+    // Accept client
+    for (int i = 0; i < 10; ++i) {
+        server.acceptClients();
+        if (server.getClientCount() > 0) break;
+        #ifdef _WIN32
+        Sleep(10);
+        #else
+        usleep(10000);
+        #endif
+    }
+    FL_REQUIRE(server.getClientCount() == 1);
+    uint32_t clientId = server.getClientIds()[0];
+
+    // Client sends HTTP-like GET request
+    const char httpReq[] = "GET /api/status HTTP/1.1\r\nHost: localhost\r\n\r\n";
+    int reqLen = (int)(sizeof(httpReq) - 1);  // exclude null terminator
+    fl::span<const uint8_t> reqSpan((const uint8_t*)httpReq, reqLen);
+    int sent = client.send(reqSpan);
+    FL_CHECK(sent == reqLen);
+
+    // Server receives the full request
+    uint8_t reqBuf[256];
+    int totalRecv = 0;
+    for (int i = 0; i < 20 && totalRecv < reqLen; ++i) {
+        fl::span<uint8_t> recvSpan(reqBuf + totalRecv, (int)sizeof(reqBuf) - totalRecv);
+        int got = server.recv(clientId, recvSpan);
+        if (got > 0) {
+            totalRecv += got;
+        } else {
+            #ifdef _WIN32
+            Sleep(5);
+            #else
+            usleep(5000);
+            #endif
+        }
+    }
+    FL_CHECK(totalRecv == reqLen);
+    // Verify request starts with "GET"
+    FL_CHECK(reqBuf[0] == 'G');
+    FL_CHECK(reqBuf[1] == 'E');
+    FL_CHECK(reqBuf[2] == 'T');
+
+    // Server sends HTTP-like response
+    const char httpResp[] = "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nOK";
+    int respLen = (int)(sizeof(httpResp) - 1);  // exclude null terminator
+    fl::span<const uint8_t> respSpan((const uint8_t*)httpResp, respLen);
+    sent = server.send(clientId, respSpan);
+    FL_CHECK(sent == respLen);
+
+    // Client receives the full response
+    uint8_t respBuf[256];
+    totalRecv = 0;
+    for (int i = 0; i < 20 && totalRecv < respLen; ++i) {
+        fl::span<uint8_t> recvSpan(respBuf + totalRecv, (int)sizeof(respBuf) - totalRecv);
+        int got = client.recv(recvSpan);
+        if (got > 0) {
+            totalRecv += got;
+        } else {
+            #ifdef _WIN32
+            Sleep(5);
+            #else
+            usleep(5000);
+            #endif
+        }
+    }
+    FL_CHECK(totalRecv == respLen);
+    // Verify response starts with "HTTP/1.1 200"
+    FL_CHECK(respBuf[0] == 'H');
+    FL_CHECK(respBuf[5] == '1');
+    FL_CHECK(respBuf[6] == '.');
+    FL_CHECK(respBuf[7] == '1');
+    FL_CHECK(respBuf[9] == '2');
+    FL_CHECK(respBuf[10] == '0');
+    FL_CHECK(respBuf[11] == '0');
+
+    server.stop();
+    client.close();
+}
+
+FL_TEST_CASE("NativeHttpServer - Server restart on same port (SO_REUSEADDR)") {
+    // First server instance
+    {
+        NativeHttpServer server(kSocketPort9);
+        server.setNonBlocking(true);
+        FL_CHECK(server.start());
+        FL_CHECK(server.isListening());
+
+        // Connect a client to prove it works
+        NativeHttpClient client("localhost", kSocketPort9);
+        client.connect();
+
+        for (int i = 0; i < 10; ++i) {
+            server.acceptClients();
+            if (server.getClientCount() > 0) break;
+            #ifdef _WIN32
+            Sleep(10);
+            #else
+            usleep(10000);
+            #endif
+        }
+        FL_CHECK(server.getClientCount() == 1);
+
+        client.close();
+        server.stop();
+    }
+
+    // Second server instance on the SAME port (tests SO_REUSEADDR)
+    {
+        NativeHttpServer server(kSocketPort9);
+        server.setNonBlocking(true);
+        bool started = server.start();
+        FL_CHECK(started);
+        FL_CHECK(server.isListening());
+
+        // Connect a new client to prove it works after restart
+        NativeHttpClient client("localhost", kSocketPort9);
+        client.connect();
+
+        for (int i = 0; i < 10; ++i) {
+            server.acceptClients();
+            if (server.getClientCount() > 0) break;
+            #ifdef _WIN32
+            Sleep(10);
+            #else
+            usleep(10000);
+            #endif
+        }
+        FL_CHECK(server.getClientCount() == 1);
+
+        client.close();
+        server.stop();
+    }
+}
+
+FL_TEST_CASE("NativeHttpServer - Large server-to-client transfer") {
+    NativeHttpServer server(kSocketPort10);
+    server.setNonBlocking(true);
+    server.start();
+
+    NativeHttpClient client("localhost", kSocketPort10);
+    client.setNonBlocking(true);
+    client.connect();
+
+    // Accept client
+    for (int i = 0; i < 10; ++i) {
+        server.acceptClients();
+        if (server.getClientCount() > 0) break;
+        #ifdef _WIN32
+        Sleep(10);
+        #else
+        usleep(10000);
+        #endif
+    }
+    FL_REQUIRE(server.getClientCount() == 1);
+    uint32_t clientId = server.getClientIds()[0];
+
+    // Server sends a 4KB payload (simulating a large HTTP response body)
+    const int payloadSize = 4096;
+    fl::vector<uint8_t> payload;
+    payload.resize(payloadSize);
+    for (int i = 0; i < payloadSize; ++i) {
+        payload[i] = (uint8_t)(i & 0xFF);
+    }
+
+    int totalSent = 0;
+    while (totalSent < payloadSize) {
+        int remaining = payloadSize - totalSent;
+        fl::span<const uint8_t> chunk(payload.data() + totalSent, remaining);
+        int sent = server.send(clientId, chunk);
+        if (sent > 0) {
+            totalSent += sent;
+        } else {
+            #ifdef _WIN32
+            Sleep(1);
+            #else
+            usleep(1000);
+            #endif
+        }
+    }
+    FL_CHECK(totalSent == payloadSize);
+
+    // Client receives all data
+    fl::vector<uint8_t> recvBuf;
+    recvBuf.resize(payloadSize);
+    int totalRecv = 0;
+    for (int attempt = 0; attempt < 100 && totalRecv < payloadSize; ++attempt) {
+        uint8_t tmp[1024];
+        int got = client.recv(tmp);
+        if (got > 0) {
+            for (int j = 0; j < got && totalRecv < payloadSize; ++j) {
+                recvBuf[totalRecv++] = tmp[j];
+            }
+        } else {
+            #ifdef _WIN32
+            Sleep(5);
+            #else
+            usleep(5000);
+            #endif
+        }
+    }
+    FL_CHECK(totalRecv == payloadSize);
+
+    // Verify data integrity
+    bool match = true;
+    for (int i = 0; i < payloadSize; ++i) {
+        if (recvBuf[i] != (uint8_t)(i & 0xFF)) {
+            match = false;
+            break;
+        }
+    }
+    FL_CHECK(match);
+
+    server.stop();
+    client.close();
+}
+
+FL_TEST_CASE("NativeHttpServer - Multiple sequential requests on same connection") {
+    NativeHttpServer server(kSocketPort11);
+    server.setNonBlocking(true);
+    server.start();
+
+    NativeHttpClient client("localhost", kSocketPort11);
+    client.setNonBlocking(true);
+    client.connect();
+
+    // Accept client
+    for (int i = 0; i < 10; ++i) {
+        server.acceptClients();
+        if (server.getClientCount() > 0) break;
+        #ifdef _WIN32
+        Sleep(10);
+        #else
+        usleep(10000);
+        #endif
+    }
+    FL_REQUIRE(server.getClientCount() == 1);
+    uint32_t clientId = server.getClientIds()[0];
+
+    // Perform 3 request/response cycles on the same connection (HTTP keep-alive)
+    for (int cycle = 0; cycle < 3; ++cycle) {
+        // Client sends numbered request
+        uint8_t req[4] = {'R', 'E', 'Q', (uint8_t)('0' + cycle)};
+        FL_CHECK(client.send(req) == 4);
+
+        // Server receives
+        uint8_t srvBuf[16];
+        int got = -1;
+        for (int i = 0; i < 10; ++i) {
+            got = server.recv(clientId, srvBuf);
+            if (got > 0) break;
+            #ifdef _WIN32
+            Sleep(5);
+            #else
+            usleep(5000);
+            #endif
+        }
+        FL_CHECK(got == 4);
+        FL_CHECK(srvBuf[3] == (uint8_t)('0' + cycle));
+
+        // Server sends numbered response
+        uint8_t resp[4] = {'R', 'S', 'P', (uint8_t)('0' + cycle)};
+        FL_CHECK(server.send(clientId, resp) == 4);
+
+        // Client receives
+        uint8_t cliBuf[16];
+        got = -1;
+        for (int i = 0; i < 10; ++i) {
+            got = client.recv(cliBuf);
+            if (got > 0) break;
+            #ifdef _WIN32
+            Sleep(5);
+            #else
+            usleep(5000);
+            #endif
+        }
+        FL_CHECK(got == 4);
+        FL_CHECK(cliBuf[0] == 'R');
+        FL_CHECK(cliBuf[1] == 'S');
+        FL_CHECK(cliBuf[2] == 'P');
+        FL_CHECK(cliBuf[3] == (uint8_t)('0' + cycle));
+    }
+
+    server.stop();
+    client.close();
 }
