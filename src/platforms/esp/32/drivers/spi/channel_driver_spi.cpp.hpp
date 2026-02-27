@@ -346,10 +346,21 @@ void ChannelEngineSpi::show() {
     mPipeline.mDmaInFlight = false;
     mPipeline.mEncodeIdx = 0;
 
-    // Start the first channel
+#ifdef FL_IS_ESP_32C6
+    // ESP32-C6 SYNC MODE: The async DMA pipeline (spi_device_queue_trans) does not
+    // produce GPIO output on ESP32-C6, even though transactions complete successfully.
+    // Use the synchronous blocking path (spi_device_polling_transmit via
+    // beginBatchedTransmission) which works correctly on this chip.
+    beginBatchedTransmission(mTransmittingChannels);
+    mTransmittingChannels.clear();
+#else
+    // ASYNC MODE: Start the first channel's DMA pipeline and return immediately.
+    // poll() will advance the pipeline by checking DMA completion and encoding/
+    // queueing subsequent chunks.
     if (startNextChannel()) {
         startFirstDma();
     }
+#endif
 }
 
 IChannelDriver::DriverState ChannelEngineSpi::poll() {
@@ -650,44 +661,31 @@ ChannelEngineSpi::acquireChannel(gpio_num_t pin, const ChipsetTimingConfig &timi
             channel.ledBytesRemaining = 0;
 
             if (channel.spi_host != SPI_HOST_MAX) {
-                // SPI hardware still allocated - just reroute MOSI to this pin
-                // The MOSI signal might be routed to a different pin from a previous batch.
-                // Use GPIO matrix to reroute SPI MOSI output to this pin.
-                gpio_set_direction(pin, GPIO_MODE_OUTPUT);
-                int mosiSignal = getSpiMosiSignalIndex(channel.spi_host);
-                if (mosiSignal >= 0) {
-                    esp_rom_gpio_connect_out_signal(pin, mosiSignal, false, false);
-                    FL_DBG_EVERY(100, "ChannelEngineSpi: Rerouted MOSI to pin " << pin);
-                } else {
-                    FL_WARN("ChannelEngineSpi: Failed to get MOSI signal for spi_host " << channel.spi_host);
-                }
+                // SPI hardware still allocated - reuse directly (same pin + timing)
+                FL_DBG_EVERY(100, "ChannelEngineSpi: Reusing SPI for pin " << pin);
                 return &channel;
             }
 
             // SPI hardware was released - need full reinit
-            // First try to reclaim SPI from another idle channel
+            // First try to free SPI from another idle channel to make host available
             for (auto &other : mChannels) {
                 if (!other.inUse && other.spi_host != SPI_HOST_MAX && &other != &channel) {
-                    // Steal SPI device and host from the other channel
-                    channel.spi_host = other.spi_host;
-                    channel.spi_device = other.spi_device;
-                    other.spi_host = SPI_HOST_MAX;
-                    other.spi_device = nullptr;
-                    // Reroute MOSI to new pin via GPIO matrix
-                    gpio_set_direction(pin, GPIO_MODE_OUTPUT);
-                    int mosiSignal = getSpiMosiSignalIndex(channel.spi_host);
-                    if (mosiSignal >= 0) {
-                        esp_rom_gpio_connect_out_signal(pin, mosiSignal, false, false);
-                        FL_DBG("ChannelEngineSpi: Rerouted MOSI from pin "
-                               << static_cast<int>(other.pin) << " to pin " << pin);
-                    } else {
-                        FL_WARN("ChannelEngineSpi: Failed to get MOSI signal for spi_host " << channel.spi_host);
+                    // On ESP32-C6 (and potentially other variants), esp_rom_gpio_connect_out_signal()
+                    // is NOT sufficient to reroute SPI MOSI. Must free and reinit the bus with
+                    // the correct mosi_io_num via spi_bus_initialize().
+                    FL_DBG("ChannelEngineSpi: Freeing SPI from idle pin "
+                           << static_cast<int>(other.pin) << " for reuse by pin " << pin);
+                    if (other.spi_device) {
+                        spi_bus_remove_device(other.spi_device);
+                        other.spi_device = nullptr;
                     }
-                    return &channel;
+                    releaseSpiHost(other.spi_host);
+                    other.spi_host = SPI_HOST_MAX;
+                    break;
                 }
             }
 
-            // No SPI hardware available anywhere - reinitialize
+            // Reinitialize SPI hardware with the correct pin
             FL_DBG("ChannelEngineSpi: Reinitializing SPI hardware for pin " << pin);
             if (!reinitSpiHardware(&channel, pin, dataSize)) {
                 FL_WARN("ChannelEngineSpi: Failed to reinit SPI for pin " << pin);
@@ -809,6 +807,9 @@ bool ChannelEngineSpi::reinitSpiHardware(SpiChannelState *state, gpio_num_t pin,
     const u32 total_period = state->timing.total_period_ns();
     const u32 spi_clock_hz = calculateWave8SpiClockHz(total_period > 0 ? total_period : 1250);
 
+    // Reset GPIO before SPI reinit (required for RTC GPIOs on ESP32-C6)
+    gpio_reset_pin(pin);
+
     spi_bus_config_t bus_config = {};
     bus_config.mosi_io_num = pin;
     bus_config.miso_io_num = -1;
@@ -847,7 +848,7 @@ bool ChannelEngineSpi::reinitSpiHardware(SpiChannelState *state, gpio_num_t pin,
         return false;
     }
 
-    gpio_set_drive_capability(pin, GPIO_DRIVE_CAP_3);
+    // NOTE: Do NOT call gpio_set_drive_capability() here (see createChannel())
 
     FL_DBG_EVERY(100, "ChannelEngineSpi: Reinit SPI hardware for pin " << pin
            << " host=" << static_cast<int>(state->spi_host));
@@ -894,9 +895,13 @@ bool ChannelEngineSpi::createChannel(SpiChannelState *state, gpio_num_t pin,
     const size_t spiBufferSize = dataSize * WAVE8_BYTES_PER_COLOR_BYTE;
     state->useDMA = (spiBufferSize > 64);
 
-    // Espressif's led_strip driver does NOT call gpio_reset_pin() before
-    // spi_bus_initialize(). The SPI driver handles GPIO configuration internally.
-    FL_DBG("ChannelEngineSpi: Skipping gpio_reset_pin for GPIO " << static_cast<int>(pin) << " (following Espressif pattern)");
+    // Reset GPIO to default state before SPI initialization.
+    // On ESP32-C6, GPIO 0-6 are RTC GPIOs (XTAL_32K_P, etc.) that may be in
+    // analog/RTC mode at boot. gpio_reset_pin() disconnects them from RTC/analog
+    // functions so spi_bus_initialize() can properly route the SPI MOSI signal
+    // through the GPIO matrix. Without this, SPI MOSI may fail to produce output
+    // on these pins even though spi_bus_initialize() returns ESP_OK.
+    gpio_reset_pin(pin);
 
     // Configure SPI bus matching Espressif led_strip pattern EXACTLY
     // Reference: https://github.com/espressif/idf-extra-components/blob/master/led_strip/src/led_strip_spi_dev.c
@@ -1007,22 +1012,11 @@ bool ChannelEngineSpi::createChannel(SpiChannelState *state, gpio_num_t pin,
                 << " kHz (tolerance: ±500kHz)");
     }
 
-    // DEBUG: Verify GPIO is configured as output by using ESP-IDF API
-    // After spi_bus_initialize, the MOSI pin should be set as output
-    int gpio_level = gpio_get_level(pin);
-    FL_DBG("ChannelEngineSpi: GPIO " << static_cast<int>(pin) << " current level: " << gpio_level);
-
-    // Set maximum GPIO drive capability for better signal integrity
-    esp_err_t drive_err = gpio_set_drive_capability(pin, GPIO_DRIVE_CAP_3);
-    if (drive_err != ESP_OK) {
-        FL_WARN("ChannelEngineSpi: Failed to set GPIO drive capability: " << drive_err);
-    } else {
-        FL_DBG("ChannelEngineSpi: Set GPIO " << static_cast<int>(pin) << " drive to GPIO_DRIVE_CAP_3 (strongest)");
-    }
-
-    // Rely on spi_bus_initialize() for GPIO configuration (matches Espressif led_strip)
-    FL_DBG("ChannelEngineSpi: Relying on spi_bus_initialize() for GPIO "
-           << static_cast<int>(pin) << " routing");
+    // NOTE: Do NOT call gpio_set_drive_capability() here.
+    // On ESP32-C6, calling gpio_set_drive_capability() after spi_bus_initialize()
+    // disrupts the SPI GPIO routing configured by the driver, causing MOSI to
+    // stop outputting data. spi_bus_initialize() handles all GPIO configuration.
+    // Matches Espressif's led_strip driver which does not modify GPIO after init.
 
     // Allocate staging buffers (4KB each, double-buffered)
     // Following Espressif's led_strip driver pattern:
