@@ -16,8 +16,6 @@
   || defined(FL_IS_TEENSY_30) \
   || defined(FL_IS_TEENSY_31) \
   || defined(FL_IS_TEENSY_32) \
-  || defined(FL_IS_TEENSY_30) \
-  || defined(FL_IS_TEENSY_3X) \
   || defined(FL_IS_STM32_F1) \
   || defined(FL_IS_ESP8266) \
   || defined(ARDUINO_ARCH_RENESAS_UNO) \
