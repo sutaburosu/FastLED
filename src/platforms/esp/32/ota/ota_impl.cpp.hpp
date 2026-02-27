@@ -1280,7 +1280,7 @@ private:
                 FL_DBG("OTA: Sent AUTH challenge");
 
                 // Wait for authentication response (with timeout)
-                len = recvfrom(self->mOtaUdpSocket, buffer, sizeof(buffer) - 1, 0,
+                len = lwip_recvfrom(self->mOtaUdpSocket, buffer, sizeof(buffer) - 1, 0,
                               (struct sockaddr*)&client_addr, &client_len);
                 if (len <= 0) {
                     FL_WARN("OTA: Authentication timeout");
