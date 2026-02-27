@@ -12,8 +12,8 @@ namespace fl {
 
 struct ServerThreadData {
     fl::shared_ptr<HttpStreamServer> mServer;
-    std::atomic<bool> mRunning;  // okay std namespace
-    std::thread mThread;  // okay std namespace
+    fl::atomic<bool> mRunning;
+    fl::thread mThread;
 };
 
 // Static thread function that captures shared_ptr to data, not raw `this`
@@ -26,7 +26,7 @@ static void serverThreadFunc(fl::shared_ptr<ServerThreadData> data) {
         data->mServer->acceptClients();
 
         // Small sleep to prevent CPU spinning
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));  // okay std namespace
+        fl::this_thread::sleep_for(fl::chrono::milliseconds(10));
     }
 }
 
@@ -52,11 +52,10 @@ bool ServerThread::start() {
     mData->mRunning.store(true);
     // Pass shared_ptr to data so the thread keeps it alive even if
     // the ServerThread object is destroyed before join completes.
-    mData->mThread = std::thread(serverThreadFunc, mData); // okay std namespace
+    mData->mThread = fl::thread(serverThreadFunc, mData);
 
     // Give the thread time to start
-    std::this_thread::sleep_for(                          // okay std namespace
-        std::chrono::milliseconds(100));                  // okay std namespace
+    fl::this_thread::sleep_for(fl::chrono::milliseconds(100));
 
     return true;
 }
