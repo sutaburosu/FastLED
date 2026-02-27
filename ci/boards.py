@@ -626,6 +626,7 @@ APOLLO3_SPARKFUN_THING_PLUS_EXPLORABLE = Board(
 ESP32DEV = Board(
     board_name="esp32dev",
     platform=ESP32_IDF_5_3_PIOARDUINO,
+    board_partitions="huge_app.csv",
 )
 
 # TODO: esp32dev_qemu remove when possible, we don't want an extra board definition unless we need it
