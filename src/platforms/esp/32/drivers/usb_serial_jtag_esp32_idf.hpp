@@ -32,6 +32,12 @@ FL_EXTERN_C_BEGIN
 
 FL_EXTERN_C_END
 
+// Compatibility: esp_rom_output_tx_one_char was added in ESP-IDF 5.3.
+// Older IDF versions only have esp_rom_uart_tx_one_char.
+#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 3, 0)
+#define esp_rom_output_tx_one_char(c) esp_rom_uart_tx_one_char(c)
+#endif
+
 namespace fl {
 
 // ============================================================================

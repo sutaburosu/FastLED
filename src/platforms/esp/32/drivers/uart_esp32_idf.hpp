@@ -24,6 +24,12 @@ FL_EXTERN_C_BEGIN
 // IWYU pragma: end_keep
 FL_EXTERN_C_END
 
+// Compatibility: esp_rom_output_tx_one_char was added in ESP-IDF 5.3.
+// Older IDF versions only have esp_rom_uart_tx_one_char.
+#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 3, 0)
+#define esp_rom_output_tx_one_char(c) esp_rom_uart_tx_one_char(c)
+#endif
+
 namespace fl {
 
 // ============================================================================
@@ -100,40 +106,56 @@ static int convertIntrFlags(UartIntrPriority priority, UartIntrFlags flags) {
 static uart_sclk_t convertClockSource(UartClockSource source) {
     switch (source) {
         case UartClockSource::CLK_DEFAULT:
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
+#if defined(UART_SCLK_DEFAULT)
             return UART_SCLK_DEFAULT;
 #elif defined(UART_SCLK_APB)
             return UART_SCLK_APB;
+#elif defined(UART_SCLK_REF_TICK)
+            return UART_SCLK_REF_TICK;
 #else
-            return UART_SCLK_DEFAULT;
+#error "No UART clock source available"
 #endif
         case UartClockSource::CLK_APB:
 #if defined(UART_SCLK_APB)
             return UART_SCLK_APB;
+#elif defined(UART_SCLK_DEFAULT)
+            return UART_SCLK_DEFAULT;
+#elif defined(UART_SCLK_REF_TICK)
+            return UART_SCLK_REF_TICK;
 #else
-            return UART_SCLK_DEFAULT;  // ESP32-C6/H2 don't have UART_SCLK_APB
+#error "No UART clock source available"
 #endif
         case UartClockSource::CLK_REF_TICK:
 #if defined(UART_SCLK_REF_TICK)
             return UART_SCLK_REF_TICK;
 #elif defined(UART_SCLK_APB)
-            return UART_SCLK_APB;  // Fallback if REF_TICK not supported
-#else
+            return UART_SCLK_APB;
+#elif defined(UART_SCLK_DEFAULT)
             return UART_SCLK_DEFAULT;
+#else
+#error "No UART clock source available"
 #endif
         case UartClockSource::CLK_XTAL:
 #if defined(UART_SCLK_XTAL)
             return UART_SCLK_XTAL;
 #elif defined(UART_SCLK_APB)
-            return UART_SCLK_APB;  // Fallback if XTAL not supported
-#else
+            return UART_SCLK_APB;
+#elif defined(UART_SCLK_DEFAULT)
             return UART_SCLK_DEFAULT;
+#elif defined(UART_SCLK_REF_TICK)
+            return UART_SCLK_REF_TICK;
+#else
+#error "No UART clock source available"
 #endif
         default:
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
+#if defined(UART_SCLK_DEFAULT)
             return UART_SCLK_DEFAULT;
-#else
+#elif defined(UART_SCLK_APB)
             return UART_SCLK_APB;
+#elif defined(UART_SCLK_REF_TICK)
+            return UART_SCLK_REF_TICK;
+#else
+#error "No UART clock source available"
 #endif
     }
 }
