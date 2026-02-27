@@ -114,7 +114,8 @@
 /// Platform-specific behavior:
 /// - x86/WASM: Uses __attribute__((aligned(N))) for cache-line optimization
 /// - AVR: Caps at 4 bytes (flash PROGMEM doesn't benefit from larger alignment)
-/// - ESP32/ESP8266: Supports full alignment (cache-line optimization)
+/// - ESP32: Supports full alignment (cache-line optimization)
+/// - ESP8266: Caps at 4 bytes (no memalign support)
 /// - ARM: Supports full alignment
 
 #ifndef FL_ALIGN_PROGMEM
