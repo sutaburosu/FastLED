@@ -264,6 +264,7 @@ def create_checkers(
         StdNamespaceChecker(),
         TestPathStructureChecker(),
         UnitTestChecker(),
+        CtypeGlobalChecker(),  # Checks for bare C ctype/cstring functions (use fl:: variants)
     ]
 
     return checkers_by_scope

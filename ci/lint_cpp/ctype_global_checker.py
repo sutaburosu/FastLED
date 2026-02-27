@@ -1,13 +1,20 @@
 #!/usr/bin/env python3
 # pyright: reportUnknownMemberType=false
-"""Checker for global-scope C ctype functions - should use fl:: variants instead."""
+"""Checker for global-scope C library functions - should use fl:: variants instead.
+
+Covers both <cctype> functions (isspace, isdigit, etc.) and <cstring> functions
+(strlen, memcmp, memcpy, etc.). All have fl:: equivalents defined in
+fl/stl/cctype.h and fl/stl/cstring.h respectively.
+
+Suppression: add '// ok ctype' or '// okay ctype' to the line.
+"""
 
 import re
 
 from ci.util.check_files import FileContent, FileContentChecker, is_excluded_file
 
 
-# C standard library character functions that have fl:: equivalents
+# C standard library character functions that have fl:: equivalents (from <cctype>)
 CTYPE_FUNCTIONS = [
     "isspace",
     "isdigit",
@@ -19,20 +26,64 @@ CTYPE_FUNCTIONS = [
     "toupper",
 ]
 
+# C string/memory functions that have fl:: equivalents (from <cstring>)
+# See fl/stl/cstring.h for the full list of wrappers
+CSTRING_FUNCTIONS = [
+    # String functions
+    "strlen",
+    "strcmp",
+    "strncmp",
+    "strcpy",
+    "strncpy",
+    "strcat",
+    "strncat",
+    "strstr",
+    "strchr",
+    "strrchr",
+    "strspn",
+    "strcspn",
+    "strpbrk",
+    "strtok",
+    "strerror",
+    # Memory functions
+    "memcpy",
+    "memcmp",
+    "memmove",
+    "memset",
+    "memchr",
+]
+
+# Combined list of all checked functions
+_ALL_FUNCTIONS = CTYPE_FUNCTIONS + CSTRING_FUNCTIONS
+
+# Files that legitimately use bare C string/memory functions (implementation files)
+_WHITELISTED_SUFFIXES: tuple[str, ...] = (
+    "fl/stl/cctype.h",
+    "fl/stl/cstring.h",
+    "fl/stl/cstring.cpp.hpp",
+)
+
 # Match bare function call or ::function call, but not fl::function
 # Uses negative lookbehind to exclude fl:: prefix
-# (?<!\w) prevents matching substring endings like "myisspace"
-# (?<!fl::) prevents matching fl::isspace
-_PATTERN = re.compile(r"(?<!\w)(?::{2})?\b(" + "|".join(CTYPE_FUNCTIONS) + r")\s*\(")
+# (?<!\w) prevents matching substring endings like "myisspace" or "mystrlen"
+# (?<!fl::) prevents matching fl::isspace or fl::strlen
+_PATTERN = re.compile(r"(?<!\w)(?::{2})?\b(" + "|".join(_ALL_FUNCTIONS) + r")\s*\(")
 
 # Match fl:: prefixed calls (these are OK)
-_FL_PATTERN = re.compile(r"\bfl::(" + "|".join(CTYPE_FUNCTIONS) + r")\s*\(")
+_FL_PATTERN = re.compile(r"\bfl::(" + "|".join(_ALL_FUNCTIONS) + r")\s*\(")
+
+# Map function -> its header for better error messages
+_FUNC_HEADER: dict[str, str] = {}
+for _f in CTYPE_FUNCTIONS:
+    _FUNC_HEADER[_f] = "fl/stl/cctype.h"
+for _f in CSTRING_FUNCTIONS:
+    _FUNC_HEADER[_f] = "fl/stl/cstring.h"
 
 
 class CtypeGlobalChecker(FileContentChecker):
-    """Checker for global-scope C ctype function usage."""
+    """Checker for global-scope C library function usage (ctype + cstring)."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.violations: dict[str, list[tuple[int, str]]] = {}
 
     def should_process_file(self, file_path: str) -> bool:
@@ -46,17 +97,22 @@ class CtypeGlobalChecker(FileContentChecker):
         if "third_party" in file_path or "thirdparty" in file_path:
             return False
 
-        # Exclude the cctype.h definition file itself
+        # Exclude the definition files themselves
         normalized = file_path.replace("\\", "/")
-        if normalized.endswith("fl/stl/cctype.h"):
+        if any(normalized.endswith(suffix) for suffix in _WHITELISTED_SUFFIXES):
             return False
 
         return True
 
     def check_file_content(self, file_content: FileContent) -> list[str]:
-        """Check file content for global-scope ctype function usage."""
+        """Check file content for global-scope C library function usage."""
         violations: list[tuple[int, str]] = []
         in_multiline_comment = False
+        # Track namespace fl depth — bare calls inside namespace fl { } are fine
+        # because they resolve to fl::strlen etc. via unqualified lookup
+        fl_namespace_depth = 0
+        brace_depth_at_fl_namespace: list[int] = []
+        brace_depth = 0
 
         for line_number, line in enumerate(file_content.lines, 1):
             stripped = line.strip()
@@ -77,11 +133,31 @@ class CtypeGlobalChecker(FileContentChecker):
             # Remove single-line comment portion
             code_part = line.split("//")[0]
 
+            # Track brace depth and namespace fl
+            if re.search(r"\bnamespace\s+fl\s*\{", code_part):
+                fl_namespace_depth += 1
+                brace_depth_at_fl_namespace.append(brace_depth)
+            for ch in code_part:
+                if ch == "{":
+                    brace_depth += 1
+                elif ch == "}":
+                    brace_depth -= 1
+                    if (
+                        brace_depth_at_fl_namespace
+                        and brace_depth == brace_depth_at_fl_namespace[-1]
+                    ):
+                        fl_namespace_depth -= 1
+                        brace_depth_at_fl_namespace.pop()
+
+            # Skip lines inside namespace fl — bare calls resolve to fl:: variants
+            if fl_namespace_depth > 0:
+                continue
+
             # Skip lines with suppression comment
             if "// ok ctype" in line or "// okay ctype" in line:
                 continue
 
-            # Find all ctype function calls
+            # Find all function calls
             all_matches = _PATTERN.findall(code_part)
             if not all_matches:
                 continue
@@ -99,10 +175,12 @@ class CtypeGlobalChecker(FileContentChecker):
                     bare_hits = bare_pattern.findall(code_part)
                     fl_hits = fl_specific.findall(code_part)
                     if len(bare_hits) > len(fl_hits):
+                        header = _FUNC_HEADER.get(func, "fl/stl/cstring.h")
                         violations.append(
                             (
                                 line_number,
-                                f"Use fl::{func}() instead of {func}() or ::{func}(): {stripped}",
+                                f"Use fl::{func}() instead of {func}() or ::{func}() "
+                                f"— see {header}: {stripped}",
                             )
                         )
 
@@ -113,15 +191,15 @@ class CtypeGlobalChecker(FileContentChecker):
 
 
 def main() -> None:
-    """Run ctype global checker standalone."""
+    """Run ctype/cstring global checker standalone."""
     from ci.util.check_files import run_checker_standalone
     from ci.util.paths import PROJECT_ROOT
 
     checker = CtypeGlobalChecker()
     run_checker_standalone(
         checker,
-        [str(PROJECT_ROOT / "src")],
-        "Found global-scope C ctype function usage (use fl:: variants)",
+        [str(PROJECT_ROOT / "src"), str(PROJECT_ROOT / "tests")],
+        "Found global-scope C library function usage (use fl:: variants)",
     )
 
 

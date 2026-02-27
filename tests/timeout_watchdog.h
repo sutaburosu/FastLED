@@ -110,7 +110,7 @@ inline DWORD WINAPI watchdog_timer_thread(LPVOID param) {
 inline void setup(double timeout_seconds = 20.0) {
     // Check if watchdog should be disabled
     const char* disable_watchdog = getenv("FASTLED_DISABLE_TIMEOUT_WATCHDOG");
-    if (disable_watchdog && (strcmp(disable_watchdog, "1") == 0 || strcmp(disable_watchdog, "true") == 0)) {
+    if (disable_watchdog && (strcmp(disable_watchdog, "1") == 0 || strcmp(disable_watchdog, "true") == 0)) { // ok ctype
         printf("Timeout watchdog disabled (FASTLED_DISABLE_TIMEOUT_WATCHDOG set)\n");
         return;
     }
@@ -222,7 +222,7 @@ inline void watchdog_signal_handler(int sig) {
 inline void setup(double timeout_seconds = 20.0) {
     // Check if watchdog should be disabled
     const char* disable_watchdog = getenv("FASTLED_DISABLE_TIMEOUT_WATCHDOG");
-    if (disable_watchdog && (strcmp(disable_watchdog, "1") == 0 || strcmp(disable_watchdog, "true") == 0)) {
+    if (disable_watchdog && (strcmp(disable_watchdog, "1") == 0 || strcmp(disable_watchdog, "true") == 0)) { // ok ctype
         printf("Timeout watchdog disabled (FASTLED_DISABLE_TIMEOUT_WATCHDOG set)\n");
         return;
     }
@@ -243,7 +243,7 @@ inline void setup(double timeout_seconds = 20.0) {
 
     // Set up signal handler for SIGALRM
     struct sigaction sa;
-    memset(&sa, 0, sizeof(sa));
+    memset(&sa, 0, sizeof(sa)); // ok ctype
     sa.sa_handler = watchdog_signal_handler;
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = 0;

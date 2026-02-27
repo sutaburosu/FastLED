@@ -4005,17 +4005,17 @@ FL_TEST_CASE("StringHolder - Capacity off-by-one bugs") {
 
         fl::string s1("Hello");
         FL_CHECK(s1.c_str()[5] == '\0');
-        FL_CHECK(::strlen(s1.c_str()) == 5);
+        FL_CHECK(fl::strlen(s1.c_str()) == 5);
 
         s1.append(" World");
         FL_CHECK(s1.c_str()[11] == '\0');
-        FL_CHECK(::strlen(s1.c_str()) == 11);
+        FL_CHECK(fl::strlen(s1.c_str()) == 11);
 
         // Force heap allocation
         fl::string long_append(FASTLED_STR_INLINED_SIZE, 'x');
         s1.append(long_append.c_str());
         FL_CHECK(s1.c_str()[s1.size()] == '\0');
-        FL_CHECK(::strlen(s1.c_str()) == s1.size());
+        FL_CHECK(fl::strlen(s1.c_str()) == s1.size());
     }
 
     FL_SUBCASE("Capacity after copy operations") {
@@ -4041,8 +4041,8 @@ FL_TEST_CASE("StringHolder - Capacity off-by-one bugs") {
         // Both should maintain proper null termination
         FL_CHECK(s1.c_str()[s1.size()] == '\0');
         FL_CHECK(s2.c_str()[s2.size()] == '\0');
-        FL_CHECK(::strlen(s1.c_str()) == s1.size());
-        FL_CHECK(::strlen(s2.c_str()) == s2.size());
+        FL_CHECK(fl::strlen(s1.c_str()) == s1.size());
+        FL_CHECK(fl::strlen(s2.c_str()) == s2.size());
     }
 }
 
@@ -4077,7 +4077,7 @@ FL_TEST_CASE("StringHolder - hasCapacity checks") {
 
         // Verify null termination
         FL_CHECK(s.c_str()[100] == '\0');
-        FL_CHECK(::strlen(s.c_str()) == 100);
+        FL_CHECK(fl::strlen(s.c_str()) == 100);
     }
 
     FL_SUBCASE("Write operations and capacity") {
@@ -4085,15 +4085,15 @@ FL_TEST_CASE("StringHolder - hasCapacity checks") {
 
         // Use write() method which checks capacity
         const char* data1 = "First chunk of data";
-        s.write(data1, ::strlen(data1));
-        FL_CHECK(s.size() == ::strlen(data1));
-        FL_CHECK(::strcmp(s.c_str(), data1) == 0);
+        s.write(data1, fl::strlen(data1));
+        FL_CHECK(s.size() == fl::strlen(data1));
+        FL_CHECK(fl::strcmp(s.c_str(), data1) == 0);
 
         // Write more data
         const char* data2 = " and second chunk";
-        s.write(data2, ::strlen(data2));
+        s.write(data2, fl::strlen(data2));
 
-        fl::size expected_size = ::strlen(data1) + ::strlen(data2);
+        fl::size expected_size = fl::strlen(data1) + fl::strlen(data2);
         FL_CHECK(s.size() == expected_size);
         FL_CHECK(s.c_str()[expected_size] == '\0');
 
@@ -4121,7 +4121,7 @@ FL_TEST_CASE("StringHolder - Edge cases exposing capacity bugs") {
         fl::string s1("a");
         FL_CHECK(s1.size() == 1);
         FL_CHECK(s1.c_str()[1] == '\0');
-        FL_CHECK(::strlen(s1.c_str()) == 1);
+        FL_CHECK(fl::strlen(s1.c_str()) == 1);
 
         // Length SIZE-1 (should fit inline with null terminator)
         fl::string str_size_minus_1(FASTLED_STR_INLINED_SIZE - 1, 'm');
@@ -4134,14 +4134,14 @@ FL_TEST_CASE("StringHolder - Edge cases exposing capacity bugs") {
         fl::string s_s(str_size.c_str());
         FL_CHECK(s_s.size() == FASTLED_STR_INLINED_SIZE);
         FL_CHECK(s_s.c_str()[FASTLED_STR_INLINED_SIZE] == '\0');
-        FL_CHECK(::strlen(s_s.c_str()) == FASTLED_STR_INLINED_SIZE);
+        FL_CHECK(fl::strlen(s_s.c_str()) == FASTLED_STR_INLINED_SIZE);
 
         // Length SIZE+1
         fl::string str_size_plus_1(FASTLED_STR_INLINED_SIZE + 1, 'p');
         fl::string s_sp1(str_size_plus_1.c_str());
         FL_CHECK(s_sp1.size() == FASTLED_STR_INLINED_SIZE + 1);
         FL_CHECK(s_sp1.c_str()[FASTLED_STR_INLINED_SIZE + 1] == '\0');
-        FL_CHECK(::strlen(s_sp1.c_str()) == FASTLED_STR_INLINED_SIZE + 1);
+        FL_CHECK(fl::strlen(s_sp1.c_str()) == FASTLED_STR_INLINED_SIZE + 1);
     }
 
     FL_SUBCASE("Multiple append operations at boundaries") {
@@ -4174,17 +4174,17 @@ FL_TEST_CASE("StringHolder - Edge cases exposing capacity bugs") {
         fl::string sub1 = original.substr(0, 4);  // "This"
         FL_CHECK(sub1.size() == 4);
         FL_CHECK(sub1.c_str()[4] == '\0');
-        FL_CHECK(::strcmp(sub1.c_str(), "This") == 0);
+        FL_CHECK(fl::strcmp(sub1.c_str(), "This") == 0);
 
         fl::string sub2 = original.substr(10, 4);  // "test"
         FL_CHECK(sub2.size() == 4);
         FL_CHECK(sub2.c_str()[4] == '\0');
-        FL_CHECK(::strcmp(sub2.c_str(), "test") == 0);
+        FL_CHECK(fl::strcmp(sub2.c_str(), "test") == 0);
 
         fl::string sub3 = original.substr(original.size() - 10);  // "operations"
         FL_CHECK(sub3.size() == 10);
         FL_CHECK(sub3.c_str()[10] == '\0');
-        FL_CHECK(::strcmp(sub3.c_str(), "operations") == 0);
+        FL_CHECK(fl::strcmp(sub3.c_str(), "operations") == 0);
     }
 }
 
@@ -4197,23 +4197,23 @@ FL_TEST_CASE("StringHolder - Memory safety with incorrect capacity") {
 
         // Grow in various increments
         s.append("_1234567890");
-        FL_CHECK(::strlen(s.c_str()) == s.size());
+        FL_CHECK(fl::strlen(s.c_str()) == s.size());
 
         s.append("_abcdefghijklmnopqrstuvwxyz");
-        FL_CHECK(::strlen(s.c_str()) == s.size());
+        FL_CHECK(fl::strlen(s.c_str()) == s.size());
 
         // Force transition from inline to heap multiple times
         s.clear();
         s = "short";
-        FL_CHECK(::strlen(s.c_str()) == 5);
+        FL_CHECK(fl::strlen(s.c_str()) == 5);
 
         fl::string long_data(FASTLED_STR_INLINED_SIZE * 2, 'L');
         s = long_data.c_str();
-        FL_CHECK(::strlen(s.c_str()) == long_data.length());
+        FL_CHECK(fl::strlen(s.c_str()) == long_data.length());
 
         s.clear();
         s = "tiny";
-        FL_CHECK(::strlen(s.c_str()) == 4);
+        FL_CHECK(fl::strlen(s.c_str()) == 4);
     }
 
     FL_SUBCASE("Copy and modify patterns") {
@@ -4231,10 +4231,10 @@ FL_TEST_CASE("StringHolder - Memory safety with incorrect capacity") {
         s4.append("_s4");
 
         // All should maintain null termination
-        FL_CHECK(::strlen(s1.c_str()) == s1.size());
-        FL_CHECK(::strlen(s2.c_str()) == s2.size());
-        FL_CHECK(::strlen(s3.c_str()) == s3.size());
-        FL_CHECK(::strlen(s4.c_str()) == s4.size());
+        FL_CHECK(fl::strlen(s1.c_str()) == s1.size());
+        FL_CHECK(fl::strlen(s2.c_str()) == s2.size());
+        FL_CHECK(fl::strlen(s3.c_str()) == s3.size());
+        FL_CHECK(fl::strlen(s4.c_str()) == s4.size());
 
         // Original should be unchanged
         FL_CHECK(s1.size() == base.length());
@@ -4250,16 +4250,16 @@ FL_TEST_CASE("StringHolder - Memory safety with incorrect capacity") {
 
         // Insert in the middle
         s.insert(5, " Beautiful");
-        FL_CHECK(::strlen(s.c_str()) == s.size());
-        FL_CHECK(::strcmp(s.c_str(), "Hello Beautiful World") == 0);
+        FL_CHECK(fl::strlen(s.c_str()) == s.size());
+        FL_CHECK(fl::strcmp(s.c_str(), "Hello Beautiful World") == 0);
 
         // Insert at the beginning
         s.insert(0, ">> ");
-        FL_CHECK(::strlen(s.c_str()) == s.size());
+        FL_CHECK(fl::strlen(s.c_str()) == s.size());
 
         // Insert at the end
         s.insert(s.size(), " <<");
-        FL_CHECK(::strlen(s.c_str()) == s.size());
+        FL_CHECK(fl::strlen(s.c_str()) == s.size());
 
         // Verify null termination throughout
         FL_CHECK(s.c_str()[s.size()] == '\0');

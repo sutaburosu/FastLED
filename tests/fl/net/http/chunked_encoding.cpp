@@ -6,7 +6,7 @@ static fl::span<const uint8_t> asSpan(const char* s, size_t len) {
     return fl::span<const uint8_t>(reinterpret_cast<const uint8_t*>(s), len); // ok reinterpret cast
 }
 static fl::span<const uint8_t> asSpan(const char* s) {
-    return asSpan(s, strlen(s));
+    return asSpan(s, fl::strlen(s));
 }
 
 
@@ -23,7 +23,7 @@ FL_TEST_CASE("ChunkedReader: Parse single chunk") {
     auto result = reader.readChunk(buf);
     FL_REQUIRE(result.hasData());
     FL_REQUIRE(result.data.size() == 5);
-    FL_REQUIRE(memcmp(result.data.data(), "Hello", 5) == 0);
+    FL_REQUIRE(fl::memcmp(result.data.data(), "Hello", 5) == 0);
     FL_REQUIRE(!reader.hasChunk());
 }
 
@@ -40,13 +40,13 @@ FL_TEST_CASE("ChunkedReader: Parse multiple chunks") {
     auto r1 = reader.readChunk(buf);
     FL_REQUIRE(r1.hasData());
     FL_REQUIRE(r1.data.size() == 5);
-    FL_REQUIRE(memcmp(r1.data.data(), "Hello", 5) == 0);
+    FL_REQUIRE(fl::memcmp(r1.data.data(), "Hello", 5) == 0);
 
     FL_REQUIRE(reader.hasChunk());
     auto r2 = reader.readChunk(buf);
     FL_REQUIRE(r2.hasData());
     FL_REQUIRE(r2.data.size() == 5);
-    FL_REQUIRE(memcmp(r2.data.data(), "World", 5) == 0);
+    FL_REQUIRE(fl::memcmp(r2.data.data(), "World", 5) == 0);
 
     FL_REQUIRE(!reader.hasChunk());
 }
@@ -64,7 +64,7 @@ FL_TEST_CASE("ChunkedReader: Parse final chunk") {
     auto r = reader.readChunk(buf);
     FL_REQUIRE(r.hasData());
     FL_REQUIRE(r.data.size() == 5);
-    FL_REQUIRE(memcmp(r.data.data(), "Hello", 5) == 0);
+    FL_REQUIRE(fl::memcmp(r.data.data(), "Hello", 5) == 0);
 
     FL_REQUIRE(!reader.hasChunk());
     FL_REQUIRE(reader.isFinal());
@@ -98,7 +98,7 @@ FL_TEST_CASE("ChunkedReader: Parse incremental chunks") {
     auto r = reader.readChunk(buf);
     FL_REQUIRE(r.hasData());
     FL_REQUIRE(r.data.size() == 5);
-    FL_REQUIRE(memcmp(r.data.data(), "Hello", 5) == 0);
+    FL_REQUIRE(fl::memcmp(r.data.data(), "Hello", 5) == 0);
 }
 
 FL_TEST_CASE("ChunkedReader: Parse chunk with hex size") {
@@ -113,7 +113,7 @@ FL_TEST_CASE("ChunkedReader: Parse chunk with hex size") {
     auto r = reader.readChunk(buf);
     FL_REQUIRE(r.hasData());
     FL_REQUIRE(r.data.size() == 10);
-    FL_REQUIRE(memcmp(r.data.data(), "0123456789", 10) == 0);
+    FL_REQUIRE(fl::memcmp(r.data.data(), "0123456789", 10) == 0);
 }
 
 FL_TEST_CASE("ChunkedReader: Parse chunk with uppercase hex") {
@@ -142,7 +142,7 @@ FL_TEST_CASE("ChunkedReader: Parse chunk with extensions (ignore)") {
     auto r = reader.readChunk(buf);
     FL_REQUIRE(r.hasData());
     FL_REQUIRE(r.data.size() == 5);
-    FL_REQUIRE(memcmp(r.data.data(), "Hello", 5) == 0);
+    FL_REQUIRE(fl::memcmp(r.data.data(), "Hello", 5) == 0);
 }
 
 FL_TEST_CASE("ChunkedReader: Buffer too small returns NO_DATA") {
@@ -193,8 +193,8 @@ FL_TEST_CASE("ChunkedWriter: Write single chunk") {
 
     // Expected: "5\r\nHello\r\n"
     const char* expected = "5\r\nHello\r\n";
-    FL_REQUIRE(written == strlen(expected));
-    FL_REQUIRE(memcmp(buf, expected, written) == 0);
+    FL_REQUIRE(written == fl::strlen(expected));
+    FL_REQUIRE(fl::memcmp(buf, expected, written) == 0);
 }
 
 FL_TEST_CASE("ChunkedWriter: Write final chunk") {
@@ -205,8 +205,8 @@ FL_TEST_CASE("ChunkedWriter: Write final chunk") {
 
     // Expected: "0\r\n\r\n"
     const char* expected = "0\r\n\r\n";
-    FL_REQUIRE(written == strlen(expected));
-    FL_REQUIRE(memcmp(buf, expected, written) == 0);
+    FL_REQUIRE(written == fl::strlen(expected));
+    FL_REQUIRE(fl::memcmp(buf, expected, written) == 0);
 }
 
 FL_TEST_CASE("ChunkedWriter: Write large chunk") {
@@ -265,13 +265,13 @@ FL_TEST_CASE("ChunkedReader/Writer: Round-trip test") {
     auto r1 = reader.readChunk(rbuf);
     FL_REQUIRE(r1.hasData());
     FL_REQUIRE(r1.data.size() == 5);
-    FL_REQUIRE(memcmp(r1.data.data(), "Hello", 5) == 0);
+    FL_REQUIRE(fl::memcmp(r1.data.data(), "Hello", 5) == 0);
 
     FL_REQUIRE(reader.hasChunk());
     auto r2 = reader.readChunk(rbuf);
     FL_REQUIRE(r2.hasData());
     FL_REQUIRE(r2.data.size() == 5);
-    FL_REQUIRE(memcmp(r2.data.data(), "World", 5) == 0);
+    FL_REQUIRE(fl::memcmp(r2.data.data(), "World", 5) == 0);
 
     FL_REQUIRE(!reader.hasChunk());
     FL_REQUIRE(reader.isFinal());
