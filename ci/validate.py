@@ -2073,10 +2073,30 @@ async def run(args: Args | None = None) -> int:  # pyright: ignore[reportGeneral
         # OTA Validation Mode (--ota)
         # ============================================================
         if ota_mode:
+            # Compute firmware path based on build system
+            firmware_path: Path | None = None
+            if final_environment is not None:
+                if use_fbuild:
+                    firmware_path = (
+                        build_dir
+                        / ".fbuild"
+                        / "build"
+                        / final_environment
+                        / "firmware.bin"
+                    )
+                else:
+                    firmware_path = (
+                        build_dir
+                        / ".pio"
+                        / "build"
+                        / final_environment
+                        / "firmware.bin"
+                    )
             return await run_ota_validation(
                 upload_port=upload_port,
                 serial_iface=serial_iface,
                 timeout=timeout_seconds,
+                firmware_path=firmware_path,
             )
 
         # SIMD test mode - run comprehensive SIMD test suite via RPC
