@@ -19,17 +19,9 @@
 
 namespace fl {
 
-// Import stb_vorbis types and functions from nested namespace
-using fl::third_party::vorbis::stb_vorbis;
-using fl::third_party::vorbis::stb_vorbis_info;
-using fl::third_party::vorbis::stb_vorbis_open_memory;
-using fl::third_party::vorbis::stb_vorbis_close;
-using fl::third_party::vorbis::stb_vorbis_get_info;
-using fl::third_party::vorbis::stb_vorbis_stream_length_in_samples;
-using fl::third_party::vorbis::stb_vorbis_get_samples_short_interleaved;
-using fl::third_party::vorbis::stb_vorbis_get_samples_float;
-using fl::third_party::vorbis::stb_vorbis_seek;
-using fl::third_party::vorbis::stb_vorbis_get_sample_offset;
+// Short alias for third_party vorbis namespace to avoid verbose qualification
+// without polluting fl:: namespace in unity builds.
+namespace vb = third_party::vorbis;
 
 // NOTE: All 'int' types from stb_vorbis API must be cast to/from fl::i32
 // for portability across platforms where int size may vary.
@@ -45,13 +37,13 @@ bool StbVorbisDecoder::openMemory(fl::span<const fl::u8> data) {
     close();  // Close any existing stream
 
     fl::i32 error = 0;
-    mVorbis = stb_vorbis_open_memory(data.data(), static_cast<fl::i32>(data.size()), &error, nullptr);
+    mVorbis = vb::stb_vorbis_open_memory(data.data(), static_cast<fl::i32>(data.size()), &error, nullptr);
     return mVorbis != nullptr;
 }
 
 void StbVorbisDecoder::close() {
     if (mVorbis) {
-        stb_vorbis_close(static_cast<stb_vorbis*>(mVorbis));
+        vb::stb_vorbis_close(static_cast<vb::stb_vorbis*>(mVorbis));
         mVorbis = nullptr;
     }
 }
@@ -63,11 +55,11 @@ bool StbVorbisDecoder::isOpen() const {
 VorbisInfo StbVorbisDecoder::getInfo() const {
     VorbisInfo info;
     if (mVorbis) {
-        stb_vorbis_info vi = stb_vorbis_get_info(static_cast<stb_vorbis*>(mVorbis));
+        vb::stb_vorbis_info vi = vb::stb_vorbis_get_info(static_cast<vb::stb_vorbis*>(mVorbis));
         info.sampleRate = vi.sample_rate;
         info.channels = static_cast<fl::u8>(vi.channels);
         info.maxFrameSize = static_cast<fl::u32>(vi.max_frame_size);
-        info.totalSamples = stb_vorbis_stream_length_in_samples(static_cast<stb_vorbis*>(mVorbis));
+        info.totalSamples = vb::stb_vorbis_stream_length_in_samples(static_cast<vb::stb_vorbis*>(mVorbis));
         info.isValid = true;
     }
     return info;
@@ -76,8 +68,8 @@ VorbisInfo StbVorbisDecoder::getInfo() const {
 fl::i32 StbVorbisDecoder::getSamplesShortInterleaved(fl::i32 channels, fl::i16* buffer, fl::i32 numShorts) {
     if (!mVorbis) return 0;
     // Cast to short* for AVR compatibility where fl::i16 is int but stb_vorbis expects short
-    return static_cast<fl::i32>(stb_vorbis_get_samples_short_interleaved(
-        static_cast<stb_vorbis*>(mVorbis),
+    return static_cast<fl::i32>(vb::stb_vorbis_get_samples_short_interleaved(
+        static_cast<vb::stb_vorbis*>(mVorbis),
         static_cast<fl::i32>(channels),
         buffer,
         static_cast<fl::i32>(numShorts)
@@ -86,8 +78,8 @@ fl::i32 StbVorbisDecoder::getSamplesShortInterleaved(fl::i32 channels, fl::i16* 
 
 fl::i32 StbVorbisDecoder::getSamplesFloat(fl::i32 channels, float** buffer, fl::i32 numSamples) {
     if (!mVorbis) return 0;
-    return static_cast<fl::i32>(stb_vorbis_get_samples_float(
-        static_cast<stb_vorbis*>(mVorbis),
+    return static_cast<fl::i32>(vb::stb_vorbis_get_samples_float(
+        static_cast<vb::stb_vorbis*>(mVorbis),
         static_cast<fl::i32>(channels),
         buffer,
         static_cast<fl::i32>(numSamples)
@@ -96,17 +88,17 @@ fl::i32 StbVorbisDecoder::getSamplesFloat(fl::i32 channels, float** buffer, fl::
 
 bool StbVorbisDecoder::seek(fl::u32 sampleNumber) {
     if (!mVorbis) return false;
-    return stb_vorbis_seek(static_cast<stb_vorbis*>(mVorbis), sampleNumber) != 0;
+    return vb::stb_vorbis_seek(static_cast<vb::stb_vorbis*>(mVorbis), sampleNumber) != 0;
 }
 
 fl::u32 StbVorbisDecoder::getSampleOffset() const {
     if (!mVorbis) return 0;
-    return static_cast<fl::u32>(stb_vorbis_get_sample_offset(static_cast<stb_vorbis*>(mVorbis)));
+    return static_cast<fl::u32>(vb::stb_vorbis_get_sample_offset(static_cast<vb::stb_vorbis*>(mVorbis)));
 }
 
 fl::u32 StbVorbisDecoder::getTotalSamples() const {
     if (!mVorbis) return 0;
-    return stb_vorbis_stream_length_in_samples(static_cast<stb_vorbis*>(mVorbis));
+    return vb::stb_vorbis_stream_length_in_samples(static_cast<vb::stb_vorbis*>(mVorbis));
 }
 
 // VorbisDecoderImpl - internal implementation

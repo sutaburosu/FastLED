@@ -240,18 +240,18 @@ namespace fl {
 // Size assertions moved to src/platforms/compile_test.cpp.hpp
 
 // Make fractional types available in global namespace
-using fl::fract8;
-using fl::sfract7;
-using fl::fract16;
-using fl::sfract31;
-using fl::fract32;
-using fl::sfract15;
-using fl::accum88;
-using fl::saccum78;
-using fl::accum1616;
-using fl::saccum1516;
-using fl::accum124;
-using fl::saccum114;
+using fl::fract8;      // ok bare using
+using fl::sfract7;     // ok bare using
+using fl::fract16;     // ok bare using
+using fl::sfract31;    // ok bare using
+using fl::fract32;     // ok bare using
+using fl::sfract15;    // ok bare using
+using fl::accum88;     // ok bare using
+using fl::saccum78;    // ok bare using
+using fl::accum1616;   // ok bare using
+using fl::saccum1516;  // ok bare using
+using fl::accum124;    // ok bare using
+using fl::saccum114;   // ok bare using
 #else
 // C language compatibility - define fractional types in global namespace
 typedef u8   fract8;

@@ -12,14 +12,9 @@
 
 namespace fl {
 
-// Import types from third_party namespace
-using fl::third_party::hexwave::HexWave;
-using fl::third_party::hexwave::HexWaveEngine;
-using fl::third_party::hexwave::hexwave_engine_create;
-using fl::third_party::hexwave::hexwave_engine_destroy;
-using fl::third_party::hexwave::hexwave_create;
-using fl::third_party::hexwave::hexwave_change;
-using fl::third_party::hexwave::hexwave_generate_samples;
+// Short alias for third_party hexwave namespace to avoid verbose qualification
+// without polluting fl:: namespace in unity builds.
+namespace hw = third_party::hexwave;
 
 
 //////////////////////////////////////////////////////////////////////////////
@@ -41,10 +36,10 @@ public:
     i32 getOversample() const override { return mOversample; }
 
     // Internal access for SynthOscillatorImpl (same compilation unit)
-    HexWaveEngine* getEngineInternal() const { return mEngine; }
+    hw::HexWaveEngine* getEngineInternal() const { return mEngine; }
 
 private:
-    HexWaveEngine* mEngine = nullptr;
+    hw::HexWaveEngine* mEngine = nullptr;
     i32 mWidth;
     i32 mOversample;
 };
@@ -73,7 +68,7 @@ public:
 
 private:
     fl::shared_ptr<SynthEngineImpl> mEngine;  // Shared pointer to engine (keeps it alive)
-    HexWave* mHexWave = nullptr;              // Typed pointer to HexWave structure
+    hw::HexWave* mHexWave = nullptr;  // Typed pointer to HexWave structure
     SynthParams mCurrentParams;
 };
 
@@ -115,12 +110,12 @@ SynthEngineImpl::SynthEngineImpl(i32 width, i32 oversample)
     // Clamp oversample to minimum
     if (mOversample < 2) mOversample = 2;
 
-    mEngine = hexwave_engine_create(mWidth, mOversample, nullptr);
+    mEngine = hw::hexwave_engine_create(mWidth, mOversample, nullptr);
 }
 
 SynthEngineImpl::~SynthEngineImpl() {
     if (mEngine) {
-        hexwave_engine_destroy(mEngine);
+        hw::hexwave_engine_destroy(mEngine);
         mEngine = nullptr;
     }
 }
@@ -153,11 +148,11 @@ ISynthOscillatorPtr ISynthOscillator::create(ISynthEnginePtr engine, const Synth
 SynthOscillatorImpl::SynthOscillatorImpl(fl::shared_ptr<SynthEngineImpl> engine, const SynthParams& params)
     : mEngine(engine), mCurrentParams(params) {
     // Allocate HexWave structure
-    mHexWave = static_cast<HexWave*>(fl::malloc(sizeof(HexWave)));
-    fl::memset(mHexWave, 0, sizeof(HexWave));
+    mHexWave = static_cast<hw::HexWave*>(fl::malloc(sizeof(hw::HexWave)));
+    fl::memset(mHexWave, 0, sizeof(hw::HexWave));
 
     // Initialize the oscillator with the engine
-    hexwave_create(
+    hw::hexwave_create(
         mHexWave,
         engine->getEngineInternal(),
         params.reflect,
@@ -176,7 +171,7 @@ SynthOscillatorImpl::~SynthOscillatorImpl() {
 
 void SynthOscillatorImpl::generateSamples(float* output, i32 numSamples, float freq) {
     if (mHexWave && output && numSamples > 0) {
-        hexwave_generate_samples(output, numSamples, mHexWave, freq);
+        hw::hexwave_generate_samples(output, numSamples, mHexWave, freq);
     }
 }
 
@@ -191,7 +186,7 @@ void SynthOscillatorImpl::setShape(SynthShape shape) {
 void SynthOscillatorImpl::setParams(const SynthParams& params) {
     if (mHexWave) {
         mCurrentParams = params;
-        hexwave_change(
+        hw::hexwave_change(
             mHexWave,
             params.reflect,
             params.peakTime,
@@ -208,7 +203,7 @@ SynthParams SynthOscillatorImpl::getParams() const {
 void SynthOscillatorImpl::reset() {
     if (mHexWave && mEngine) {
         // Re-create the oscillator with current parameters
-        hexwave_create(
+        hw::hexwave_create(
             mHexWave,
             mEngine->getEngineInternal(),
             mCurrentParams.reflect,

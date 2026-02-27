@@ -64,10 +64,10 @@ namespace std {
 
 // Alias in fl namespace for consistency
 namespace fl {
-    using std::initializer_list;  // okay std namespace
+    using std::initializer_list;  // okay std namespace // ok bare using
 }
 #else
 namespace fl {
-    using std::initializer_list;  // okay std namespace
+    using std::initializer_list;  // okay std namespace // ok bare using
 }
 #endif 

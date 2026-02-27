@@ -23,6 +23,7 @@ from ci.lint_cpp.banned_headers_checker import (
 from ci.lint_cpp.banned_macros_checker import BannedMacrosChecker
 from ci.lint_cpp.banned_namespace_checker import BannedNamespaceChecker
 from ci.lint_cpp.bare_allocation_checker import BareAllocationChecker
+from ci.lint_cpp.bare_using_checker import BareUsingChecker
 
 # Import all checker classes
 from ci.lint_cpp.check_namespace_includes import NamespaceIncludesChecker
@@ -215,6 +216,7 @@ def create_checkers(
         BannedHeadersChecker(banned_headers_list=BANNED_HEADERS_CORE, strict_mode=True),
         NoCppInFlChecker(),
         IwyuPragmaBlockChecker(all_headers=all_headers),
+        BareUsingChecker(),  # Checks for bare using declarations in headers (unity build safety)
     ]
 
     # lib8tion/ directory checkers with STRICT enforcement

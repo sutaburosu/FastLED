@@ -13,9 +13,6 @@
 
 #define DBG FASTLED_DBG
 
-using fl::ByteStreamPtr;
-using fl::FileHandlePtr;
-
 namespace fl {
 
 FASTLED_SHARED_PTR(PixelStream);

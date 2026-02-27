@@ -21,15 +21,15 @@ using mutex = fl::platforms::mutex;
 using recursive_mutex = fl::platforms::recursive_mutex;
 
 // Bind unique_lock and lock_guard from platform layer
-using fl::platforms::unique_lock;
-using fl::platforms::lock_guard;
+using fl::platforms::unique_lock;  // ok bare using
+using fl::platforms::lock_guard;   // ok bare using
 
 // Bring lock constructor tags into fl:: namespace
-using fl::platforms::defer_lock;
-using fl::platforms::try_to_lock;
-using fl::platforms::adopt_lock;
-using fl::platforms::defer_lock_t;
-using fl::platforms::try_to_lock_t;
-using fl::platforms::adopt_lock_t;
+using fl::platforms::defer_lock;     // ok bare using
+using fl::platforms::try_to_lock;    // ok bare using
+using fl::platforms::adopt_lock;     // ok bare using
+using fl::platforms::defer_lock_t;   // ok bare using
+using fl::platforms::try_to_lock_t;  // ok bare using
+using fl::platforms::adopt_lock_t;   // ok bare using
 
 } // namespace fl

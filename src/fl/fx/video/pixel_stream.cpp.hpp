@@ -5,9 +5,6 @@
 
 #define DBG FASTLED_DBG
 
-using fl::ByteStreamPtr;
-using fl::FileHandlePtr;
-
 namespace fl {
 
 PixelStream::PixelStream(int bytes_per_frame)

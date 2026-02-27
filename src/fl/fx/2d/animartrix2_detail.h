@@ -115,8 +115,8 @@ namespace fl {
 // Namespace wrappers for backwards compatibility with test code
 
 namespace q31 {
-    using fl::Chasing_Spirals_Q31;
-    using fl::Chasing_Spirals_Q31_SIMD;
+    using fl::Chasing_Spirals_Q31;       // ok bare using
+    using fl::Chasing_Spirals_Q31_SIMD;  // ok bare using
 }
 
 namespace q16 {

@@ -12,7 +12,7 @@
 namespace fl {
 
 // Re-export platform condition_variable into fl namespace
-using platforms::condition_variable;
-using platforms::cv_status;
+using platforms::condition_variable;  // ok bare using
+using platforms::cv_status;           // ok bare using
 
 } // namespace fl

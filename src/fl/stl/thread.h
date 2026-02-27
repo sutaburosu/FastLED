@@ -35,10 +35,10 @@ using thread_id = fl::platforms::thread_id;
 
 /// @brief this_thread namespace for thread-specific operations
 namespace this_thread {
-    using fl::platforms::this_thread::get_id;
-    using fl::platforms::this_thread::yield;
-    using fl::platforms::this_thread::sleep_for;
-    using fl::platforms::this_thread::sleep_until;
+    using fl::platforms::this_thread::get_id;          // ok bare using
+    using fl::platforms::this_thread::yield;            // ok bare using
+    using fl::platforms::this_thread::sleep_for;        // ok bare using
+    using fl::platforms::this_thread::sleep_until;      // ok bare using
 } // namespace this_thread
 
 } // namespace fl
