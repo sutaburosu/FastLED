@@ -102,62 +102,20 @@ static int convertIntrFlags(UartIntrPriority priority, UartIntrFlags flags) {
     return esp_flags;
 }
 
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4, 0, 0)
-static uart_sclk_t convertClockSource(UartClockSource source) {
-    switch (source) {
-        case UartClockSource::CLK_DEFAULT:
-#if defined(UART_SCLK_DEFAULT)
-            return UART_SCLK_DEFAULT;
-#elif defined(UART_SCLK_APB)
-            return UART_SCLK_APB;
-#elif defined(UART_SCLK_REF_TICK)
-            return UART_SCLK_REF_TICK;
-#else
-#error "No UART clock source available"
-#endif
-        case UartClockSource::CLK_APB:
-#if defined(UART_SCLK_APB)
-            return UART_SCLK_APB;
-#elif defined(UART_SCLK_DEFAULT)
-            return UART_SCLK_DEFAULT;
-#elif defined(UART_SCLK_REF_TICK)
-            return UART_SCLK_REF_TICK;
-#else
-#error "No UART clock source available"
-#endif
-        case UartClockSource::CLK_REF_TICK:
-#if defined(UART_SCLK_REF_TICK)
-            return UART_SCLK_REF_TICK;
-#elif defined(UART_SCLK_APB)
-            return UART_SCLK_APB;
-#elif defined(UART_SCLK_DEFAULT)
-            return UART_SCLK_DEFAULT;
-#else
-#error "No UART clock source available"
-#endif
-        case UartClockSource::CLK_XTAL:
-#if defined(UART_SCLK_XTAL)
-            return UART_SCLK_XTAL;
-#elif defined(UART_SCLK_APB)
-            return UART_SCLK_APB;
-#elif defined(UART_SCLK_DEFAULT)
-            return UART_SCLK_DEFAULT;
-#elif defined(UART_SCLK_REF_TICK)
-            return UART_SCLK_REF_TICK;
-#else
-#error "No UART clock source available"
-#endif
-        default:
-#if defined(UART_SCLK_DEFAULT)
-            return UART_SCLK_DEFAULT;
-#elif defined(UART_SCLK_APB)
-            return UART_SCLK_APB;
-#elif defined(UART_SCLK_REF_TICK)
-            return UART_SCLK_REF_TICK;
-#else
-#error "No UART clock source available"
-#endif
-    }
+// ESP-IDF version compatibility for UART clock source:
+// - UART_SCLK_DEFAULT, UART_SCLK_APB, etc. are C enum constants (not #define macros)
+//   so #if defined() cannot detect them. Use version-based checks instead.
+// - IDF 5.0+: UART_SCLK_DEFAULT exists on all variants (maps to chip's preferred clock)
+// - IDF 4.x: UART_SCLK_APB is the universal clock source
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
+static uart_sclk_t convertClockSource(UartClockSource) {
+    // UART_SCLK_DEFAULT is the portable choice on IDF 5.x — it resolves to
+    // the chip's preferred clock (APB on ESP32/S3/C3, PLL_F80M on C6, etc.)
+    return UART_SCLK_DEFAULT;
+}
+#elif ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4, 0, 0)
+static uart_sclk_t convertClockSource(UartClockSource) {
+    return UART_SCLK_APB;
 }
 #endif
 
