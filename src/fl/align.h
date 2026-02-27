@@ -21,6 +21,11 @@
 #if defined(FL_IS_AVR)
     // AVR (8-bit): No alignment required - make it a no-op to save RAM
     #define FL_ALIGNAS(N) /* nothing */
+#elif defined(ESP8266)
+    // ESP8266: Cap at 4 bytes - memalign() not available in libstdc++.
+    // Over-aligned types (alignas(N) with N > default new alignment)
+    // trigger aligned operator new, which calls memalign() and fails at link time.
+    #define FL_ALIGNAS(N) __attribute__((aligned(4)))
 #elif defined(__GNUC__) && !defined(__clang__) && (__GNUC__ * 100 + __GNUC_MINOR__) < 500
     // GCC 4.x: Use __attribute__ syntax (more reliable than alignas)
     #define FL_ALIGNAS(N) __attribute__((aligned(N)))
@@ -48,6 +53,9 @@
 #if defined(FL_IS_AVR)
     // AVR (8-bit): No alignment required - make it a no-op to save RAM
     #define FL_ALIGN_AS(T) /* nothing */
+#elif defined(ESP8266)
+    // ESP8266: Cap at 4 bytes (see FL_ALIGNAS above for rationale)
+    #define FL_ALIGN_AS(T) __attribute__((aligned(4)))
 #elif defined(__GNUC__) && !defined(__clang__) && (__GNUC__ * 100 + __GNUC_MINOR__) < 500
     // GCC 4.x: Use __attribute__ syntax with __alignof__ (more reliable than alignas)
     // This avoids potential issues with alignas(alignof(T)) on older GCC versions
@@ -66,6 +74,9 @@
 #if defined(FL_IS_AVR)
     // AVR (8-bit): No alignment required - make it a no-op to save RAM
     #define FL_ALIGN_MAX /* nothing */
+#elif defined(ESP8266)
+    // ESP8266: Cap at 4 bytes (see FL_ALIGNAS above for rationale)
+    #define FL_ALIGN_MAX __attribute__((aligned(4)))
 #elif defined(__GNUC__) && !defined(__clang__) && (__GNUC__ * 100 + __GNUC_MINOR__) < 500
     // GCC 4.x: Use __attribute__ syntax with max alignment
     // Note: max_align_t might not be available on all GCC 4.x targets, use conservative 8-byte alignment
@@ -83,17 +94,16 @@
 // For GCC < 5.0, use conservative fixed alignment; for modern compilers, use computed value.
 //
 // Usage: class FL_ALIGN_AS_T(max_align<Types...>::value) variant {};
-#if defined(__GNUC__) && !defined(__clang__) && (__GNUC__ * 100 + __GNUC_MINOR__) < 500
+#if defined(FL_IS_AVR)
+    // AVR (8-bit): No alignment required, make it a no-op to save RAM
+    #define FL_ALIGN_AS_T(expr) /* nothing */
+#elif defined(ESP8266)
+    // ESP8266: Cap at 4 bytes (see FL_ALIGNAS above for rationale)
+    #define FL_ALIGN_AS_T(expr) __attribute__((aligned(4)))
+#elif defined(__GNUC__) && !defined(__clang__) && (__GNUC__ * 100 + __GNUC_MINOR__) < 500
     // GCC 4.x has alignas() bug with template-dependent expressions
-    #if defined(FL_IS_AVR)
-        // AVR (8-bit): No alignment required, make it a no-op to save RAM
-        #define FL_ALIGN_AS_T(expr) /* nothing */
-    #else
-        // ARM/32-bit platforms: Use 8-byte alignment (safe for double/i64)
-        // ARM Cortex-M (STM32): Max alignment is 8 bytes (double/i64)
-        // ESP32/ESP8266: Max alignment is 4-8 bytes (wastes 0-4 bytes, acceptable)
-        #define FL_ALIGN_AS_T(expr) __attribute__((aligned(8)))
-    #endif
+    // ARM/32-bit platforms: Use 8-byte alignment (safe for double/i64)
+    #define FL_ALIGN_AS_T(expr) __attribute__((aligned(8)))
 #else
     // Modern compilers (GCC 5.0+, Clang): Use template-computed optimal alignment
     #define FL_ALIGN_AS_T(expr) alignas(expr)
