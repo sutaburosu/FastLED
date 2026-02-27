@@ -14,8 +14,10 @@
 #include "fl/channels/data.h"
 #include "fl/channels/driver.h"
 #include "fl/channels/manager.h"
+#include "fl/stl/vector.h"
 #include "pixel_iterator.h"
 #include "fl/warn.h"
+#include "platforms/shared/active_strip_tracker/active_strip_tracker.h"
 
 namespace fl {
 
@@ -32,6 +34,10 @@ private:
 
     // Channel driver reference (selected dynamically from bus manager)
     fl::shared_ptr<IChannelDriver> mDriver;
+
+    // LED capture tracker for ActiveStripData (feeds frame data to JavaScript)
+    ActiveStripTracker mTracker;
+    fl::vector<u8> mCaptureData;
 
 public:
     ClocklessController()
@@ -67,7 +73,19 @@ protected:
             }
         }
 
-        // Convert pixels to encoded byte data
+        // Capture LED data for ActiveStripData BEFORE encoding
+        // This feeds frame data to JavaScript via getFrameData()
+        mCaptureData.clear();
+        PixelController<RGB> pixels_rgb = pixels;
+        #if FASTLED_HD_COLOR_MIXING
+        pixels_rgb.mColorAdjustment.brightness = 255;
+        #endif
+        pixels_rgb.disableColorAdjustment();
+        auto capture_iterator = pixels_rgb.as_iterator(RgbwInvalid());
+        capture_iterator.writeWS2812(&mCaptureData);
+        mTracker.update(mCaptureData);
+
+        // Convert pixels to encoded byte data for channel driver
         fl::PixelIterator iterator = pixels.as_iterator(this->getRgbw());
         auto& data = mChannelData->getData();
         data.clear();
