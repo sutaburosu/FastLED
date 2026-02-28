@@ -166,6 +166,46 @@ constexpr u32 calculateWave8SpiClockHz(u32 total_period_ns) {
     return (pulse_period_ns > 0) ? (1000000000U / pulse_period_ns) : 6400000U;
 }
 
+/// @brief SPI transfer mode: split polling (ESP32-C6) vs async interrupt-driven (other variants)
+///
+/// ESP32-C6's async DMA path (spi_device_queue_trans) does not produce GPIO output on the
+/// MOSI pin, even though transactions complete successfully. Root cause: GDMA-to-SPI
+/// peripheral timing sensitivity on the C6's RISC-V single-core architecture — the ISR-driven
+/// transaction start introduces variable timing that violates the GDMA outlink-to-SPI-USR
+/// register write timing requirement (see esp-rs/esp-hal#489 where 2 CPU cycles determined
+/// success vs failure). Split polling mode (spi_device_polling_start + spi_device_polling_end)
+/// uses deterministic CPU-driven register writes, avoiding this race condition, while still
+/// allowing non-blocking completion checks for true encode/transmit overlap.
+#ifdef FL_IS_ESP_32C6
+constexpr bool kSpiUsePolling = true;
+#else
+constexpr bool kSpiUsePolling = false;
+#endif
+
+/// @brief Start an SPI transaction (non-blocking on both paths)
+/// @return ESP_OK on success
+/// On ESP32-C6: uses spi_device_polling_start (split polling, non-blocking start)
+/// On other variants: uses spi_device_queue_trans (ISR-driven async DMA)
+inline esp_err_t spiStart(spi_device_handle_t dev, spi_transaction_t* trans) {
+    if (kSpiUsePolling) {
+        return spi_device_polling_start(dev, trans, portMAX_DELAY);
+    }
+    return spi_device_queue_trans(dev, trans, portMAX_DELAY);
+}
+
+/// @brief Check if in-flight transaction is done (non-blocking)
+/// @param dev SPI device handle
+/// @param out_trans [out] For async mode, receives pointer to completed transaction
+/// @return ESP_OK if done, ESP_ERR_TIMEOUT if still in flight
+/// On ESP32-C6: uses spi_device_polling_end with 0 tick timeout
+/// On other variants: uses spi_device_get_trans_result with 0 tick timeout
+inline esp_err_t spiCheckDone(spi_device_handle_t dev, spi_transaction_t** out_trans) {
+    if (kSpiUsePolling) {
+        return spi_device_polling_end(dev, 0);
+    }
+    return spi_device_get_trans_result(dev, out_trans, 0);
+}
+
 } // namespace
 
 ChannelEngineSpi::ChannelEngineSpi()
@@ -346,21 +386,13 @@ void ChannelEngineSpi::show() {
     mPipeline.mDmaInFlight = false;
     mPipeline.mEncodeIdx = 0;
 
-#ifdef FL_IS_ESP_32C6
-    // ESP32-C6 SYNC MODE: The async DMA pipeline (spi_device_queue_trans) does not
-    // produce GPIO output on ESP32-C6, even though transactions complete successfully.
-    // Use the synchronous blocking path (spi_device_polling_transmit via
-    // beginBatchedTransmission) which works correctly on this chip.
-    beginBatchedTransmission(mTransmittingChannels);
-    mTransmittingChannels.clear();
-#else
-    // ASYNC MODE: Start the first channel's DMA pipeline and return immediately.
-    // poll() will advance the pipeline by checking DMA completion and encoding/
-    // queueing subsequent chunks.
+    // Start the first channel's DMA pipeline.
+    // poll() advances the pipeline by checking completion and encoding/queueing
+    // subsequent chunks. On ESP32-C6, each step uses polling SPI (synchronous
+    // per-chunk); on other variants, async interrupt-driven DMA.
     if (startNextChannel()) {
         startFirstDma();
     }
-#endif
 }
 
 IChannelDriver::DriverState ChannelEngineSpi::poll() {
@@ -1413,14 +1445,14 @@ void ChannelEngineSpi::startFirstDma() {
         trans->flags = SPI_TRANS_MODE_DIO;
     }
 
-    esp_err_t ret = spi_device_queue_trans(ch->spi_device, trans, portMAX_DELAY);
+    esp_err_t ret = spiStart(ch->spi_device, trans);
     if (ret == ESP_OK) {
         ch->transAInFlight = true;
         mPipeline.mDmaInFlight = true;
         mPipeline.mEncodeIdx = 1; // Next encode goes to buffer B
         mPipeline.mPhase = DmaPipelineState::STREAMING;
     } else {
-        FL_WARN("ChannelEngineSpi: startFirstDma queue_trans failed: " << ret);
+        FL_WARN("ChannelEngineSpi: startFirstDma spiStart failed: " << ret);
         ch->transmissionComplete = true;
         mPipeline.mPhase = DmaPipelineState::IDLE;
     }
@@ -1441,13 +1473,21 @@ IChannelDriver::DriverState ChannelEngineSpi::advancePipeline() {
 
         // Check if current DMA is complete
         if (mPipeline.mDmaInFlight) {
-            spi_transaction_t* completed;
-            esp_err_t ret = spi_device_get_trans_result(ch->spi_device, &completed, 0);
+            spi_transaction_t* completed = nullptr;
+            esp_err_t ret = spiCheckDone(ch->spi_device, &completed);
             if (ret != ESP_OK) {
                 return DriverState::DRAINING; // DMA still in flight
             }
-            if (completed == &ch->transA) ch->transAInFlight = false;
-            else if (completed == &ch->transB) ch->transBInFlight = false;
+            if (kSpiUsePolling) {
+                // Polling mode: polling_end doesn't return a transaction pointer,
+                // determine which buffer completed from mEncodeIdx
+                int lastBuf = (mPipeline.mEncodeIdx - 1) & 1;
+                if (lastBuf == 0) ch->transAInFlight = false;
+                else ch->transBInFlight = false;
+            } else {
+                if (completed == &ch->transA) ch->transAInFlight = false;
+                else if (completed == &ch->transB) ch->transBInFlight = false;
+            }
             mPipeline.mDmaInFlight = false;
         }
 
@@ -1466,7 +1506,7 @@ IChannelDriver::DriverState ChannelEngineSpi::advancePipeline() {
                 if (ch->numLanes >= 4) trans->flags = SPI_TRANS_MODE_QIO;
                 else if (ch->numLanes >= 2) trans->flags = SPI_TRANS_MODE_DIO;
 
-                esp_err_t ret = spi_device_queue_trans(ch->spi_device, trans, portMAX_DELAY);
+                esp_err_t ret = spiStart(ch->spi_device, trans);
                 if (ret == ESP_OK) {
                     if (bufIdx == 0) ch->transAInFlight = true;
                     else ch->transBInFlight = true;
@@ -1505,11 +1545,17 @@ IChannelDriver::DriverState ChannelEngineSpi::advancePipeline() {
 
         // Wait for final DMA to complete
         if (ch->transAInFlight || ch->transBInFlight) {
-            spi_transaction_t* completed;
-            esp_err_t ret = spi_device_get_trans_result(ch->spi_device, &completed, 0);
+            spi_transaction_t* completed = nullptr;
+            esp_err_t ret = spiCheckDone(ch->spi_device, &completed);
             if (ret != ESP_OK) return DriverState::DRAINING;
-            if (completed == &ch->transA) ch->transAInFlight = false;
-            else if (completed == &ch->transB) ch->transBInFlight = false;
+            if (kSpiUsePolling) {
+                int lastBuf = (mPipeline.mEncodeIdx - 1) & 1;
+                if (lastBuf == 0) ch->transAInFlight = false;
+                else ch->transBInFlight = false;
+            } else {
+                if (completed == &ch->transA) ch->transAInFlight = false;
+                else if (completed == &ch->transB) ch->transBInFlight = false;
+            }
             if (ch->transAInFlight || ch->transBInFlight) return DriverState::DRAINING;
         }
 
