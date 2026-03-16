@@ -50,6 +50,9 @@
 #if defined(FL_IS_AVR)
     // AVR (8-bit): No alignment required - make it a no-op to save RAM
     #define FL_ALIGN_AS(T) /* nothing */
+#elif defined(__EMSCRIPTEN__)
+    // Emscripten/WASM: No-op to avoid alignment issues in WASM builds
+    #define FL_ALIGN_AS(T) /* nothing */
 #elif defined(ESP8266)
     // ESP8266: Cap at 4 bytes (see FL_ALIGNAS above for rationale)
     #define FL_ALIGN_AS(T) __attribute__((aligned(4)))
@@ -93,6 +96,9 @@
 // Usage: class FL_ALIGN_AS_T(max_align<Types...>::value) variant {};
 #if defined(FL_IS_AVR)
     // AVR (8-bit): No alignment required, make it a no-op to save RAM
+    #define FL_ALIGN_AS_T(expr) /* nothing */
+#elif defined(__EMSCRIPTEN__)
+    // Emscripten/WASM: No-op to avoid alignment issues in WASM builds
     #define FL_ALIGN_AS_T(expr) /* nothing */
 #elif defined(ESP8266)
     // ESP8266: Cap at 4 bytes (see FL_ALIGNAS above for rationale)
