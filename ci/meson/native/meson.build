@@ -70,6 +70,7 @@ endif
 # Common flags present in all modes (ABI-critical)
 base_common = [
   '-std=gnu++11',              # GNU C++11 standard
+  '-march=native',             # Use host CPU's full instruction set (AVX2, BMI, etc.)
 ] + shared_no_exception_flags + [
   '-fno-strict-aliasing',      # Prevent strict aliasing optimizations
 ]
@@ -105,7 +106,7 @@ elif build_mode == 'quick'
 elif build_mode == 'release'
   # Release mode: Optimized production build with thin LTO (no stack trace preservation)
   base_optimization = base_common + [
-    '-O2',                      # Standard optimization (good performance, reasonable compile time)
+    '-O3',                      # Aggressive optimization for maximum performance
     '-DNDEBUG',                 # Disable assertions
     '-flto=thin',               # Thin LTO for smaller binaries and better cross-module optimization
   ]

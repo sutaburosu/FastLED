@@ -56,6 +56,7 @@ from ci.lint_cpp.platform_includes_checker import PlatformIncludesChecker
 from ci.lint_cpp.reinterpret_cast_checker import ReinterpretCastChecker
 from ci.lint_cpp.relative_include_checker import RelativeIncludeChecker
 from ci.lint_cpp.serial_printf_checker import SerialPrintfChecker
+from ci.lint_cpp.simd_intrinsics_checker import SimdIntrinsicsChecker
 from ci.lint_cpp.singleton_in_headers_checker import SingletonInHeadersChecker
 from ci.lint_cpp.sleep_for_checker import SleepForChecker
 from ci.lint_cpp.span_from_pointer_checker import SpanFromPointerChecker
@@ -192,6 +193,7 @@ def create_checkers(
         FastLEDHeaderUsageChecker(),
         StdintTypeChecker(),  # Covers all src/ (excludes third_party/ internally)
         CtypeGlobalChecker(),  # Checks for global-scope ctype functions (use fl:: variants)
+        SimdIntrinsicsChecker(),  # Checks for direct platform SIMD intrinsics — use fl::simd
     ]
 
     # Platforms-specific checkers
