@@ -42,6 +42,10 @@ struct FL_ALIGNAS(16) simd_u8x16 {
     u8 data[16];
 };
 
+struct FL_ALIGNAS(16) simd_u16x8 {
+    u16 data[8];
+};
+
 struct FL_ALIGNAS(16) simd_u32x4 {
     u32 data[4];
 };
@@ -810,6 +814,111 @@ FASTLED_FORCE_INLINE FL_IRAM simd_u32x4 unpackhi_u64_as_u32_4(simd_u32x4 a, simd
     result.data[0] = a.data[2]; result.data[1] = a.data[3];
     result.data[2] = b.data[2]; result.data[3] = b.data[3];
     return result;
+}
+
+//==============================================================================
+// u16x8 Operations (Scalar)
+//==============================================================================
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u16x8 widen_lo_u8_to_u16(simd_u8x16 vec) noexcept {
+    simd_u16x8 result;
+    for (int i = 0; i < 8; ++i) result.data[i] = vec.data[i];
+    return result;
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u16x8 widen_hi_u8_to_u16(simd_u8x16 vec) noexcept {
+    simd_u16x8 result;
+    for (int i = 0; i < 8; ++i) result.data[i] = vec.data[i + 8];
+    return result;
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u8x16 narrow_u16_to_u8(simd_u16x8 lo, simd_u16x8 hi) noexcept {
+    simd_u8x16 result;
+    for (int i = 0; i < 8; ++i)
+        result.data[i] = lo.data[i] > 255 ? 255 : static_cast<u8>(lo.data[i]);
+    for (int i = 0; i < 8; ++i)
+        result.data[i + 8] = hi.data[i] > 255 ? 255 : static_cast<u8>(hi.data[i]);
+    return result;
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u16x8 add_u16_8(simd_u16x8 a, simd_u16x8 b) noexcept {
+    simd_u16x8 result;
+    for (int i = 0; i < 8; ++i) result.data[i] = a.data[i] + b.data[i];
+    return result;
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u16x8 mullo_u16_8(simd_u16x8 a, simd_u16x8 b) noexcept {
+    simd_u16x8 result;
+    for (int i = 0; i < 8; ++i)
+        result.data[i] = static_cast<u16>(static_cast<u32>(a.data[i]) * b.data[i]);
+    return result;
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u16x8 srli_u16_8(simd_u16x8 vec, int shift) noexcept {
+    simd_u16x8 result;
+    for (int i = 0; i < 8; ++i) result.data[i] = vec.data[i] >> shift;
+    return result;
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u16x8 set1_u16_8(u16 value) noexcept {
+    simd_u16x8 result;
+    for (int i = 0; i < 8; ++i) result.data[i] = value;
+    return result;
+}
+
+
+//==============================================================================
+// 256-bit Types and Operations (pair of 128-bit)
+//==============================================================================
+
+struct simd_u8x32 {
+    simd_u8x16 lo, hi;
+};
+
+struct simd_u16x16 {
+    simd_u16x8 lo, hi;
+};
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u8x32 load_u8_32(const u8* ptr) noexcept {
+    return { load_u8_16(ptr), load_u8_16(ptr + 16) };
+}
+
+FASTLED_FORCE_INLINE FL_IRAM void store_u8_32(u8* ptr, simd_u8x32 vec) noexcept {
+    store_u8_16(ptr, vec.lo);
+    store_u8_16(ptr + 16, vec.hi);
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u8x32 avg_round_u8_32(simd_u8x32 a, simd_u8x32 b) noexcept {
+    return { avg_round_u8_16(a.lo, b.lo), avg_round_u8_16(a.hi, b.hi) };
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u16x16 widen_lo_u8x32_to_u16(simd_u8x32 vec) noexcept {
+    return { widen_lo_u8_to_u16(vec.lo), widen_hi_u8_to_u16(vec.lo) };
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u16x16 widen_hi_u8x32_to_u16(simd_u8x32 vec) noexcept {
+    return { widen_lo_u8_to_u16(vec.hi), widen_hi_u8_to_u16(vec.hi) };
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u8x32 narrow_u16x16_to_u8(simd_u16x16 lo, simd_u16x16 hi) noexcept {
+    return { narrow_u16_to_u8(lo.lo, lo.hi), narrow_u16_to_u8(hi.lo, hi.hi) };
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u16x16 add_u16_16(simd_u16x16 a, simd_u16x16 b) noexcept {
+    return { add_u16_8(a.lo, b.lo), add_u16_8(a.hi, b.hi) };
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u16x16 mullo_u16_16(simd_u16x16 a, simd_u16x16 b) noexcept {
+    return { mullo_u16_8(a.lo, b.lo), mullo_u16_8(a.hi, b.hi) };
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u16x16 srli_u16_16(simd_u16x16 vec, int shift) noexcept {
+    return { srli_u16_8(vec.lo, shift), srli_u16_8(vec.hi, shift) };
+}
+
+FASTLED_FORCE_INLINE FL_IRAM simd_u16x16 set1_u16_16(u16 value) noexcept {
+    auto v = set1_u16_8(value);
+    return { v, v };
 }
 
 }  // namespace platforms
