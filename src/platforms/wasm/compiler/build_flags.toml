@@ -171,11 +171,11 @@ flags = [
     # Set FASTLED_DEBUG_SANITIZERS=1 to enable sanitizers when needed for specific debugging
 ]
 
-# Fast debug linking flags - minimal overhead
+# Fast debug linking flags - minimal overhead, preserves debug info for stack traces
 link_flags = [
-    # Debug Info - Inline instead of separate for faster linking
-    # Note: No separate DWARF file for faster builds
-    
+    # Note: No --strip-debug here — fast_debug keeps minimal DWARF for stack traces
+    # Note: No separate DWARF file (unlike full debug) for faster linking
+
     # Error Detection - Essential only
     "-sSTACK_OVERFLOW_CHECK=1",             # Basic stack overflow detection (faster than level 2)
     "-sASSERTIONS=1",                       # Keep runtime assertions for error detection
@@ -258,7 +258,8 @@ link_flags = [
     # Skip binaryen/wasm-opt — saves ~0.3s per link in quick mode
     "-O0",
 
-    # Disable Non-Essential Runtime Features for Speed
+    # Strip and Disable Non-Essential Runtime Features for Speed
+    "-Wl,--strip-debug",                    # Strip debug info (quick mode has -g0, nothing to keep)
     "-sASSERTIONS=0",                       # Disable runtime assertions
     "-sSTACK_OVERFLOW_CHECK=0",             # Disable stack overflow checking
 
@@ -278,6 +279,11 @@ link_flags = [
 flags = [
     # Size Optimization
     "-Oz",                                   # Optimize aggressively for size (smaller than -Os)
+    "-g0",                                   # No debug info (not needed in production)
+]
+
+# Release linking flags - no --strip-debug needed since -g0 prevents debug info generation
+link_flags = [
 ]
 
 [linking.base]
@@ -351,7 +357,7 @@ flags = [
     # Optimization and Debugging
     # Note: --gc-sections disabled in quick mode for faster linking (saves ~1-2s)
     # Re-enable for release builds: "-Wl,--gc-sections"
-    "-Wl,--strip-debug",                     # Strip debug info from quick builds (faster linking)
+    # Note: -Wl,--strip-debug is in quick link_flags only; debug/fast_debug preserve DWARF for stack traces
     "-Wl,--no-export-dynamic",              # Don't export all symbols (faster symbol processing)
     # Note: --source-map-base removed in quick mode for faster linking
 ]
