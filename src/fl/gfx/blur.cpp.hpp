@@ -19,6 +19,11 @@
 #include "fl/stl/thread_local.h"
 #include "fl/stl/vector.h"
 
+// Platform-neutral SIMD for blur kernels (SSE2, NEON, Xtensa PIE, scalar).
+#if !defined(FL_IS_AVR)
+#include "fl/stl/simd.h"
+#endif
+
 // Legacy XY function. This is a weak symbol that can be overridden by the user.
 // IMPORTANT: This MUST be in the global namespace (not fl::) for backward compatibility
 // with user code from FastLED 3.7.6 that defines: uint16_t XY(uint8_t x, uint8_t y)
@@ -210,6 +215,7 @@ void blur2d(Canvas<CRGB> &canvas, alpha8 blur_amount) {
 
 namespace fl {
 namespace gfx {
+
 
 namespace blur_detail {
 
@@ -520,6 +526,371 @@ static void apply_pass_alpha(const RGB_T *pad, RGB_T *out, int count,
 }
 
 
+// ── Platform-neutral SIMD byte-level convolution kernels ────────────────
+// Process nbytes of output using stride-S byte-level convolution.
+// For horizontal pass: S = sizeof(CRGB) = 3 (neighboring pixels).
+// For vertical pass: S = 1 (same column, consecutive row buffers).
+// The same kernel weights apply to all bytes (R, G, B treated uniformly).
+// Uses fl::simd u8x16/u16x8 operations — compiles to SSE2, NEON, PIE, or scalar.
+#if !defined(FL_IS_AVR)
+
+// Kernel: [1, 2, 1] >> 2  ≈  avg(avg(a, c), b)
+// Uses hardware byte averaging which computes (x+y+1)>>1.
+// Two nested avg ops approximate (a + 2b + c) >> 2 with at most +1 rounding
+// per channel — imperceptible for blur and ~3x fewer SIMD instructions.
+static void simd_conv_121(const u8 * FL_RESTRICT_PARAM a,
+                           const u8 * FL_RESTRICT_PARAM b,
+                           const u8 * FL_RESTRICT_PARAM c,
+                           u8 * FL_RESTRICT_PARAM out, int nbytes) {
+    namespace fsimd = fl::simd; // ok bare using
+    int i = 0;
+    for (; i + 63 < nbytes; i += 64) {
+        auto va0 = fsimd::load_u8_32(a+i), vb0 = fsimd::load_u8_32(b+i), vc0 = fsimd::load_u8_32(c+i);
+        auto va1 = fsimd::load_u8_32(a+i+32), vb1 = fsimd::load_u8_32(b+i+32), vc1 = fsimd::load_u8_32(c+i+32);
+        fsimd::store_u8_32(out+i, fsimd::avg_round_u8_32(fsimd::avg_round_u8_32(va0, vc0), vb0));
+        fsimd::store_u8_32(out+i+32, fsimd::avg_round_u8_32(fsimd::avg_round_u8_32(va1, vc1), vb1));
+    }
+    for (; i + 31 < nbytes; i += 32) {
+        auto va = fsimd::load_u8_32(a+i), vb = fsimd::load_u8_32(b+i), vc = fsimd::load_u8_32(c+i);
+        fsimd::store_u8_32(out+i, fsimd::avg_round_u8_32(fsimd::avg_round_u8_32(va, vc), vb));
+    }
+    for (; i + 15 < nbytes; i += 16) {
+        auto va = fsimd::load_u8_16(a+i), vb = fsimd::load_u8_16(b+i), vc = fsimd::load_u8_16(c+i);
+        fsimd::store_u8_16(out+i, fsimd::avg_round_u8_16(fsimd::avg_round_u8_16(va, vc), vb));
+    }
+    for (; i < nbytes; ++i)
+        out[i] = (u8)(((u16)a[i] + ((u16)b[i] << 1) + (u16)c[i]) >> 2);
+}
+
+// Helper: weighted sum for u16x8 — computes (s_sym + w*s_sym_pair + ... + wc*center) >> shift.
+// Used by R=2, R=3, R=4 kernels for both low and high halves of the 16-byte register.
+
+// Kernel: [1, 4, 6, 4, 1] >> 4
+static void simd_conv_14641(const u8 *p0, const u8 *p1, const u8 *p2,
+                            const u8 *p3, const u8 *p4,
+                            u8 *out, int nbytes) {
+    namespace fsimd = fl::simd; // ok bare using
+    const auto w4w = fsimd::set1_u16_16(4), w6w = fsimd::set1_u16_16(6);
+    const auto w4 = fsimd::set1_u16_8(4), w6 = fsimd::set1_u16_8(6);
+    int i = 0;
+    for (; i + 31 < nbytes; i += 32) {
+        auto v0 = fsimd::load_u8_32(p0+i), v1 = fsimd::load_u8_32(p1+i);
+        auto v2 = fsimd::load_u8_32(p2+i), v3 = fsimd::load_u8_32(p3+i), v4 = fsimd::load_u8_32(p4+i);
+        auto s04 = fsimd::add_u16_16(fsimd::widen_lo_u8x32_to_u16(v0), fsimd::widen_lo_u8x32_to_u16(v4));
+        auto s13 = fsimd::add_u16_16(fsimd::widen_lo_u8x32_to_u16(v1), fsimd::widen_lo_u8x32_to_u16(v3));
+        auto lo = fsimd::add_u16_16(s04, fsimd::add_u16_16(fsimd::mullo_u16_16(s13, w4w), fsimd::mullo_u16_16(fsimd::widen_lo_u8x32_to_u16(v2), w6w)));
+        lo = fsimd::srli_u16_16(lo, 4);
+        auto s04h = fsimd::add_u16_16(fsimd::widen_hi_u8x32_to_u16(v0), fsimd::widen_hi_u8x32_to_u16(v4));
+        auto s13h = fsimd::add_u16_16(fsimd::widen_hi_u8x32_to_u16(v1), fsimd::widen_hi_u8x32_to_u16(v3));
+        auto hi = fsimd::add_u16_16(s04h, fsimd::add_u16_16(fsimd::mullo_u16_16(s13h, w4w), fsimd::mullo_u16_16(fsimd::widen_hi_u8x32_to_u16(v2), w6w)));
+        hi = fsimd::srli_u16_16(hi, 4);
+        fsimd::store_u8_32(out+i, fsimd::narrow_u16x16_to_u8(lo, hi));
+    }
+    for (; i + 15 < nbytes; i += 16) {
+        auto v0 = fsimd::load_u8_16(p0+i), v1 = fsimd::load_u8_16(p1+i);
+        auto v2 = fsimd::load_u8_16(p2+i), v3 = fsimd::load_u8_16(p3+i), v4 = fsimd::load_u8_16(p4+i);
+        auto s04 = fsimd::add_u16_8(fsimd::widen_lo_u8_to_u16(v0), fsimd::widen_lo_u8_to_u16(v4));
+        auto s13 = fsimd::add_u16_8(fsimd::widen_lo_u8_to_u16(v1), fsimd::widen_lo_u8_to_u16(v3));
+        auto lo = fsimd::add_u16_8(s04, fsimd::add_u16_8(fsimd::mullo_u16_8(s13, w4), fsimd::mullo_u16_8(fsimd::widen_lo_u8_to_u16(v2), w6)));
+        lo = fsimd::srli_u16_8(lo, 4);
+        auto s04h = fsimd::add_u16_8(fsimd::widen_hi_u8_to_u16(v0), fsimd::widen_hi_u8_to_u16(v4));
+        auto s13h = fsimd::add_u16_8(fsimd::widen_hi_u8_to_u16(v1), fsimd::widen_hi_u8_to_u16(v3));
+        auto hi = fsimd::add_u16_8(s04h, fsimd::add_u16_8(fsimd::mullo_u16_8(s13h, w4), fsimd::mullo_u16_8(fsimd::widen_hi_u8_to_u16(v2), w6)));
+        hi = fsimd::srli_u16_8(hi, 4);
+        fsimd::store_u8_16(out+i, fsimd::narrow_u16_to_u8(lo, hi));
+    }
+    for (; i < nbytes; ++i) {
+        u16 s04 = (u16)p0[i] + (u16)p4[i];
+        u16 s13 = (u16)p1[i] + (u16)p3[i];
+        out[i] = (u8)((s04 + s13 * 4 + (u16)p2[i] * 6) >> 4);
+    }
+}
+
+// Kernel: [1, 6, 15, 20, 15, 6, 1] >> 6
+static void simd_conv_r3(const u8 *p0, const u8 *p1, const u8 *p2,
+                          const u8 *p3, const u8 *p4, const u8 *p5,
+                          const u8 *p6, u8 *out, int nbytes) {
+    namespace fsimd = fl::simd; // ok bare using
+    const auto w6w = fsimd::set1_u16_16(6), w15w = fsimd::set1_u16_16(15), w20w = fsimd::set1_u16_16(20);
+    const auto w6 = fsimd::set1_u16_8(6), w15 = fsimd::set1_u16_8(15), w20 = fsimd::set1_u16_8(20);
+    int i = 0;
+    for (; i + 31 < nbytes; i += 32) {
+        auto v0 = fsimd::load_u8_32(p0+i), v1 = fsimd::load_u8_32(p1+i), v2 = fsimd::load_u8_32(p2+i);
+        auto v3 = fsimd::load_u8_32(p3+i), v4 = fsimd::load_u8_32(p4+i), v5 = fsimd::load_u8_32(p5+i);
+        auto v6v = fsimd::load_u8_32(p6+i);
+        auto s06 = fsimd::add_u16_16(fsimd::widen_lo_u8x32_to_u16(v0), fsimd::widen_lo_u8x32_to_u16(v6v));
+        auto s15 = fsimd::add_u16_16(fsimd::widen_lo_u8x32_to_u16(v1), fsimd::widen_lo_u8x32_to_u16(v5));
+        auto s24 = fsimd::add_u16_16(fsimd::widen_lo_u8x32_to_u16(v2), fsimd::widen_lo_u8x32_to_u16(v4));
+        auto lo = fsimd::add_u16_16(s06, fsimd::add_u16_16(fsimd::mullo_u16_16(s15, w6w),
+                   fsimd::add_u16_16(fsimd::mullo_u16_16(s24, w15w), fsimd::mullo_u16_16(fsimd::widen_lo_u8x32_to_u16(v3), w20w))));
+        lo = fsimd::srli_u16_16(lo, 6);
+        auto s06h = fsimd::add_u16_16(fsimd::widen_hi_u8x32_to_u16(v0), fsimd::widen_hi_u8x32_to_u16(v6v));
+        auto s15h = fsimd::add_u16_16(fsimd::widen_hi_u8x32_to_u16(v1), fsimd::widen_hi_u8x32_to_u16(v5));
+        auto s24h = fsimd::add_u16_16(fsimd::widen_hi_u8x32_to_u16(v2), fsimd::widen_hi_u8x32_to_u16(v4));
+        auto hi = fsimd::add_u16_16(s06h, fsimd::add_u16_16(fsimd::mullo_u16_16(s15h, w6w),
+                   fsimd::add_u16_16(fsimd::mullo_u16_16(s24h, w15w), fsimd::mullo_u16_16(fsimd::widen_hi_u8x32_to_u16(v3), w20w))));
+        hi = fsimd::srli_u16_16(hi, 6);
+        fsimd::store_u8_32(out+i, fsimd::narrow_u16x16_to_u8(lo, hi));
+    }
+    for (; i + 15 < nbytes; i += 16) {
+        auto v0 = fsimd::load_u8_16(p0+i), v1 = fsimd::load_u8_16(p1+i), v2 = fsimd::load_u8_16(p2+i);
+        auto v3 = fsimd::load_u8_16(p3+i), v4 = fsimd::load_u8_16(p4+i), v5 = fsimd::load_u8_16(p5+i);
+        auto v6v = fsimd::load_u8_16(p6+i);
+        auto s06 = fsimd::add_u16_8(fsimd::widen_lo_u8_to_u16(v0), fsimd::widen_lo_u8_to_u16(v6v));
+        auto s15 = fsimd::add_u16_8(fsimd::widen_lo_u8_to_u16(v1), fsimd::widen_lo_u8_to_u16(v5));
+        auto s24 = fsimd::add_u16_8(fsimd::widen_lo_u8_to_u16(v2), fsimd::widen_lo_u8_to_u16(v4));
+        auto lo = fsimd::add_u16_8(s06, fsimd::add_u16_8(fsimd::mullo_u16_8(s15, w6),
+                   fsimd::add_u16_8(fsimd::mullo_u16_8(s24, w15), fsimd::mullo_u16_8(fsimd::widen_lo_u8_to_u16(v3), w20))));
+        lo = fsimd::srli_u16_8(lo, 6);
+        auto s06h = fsimd::add_u16_8(fsimd::widen_hi_u8_to_u16(v0), fsimd::widen_hi_u8_to_u16(v6v));
+        auto s15h = fsimd::add_u16_8(fsimd::widen_hi_u8_to_u16(v1), fsimd::widen_hi_u8_to_u16(v5));
+        auto s24h = fsimd::add_u16_8(fsimd::widen_hi_u8_to_u16(v2), fsimd::widen_hi_u8_to_u16(v4));
+        auto hi = fsimd::add_u16_8(s06h, fsimd::add_u16_8(fsimd::mullo_u16_8(s15h, w6),
+                   fsimd::add_u16_8(fsimd::mullo_u16_8(s24h, w15), fsimd::mullo_u16_8(fsimd::widen_hi_u8_to_u16(v3), w20))));
+        hi = fsimd::srli_u16_8(hi, 6);
+        fsimd::store_u8_16(out+i, fsimd::narrow_u16_to_u8(lo, hi));
+    }
+    for (; i < nbytes; ++i) {
+        u16 s06=(u16)p0[i]+(u16)p6[i], s15=(u16)p1[i]+(u16)p5[i], s24=(u16)p2[i]+(u16)p4[i];
+        out[i]=(u8)((s06+s15*6+s24*15+(u16)p3[i]*20)>>6);
+    }
+}
+
+// Kernel: [1, 8, 28, 56, 70, 56, 28, 8, 1] >> 8
+static void simd_conv_r4(const u8 *p0, const u8 *p1, const u8 *p2, const u8 *p3,
+                          const u8 *p4, const u8 *p5, const u8 *p6, const u8 *p7,
+                          const u8 *p8, u8 *out, int nbytes) {
+    namespace fsimd = fl::simd; // ok bare using
+    const auto w8w = fsimd::set1_u16_16(8), w28w = fsimd::set1_u16_16(28);
+    const auto w56w = fsimd::set1_u16_16(56), w70w = fsimd::set1_u16_16(70);
+    const auto w8 = fsimd::set1_u16_8(8), w28 = fsimd::set1_u16_8(28);
+    const auto w56 = fsimd::set1_u16_8(56), w70 = fsimd::set1_u16_8(70);
+    int i = 0;
+    for (; i + 31 < nbytes; i += 32) {
+        auto v0 = fsimd::load_u8_32(p0+i), v1 = fsimd::load_u8_32(p1+i), v2 = fsimd::load_u8_32(p2+i);
+        auto v3 = fsimd::load_u8_32(p3+i), v4 = fsimd::load_u8_32(p4+i), v5 = fsimd::load_u8_32(p5+i);
+        auto v6v = fsimd::load_u8_32(p6+i), v7 = fsimd::load_u8_32(p7+i), v8v = fsimd::load_u8_32(p8+i);
+        auto s08 = fsimd::add_u16_16(fsimd::widen_lo_u8x32_to_u16(v0), fsimd::widen_lo_u8x32_to_u16(v8v));
+        auto s17 = fsimd::add_u16_16(fsimd::widen_lo_u8x32_to_u16(v1), fsimd::widen_lo_u8x32_to_u16(v7));
+        auto s26 = fsimd::add_u16_16(fsimd::widen_lo_u8x32_to_u16(v2), fsimd::widen_lo_u8x32_to_u16(v6v));
+        auto s35 = fsimd::add_u16_16(fsimd::widen_lo_u8x32_to_u16(v3), fsimd::widen_lo_u8x32_to_u16(v5));
+        auto lo = fsimd::add_u16_16(s08, fsimd::add_u16_16(fsimd::mullo_u16_16(s17, w8w),
+                   fsimd::add_u16_16(fsimd::mullo_u16_16(s26, w28w),
+                   fsimd::add_u16_16(fsimd::mullo_u16_16(s35, w56w), fsimd::mullo_u16_16(fsimd::widen_lo_u8x32_to_u16(v4), w70w)))));
+        lo = fsimd::srli_u16_16(lo, 8);
+        auto s08h = fsimd::add_u16_16(fsimd::widen_hi_u8x32_to_u16(v0), fsimd::widen_hi_u8x32_to_u16(v8v));
+        auto s17h = fsimd::add_u16_16(fsimd::widen_hi_u8x32_to_u16(v1), fsimd::widen_hi_u8x32_to_u16(v7));
+        auto s26h = fsimd::add_u16_16(fsimd::widen_hi_u8x32_to_u16(v2), fsimd::widen_hi_u8x32_to_u16(v6v));
+        auto s35h = fsimd::add_u16_16(fsimd::widen_hi_u8x32_to_u16(v3), fsimd::widen_hi_u8x32_to_u16(v5));
+        auto hi = fsimd::add_u16_16(s08h, fsimd::add_u16_16(fsimd::mullo_u16_16(s17h, w8w),
+                   fsimd::add_u16_16(fsimd::mullo_u16_16(s26h, w28w),
+                   fsimd::add_u16_16(fsimd::mullo_u16_16(s35h, w56w), fsimd::mullo_u16_16(fsimd::widen_hi_u8x32_to_u16(v4), w70w)))));
+        hi = fsimd::srli_u16_16(hi, 8);
+        fsimd::store_u8_32(out+i, fsimd::narrow_u16x16_to_u8(lo, hi));
+    }
+    for (; i + 15 < nbytes; i += 16) {
+        auto v0 = fsimd::load_u8_16(p0+i), v1 = fsimd::load_u8_16(p1+i), v2 = fsimd::load_u8_16(p2+i);
+        auto v3 = fsimd::load_u8_16(p3+i), v4 = fsimd::load_u8_16(p4+i), v5 = fsimd::load_u8_16(p5+i);
+        auto v6v = fsimd::load_u8_16(p6+i), v7 = fsimd::load_u8_16(p7+i), v8v = fsimd::load_u8_16(p8+i);
+        auto s08 = fsimd::add_u16_8(fsimd::widen_lo_u8_to_u16(v0), fsimd::widen_lo_u8_to_u16(v8v));
+        auto s17 = fsimd::add_u16_8(fsimd::widen_lo_u8_to_u16(v1), fsimd::widen_lo_u8_to_u16(v7));
+        auto s26 = fsimd::add_u16_8(fsimd::widen_lo_u8_to_u16(v2), fsimd::widen_lo_u8_to_u16(v6v));
+        auto s35 = fsimd::add_u16_8(fsimd::widen_lo_u8_to_u16(v3), fsimd::widen_lo_u8_to_u16(v5));
+        auto lo = fsimd::add_u16_8(s08, fsimd::add_u16_8(fsimd::mullo_u16_8(s17, w8),
+                   fsimd::add_u16_8(fsimd::mullo_u16_8(s26, w28),
+                   fsimd::add_u16_8(fsimd::mullo_u16_8(s35, w56), fsimd::mullo_u16_8(fsimd::widen_lo_u8_to_u16(v4), w70)))));
+        lo = fsimd::srli_u16_8(lo, 8);
+        auto s08h = fsimd::add_u16_8(fsimd::widen_hi_u8_to_u16(v0), fsimd::widen_hi_u8_to_u16(v8v));
+        auto s17h = fsimd::add_u16_8(fsimd::widen_hi_u8_to_u16(v1), fsimd::widen_hi_u8_to_u16(v7));
+        auto s26h = fsimd::add_u16_8(fsimd::widen_hi_u8_to_u16(v2), fsimd::widen_hi_u8_to_u16(v6v));
+        auto s35h = fsimd::add_u16_8(fsimd::widen_hi_u8_to_u16(v3), fsimd::widen_hi_u8_to_u16(v5));
+        auto hi = fsimd::add_u16_8(s08h, fsimd::add_u16_8(fsimd::mullo_u16_8(s17h, w8),
+                   fsimd::add_u16_8(fsimd::mullo_u16_8(s26h, w28),
+                   fsimd::add_u16_8(fsimd::mullo_u16_8(s35h, w56), fsimd::mullo_u16_8(fsimd::widen_hi_u8_to_u16(v4), w70)))));
+        hi = fsimd::srli_u16_8(hi, 8);
+        fsimd::store_u8_16(out+i, fsimd::narrow_u16_to_u8(lo, hi));
+    }
+    for (; i < nbytes; ++i) {
+        u16 s08=(u16)p0[i]+(u16)p8[i], s17=(u16)p1[i]+(u16)p7[i];
+        u16 s26=(u16)p2[i]+(u16)p6[i], s35=(u16)p3[i]+(u16)p5[i];
+        out[i]=(u8)((s08+s17*8+s26*28+s35*56+(u16)p4[i]*70)>>8);
+    }
+}
+
+// ── Template dispatch: SIMD vertical convolution by radius ─────────────
+// Compile-time selection eliminates runtime if-else chain on R.
+template <int R> struct simd_vconv_dispatch;
+
+template <> struct simd_vconv_dispatch<0> {
+    template <typename RGB_T>
+    static void apply(RGB_T **bufs, const RGB_T **, u8 *out, int nbytes) {
+        FL_BUILTIN_MEMCPY(out, (const u8*)bufs[0], nbytes);
+    }
+};
+
+template <> struct simd_vconv_dispatch<1> {
+    template <typename RGB_T>
+    static void apply(RGB_T **bufs, const RGB_T **fwd, u8 *out, int nbytes) {
+        simd_conv_121((const u8*)bufs[0], (const u8*)bufs[1],
+                      (const u8*)fwd[0], out, nbytes);
+    }
+};
+
+template <> struct simd_vconv_dispatch<2> {
+    template <typename RGB_T>
+    static void apply(RGB_T **bufs, const RGB_T **fwd, u8 *out, int nbytes) {
+        simd_conv_14641((const u8*)bufs[0], (const u8*)bufs[1],
+                        (const u8*)bufs[2], (const u8*)fwd[0],
+                        (const u8*)fwd[1], out, nbytes);
+    }
+};
+
+template <> struct simd_vconv_dispatch<3> {
+    template <typename RGB_T>
+    static void apply(RGB_T **bufs, const RGB_T **fwd, u8 *out, int nbytes) {
+        simd_conv_r3((const u8*)bufs[0], (const u8*)bufs[1],
+                     (const u8*)bufs[2], (const u8*)bufs[3],
+                     (const u8*)fwd[0], (const u8*)fwd[1],
+                     (const u8*)fwd[2], out, nbytes);
+    }
+};
+
+template <> struct simd_vconv_dispatch<4> {
+    template <typename RGB_T>
+    static void apply(RGB_T **bufs, const RGB_T **fwd, u8 *out, int nbytes) {
+        simd_conv_r4((const u8*)bufs[0], (const u8*)bufs[1],
+                     (const u8*)bufs[2], (const u8*)bufs[3],
+                     (const u8*)bufs[4], (const u8*)fwd[0],
+                     (const u8*)fwd[1], (const u8*)fwd[2],
+                     (const u8*)fwd[3], out, nbytes);
+    }
+};
+
+// ── Template dispatch: SIMD horizontal convolution by radius ───────────
+template <int R> struct simd_hconv_dispatch;
+
+template <> struct simd_hconv_dispatch<0> {
+    static void apply(const u8 *pb, int, u8 *ob, int nbytes, u8 *, int) {
+        FL_BUILTIN_MEMCPY(ob, pb, nbytes);
+    }
+};
+
+template <> struct simd_hconv_dispatch<1> {
+    static void apply(const u8 *pb, int S, u8 *ob, int nbytes, u8 *, int) {
+        simd_conv_121(pb, pb + S, pb + 2*S, ob, nbytes);
+    }
+};
+
+template <> struct simd_hconv_dispatch<2> {
+    static void apply(const u8 *pb, int S, u8 *ob, int nbytes, u8 *temp, int w) {
+        // Cascaded R=1: [1,4,6,4,1] = [1,2,1]⊗[1,2,1].
+        // Two avg_epu8 passes ≈ 2.5x fewer SIMD ops than maddubs.
+        // Max ±1 rounding per pass (imperceptible for blur).
+        simd_conv_121(pb, pb + S, pb + 2*S, temp, (w + 2) * S);
+        simd_conv_121(temp, temp + S, temp + 2*S, ob, nbytes);
+    }
+};
+
+template <> struct simd_hconv_dispatch<3> {
+    static void apply(const u8 *pb, int S, u8 *ob, int nbytes, u8 *, int) {
+        simd_conv_r3(pb, pb+S, pb+2*S, pb+3*S, pb+4*S, pb+5*S, pb+6*S, ob, nbytes);
+    }
+};
+
+template <> struct simd_hconv_dispatch<4> {
+    static void apply(const u8 *pb, int S, u8 *ob, int nbytes, u8 *, int) {
+        simd_conv_r4(pb, pb+S, pb+2*S, pb+3*S, pb+4*S, pb+5*S, pb+6*S, pb+7*S, pb+8*S, ob, nbytes);
+    }
+};
+
+// ── Template dispatch: per-pixel vertical convolution by radius ────────
+// Used by the generic path (CRGB16 or alpha case).
+template <int R, typename RGB_T, typename acc_t> struct vpass_pixel_kernel;
+
+template <typename RGB_T, typename acc_t>
+struct vpass_pixel_kernel<0, RGB_T, acc_t> {
+    FL_ALWAYS_INLINE void apply(RGB_T **bufs, const RGB_T **, int x,
+                                        acc_t &r, acc_t &g, acc_t &b) {
+        pixel_ops<RGB_T> p;
+        r = p.ch(bufs[0][x].r);
+        g = p.ch(bufs[0][x].g);
+        b = p.ch(bufs[0][x].b);
+    }
+};
+
+template <typename RGB_T, typename acc_t>
+struct vpass_pixel_kernel<1, RGB_T, acc_t> {
+    FL_ALWAYS_INLINE void apply(RGB_T **bufs, const RGB_T **fwd, int x,
+                                        acc_t &r, acc_t &g, acc_t &b) {
+        pixel_ops<RGB_T> p;
+        r = (p.ch(bufs[0][x].r) + p.ch(fwd[0][x].r)) + (p.ch(bufs[1][x].r) << 1);
+        g = (p.ch(bufs[0][x].g) + p.ch(fwd[0][x].g)) + (p.ch(bufs[1][x].g) << 1);
+        b = (p.ch(bufs[0][x].b) + p.ch(fwd[0][x].b)) + (p.ch(bufs[1][x].b) << 1);
+    }
+};
+
+template <typename RGB_T, typename acc_t>
+struct vpass_pixel_kernel<2, RGB_T, acc_t> {
+    FL_ALWAYS_INLINE void apply(RGB_T **bufs, const RGB_T **fwd, int x,
+                                        acc_t &r, acc_t &g, acc_t &b) {
+        pixel_ops<RGB_T> p;
+        const acc_t sr04 = p.ch(bufs[0][x].r) + p.ch(fwd[1][x].r);
+        const acc_t sg04 = p.ch(bufs[0][x].g) + p.ch(fwd[1][x].g);
+        const acc_t sb04 = p.ch(bufs[0][x].b) + p.ch(fwd[1][x].b);
+        const acc_t sr13 = p.ch(bufs[1][x].r) + p.ch(fwd[0][x].r);
+        const acc_t sg13 = p.ch(bufs[1][x].g) + p.ch(fwd[0][x].g);
+        const acc_t sb13 = p.ch(bufs[1][x].b) + p.ch(fwd[0][x].b);
+        r = sr04 + sr13 * 4 + p.ch(bufs[2][x].r) * 6;
+        g = sg04 + sg13 * 4 + p.ch(bufs[2][x].g) * 6;
+        b = sb04 + sb13 * 4 + p.ch(bufs[2][x].b) * 6;
+    }
+};
+
+template <typename RGB_T, typename acc_t>
+struct vpass_pixel_kernel<3, RGB_T, acc_t> {
+    FL_ALWAYS_INLINE void apply(RGB_T **bufs, const RGB_T **fwd, int x,
+                                        acc_t &r, acc_t &g, acc_t &b) {
+        pixel_ops<RGB_T> p;
+        const acc_t sr06 = p.ch(bufs[0][x].r) + p.ch(fwd[2][x].r);
+        const acc_t sg06 = p.ch(bufs[0][x].g) + p.ch(fwd[2][x].g);
+        const acc_t sb06 = p.ch(bufs[0][x].b) + p.ch(fwd[2][x].b);
+        const acc_t sr15 = p.ch(bufs[1][x].r) + p.ch(fwd[1][x].r);
+        const acc_t sg15 = p.ch(bufs[1][x].g) + p.ch(fwd[1][x].g);
+        const acc_t sb15 = p.ch(bufs[1][x].b) + p.ch(fwd[1][x].b);
+        const acc_t sr24 = p.ch(bufs[2][x].r) + p.ch(fwd[0][x].r);
+        const acc_t sg24 = p.ch(bufs[2][x].g) + p.ch(fwd[0][x].g);
+        const acc_t sb24 = p.ch(bufs[2][x].b) + p.ch(fwd[0][x].b);
+        r = sr06 + sr15 * 6 + sr24 * 15 + p.ch(bufs[3][x].r) * 20;
+        g = sg06 + sg15 * 6 + sg24 * 15 + p.ch(bufs[3][x].g) * 20;
+        b = sb06 + sb15 * 6 + sb24 * 15 + p.ch(bufs[3][x].b) * 20;
+    }
+};
+
+template <typename RGB_T, typename acc_t>
+struct vpass_pixel_kernel<4, RGB_T, acc_t> {
+    FL_ALWAYS_INLINE void apply(RGB_T **bufs, const RGB_T **fwd, int x,
+                                        acc_t &r, acc_t &g, acc_t &b) {
+        pixel_ops<RGB_T> p;
+        const acc_t sr08 = p.ch(bufs[0][x].r) + p.ch(fwd[3][x].r);
+        const acc_t sg08 = p.ch(bufs[0][x].g) + p.ch(fwd[3][x].g);
+        const acc_t sb08 = p.ch(bufs[0][x].b) + p.ch(fwd[3][x].b);
+        const acc_t sr17 = p.ch(bufs[1][x].r) + p.ch(fwd[2][x].r);
+        const acc_t sg17 = p.ch(bufs[1][x].g) + p.ch(fwd[2][x].g);
+        const acc_t sb17 = p.ch(bufs[1][x].b) + p.ch(fwd[2][x].b);
+        const acc_t sr26 = p.ch(bufs[2][x].r) + p.ch(fwd[1][x].r);
+        const acc_t sg26 = p.ch(bufs[2][x].g) + p.ch(fwd[1][x].g);
+        const acc_t sb26 = p.ch(bufs[2][x].b) + p.ch(fwd[1][x].b);
+        const acc_t sr35 = p.ch(bufs[3][x].r) + p.ch(fwd[0][x].r);
+        const acc_t sg35 = p.ch(bufs[3][x].g) + p.ch(fwd[0][x].g);
+        const acc_t sb35 = p.ch(bufs[3][x].b) + p.ch(fwd[0][x].b);
+        r = sr08 + sr17 * 8 + sr26 * 28 + sr35 * 56 + p.ch(bufs[4][x].r) * 70;
+        g = sg08 + sg17 * 8 + sg26 * 28 + sg35 * 56 + p.ch(bufs[4][x].g) * 70;
+        b = sb08 + sb17 * 8 + sb26 * 28 + sb35 * 56 + p.ch(bufs[4][x].b) * 70;
+    }
+};
+
+#endif // !FL_IS_AVR
+
 // ── Row-major vertical pass (non-AVR) ──────────────────────────────────
 // Processes vertical convolution in row-major order for cache efficiency.
 // Instead of gathering individual columns into a linear buffer (strided
@@ -558,6 +929,19 @@ static void vpass_rowmajor_impl(
         for (int k = 0; k < R; ++k)
             fwd[k] = (y + 1 + k < h) ? (pixels + (y + 1 + k) * w) : zero_row;
 
+        // Prefetch the furthest-ahead row needed by the NEXT iteration.
+        // At row y, next iteration needs fwd[R-1] = row y+1+R.
+        // Prefetching 2 rows ahead gives the memory subsystem time to fetch.
+        {
+            const int prefetch_y = y + R + 2;
+            if (prefetch_y < h) {
+                const char *pf = (const char *)(pixels + prefetch_y * w);
+                const int row_bytes = w * (int)sizeof(RGB_T);
+                for (int off = 0; off < row_bytes; off += 64)
+                    __builtin_prefetch(pf + off, 0, 3);
+            }
+        }
+
         // Process all pixels in this output row.
         // For u8-channel types (CRGB), process as raw byte stream — all
         // channels use the same kernel weights, so we treat the row as a
@@ -566,100 +950,15 @@ static void vpass_rowmajor_impl(
         if (sizeof(typename RGB_T::fp) == 1 && !ApplyAlpha) {
             // Raw byte fast path (CRGB without alpha).
             const int nbytes = w * (int)sizeof(RGB_T);
-            const u8 *b0 = (const u8 *)bufs[0];
-            const u8 *bc = (const u8 *)bufs[R]; // center
             u8 *ob = (u8 *)out_row;
 
-            if (R == 1) {
-                const u8 *f0 = (const u8 *)fwd[0];
-                for (int i = 0; i < nbytes; ++i)
-                    ob[i] = (u8)(((u16)b0[i] + ((u16)bc[i] << 1) + (u16)f0[i]) >> 2);
-            } else if (R == 2) {
-                const u8 *b1 = (const u8 *)bufs[1];
-                const u8 *f0 = (const u8 *)fwd[0];
-                const u8 *f1 = (const u8 *)fwd[1];
-                for (int i = 0; i < nbytes; ++i) {
-                    u16 s04 = (u16)b0[i] + (u16)f1[i];
-                    u16 s13 = (u16)b1[i] + (u16)f0[i];
-                    ob[i] = (u8)((s04 + s13 * 4 + (u16)bc[i] * 6) >> 4);
-                }
-            } else if (R == 3) {
-                const u8 *b1 = (const u8 *)bufs[1];
-                const u8 *b2 = (const u8 *)bufs[2];
-                const u8 *f0 = (const u8 *)fwd[0];
-                const u8 *f1 = (const u8 *)fwd[1];
-                const u8 *f2 = (const u8 *)fwd[2];
-                for (int i = 0; i < nbytes; ++i) {
-                    u16 s06 = (u16)b0[i] + (u16)f2[i];
-                    u16 s15 = (u16)b1[i] + (u16)f1[i];
-                    u16 s24 = (u16)b2[i] + (u16)f0[i];
-                    ob[i] = (u8)((s06 + s15 * 6 + s24 * 15 + (u16)bc[i] * 20) >> 6);
-                }
-            } else { // R == 4
-                const u8 *b1 = (const u8 *)bufs[1];
-                const u8 *b2 = (const u8 *)bufs[2];
-                const u8 *b3 = (const u8 *)bufs[3];
-                const u8 *f0 = (const u8 *)fwd[0];
-                const u8 *f1 = (const u8 *)fwd[1];
-                const u8 *f2 = (const u8 *)fwd[2];
-                const u8 *f3 = (const u8 *)fwd[3];
-                for (int i = 0; i < nbytes; ++i) {
-                    u16 s08 = (u16)b0[i] + (u16)f3[i];
-                    u16 s17 = (u16)b1[i] + (u16)f2[i];
-                    u16 s26 = (u16)b2[i] + (u16)f1[i];
-                    u16 s35 = (u16)b3[i] + (u16)f0[i];
-                    ob[i] = (u8)((s08 + s17 * 8 + s26 * 28 + s35 * 56 + (u16)bc[i] * 70) >> 8);
-                }
-            }
+            simd_vconv_dispatch<R>::apply(bufs, fwd, ob, nbytes);
         } else {
             // Generic path: per-pixel struct access (CRGB16 or alpha case).
             for (int x = 0; x < w; ++x) {
                 acc_t r, g, b;
 
-                if (R == 1) {
-                    r = (P::ch(bufs[0][x].r) + P::ch(fwd[0][x].r)) + (P::ch(bufs[1][x].r) << 1);
-                    g = (P::ch(bufs[0][x].g) + P::ch(fwd[0][x].g)) + (P::ch(bufs[1][x].g) << 1);
-                    b = (P::ch(bufs[0][x].b) + P::ch(fwd[0][x].b)) + (P::ch(bufs[1][x].b) << 1);
-                } else if (R == 2) {
-                    const acc_t sr04 = P::ch(bufs[0][x].r) + P::ch(fwd[1][x].r);
-                    const acc_t sg04 = P::ch(bufs[0][x].g) + P::ch(fwd[1][x].g);
-                    const acc_t sb04 = P::ch(bufs[0][x].b) + P::ch(fwd[1][x].b);
-                    const acc_t sr13 = P::ch(bufs[1][x].r) + P::ch(fwd[0][x].r);
-                    const acc_t sg13 = P::ch(bufs[1][x].g) + P::ch(fwd[0][x].g);
-                    const acc_t sb13 = P::ch(bufs[1][x].b) + P::ch(fwd[0][x].b);
-                    r = sr04 + sr13 * 4 + P::ch(bufs[2][x].r) * 6;
-                    g = sg04 + sg13 * 4 + P::ch(bufs[2][x].g) * 6;
-                    b = sb04 + sb13 * 4 + P::ch(bufs[2][x].b) * 6;
-                } else if (R == 3) {
-                    const acc_t sr06 = P::ch(bufs[0][x].r) + P::ch(fwd[2][x].r);
-                    const acc_t sg06 = P::ch(bufs[0][x].g) + P::ch(fwd[2][x].g);
-                    const acc_t sb06 = P::ch(bufs[0][x].b) + P::ch(fwd[2][x].b);
-                    const acc_t sr15 = P::ch(bufs[1][x].r) + P::ch(fwd[1][x].r);
-                    const acc_t sg15 = P::ch(bufs[1][x].g) + P::ch(fwd[1][x].g);
-                    const acc_t sb15 = P::ch(bufs[1][x].b) + P::ch(fwd[1][x].b);
-                    const acc_t sr24 = P::ch(bufs[2][x].r) + P::ch(fwd[0][x].r);
-                    const acc_t sg24 = P::ch(bufs[2][x].g) + P::ch(fwd[0][x].g);
-                    const acc_t sb24 = P::ch(bufs[2][x].b) + P::ch(fwd[0][x].b);
-                    r = sr06 + sr15 * 6 + sr24 * 15 + P::ch(bufs[3][x].r) * 20;
-                    g = sg06 + sg15 * 6 + sg24 * 15 + P::ch(bufs[3][x].g) * 20;
-                    b = sb06 + sb15 * 6 + sb24 * 15 + P::ch(bufs[3][x].b) * 20;
-                } else { // R == 4
-                    const acc_t sr08 = P::ch(bufs[0][x].r) + P::ch(fwd[3][x].r);
-                    const acc_t sg08 = P::ch(bufs[0][x].g) + P::ch(fwd[3][x].g);
-                    const acc_t sb08 = P::ch(bufs[0][x].b) + P::ch(fwd[3][x].b);
-                    const acc_t sr17 = P::ch(bufs[1][x].r) + P::ch(fwd[2][x].r);
-                    const acc_t sg17 = P::ch(bufs[1][x].g) + P::ch(fwd[2][x].g);
-                    const acc_t sb17 = P::ch(bufs[1][x].b) + P::ch(fwd[2][x].b);
-                    const acc_t sr26 = P::ch(bufs[2][x].r) + P::ch(fwd[1][x].r);
-                    const acc_t sg26 = P::ch(bufs[2][x].g) + P::ch(fwd[1][x].g);
-                    const acc_t sb26 = P::ch(bufs[2][x].b) + P::ch(fwd[1][x].b);
-                    const acc_t sr35 = P::ch(bufs[3][x].r) + P::ch(fwd[0][x].r);
-                    const acc_t sg35 = P::ch(bufs[3][x].g) + P::ch(fwd[0][x].g);
-                    const acc_t sb35 = P::ch(bufs[3][x].b) + P::ch(fwd[0][x].b);
-                    r = sr08 + sr17 * 8 + sr26 * 28 + sr35 * 56 + P::ch(bufs[4][x].r) * 70;
-                    g = sg08 + sg17 * 8 + sg26 * 28 + sg35 * 56 + P::ch(bufs[4][x].g) * 70;
-                    b = sb08 + sb17 * 8 + sb26 * 28 + sb35 * 56 + P::ch(bufs[4][x].b) * 70;
-                }
+                vpass_pixel_kernel<R, RGB_T, acc_t>::apply(bufs, fwd, x, r, g, b);
 
                 if (ApplyAlpha) {
                     out_row[x] = P::make(static_cast<acc_t>(r >> shift),
@@ -681,6 +980,93 @@ static void vpass_rowmajor_impl(
 }
 
 #endif // !FL_IS_AVR
+
+// ── Helper: pad buffer size calculation ─────────────────────────────────
+template <int hR, int vR, typename RGB_T>
+static int compute_pad_size(int w, int h) {
+    int hPad = 2 * hR + w;
+#if !defined(FL_IS_AVR)
+    if (hR == 2) hPad += (w + 2);  // cascaded R=1 temp
+#endif
+#if defined(FL_IS_AVR)
+    int vPad = 2 * vR + h;
+#else
+    int vPad = vR > 0 ? (vR + 2) * w : 0;
+#endif
+    return hPad > vPad ? hPad : vPad;
+}
+
+// ── Helper: horizontal pass for one padded row ─────────────────────────
+// Dispatches to the appropriate kernel based on platform and pixel type.
+template <int R, typename RGB_T, typename acc_t, bool ApplyAlpha, typename AlphaT>
+FL_ALWAYS_INLINE
+void hpass_row(RGB_T *pad, RGB_T *out, int w, AlphaT alpha) {
+#if defined(FL_IS_AVR)
+    if (ApplyAlpha)
+        apply_pass_alpha_1ch<R>(pad, out, w, 1, alpha);
+    else
+        apply_pass_1ch<R>(pad, out, w, 1);
+#else
+    // SIMD fast path: u8-channel (CRGB), no alpha on this pass.
+    if (sizeof(typename RGB_T::fp) == 1 && !ApplyAlpha) {
+        constexpr int S = (int)sizeof(RGB_T);
+        const int nbytes = w * S;
+        const u8 *pb = (const u8 *)pad;
+        u8 *ob = (u8 *)out;
+        simd_hconv_dispatch<R>::apply(
+            pb, S, ob, nbytes, (u8 *)(pad + 2 * R + w), w);
+    } else if (ApplyAlpha) {
+        apply_pass_alpha<R, RGB_T, acc_t>(pad, out, w, 1, alpha);
+    } else {
+        apply_pass<R, RGB_T, acc_t>(pad, out, w, 1);
+    }
+#endif
+}
+
+// ── Helper: vertical pass over entire image ─────────────────────────────
+template <int R, typename RGB_T, typename acc_t, bool ApplyAlpha, typename AlphaT>
+static void vpass_full(RGB_T *pixels, int w, int h, RGB_T *scratch, AlphaT alpha) {
+#if defined(FL_IS_AVR)
+    // AVR: column-by-column with per-channel noinline + O3.
+    __builtin_memset(scratch, 0, R * sizeof(RGB_T));
+    __builtin_memset(scratch + R + h, 0, R * sizeof(RGB_T));
+
+    for (int x = 0; x < w; ++x) {
+        // Linearize column into padded region.
+        {
+            const RGB_T *src = pixels + x;
+            RGB_T *dst = scratch + R;
+            for (int i = 0; i < h; ++i) {
+                *dst++ = *src;
+                src += w;
+            }
+        }
+        if (ApplyAlpha)
+            apply_pass_alpha_1ch<R>(scratch, pixels + x, h, w, alpha);
+        else
+            apply_pass_1ch<R>(scratch, pixels + x, h, w);
+    }
+#else
+    // Non-AVR: row-major vertical pass for cache efficiency.
+    // Cascaded R=1 for R=2 V-pass: [1,4,6,4,1] = [1,2,1]⊗[1,2,1].
+    if (R == 2 && sizeof(typename RGB_T::fp) == 1) {
+        vpass_rowmajor_impl<1, RGB_T, acc_t, false>(
+            pixels, w, h, scratch, alpha_identity<AlphaT>());
+        if (ApplyAlpha)
+            vpass_rowmajor_impl<1, RGB_T, acc_t, true>(
+                pixels, w, h, scratch, alpha);
+        else
+            vpass_rowmajor_impl<1, RGB_T, acc_t, false>(
+                pixels, w, h, scratch, alpha_identity<AlphaT>());
+    } else if (ApplyAlpha) {
+        vpass_rowmajor_impl<R, RGB_T, acc_t, true>(
+            pixels, w, h, scratch, alpha);
+    } else {
+        vpass_rowmajor_impl<R, RGB_T, acc_t, false>(
+            pixels, w, h, scratch, alpha);
+    }
+#endif
+}
 
 } // namespace blur_detail
 
@@ -717,119 +1103,37 @@ void blurGaussianImpl(Canvas<RGB_T> &canvas, AlphaT alpha) {
         return;
     }
 
-    // Padded pixel buffer: max of horizontal pad and vertical scratch.
-    const int hPadSize = 2 * hRadius + w;
-#if defined(FL_IS_AVR)
-    const int vPadSize = 2 * vRadius + h;
-#else
-    // Row-major vertical pass needs (R+2)*w: R+1 ring buffers + 1 zero row.
-    const int vPadSize = vRadius > 0 ? (vRadius + 2) * w : 0;
-#endif
-    const int padSize = hPadSize > vPadSize ? hPadSize : vPadSize;
-    RGB_T *pad = blur_detail::get_padbuf<RGB_T>(padSize);
-
+    RGB_T *pad = blur_detail::get_padbuf<RGB_T>(
+        blur_detail::compute_pad_size<hRadius, vRadius, RGB_T>(w, h));
     RGB_T *pixels = canvas.pixels;
 
     // ── Horizontal pass ──────────────────────────────────────────────
     if (hRadius > 0) {
-        constexpr int hShift = 2 * hRadius;
-
         // Zero the fixed padding regions once (reused for every row).
         __builtin_memset(pad, 0, hRadius * sizeof(RGB_T));
         __builtin_memset(pad + hRadius + w, 0, hRadius * sizeof(RGB_T));
 
         for (int y = 0; y < h; ++y) {
             RGB_T *row = pixels + y * w;
-
-            // Copy row data into padded region.
             FL_BUILTIN_MEMCPY(pad + hRadius, row, w * sizeof(RGB_T));
 
-            // Apply interior kernel to ALL positions (zero-padding handles edges).
-#if defined(FL_IS_AVR)
-            // AVR: per-channel noinline + O3 for all radii.
-            // conv1ch processes one color channel at a time, cutting live
-            // accumulator registers from 6 (r,g,b as u16 pairs) to 2.
-            // FL_OPTIMIZE_FUNCTION on the pass functions overrides -Os with
-            // -O3 for better register allocation in the kernel loop.
             if (vRadius == 0 && applyAlpha)
-                blur_detail::apply_pass_alpha_1ch<hRadius>(
-                    pad, row, w, 1, alpha);
+                blur_detail::hpass_row<hRadius, RGB_T, acc_t, true>(
+                    pad, row, w, alpha);
             else
-                blur_detail::apply_pass_1ch<hRadius>(
-                    pad, row, w, 1);
-#else
-            if (hRadius <= 1) {
-                if (vRadius == 0 && applyAlpha) {
-                    for (int x = 0; x < w; ++x) {
-                        acc_t r, g, b;
-                        blur_detail::interior_row<hRadius, RGB_T, acc_t>::apply(
-                            pad, hRadius + x, r, g, b);
-                        row[x] = P::make(static_cast<acc_t>(r >> hShift),
-                                         static_cast<acc_t>(g >> hShift),
-                                         static_cast<acc_t>(b >> hShift), alpha);
-                    }
-                } else {
-                    for (int x = 0; x < w; ++x) {
-                        acc_t r, g, b;
-                        blur_detail::interior_row<hRadius, RGB_T, acc_t>::apply(
-                            pad, hRadius + x, r, g, b);
-                        row[x] = P::make(static_cast<acc_t>(r >> hShift),
-                                         static_cast<acc_t>(g >> hShift),
-                                         static_cast<acc_t>(b >> hShift));
-                    }
-                }
-            } else {
-                if (vRadius == 0 && applyAlpha) {
-                    blur_detail::apply_pass_alpha<hRadius, RGB_T, acc_t>(
-                        pad, row, w, 1, alpha);
-                } else {
-                    blur_detail::apply_pass<hRadius, RGB_T, acc_t>(
-                        pad, row, w, 1);
-                }
-            }
-#endif
+                blur_detail::hpass_row<hRadius, RGB_T, acc_t, false>(
+                    pad, row, w, alpha);
         }
     }
 
     // ── Vertical pass ──────────────────────────────────────────────────
     if (vRadius > 0) {
-#if defined(FL_IS_AVR)
-        // AVR: column-by-column with per-channel noinline + O3.
-        constexpr int vShift = 2 * vRadius;
-
-        // Zero the fixed padding regions once (reused for every column).
-        __builtin_memset(pad, 0, vRadius * sizeof(RGB_T));
-        __builtin_memset(pad + vRadius + h, 0, vRadius * sizeof(RGB_T));
-
-        for (int x = 0; x < w; ++x) {
-            // Linearize column into padded region.
-            {
-                const RGB_T *src = pixels + x;
-                RGB_T *dst = pad + vRadius;
-                for (int i = 0; i < h; ++i) {
-                    *dst++ = *src;
-                    src += w;
-                }
-            }
-            if (applyAlpha)
-                blur_detail::apply_pass_alpha_1ch<vRadius>(
-                    pad, pixels + x, h, w, alpha);
-            else
-                blur_detail::apply_pass_1ch<vRadius>(
-                    pad, pixels + x, h, w);
-        }
-#else
-        // Non-AVR: row-major vertical pass for cache efficiency.
-        // Processes all columns simultaneously per row (sequential access),
-        // using a ring buffer of R+1 saved rows for overwritten history.
-        if (applyAlpha) {
-            blur_detail::vpass_rowmajor_impl<vRadius, RGB_T, acc_t, true>(
+        if (applyAlpha)
+            blur_detail::vpass_full<vRadius, RGB_T, acc_t, true>(
                 pixels, w, h, pad, alpha);
-        } else {
-            blur_detail::vpass_rowmajor_impl<vRadius, RGB_T, acc_t, false>(
+        else
+            blur_detail::vpass_full<vRadius, RGB_T, acc_t, false>(
                 pixels, w, h, pad, alpha);
-        }
-#endif
     }
 }
 

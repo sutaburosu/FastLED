@@ -258,7 +258,11 @@ static void fill_test_data(CRGB *pixels, int n) {
 }
 
 template <typename Func>
+#ifdef NDEBUG
 static double bench(Func fn, int iterations, int warmup = 200) {
+#else
+static double bench(Func fn, int iterations, int warmup = 5) {
+#endif
     for (int i = 0; i < warmup; ++i)
         fn();
     fl::u32 t0 = fl::micros();
@@ -288,18 +292,34 @@ static void run_benchmark(const char *label, int iters) {
     fl::println(buf);
 }
 
+template <int R, int W, int H>
+static void run_benchmark_blur_only(const char *label, int iters) {
+    constexpr int N = W * H;
+    CRGB px[N];
+    fill_test_data(px, N); // fill once before benchmark
+
+    auto t = bench(
+        [&]() {
+            gfx::Canvas<CRGB> c(fl::span<CRGB>(px, N), W, H);
+            gfx::blurGaussian<R, R>(c);
+        },
+        iters);
+
+    char buf[80];
+    fl::snprintf(buf, sizeof(buf), "  %s: %d ns/iter", label,
+             static_cast<int>(t));
+    fl::println(buf);
+}
+
 FL_TEST_CASE("blur benchmark") {
+    // Use fewer iterations in debug/quick builds (-O0) to avoid watchdog timeout.
+#ifdef NDEBUG
     const int ITERS = 5000;
+#else
+    const int ITERS = 200;
+#endif
 
-    fl::println("\n── Gaussian Blur Benchmark (SKIPSM) ──");
-    fl::println("  (each iteration includes fill + blur)\n");
-
-    run_benchmark<1, 8, 8>("8x8 R1", ITERS);
-    run_benchmark<2, 8, 8>("8x8 R2", ITERS);
-    run_benchmark<3, 8, 8>("8x8 R3", ITERS);
-    run_benchmark<4, 8, 8>("8x8 R4", ITERS);
-
-    fl::println("");
+    fl::println("\n── Gaussian Blur Benchmark (fill + blur) ──\n");
 
     run_benchmark<1, 16, 16>("16x16 R1", ITERS);
     run_benchmark<2, 16, 16>("16x16 R2", ITERS);
@@ -308,17 +328,130 @@ FL_TEST_CASE("blur benchmark") {
 
     fl::println("");
 
-    run_benchmark<1, 32, 32>("32x32 R1", ITERS);
-    run_benchmark<2, 32, 32>("32x32 R2", ITERS);
-    run_benchmark<3, 32, 32>("32x32 R3", ITERS);
-    run_benchmark<4, 32, 32>("32x32 R4", ITERS);
-
-    fl::println("");
-
     run_benchmark<1, 64, 64>("64x64 R1", ITERS / 2);
     run_benchmark<2, 64, 64>("64x64 R2", ITERS / 2);
     run_benchmark<3, 64, 64>("64x64 R3", ITERS / 2);
     run_benchmark<4, 64, 64>("64x64 R4", ITERS / 2);
+
+    fl::println("\n── Gaussian Blur Benchmark (blur only) ──\n");
+
+    run_benchmark_blur_only<1, 16, 16>("16x16 R1", ITERS);
+    run_benchmark_blur_only<2, 16, 16>("16x16 R2", ITERS);
+    run_benchmark_blur_only<4, 16, 16>("16x16 R4", ITERS);
+
+    fl::println("");
+
+    run_benchmark_blur_only<1, 64, 64>("64x64 R1", ITERS / 2);
+    run_benchmark_blur_only<2, 64, 64>("64x64 R2", ITERS / 2);
+    run_benchmark_blur_only<3, 64, 64>("64x64 R3", ITERS / 2);
+    run_benchmark_blur_only<4, 64, 64>("64x64 R4", ITERS / 2);
+
+    fl::println("\n── Larger images (blur only) ──\n");
+
+    run_benchmark_blur_only<1, 128, 128>("128x128 R1", ITERS / 4);
+    run_benchmark_blur_only<2, 128, 128>("128x128 R2", ITERS / 4);
+    run_benchmark_blur_only<3, 128, 128>("128x128 R3", ITERS / 4);
+    run_benchmark_blur_only<4, 128, 128>("128x128 R4", ITERS / 4);
+
+    fl::println("");
+
+    run_benchmark_blur_only<1, 256, 256>("256x256 R1", ITERS / 8);
+    run_benchmark_blur_only<2, 256, 256>("256x256 R2", ITERS / 8);
+    run_benchmark_blur_only<3, 256, 256>("256x256 R3", ITERS / 8);
+    run_benchmark_blur_only<4, 256, 256>("256x256 R4", ITERS / 8);
+
+    fl::println("\n── H-only vs V-only (blur only, 64x64) ──\n");
+
+    // Horizontal only (hR=R, vR=0)
+    {
+        constexpr int N = 64*64;
+        CRGB px[N];
+        fill_test_data(px, N);
+        auto t = bench([&]() {
+            gfx::Canvas<CRGB> c(fl::span<CRGB>(px, N), 64, 64);
+            gfx::blurGaussian<1, 0>(c);
+        }, ITERS/2);
+        char buf[80];
+        fl::snprintf(buf, sizeof(buf), "  H-only R1: %d ns", (int)t);
+        fl::println(buf);
+    }
+    // Vertical only (hR=0, vR=1)
+    {
+        constexpr int N = 64*64;
+        CRGB px[N];
+        fill_test_data(px, N);
+        auto t = bench([&]() {
+            gfx::Canvas<CRGB> c(fl::span<CRGB>(px, N), 64, 64);
+            gfx::blurGaussian<0, 1>(c);
+        }, ITERS/2);
+        char buf[80];
+        fl::snprintf(buf, sizeof(buf), "  V-only R1: %d ns", (int)t);
+        fl::println(buf);
+    }
+    // H+V R1
+    {
+        constexpr int N = 64*64;
+        CRGB px[N];
+        fill_test_data(px, N);
+        auto t = bench([&]() {
+            gfx::Canvas<CRGB> c(fl::span<CRGB>(px, N), 64, 64);
+            gfx::blurGaussian<1, 1>(c);
+        }, ITERS/2);
+        char buf[80];
+        fl::snprintf(buf, sizeof(buf), "  H+V   R1: %d ns", (int)t);
+        fl::println(buf);
+    }
+
+    // H-only and V-only R=2 (64x64)
+    {
+        constexpr int N = 64*64;
+        CRGB px[N];
+        fill_test_data(px, N);
+        auto t = bench([&]() {
+            gfx::Canvas<CRGB> c(fl::span<CRGB>(px, N), 64, 64);
+            gfx::blurGaussian<2, 0>(c);
+        }, ITERS/2);
+        char buf[80];
+        fl::snprintf(buf, sizeof(buf), "  H-only R2: %d ns", (int)t);
+        fl::println(buf);
+    }
+    {
+        constexpr int N = 64*64;
+        CRGB px[N];
+        fill_test_data(px, N);
+        auto t = bench([&]() {
+            gfx::Canvas<CRGB> c(fl::span<CRGB>(px, N), 64, 64);
+            gfx::blurGaussian<0, 2>(c);
+        }, ITERS/2);
+        char buf[80];
+        fl::snprintf(buf, sizeof(buf), "  V-only R2: %d ns", (int)t);
+        fl::println(buf);
+    }
+    // H-only and V-only R=2 (256x256)
+    {
+        constexpr int N = 256*256;
+        CRGB px[N];
+        fill_test_data(px, N);
+        auto t = bench([&]() {
+            gfx::Canvas<CRGB> c(fl::span<CRGB>(px, N), 256, 256);
+            gfx::blurGaussian<2, 0>(c);
+        }, ITERS/8);
+        char buf[80];
+        fl::snprintf(buf, sizeof(buf), "  H-only R2 256x256: %d ns", (int)t);
+        fl::println(buf);
+    }
+    {
+        constexpr int N = 256*256;
+        CRGB px[N];
+        fill_test_data(px, N);
+        auto t = bench([&]() {
+            gfx::Canvas<CRGB> c(fl::span<CRGB>(px, N), 256, 256);
+            gfx::blurGaussian<0, 2>(c);
+        }, ITERS/8);
+        char buf[80];
+        fl::snprintf(buf, sizeof(buf), "  V-only R2 256x256: %d ns", (int)t);
+        fl::println(buf);
+    }
 
     fl::println("");
 }
