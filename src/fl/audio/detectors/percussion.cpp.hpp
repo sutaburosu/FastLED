@@ -37,7 +37,7 @@ PercussionDetector::PercussionDetector()
 PercussionDetector::~PercussionDetector() = default;
 
 void PercussionDetector::update(shared_ptr<AudioContext> context) {
-    mRetainedFFT = context->getFFT16(FFTMode::CQ_OCTAVE);
+    mRetainedFFT = context->getFFT16(FFTMode::CQ_NAIVE);
     const FFTBins& fft = *mRetainedFFT;
     u32 timestamp = context->getTimestamp();
 

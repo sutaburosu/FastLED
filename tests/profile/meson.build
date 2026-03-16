@@ -29,6 +29,12 @@ if files:
 ).stdout().strip()
 
 if profile_test_files != ''
+  # Add system libraries needed by crash handler (dbghelp, psapi on Windows)
+  profile_link_args = unit_test_link_args
+  if host_machine.system() == 'windows'
+    profile_link_args += ['-ldbghelp', '-lpsapi']
+  endif
+
   foreach profile_file : profile_test_files.split(';')
     # Extract test name from file path: json_memory_profile.cpp → json_memory_profile
     # Supports both old (profile_*.cpp) and new naming conventions
@@ -43,8 +49,8 @@ if profile_test_files != ''
       profile_file,
       include_directories: [src_dir, stub_dir, project_root_dir],
       cpp_args: profile_test_compile_args,
-      link_args: unit_test_link_args,
-      link_with: [fastled_lib],
+      link_args: profile_link_args,
+      link_with: [fastled_lib, crash_handler_lib],
       install: false,
       build_by_default: false  # Only build when explicitly requested via 'bash profile <function>'
     )

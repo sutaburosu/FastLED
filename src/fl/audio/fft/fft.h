@@ -11,13 +11,17 @@ class FFTImpl;
 class AudioSample;  // IWYU pragma: keep
 
 // Controls which algorithm produces the log-spaced (CQ) output bins.
-//   AUTO      — LOG_REBIN for <= 32 bins, CQ_OCTAVE for > 32 bins
-//   LOG_REBIN — Single FFT + geometric bin grouping (~0.15ms on ESP32-S3)
-//   CQ_OCTAVE — Octave-wise Constant-Q Transform (~1-5ms on ESP32-S3)
+//   AUTO         — LOG_REBIN for <= 32 bins, CQ_NAIVE or CQ_OCTAVE for > 32
+//   LOG_REBIN    — Single FFT + geometric bin grouping (~0.15ms on ESP32-S3)
+//   CQ_NAIVE     — Single FFT + CQ kernels (no input window)
+//   CQ_OCTAVE    — Octave-wise Constant-Q Transform (~1-5ms on ESP32-S3)
+//   CQ_HYBRID    — LOG_REBIN for upper freqs + CQ_OCTAVE decimation for bass
 enum class FFTMode {
     AUTO,
     LOG_REBIN,
-    CQ_OCTAVE
+    CQ_NAIVE,
+    CQ_OCTAVE,
+    CQ_HYBRID  // If you aren't sure just use this.
 };
 
 class FFTBins {

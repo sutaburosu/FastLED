@@ -244,26 +244,6 @@ inline fl::i32 toQ16<fl::s16x16>(fl::s16x16 val) {
     return val.raw();
 }
 
-/// Fast iterative integer square root for runtime use.
-/// ~16 iterations (loop, no recursion) vs ~31 recursive calls in fl::isqrt32.
-/// Produces identical results to fl::isqrt32 — floor(sqrt(x)).
-inline fl::u16 fastIsqrt32(fl::u32 x) {
-    if (x == 0) return 0;
-    fl::u32 result = 0;
-    fl::u32 bit = fl::u32(1) << 30;
-    while (bit > x) bit >>= 2;
-    while (bit != 0) {
-        fl::u32 rb = result + bit;
-        if (x >= rb) {
-            x -= rb;
-            result = (result >> 1) + bit;
-        } else {
-            result >>= 1;
-        }
-        bit >>= 2;
-    }
-    return static_cast<fl::u16>(result);
-}
 
 /// Disc context: bundles per-circle constants into a struct passed by reference.
 /// This reduces function-call overhead on register-poor architectures (AVR: 12 params
@@ -852,7 +832,7 @@ inline void detail::drawStrokeLineCore(Canvas<PixelT>& canvas, const PixelT& col
 
     fl::i32 len2_16 = dx_8 * dx_8 + dy_8 * dy_8;
     fl::i32 len_8 = static_cast<fl::i32>(
-        detail::fastIsqrt32(static_cast<fl::u32>(len2_16)));
+        fl::isqrt32(static_cast<fl::u32>(len2_16)));
     fl::i32 thickness_8 = detail::toFixed8(thickness);
     fl::i32 r_max_8 = thickness_8 >> 1;
     fl::i32 threshold_q = r_max_8 * len_8;

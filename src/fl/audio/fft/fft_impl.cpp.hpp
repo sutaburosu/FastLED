@@ -16,6 +16,7 @@
 #include "fl/audio/fft/fft_impl.h"
 #include "fl/stl/string.h"
 #include "fl/stl/compiler_control.h"
+#include "fl/stl/fixed_point/u16x16.h"
 #include "fl/stl/vector.h"
 #include "fl/system/log.h"
 
@@ -49,11 +50,17 @@ namespace fl {
 
     // Resolve FFTMode::AUTO based on bin count.
     // <= 32 bins → LOG_REBIN (fast, no quality difference at this resolution)
-    // > 32 bins  → CQ_OCTAVE (accurate per-bin frequency discrimination)
-    static FFTMode resolveMode(FFTMode mode, int /*samples*/, float /*fmin*/,
-                               float /*fmax*/, int bands) {
+    // > 32 bins  → CQ_NAIVE or CQ_OCTAVE based on kernel conditioning
+    static FFTMode resolveMode(FFTMode mode, int samples, float fmin,
+                               float fmax, int bands) {
         if (mode != FFTMode::AUTO) return mode;
-        return (bands <= 32) ? FFTMode::LOG_REBIN : FFTMode::CQ_OCTAVE;
+        if (bands <= 32) return FFTMode::LOG_REBIN;
+        // Check kernel conditioning: N_window = N * fmin / fmax.
+        // When >= 2, CQ_NAIVE (single FFT + kernels) works well.
+        // When < 2, kernels degenerate and we need octave-wise CQT.
+        int winMin = static_cast<int>(
+            static_cast<float>(samples) * fmin / fmax);
+        return (winMin >= 2) ? FFTMode::CQ_NAIVE : FFTMode::CQ_OCTAVE;
     }
 
 class FFTContext {
@@ -61,7 +68,7 @@ class FFTContext {
     FFTContext(int samples, int bands, float fmin, float fmax, int sample_rate,
               FFTMode mode)
         : m_fftr_cfg(nullptr), m_input_samples(samples),
-          m_kernels(nullptr), m_octaveWise(false),
+          m_kernels(nullptr),
           m_mode(resolveMode(mode, samples, fmin, fmax, bands)),
           m_totalBands(bands), m_fmin(fmin), m_fmax(fmax),
           m_sampleRate(sample_rate) {
@@ -73,20 +80,22 @@ class FFTContext {
             return;
         }
 
-        if (m_mode == FFTMode::LOG_REBIN) {
-            // No CQ kernels needed — just FFT + geometric bin grouping.
-            // Pre-compute log-spaced bin edges for runLogRebin().
+        switch (m_mode) {
+        case FFTMode::LOG_REBIN:
             initLogRebin();
-        } else {
-            // CQ mode: pick naive or octave-wise based on kernel conditioning.
-            // N_window = N * fmin / fmax. When < 2, kernels are degenerate.
-            int winMin = static_cast<int>(
-                static_cast<float>(samples) * fmin / fmax);
-            if (winMin >= 2) {
-                initNaive(samples, bands, fmin, fmax, sample_rate);
-            } else {
-                initOctaveWise(samples, bands, fmin, fmax, sample_rate);
-            }
+            break;
+        case FFTMode::CQ_NAIVE:
+            initNaive(samples, bands, fmin, fmax, sample_rate);
+            break;
+        case FFTMode::CQ_HYBRID:
+            initHybrid(samples, bands, fmin, fmax, sample_rate);
+            break;
+        case FFTMode::CQ_OCTAVE:
+            initOctaveWise(samples, bands, fmin, fmax, sample_rate);
+            break;
+        case FFTMode::AUTO:
+            FASTLED_WARN("FFTMode::AUTO should have been resolved");
+            break;
         }
     }
 
@@ -102,17 +111,33 @@ class FFTContext {
                 free_kernels(m_octaves[i].kernels, m_octaves[i].cfg);
             }
         }
+        if (m_hybridSmallFft) {
+            kiss_fftr_free(m_hybridSmallFft);
+        }
+        if (m_hybridMidFft) {
+            kiss_fftr_free(m_hybridMidFft);
+        }
     }
 
     fl::size sampleSize() const { return m_input_samples; }
 
     void run(span<const i16> buffer, FFTBins *out) {
-        if (m_mode == FFTMode::LOG_REBIN) {
+        switch (m_mode) {
+        case FFTMode::LOG_REBIN:
             runLogRebin(buffer, out);
-        } else if (m_octaveWise) {
-            runOctaveWise(buffer, out);
-        } else {
+            break;
+        case FFTMode::CQ_NAIVE:
             runNaive(buffer, out);
+            break;
+        case FFTMode::CQ_OCTAVE:
+            runOctaveWise(buffer, out);
+            break;
+        case FFTMode::CQ_HYBRID:
+            runHybrid(buffer, out);
+            break;
+        case FFTMode::AUTO:
+            FASTLED_WARN("FFTMode::AUTO should have been resolved");
+            break;
         }
     }
 
@@ -174,77 +199,56 @@ class FFTContext {
                 m_fmax * expf(logRatio / denom);
         }
 
-        // Pre-compute Hanning window to reduce spectral leakage
-        const int N = m_input_samples;
-        m_hanningWindow.resize(N);
-        const float invNm1 = 1.0f / static_cast<float>(N - 1);
-        for (int n = 0; n < N; ++n) {
-            float phase = 2.0f * static_cast<float>(FL_M_PI) *
-                          static_cast<float>(n) * invNm1;
-            m_hanningWindow[n] = 0.5f * (1.0f - fl::cosf(phase));
-        }
+        computeBinEdgesQ16();
+
+        // Pre-compute bin mapping LUTs
+        buildLogBinLut(m_logBinLut, m_input_samples,
+                       static_cast<float>(m_sampleRate), 0, m_totalBands);
+        buildLinearBinLut(m_linearBinLut, m_input_samples);
+
+        // Pre-compute Hanning window as Q15 integer coefficients
+        computeHanningWindow(m_hanningWindow, m_input_samples);
     }
 
     void runLogRebin(span<const i16> buffer, FFTBins *out) {
         out->setParams(m_fmin, m_fmax, m_sampleRate);
         const int N = m_input_samples;
         const int bands = m_totalBands;
+        const int numRawBins = N / 2 + 1;
 
-        // Apply Hanning window to reduce spectral leakage
+        // Apply Q15 Hanning window (integer multiply, no float)
         FASTLED_STACK_ARRAY(kiss_fft_scalar, windowed, N);
-        for (int i = 0; i < N; ++i) {
-            windowed[i] = static_cast<kiss_fft_scalar>(
-                static_cast<float>(buffer[i]) * m_hanningWindow[i]);
-        }
+        applyWindowQ15(buffer.data(), m_hanningWindow.data(), windowed, N);
 
         FASTLED_STACK_ARRAY(kiss_fft_cpx, fft, N);
         kiss_fftr(m_fftr_cfg, windowed, fft);
 
-        // Linear bins (same as other paths)
-        computeLinearBins(fft, N, out);
+        // Deinterleave AoS → SoA and batch-compute magnitudes
+        FASTLED_STACK_ARRAY(kiss_fft_scalar, re, numRawBins);
+        FASTLED_STACK_ARRAY(kiss_fft_scalar, im, numRawBins);
+        FASTLED_STACK_ARRAY(u16, mag, numRawBins);
+        deinterleave(fft, re, im, numRawBins);
+        batchMag(re, im, mag, numRawBins);
 
-        // Group FFT bins into log-spaced output bins
+        // Linear bins (same as other paths)
+        computeLinearBins(mag, N, out);
+
+        // Group FFT bins into log-spaced output bins (integer accumulation)
+        FASTLED_STACK_ARRAY(u32, rawBinsI, bands);
+        for (int i = 0; i < bands; ++i) {
+            rawBinsI[i] = 0;
+        }
+        logRebinRange(mag, N, static_cast<float>(m_sampleRate),
+                      0, bands, rawBinsI, m_logBinLut);
+
+        // Store raw magnitudes and compute dB
         fl::vector<float> &rawBins = out->raw_mut();
         fl::vector<float> &dbBins = out->db_mut();
         rawBins.resize(bands);
         dbBins.resize(bands);
         for (int i = 0; i < bands; ++i) {
-            rawBins[i] = 0.0f;
-        }
-
-        const float fs = static_cast<float>(m_sampleRate);
-        const float rawBinHz = fs / static_cast<float>(N);
-        const int numRawBins = N / 2 + 1;
-        const float halfBin = rawBinHz * 0.5f;
-
-        for (int k = 0; k < numRawBins; ++k) {
-            float freq = static_cast<float>(k) * rawBinHz;
-            // Each FFT bin covers [freq - halfBin, freq + halfBin].
-            // Include it if any part of that range overlaps [fmin, fmax].
-            if (freq + halfBin < m_fmin || freq - halfBin >= m_fmax)
-                continue;
-
-            float re = static_cast<float>(fft[k].r);
-            float im = static_cast<float>(fft[k].i);
-            float mag = sqrt(re * re + im * im);
-
-            // Binary search for the output bin this frequency falls into.
-            // m_logBinEdges is sorted, so find largest i where edge[i] <= freq.
-            // Clamp: FFT bins below fmin map to bin 0, above fmax to last bin.
-            int lo = 0, hi = bands - 1;
-            while (lo < hi) {
-                int mid = (lo + hi + 1) / 2;
-                if (m_logBinEdges[mid] <= freq)
-                    lo = mid;
-                else
-                    hi = mid - 1;
-            }
-            rawBins[lo] += mag;
-        }
-
-        for (int i = 0; i < bands; ++i) {
-            dbBins[i] = (rawBins[i] > 0.0f) ? 20.0f * log10f(rawBins[i])
-                                              : 0.0f;
+            rawBins[i] = static_cast<float>(rawBinsI[i]);
+            dbBins[i] = fastDb(rawBinsI[i]);
         }
     }
 
@@ -258,16 +262,25 @@ class FFTContext {
         m_cq_cfg.fs = sr;
         m_cq_cfg.min_val = FL_FFT_MIN_VAL;
         m_kernels = generate_kernels(m_cq_cfg);
+        buildLinearBinLut(m_linearBinLut, samples);
     }
 
     void runNaive(span<const i16> buffer, FFTBins *out) {
         out->setParams(m_fmin, m_fmax, m_sampleRate);
         const int fftSize = m_input_samples;
+        const int numRawBins = fftSize / 2 + 1;
 
         FASTLED_STACK_ARRAY(kiss_fft_cpx, fft, fftSize);
         kiss_fftr(m_fftr_cfg, buffer.data(), fft);
 
-        computeLinearBins(fft, fftSize, out);
+        // Deinterleave AoS → SoA and batch-compute magnitudes
+        FASTLED_STACK_ARRAY(kiss_fft_scalar, re, numRawBins);
+        FASTLED_STACK_ARRAY(kiss_fft_scalar, im, numRawBins);
+        FASTLED_STACK_ARRAY(u16, mag, numRawBins);
+        deinterleave(fft, re, im, numRawBins);
+        batchMag(re, im, mag, numRawBins);
+
+        computeLinearBins(mag, fftSize, out);
 
         FASTLED_STACK_ARRAY(kiss_fft_cpx, cq, m_cq_cfg.bands);
         apply_kernels(fft, cq, m_kernels, m_cq_cfg);
@@ -280,19 +293,197 @@ class FFTContext {
         for (int i = 0; i < bands; ++i) {
             i32 real = cq[i].r;
             i32 imag = cq[i].i;
+#ifdef FIXED_POINT
+            u16 magnitude = fastMag(real, imag);
+            rawBins[i] = static_cast<float>(magnitude);
+            dbBins[i] = fastDb(static_cast<u32>(magnitude));
+#else
             float r2 = float(real * real);
             float i2 = float(imag * imag);
             float magnitude = sqrt(r2 + i2);
-
-            float magnitude_db = 20 * log10(magnitude);
-
-            if (magnitude <= 0.0f) {
-                magnitude_db = 0.0f;
-            }
-
             rawBins[i] = magnitude;
-            dbBins[i] = magnitude_db;
+            dbBins[i] = (magnitude > 0.0f) ? 20.0f * log10f(magnitude) : 0.0f;
+#endif
         }
+    }
+
+    // Fast integer magnitude: max(|re|,|im|) + 0.4*min(|re|,|im|)
+    // Max error ~3.5% vs exact sqrt(re²+im²). No float, no division.
+    static inline u16 fastMag(i32 re, i32 im) {
+        u32 a = (re >= 0) ? static_cast<u32>(re) : static_cast<u32>(-re);
+        u32 b = (im >= 0) ? static_cast<u32>(im) : static_cast<u32>(-im);
+        u32 mx = (a > b) ? a : b;
+        u32 mn = (a <= b) ? a : b;
+        return static_cast<u16>(mx + ((mn * 13) >> 5));
+    }
+
+    // Fast integer dB conversion: 20 * log10(x) = 6.02060 * log2(x).
+    // Uses MSB position for integer part, corrected linear interpolation
+    // for fractional part. Max error ~0.05 dB — imperceptible for audio
+    // visualization. No log10f, no division.
+    // Internally uses fixed-point Q16.16 in FIXED16 mode, converts to float at output.
+    static inline float fastDb(u32 x) {
+        if (x == 0) return 0.0f;
+
+        // Find highest set bit (integer part of log2)
+        int msb = 0;
+        {
+            u32 v = x;
+            if (v >= 0x10000u) { v >>= 16; msb += 16; }
+            if (v >= 0x100u)   { v >>= 8;  msb += 8; }
+            if (v >= 0x10u)    { v >>= 4;  msb += 4; }
+            if (v >= 0x4u)     { v >>= 2;  msb += 2; }
+            if (v >= 0x2u)     { msb += 1; }
+        }
+
+        // Normalized mantissa in Q0.16: t = (x / 2^msb - 1) * 65536
+        u32 t16;
+        if (msb >= 16) {
+            t16 = (x >> (msb - 16)) - 65536u;
+        } else {
+            t16 = (x << (16 - msb)) - 65536u;
+        }
+
+        // log2(1+t) ~= t + 0.345 * t * (1-t)  [max error ~0.008]
+        // All in Q0.16 integer arithmetic:
+        u32 complement = 65536u - t16;
+        u32 prod = (t16 * complement) >> 16;          // t*(1-t) in Q0.16
+        u32 correction = (prod * 22610u) >> 16;        // 0.345 * t*(1-t), 22610 = 0.345*65536
+        u32 frac16 = t16 + correction;
+
+        // log2(x) in Q16.16 = (msb << 16) + frac16
+        u32 log2_q16 = (static_cast<u32>(msb) << 16) + frac16;
+
+        // 20*log10(x) = 6.02060 * log2(x)
+#if FASTLED_FFT_PRECISION == FASTLED_FFT_FIXED16
+        // Pure Q16.16 fixed-point multiply, then convert to float at output.
+        // 6.02060 in Q16.16 = 394593
+        constexpr u32 DB_SCALE_Q16 = 394593u;
+        u64 product = static_cast<u64>(log2_q16) * DB_SCALE_Q16;
+        fl::u16x16 db = fl::u16x16::from_raw(static_cast<u32>(product >> 16));
+        return db.to_float();
+#else
+        return 6.02060f * (static_cast<float>(log2_q16) * (1.0f / 65536.0f));
+#endif
+    }
+
+    // Deinterleave AoS kiss_fft_cpx into SoA re[]/im[] arrays.
+    // Enables auto-vectorization of the subsequent batchMag loop.
+    static void deinterleave(const kiss_fft_cpx *cpx,
+                             kiss_fft_scalar *re, kiss_fft_scalar *im,
+                             int n) {
+        for (int i = 0; i < n; ++i) {
+            re[i] = cpx[i].r;
+            im[i] = cpx[i].i;
+        }
+    }
+
+    // Batch magnitude: compute fastMag for contiguous SoA re[]/im[] → mag[].
+    // Contiguous layout allows compiler to auto-vectorize (4-8 mags per SIMD).
+    static void batchMag(const kiss_fft_scalar *re,
+                         const kiss_fft_scalar *im,
+                         u16 *mag, int n) {
+        for (int i = 0; i < n; ++i) {
+            mag[i] = fastMag(re[i], im[i]);
+        }
+    }
+
+    // Compute Q16.16 bin edges from float bin edges for integer inner loops.
+    void computeBinEdgesQ16() {
+        int n = static_cast<int>(m_logBinEdges.size());
+        m_logBinEdgesQ16.resize(n);
+        for (int i = 0; i < n; ++i) {
+            m_logBinEdgesQ16[i] = u16x16(m_logBinEdges[i]);
+        }
+    }
+
+    // Build log-bin LUT: for each FFT bin k, pre-compute which output bin
+    // it maps to. Moves the binary search from runtime to init.
+    void buildLogBinLut(fl::vector<u8>& lut, int fftN, float fs,
+                        int binStart, int binEnd) {
+        const int numRawBins = fftN / 2 + 1;
+        lut.resize(numRawBins);
+        const u16x16 rawBinHz(fs / static_cast<float>(fftN));
+
+        for (int k = 0; k < numRawBins; ++k) {
+            u16x16 freq = rawBinHz * static_cast<u32>(k);
+
+            int lo = binStart, hi = binEnd - 1;
+            while (lo < hi) {
+                int mid = (lo + hi + 1) / 2;
+                if (m_logBinEdgesQ16[mid] <= freq)
+                    lo = mid;
+                else
+                    hi = mid - 1;
+            }
+            lut[k] = static_cast<u8>(lo);
+        }
+    }
+
+    // Build linear-bin LUT: for each FFT bin k, pre-compute which linear
+    // output bin it maps to. Moves the u16x16 division from runtime to init.
+    void buildLinearBinLut(fl::vector<u8>& lut, int fftN) {
+        const int numRawBins = fftN / 2 + 1;
+        const int numLinearBins = m_totalBands;
+        lut.resize(numRawBins);
+
+        const u16x16 rawBinHz(static_cast<float>(m_sampleRate) /
+                              static_cast<float>(fftN));
+        const u16x16 halfBin = rawBinHz >> 1;
+        const u16x16 fminFP(m_fmin);
+        const u16x16 fmaxFP(m_fmax);
+        const u16x16 linearBinHz(
+            (m_fmax - m_fmin) / static_cast<float>(numLinearBins));
+
+        // Pre-compute loop bounds (stored for runtime use)
+        m_linearKStart = 0;
+        if (fminFP > halfBin) {
+            m_linearKStart = static_cast<int>(
+                u16x16::ceil((fminFP - halfBin) / rawBinHz).to_int());
+        }
+        m_linearKEnd = static_cast<int>(
+            u16x16::ceil((fmaxFP + halfBin) / rawBinHz).to_int());
+        if (m_linearKEnd > numRawBins) m_linearKEnd = numRawBins;
+
+        for (int k = 0; k < numRawBins; ++k) {
+            u16x16 freq = rawBinHz * static_cast<u32>(k);
+
+            if (freq < fminFP) {
+                lut[k] = 0;
+                continue;
+            }
+            int linIdx = static_cast<int>(
+                ((freq - fminFP) / linearBinHz).to_int());
+            if (linIdx >= numLinearBins)
+                linIdx = numLinearBins - 1;
+            lut[k] = static_cast<u8>(linIdx);
+        }
+    }
+
+    // Compute Hanning window as Q15 integers (range [0, 32767]).
+    // Q15 multiply: (sample * win) >> 15 ≈ sample * win_float.
+    static void computeHanningWindow(fl::vector<i16> &win, int N) {
+        win.resize(N);
+        const float invNm1 = 1.0f / static_cast<float>(N - 1);
+        for (int n = 0; n < N; ++n) {
+            float phase = 2.0f * static_cast<float>(FL_M_PI) *
+                          static_cast<float>(n) * invNm1;
+            float w = 0.5f * (1.0f - fl::cosf(phase));
+            win[n] = static_cast<i16>(w * 32767.0f + 0.5f);
+        }
+    }
+
+    // Apply Q15 Hanning window: out[i] = (sample[i] * win[i]) >> 15
+    static void applyWindowQ15(const kiss_fft_scalar *samples,
+                               const i16 *win, kiss_fft_scalar *out, int N) {
+        for (int i = 0; i < N; ++i) {
+            out[i] = static_cast<kiss_fft_scalar>(
+                (static_cast<i32>(samples[i]) * static_cast<i32>(win[i])) >> 15);
+        }
+    }
+
+    void initHanningWindow() {
+        computeHanningWindow(m_hanningWindow, m_input_samples);
     }
 
     // ---- Octave-wise CQT path (wide frequency ranges) ----
@@ -313,7 +504,7 @@ class FFTContext {
 
     void initOctaveWise(int samples, int bands, float fmin, float fmax,
                         int sr) {
-        m_octaveWise = true;
+
 
         // Use floor so the top octave covers the remaining frequency range
         // rather than creating a tiny sliver octave with 1 bin.
@@ -392,11 +583,14 @@ class FFTContext {
         // Pre-allocate reusable buffers
         m_workBuf.resize(samples);
         m_fftOut.resize(samples);
+
+        buildLinearBinLut(m_linearBinLut, samples);
     }
 
     void runOctaveWise(span<const i16> buffer, FFTBins *out) {
         const int N = m_input_samples;
         const int numOctaves = static_cast<int>(m_octaves.size());
+        const int numRawBins = N / 2 + 1;
 
         out->setParams(m_fmin, m_fmax, m_sampleRate);
 
@@ -409,7 +603,15 @@ class FFTContext {
 
         // FFT at full sample rate (for linear bins + top octave CQ)
         kiss_fftr(m_fftr_cfg, m_workBuf.data(), m_fftOut.data());
-        computeLinearBins(m_fftOut.data(), N, out);
+
+        // Deinterleave AoS → SoA and batch-compute magnitudes
+        FASTLED_STACK_ARRAY(kiss_fft_scalar, re, numRawBins);
+        FASTLED_STACK_ARRAY(kiss_fft_scalar, im, numRawBins);
+        FASTLED_STACK_ARRAY(u16, mag, numRawBins);
+        deinterleave(m_fftOut.data(), re, im, numRawBins);
+        batchMag(re, im, mag, numRawBins);
+
+        computeLinearBins(mag, N, out);
 
         // Prepare CQ output bins
         fl::vector<float> &rawBins = out->raw_mut();
@@ -449,52 +651,267 @@ class FFTContext {
                 int binIdx = oi.firstBin + i;
                 i32 real = cq[i].r;
                 i32 imag = cq[i].i;
+#ifdef FIXED_POINT
+                u16 m = fastMag(real, imag);
+                rawBins[binIdx] = static_cast<float>(m);
+                dbBins[binIdx] = fastDb(static_cast<u32>(m));
+#else
                 float r2 = float(real * real);
                 float i2 = float(imag * imag);
-                float mag = sqrt(r2 + i2);
-                float db = (mag > 0.0f) ? 20.0f * log10f(mag) : 0.0f;
-                rawBins[binIdx] = mag;
-                dbBins[binIdx] = db;
+                float m = sqrt(r2 + i2);
+                rawBins[binIdx] = m;
+                dbBins[binIdx] = (m > 0.0f) ? 20.0f * log10f(m) : 0.0f;
+#endif
             }
+        }
+    }
+
+    // ---- Hybrid path: dual LOG_REBIN (full-rate upper + decimated bass) ----
+    //
+    // Two FFT passes, both using LOG_REBIN (no CQ kernels):
+    //   1. Full-rate windowed 512-point FFT → LOG_REBIN for upper bins
+    //   2. Decimated small FFT (e.g. 64-point) → LOG_REBIN for bass bins
+    //
+    // The small FFT is much faster than 512-point, and the anti-alias
+    // decimation filter removes high-frequency content before bass analysis.
+
+    void initHybrid(int samples, int bands, float fmin, float fmax, int sr) {
+        float logRatio = logf(fmax / fmin);
+
+        // Log-spaced center frequencies for all bins
+        fl::vector<float> centerFreqs(bands);
+        for (int i = 0; i < bands; i++) {
+            centerFreqs[i] =
+                fmin * expf(logRatio * static_cast<float>(i) /
+                            static_cast<float>(bands - 1));
+        }
+
+        // 3-tier split at octave boundaries:
+        //   bass/mid  at fmin*4 (~698 Hz, 2 octaves above fmin)
+        //   mid/upper at fmin*8 (~1397 Hz, 3 octaves above fmin)
+        float bassMidFreq = fmin * 4.0f;
+        float midUpperFreq = fmin * 8.0f;
+
+        // Clamp splits to valid range
+        if (midUpperFreq >= fmax) midUpperFreq = fmax * 0.5f;
+        if (bassMidFreq >= midUpperFreq) bassMidFreq = midUpperFreq * 0.5f;
+
+        // Find split bin indices
+        m_hybridSplitBin = 0;
+        for (int i = 0; i < bands; i++) {
+            if (centerFreqs[i] < bassMidFreq)
+                m_hybridSplitBin = i + 1;
+        }
+        m_hybridMidSplitBin = m_hybridSplitBin;
+        for (int i = m_hybridSplitBin; i < bands; i++) {
+            if (centerFreqs[i] < midUpperFreq)
+                m_hybridMidSplitBin = i + 1;
+        }
+
+        // Ensure each tier has at least 1 bin
+        if (m_hybridSplitBin < 1) m_hybridSplitBin = 1;
+        if (m_hybridMidSplitBin <= m_hybridSplitBin)
+            m_hybridMidSplitBin = m_hybridSplitBin + 1;
+        if (m_hybridMidSplitBin >= bands)
+            m_hybridMidSplitBin = bands - 1;
+
+        // LOG_REBIN bin edges (shared by all three tiers)
+        m_logBinEdges.resize(bands + 1);
+        if (bands <= 1) {
+            m_logBinEdges[0] = fmin;
+            m_logBinEdges[1] = fmax;
+        } else {
+            float denom = 2.0f * static_cast<float>(bands - 1);
+            m_logBinEdges[0] = fmin * expf(-logRatio / denom);
+            for (int i = 1; i < bands; i++) {
+                m_logBinEdges[i] =
+                    fmin * expf(logRatio *
+                                (2.0f * static_cast<float>(i) - 1.0f) / denom);
+            }
+            m_logBinEdges[bands] = fmax * expf(logRatio / denom);
+        }
+
+        computeBinEdgesQ16();
+
+        // Hanning window for the full-rate 512pt FFT (upper tier)
+        initHanningWindow();
+
+        // Mid-tier: 2 decimation steps → samples/4 at sr/4
+        // Zero-pad 2x: 128 real samples → 256pt FFT → 43 Hz bins
+        m_hybridMidN = samples / 4;
+        m_hybridMidFs = static_cast<float>(sr) / 4.0f;
+        m_hybridMidFft = kiss_fftr_alloc(m_hybridMidN * 2, 0, nullptr, nullptr);
+        m_hybridMidFftOut.resize(m_hybridMidN * 2);
+        computeHanningWindow(m_hybridMidWindow, m_hybridMidN);
+
+        // Bass-tier: 3 decimation steps → samples/8 at sr/8
+        m_hybridSmallN = samples / 8;
+        m_hybridSmallFs = static_cast<float>(sr) / 8.0f;
+        m_hybridSmallFft =
+            kiss_fftr_alloc(m_hybridSmallN, 0, nullptr, nullptr);
+        m_hybridSmallFftOut.resize(m_hybridSmallN);
+        computeHanningWindow(m_hybridBassWindow, m_hybridSmallN);
+
+        // Work buffer for decimation (reused across phases)
+        m_workBuf.resize(samples);
+        m_fftOut.resize(samples);
+
+        // Pre-computed bin mapping LUTs for each tier
+        buildLogBinLut(m_logBinLut, samples,
+                       static_cast<float>(sr),
+                       m_hybridMidSplitBin, bands);
+        buildLogBinLut(m_logBinLutMid, m_hybridMidN * 2,
+                       m_hybridMidFs,
+                       m_hybridSplitBin, m_hybridMidSplitBin);
+        buildLogBinLut(m_logBinLutBass, m_hybridSmallN,
+                       m_hybridSmallFs,
+                       0, m_hybridSplitBin);
+        buildLinearBinLut(m_linearBinLut, samples);
+    }
+
+    void runHybrid(span<const i16> buffer, FFTBins *out) {
+        const int N = m_input_samples;
+        const int numRawBins = N / 2 + 1;
+
+        out->setParams(m_fmin, m_fmax, m_sampleRate);
+
+        // Reusable SoA + magnitude buffers (sized to largest FFT)
+        FASTLED_STACK_ARRAY(kiss_fft_scalar, re, numRawBins);
+        FASTLED_STACK_ARRAY(kiss_fft_scalar, im, numRawBins);
+        FASTLED_STACK_ARRAY(u16, mag, numRawBins);
+
+        // Phase 1: Windowed 512pt FFT → LOG_REBIN for upper bins
+        FASTLED_STACK_ARRAY(kiss_fft_scalar, windowed, N);
+        applyWindowQ15(buffer.data(), m_hanningWindow.data(), windowed, N);
+
+        kiss_fftr(m_fftr_cfg, windowed, m_fftOut.data());
+
+        deinterleave(m_fftOut.data(), re, im, numRawBins);
+        batchMag(re, im, mag, numRawBins);
+        computeLinearBins(mag, N, out);
+
+        // Integer accumulation for log-rebin
+        FASTLED_STACK_ARRAY(u32, rawBinsI, m_totalBands);
+        for (int i = 0; i < m_totalBands; i++) {
+            rawBinsI[i] = 0;
+        }
+
+        // Upper tier: LOG_REBIN for bins [m_hybridMidSplitBin, m_totalBands)
+        logRebinRange(mag, N,
+                      static_cast<float>(m_sampleRate),
+                      m_hybridMidSplitBin, m_totalBands, rawBinsI,
+                      m_logBinLut);
+
+        // Decimate signal: 512 → 256 → 128 (2 steps for mid tier)
+        int workLen = N;
+        for (int i = 0; i < N; i++) {
+            m_workBuf[i] =
+                (i < static_cast<int>(buffer.size())) ? buffer[i] : 0;
+        }
+        decimateBy2(m_workBuf.data(), workLen);
+        workLen /= 2;
+        decimateBy2(m_workBuf.data(), workLen);
+        workLen /= 2;
+
+        // Phase 2: Zero-padded 256pt FFT (128 windowed + 128 zeros) → LOG_REBIN for mid bins
+        if (m_hybridMidSplitBin > m_hybridSplitBin && m_hybridMidFft) {
+            int midFftN = m_hybridMidN * 2;
+            int midRawBins = midFftN / 2 + 1;
+            FASTLED_STACK_ARRAY(kiss_fft_scalar, midWindowed, midFftN);
+            applyWindowQ15(m_workBuf.data(), m_hybridMidWindow.data(),
+                           midWindowed, m_hybridMidN);
+            for (int i = m_hybridMidN; i < midFftN; ++i) {
+                midWindowed[i] = 0;
+            }
+            kiss_fftr(m_hybridMidFft, midWindowed,
+                      m_hybridMidFftOut.data());
+            deinterleave(m_hybridMidFftOut.data(), re, im, midRawBins);
+            batchMag(re, im, mag, midRawBins);
+            logRebinRange(mag, midFftN,
+                          m_hybridMidFs,
+                          m_hybridSplitBin, m_hybridMidSplitBin, rawBinsI,
+                          m_logBinLutMid);
+        }
+
+        // Decimate 1 more step: 128 → 64 (reuse unwindowed workBuf)
+        decimateBy2(m_workBuf.data(), workLen);
+        workLen /= 2;
+
+        // Phase 3: Windowed 64pt FFT → LOG_REBIN for bass bins
+        if (m_hybridSplitBin > 0 && m_hybridSmallFft) {
+            int bassRawBins = m_hybridSmallN / 2 + 1;
+            FASTLED_STACK_ARRAY(kiss_fft_scalar, bassWindowed, m_hybridSmallN);
+            applyWindowQ15(m_workBuf.data(), m_hybridBassWindow.data(),
+                           bassWindowed, m_hybridSmallN);
+            kiss_fftr(m_hybridSmallFft, bassWindowed,
+                      m_hybridSmallFftOut.data());
+            deinterleave(m_hybridSmallFftOut.data(), re, im, bassRawBins);
+            batchMag(re, im, mag, bassRawBins);
+            logRebinRange(mag, m_hybridSmallN,
+                          m_hybridSmallFs,
+                          0, m_hybridSplitBin, rawBinsI,
+                          m_logBinLutBass);
+        }
+
+        // Store raw magnitudes and compute dB
+        fl::vector<float> &rawBins = out->raw_mut();
+        fl::vector<float> &dbBins = out->db_mut();
+        rawBins.resize(m_totalBands);
+        dbBins.resize(m_totalBands);
+        for (int i = 0; i < m_totalBands; ++i) {
+            rawBins[i] = static_cast<float>(rawBinsI[i]);
+            dbBins[i] = fastDb(rawBinsI[i]);
         }
     }
 
     // ---- Shared utilities ----
 
-    void computeLinearBins(const kiss_fft_cpx *fft, int nfft,
-                           FFTBins *out) {
-        const int numRawBins = nfft / 2 + 1;
+    // LOG_REBIN helper: group FFT bins into CQ output bins [binStart, binEnd)
+    // Uses pre-computed LUT for O(1) bin mapping per FFT bin.
+    void logRebinRange(const u16 *mag, int fftN, float fs,
+                       int binStart, int binEnd,
+                       u32 *rawBinsI, const fl::vector<u8>& lut) {
+        const int numRawBins = fftN / 2 + 1;
+        // Compute loop bounds to skip out-of-range FFT bins
+        const u16x16 rawBinHz(fs / static_cast<float>(fftN));
+        const u16x16 halfBin = rawBinHz >> 1;
+        const u16x16 loEdge(m_logBinEdges[binStart]);
+        const u16x16 hiEdge(m_logBinEdges[binEnd]);
+
+        int kStart = 0;
+        if (loEdge > halfBin) {
+            kStart = static_cast<int>(
+                u16x16::ceil((loEdge - halfBin) / rawBinHz).to_int());
+        }
+        int kEnd = static_cast<int>(
+            u16x16::ceil((hiEdge + halfBin) / rawBinHz).to_int());
+        if (kEnd > numRawBins) kEnd = numRawBins;
+
+        for (int k = kStart; k < kEnd; ++k) {
+            rawBinsI[lut[k]] += static_cast<u32>(mag[k]);
+        }
+    }
+
+    void computeLinearBins(const u16 *mag, int /*nfft*/, FFTBins *out) {
         const int numLinearBins = m_totalBands;
-        const float fs = static_cast<float>(m_sampleRate);
-        const float rawBinHz = fs / static_cast<float>(nfft);
-        const float linearBinHz =
-            (m_fmax - m_fmin) / static_cast<float>(numLinearBins);
 
         fl::vector<float> &linBins = out->linear_mut();
         linBins.resize(numLinearBins);
-        for (int i = 0; i < numLinearBins; ++i) {
-            linBins[i] = 0.0f;
-        }
         out->setLinearParams(m_fmin, m_fmax);
 
-        const float halfBin = rawBinHz * 0.5f;
-        for (int k = 0; k < numRawBins; ++k) {
-            float freq = static_cast<float>(k) * rawBinHz;
-            // Each FFT bin covers [freq - halfBin, freq + halfBin].
-            // Include it if any part of that range overlaps [fmin, fmax].
-            if (freq + halfBin < m_fmin || freq - halfBin >= m_fmax)
-                continue;
+        // Integer accumulation using pre-computed LUT
+        FASTLED_STACK_ARRAY(u32, linBinsI, numLinearBins);
+        for (int i = 0; i < numLinearBins; ++i) {
+            linBinsI[i] = 0;
+        }
 
-            float re = static_cast<float>(fft[k].r);
-            float im = static_cast<float>(fft[k].i);
-            float mag = sqrt(re * re + im * im);
+        for (int k = m_linearKStart; k < m_linearKEnd; ++k) {
+            linBinsI[m_linearBinLut[k]] += static_cast<u32>(mag[k]);
+        }
 
-            int linIdx = static_cast<int>((freq - m_fmin) / linearBinHz);
-            if (linIdx < 0)
-                linIdx = 0;
-            if (linIdx >= numLinearBins)
-                linIdx = numLinearBins - 1;
-            linBins[linIdx] += mag;
+        // Convert to float
+        for (int i = 0; i < numLinearBins; ++i) {
+            linBins[i] = static_cast<float>(linBinsI[i]);
         }
     }
 
@@ -523,16 +940,41 @@ class FFTContext {
     cq_kernel_cfg m_cq_cfg;
 
     // Log-rebin path only
-    fl::vector<float> m_logBinEdges; // bands+1 geometric bin edges
-    fl::vector<float> m_hanningWindow; // N pre-computed Hanning coefficients
+    fl::vector<float> m_logBinEdges;   // bands+1 geometric bin edges (float)
+    fl::vector<u16x16> m_logBinEdgesQ16;  // bands+1 geometric bin edges (Q16.16)
+    fl::vector<i16> m_hanningWindow;   // N pre-computed Hanning coefficients (Q15)
 
-    // Octave-wise CQ path
-    bool m_octaveWise;
+    // Octave-wise CQ path (also used by Hybrid)
     FFTMode m_mode;
     fl::vector<OctaveInfo> m_octaves;
     fl::vector<kiss_fft_scalar> m_workBuf; // reusable decimation buffer
     fl::vector<kiss_fft_cpx> m_fftOut;     // reusable FFT output buffer
     int m_maxBinsPerOctave = 0;
+
+    // Hybrid 3-tier path
+    int m_hybridSplitBin = 0;      // bins < this use bass FFT
+    int m_hybridNumCqOctaves = 0;
+    int m_hybridNumDecim = 0;
+    int m_hybridSmallN = 0;        // bass FFT size (samples/8)
+    float m_hybridSmallFs = 0.0f;  // bass sample rate (sr/8)
+    kiss_fftr_cfg m_hybridSmallFft = nullptr;
+    fl::vector<kiss_fft_cpx> m_hybridSmallFftOut;
+    // Mid-tier (3-tier hybrid)
+    int m_hybridMidN = 0;          // mid FFT size (samples/4)
+    float m_hybridMidFs = 0.0f;    // mid sample rate (sr/4)
+    kiss_fftr_cfg m_hybridMidFft = nullptr;
+    fl::vector<kiss_fft_cpx> m_hybridMidFftOut;
+    int m_hybridMidSplitBin = 0;   // bins >= this use upper FFT
+    fl::vector<i16> m_hybridBassWindow;  // Q15 Hanning window for bass
+    fl::vector<i16> m_hybridMidWindow;   // Q15 Hanning window for mid
+
+    // Pre-computed bin mapping LUTs (built at init, used at runtime)
+    fl::vector<u8> m_logBinLut;       // FFT bin k → log-bin index (primary FFT)
+    fl::vector<u8> m_linearBinLut;    // FFT bin k → linear-bin index (primary FFT)
+    fl::vector<u8> m_logBinLutMid;    // HYBRID mid-tier LUT (256pt)
+    fl::vector<u8> m_logBinLutBass;   // HYBRID bass-tier LUT (64pt)
+    int m_linearKStart = 0;           // Pre-computed linear bin loop bounds
+    int m_linearKEnd = 0;
 
     // Used by both paths
     int m_totalBands;

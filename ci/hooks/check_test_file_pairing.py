@@ -71,8 +71,8 @@ def main():
     else:
         sys.exit(0)
 
-    # Exempt tests/misc/
-    if rel_path.startswith("tests/misc/"):
+    # Exempt tests/misc/ and tests/profile/ (standalone benchmarks, not paired)
+    if rel_path.startswith("tests/misc/") or rel_path.startswith("tests/profile/"):
         sys.exit(0)
 
     # If the file already exists on disk, it's an overwrite, not a new file

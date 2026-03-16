@@ -970,13 +970,15 @@ def run_meson_build_and_test(
                 # (e.g., "tests/fastled" disambiguates from the library "fastled").
                 path_qualified: list[str] = []
                 for candidate in targets_to_try:
-                    qualified = f"tests/{candidate}"
-                    if (
-                        candidate
-                        and "/" not in candidate
-                        and qualified not in targets_to_try
-                    ):
-                        path_qualified.append(qualified)
+                    if candidate and "/" not in candidate:
+                        # Try tests/<name> and tests/profile/<name>
+                        for prefix in ["tests/", "tests/profile/"]:
+                            qualified = f"{prefix}{candidate}"
+                            if (
+                                qualified not in targets_to_try
+                                and qualified not in path_qualified
+                            ):
+                                path_qualified.append(qualified)
                 targets_to_try.extend(path_qualified)
 
                 # Show build stage banner before compilation starts
@@ -1215,20 +1217,18 @@ def run_meson_build_and_test(
         test_cmd: list[str] = []
         _artifact_path: Optional[Path] = None  # Tracked for test_result_cache update
 
-        # Check for profile tests first (in tests/profile/ subdirectory)
-        if meson_test_name.startswith("profile_"):
-            profile_exe_path = (
-                build_dir / "tests" / "profile" / f"{meson_test_name}.exe"
-            )
-            if profile_exe_path.exists():
-                test_cmd = [str(profile_exe_path)]
-                _artifact_path = profile_exe_path
-            else:
-                # Try Unix variant (no .exe extension)
-                profile_exe_unix = build_dir / "tests" / "profile" / meson_test_name
-                if profile_exe_unix.exists():
-                    test_cmd = [str(profile_exe_unix)]
-                    _artifact_path = profile_exe_unix
+        # Check for profile tests (in tests/profile/ subdirectory)
+        # Profile tests can have any name (not just profile_* prefix)
+        profile_exe_path = build_dir / "tests" / "profile" / f"{meson_test_name}.exe"
+        if profile_exe_path.exists():
+            test_cmd = [str(profile_exe_path)]
+            _artifact_path = profile_exe_path
+        else:
+            # Try Unix variant (no .exe extension)
+            profile_exe_unix = build_dir / "tests" / "profile" / meson_test_name
+            if profile_exe_unix.exists():
+                test_cmd = [str(profile_exe_unix)]
+                _artifact_path = profile_exe_unix
 
         # If not a profile test, check standard locations
         if not test_cmd:
@@ -1321,8 +1321,14 @@ def run_meson_build_and_test(
                 output_formatter=TimestampFormatter(),
             )
 
-            # Use filtering callback in verbose mode to suppress noise patterns
-            echo_callback = create_filtering_echo_callback() if verbose else False
+            # Profile tests always echo output (they produce benchmark reports)
+            # Regular tests only echo in verbose mode
+            is_profile_test = _artifact_path and "profile" in str(_artifact_path)
+            echo_callback = (
+                create_filtering_echo_callback()
+                if (verbose or is_profile_test)
+                else False
+            )
             test_start = time.time()
             returncode = proc.wait(echo=echo_callback)
             test_duration = time.time() - test_start
