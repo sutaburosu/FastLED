@@ -42,7 +42,7 @@ public:
     }
 
     void init() override { }
-    virtual u16 getMaxRefreshRate() const { return 800; }
+    u16 getMaxRefreshRate() const override { return 800; }
 
 protected:
     // -- Show pixels
@@ -56,7 +56,6 @@ protected:
         // Wait for previous transmission to complete and release buffer
         // This prevents race conditions when show() is called faster than hardware can transmit
         u32 startTime = fl::millis();
-        u32 lastWarnTime = startTime;
         if (mChannelData->isInUse()) {
             FL_WARN_EVERY(100, "ClocklessSPI(wasm): driver should have finished transmitting by now - waiting");
             bool finished = mDriver->waitForReady();
