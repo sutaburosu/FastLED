@@ -823,9 +823,12 @@ def link_wasm(
     # Fast path: reuse cached JS glue + run wasm-ld directly.
     # Disabled when asyncify is active — asyncify is a Binaryen pass that
     # only runs through emcc, not wasm-ld.
+    # Also disabled when SEPARATE_DWARF_URL is used — emcc handles DWARF
+    # extraction as a post-link step that wasm-ld alone cannot perform.
     link_flags = get_link_flags(mode)
     uses_asyncify = any("ASYNCIFY" in f for f in link_flags)
-    if not uses_asyncify:
+    needs_separate_dwarf = any("SEPARATE_DWARF" in f for f in link_flags)
+    if not uses_asyncify and not needs_separate_dwarf:
         if _fast_link(sketch_object, cached_wasm, build_dir, verbose):
             _copy_linked_output(sketch_cache_dir, output_js)
             print(f"[WASM] Output: {output_js}")
@@ -881,6 +884,11 @@ def _copy_linked_output(sketch_cache_dir: Path, output_js: Path) -> None:
         shutil.copy2(str(cached_js), str(output_js))
     if cached_wasm.exists():
         shutil.copy2(str(cached_wasm), str(output_js.with_suffix(".wasm")))
+
+    # Copy DWARF debug info if present (produced by SEPARATE_DWARF_URL)
+    cached_dwarf = sketch_cache_dir / "fastled.wasm.dwarf"
+    if cached_dwarf.exists():
+        shutil.copy2(str(cached_dwarf), str(output_dir / cached_dwarf.name))
 
     # Copy any other generated files (worker JS, etc.)
     for f in sketch_cache_dir.iterdir():
