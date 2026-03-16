@@ -318,12 +318,14 @@ struct interior_row<2, RGB_T, acc_t> {
                              acc_t &r, acc_t &g, acc_t &b) {
         using P = pixel_ops<RGB_T>;
         P p;
-        r = 0; g = 0; b = 0;
-        { const RGB_T &px = row[x-2]; r += p.ch(px.r);     g += p.ch(px.g);     b += p.ch(px.b); }
-        { const RGB_T &px = row[x-1]; r += p.ch(px.r) * 4; g += p.ch(px.g) * 4; b += p.ch(px.b) * 4; }
-        { const RGB_T &px = row[x];   r += p.ch(px.r) * 6; g += p.ch(px.g) * 6; b += p.ch(px.b) * 6; }
-        { const RGB_T &px = row[x+1]; r += p.ch(px.r) * 4; g += p.ch(px.g) * 4; b += p.ch(px.b) * 4; }
-        { const RGB_T &px = row[x+2]; r += p.ch(px.r);     g += p.ch(px.g);     b += p.ch(px.b); }
+        // [1, 4, 6, 4, 1] — symmetric: (e0+e4) + 4*(e1+e3) + 6*e2
+        const RGB_T &pm2 = row[x-2], &pm1 = row[x-1], &pc = row[x], &pp1 = row[x+1], &pp2 = row[x+2];
+        const acc_t s04r = p.ch(pm2.r) + p.ch(pp2.r), s13r = p.ch(pm1.r) + p.ch(pp1.r);
+        const acc_t s04g = p.ch(pm2.g) + p.ch(pp2.g), s13g = p.ch(pm1.g) + p.ch(pp1.g);
+        const acc_t s04b = p.ch(pm2.b) + p.ch(pp2.b), s13b = p.ch(pm1.b) + p.ch(pp1.b);
+        r = s04r + s13r * 4 + p.ch(pc.r) * 6;
+        g = s04g + s13g * 4 + p.ch(pc.g) * 6;
+        b = s04b + s13b * 4 + p.ch(pc.b) * 6;
     }
 };
 
@@ -333,14 +335,15 @@ struct interior_row<3, RGB_T, acc_t> {
                              acc_t &r, acc_t &g, acc_t &b) {
         using P = pixel_ops<RGB_T>;
         P p;
-        r = 0; g = 0; b = 0;
-        { const RGB_T &px = row[x-3]; r += p.ch(px.r);      g += p.ch(px.g);      b += p.ch(px.b); }
-        { const RGB_T &px = row[x-2]; r += p.ch(px.r) * 6;  g += p.ch(px.g) * 6;  b += p.ch(px.b) * 6; }
-        { const RGB_T &px = row[x-1]; r += p.ch(px.r) * 15; g += p.ch(px.g) * 15; b += p.ch(px.b) * 15; }
-        { const RGB_T &px = row[x];   r += p.ch(px.r) * 20; g += p.ch(px.g) * 20; b += p.ch(px.b) * 20; }
-        { const RGB_T &px = row[x+1]; r += p.ch(px.r) * 15; g += p.ch(px.g) * 15; b += p.ch(px.b) * 15; }
-        { const RGB_T &px = row[x+2]; r += p.ch(px.r) * 6;  g += p.ch(px.g) * 6;  b += p.ch(px.b) * 6; }
-        { const RGB_T &px = row[x+3]; r += p.ch(px.r);      g += p.ch(px.g);      b += p.ch(px.b); }
+        // [1, 6, 15, 20, 15, 6, 1] — symmetric: (e0+e6) + 6*(e1+e5) + 15*(e2+e4) + 20*e3
+        const RGB_T &pm3 = row[x-3], &pm2 = row[x-2], &pm1 = row[x-1], &pc = row[x];
+        const RGB_T &pp1 = row[x+1], &pp2 = row[x+2], &pp3 = row[x+3];
+        const acc_t s06r = p.ch(pm3.r) + p.ch(pp3.r), s15r = p.ch(pm2.r) + p.ch(pp2.r), s24r = p.ch(pm1.r) + p.ch(pp1.r);
+        const acc_t s06g = p.ch(pm3.g) + p.ch(pp3.g), s15g = p.ch(pm2.g) + p.ch(pp2.g), s24g = p.ch(pm1.g) + p.ch(pp1.g);
+        const acc_t s06b = p.ch(pm3.b) + p.ch(pp3.b), s15b = p.ch(pm2.b) + p.ch(pp2.b), s24b = p.ch(pm1.b) + p.ch(pp1.b);
+        r = s06r + s15r * 6 + s24r * 15 + p.ch(pc.r) * 20;
+        g = s06g + s15g * 6 + s24g * 15 + p.ch(pc.g) * 20;
+        b = s06b + s15b * 6 + s24b * 15 + p.ch(pc.b) * 20;
     }
 };
 
@@ -350,16 +353,18 @@ struct interior_row<4, RGB_T, acc_t> {
                              acc_t &r, acc_t &g, acc_t &b) {
         using P = pixel_ops<RGB_T>;
         P p;
-        r = 0; g = 0; b = 0;
-        { const RGB_T &px = row[x-4]; r += p.ch(px.r);      g += p.ch(px.g);      b += p.ch(px.b); }
-        { const RGB_T &px = row[x-3]; r += p.ch(px.r) * 8;  g += p.ch(px.g) * 8;  b += p.ch(px.b) * 8; }
-        { const RGB_T &px = row[x-2]; r += p.ch(px.r) * 28; g += p.ch(px.g) * 28; b += p.ch(px.b) * 28; }
-        { const RGB_T &px = row[x-1]; r += p.ch(px.r) * 56; g += p.ch(px.g) * 56; b += p.ch(px.b) * 56; }
-        { const RGB_T &px = row[x];   r += p.ch(px.r) * 70; g += p.ch(px.g) * 70; b += p.ch(px.b) * 70; }
-        { const RGB_T &px = row[x+1]; r += p.ch(px.r) * 56; g += p.ch(px.g) * 56; b += p.ch(px.b) * 56; }
-        { const RGB_T &px = row[x+2]; r += p.ch(px.r) * 28; g += p.ch(px.g) * 28; b += p.ch(px.b) * 28; }
-        { const RGB_T &px = row[x+3]; r += p.ch(px.r) * 8;  g += p.ch(px.g) * 8;  b += p.ch(px.b) * 8; }
-        { const RGB_T &px = row[x+4]; r += p.ch(px.r);      g += p.ch(px.g);      b += p.ch(px.b); }
+        // [1, 8, 28, 56, 70, 56, 28, 8, 1] — symmetric: (e0+e8) + 8*(e1+e7) + 28*(e2+e6) + 56*(e3+e5) + 70*e4
+        const RGB_T &pm4 = row[x-4], &pm3 = row[x-3], &pm2 = row[x-2], &pm1 = row[x-1], &pc = row[x];
+        const RGB_T &pp1 = row[x+1], &pp2 = row[x+2], &pp3 = row[x+3], &pp4 = row[x+4];
+        const acc_t s08r = p.ch(pm4.r) + p.ch(pp4.r), s17r = p.ch(pm3.r) + p.ch(pp3.r);
+        const acc_t s26r = p.ch(pm2.r) + p.ch(pp2.r), s35r = p.ch(pm1.r) + p.ch(pp1.r);
+        const acc_t s08g = p.ch(pm4.g) + p.ch(pp4.g), s17g = p.ch(pm3.g) + p.ch(pp3.g);
+        const acc_t s26g = p.ch(pm2.g) + p.ch(pp2.g), s35g = p.ch(pm1.g) + p.ch(pp1.g);
+        const acc_t s08b = p.ch(pm4.b) + p.ch(pp4.b), s17b = p.ch(pm3.b) + p.ch(pp3.b);
+        const acc_t s26b = p.ch(pm2.b) + p.ch(pp2.b), s35b = p.ch(pm1.b) + p.ch(pp1.b);
+        r = s08r + s17r * 8 + s26r * 28 + s35r * 56 + p.ch(pc.r) * 70;
+        g = s08g + s17g * 8 + s26g * 28 + s35g * 56 + p.ch(pc.g) * 70;
+        b = s08b + s17b * 8 + s26b * 28 + s35b * 56 + p.ch(pc.b) * 70;
     }
 };
 
@@ -389,8 +394,8 @@ template <> struct conv1ch<1> {
     static inline u16 __attribute__((always_inline)) apply(const u8 *c) {
         constexpr int S = sizeof(CRGB); // 3
         const u8 *p = c - S;
-        // [1, 2, 1]
-        return (u16)p[0] + ((u16)p[S] << 1) + (u16)p[2*S];
+        // [64, 128, 64] (rescaled from [1,2,1] so sum=256, shift-by-8 is free)
+        return (u16)p[0] * 64 + (u16)p[S] * 128 + (u16)p[2*S] * 64;
     }
 };
 
@@ -398,9 +403,9 @@ template <> struct conv1ch<2> {
     static inline u16 __attribute__((always_inline)) apply(const u8 *c) {
         constexpr int S = sizeof(CRGB);
         const u8 *p = c - 2*S;
-        // [1, 4, 6, 4, 1]
-        return (u16)p[0] + (u16)p[S] * 4 + (u16)p[2*S] * 6
-             + (u16)p[3*S] * 4 + (u16)p[4*S];
+        // [16, 64, 96, 64, 16] (rescaled from [1,4,6,4,1] so sum=256, shift-by-8 is free)
+        return (u16)p[0] * 16 + (u16)p[S] * 64 + (u16)p[2*S] * 96
+             + (u16)p[3*S] * 64 + (u16)p[4*S] * 16;
     }
 };
 
@@ -408,10 +413,10 @@ template <> struct conv1ch<3> {
     static inline u16 __attribute__((always_inline)) apply(const u8 *c) {
         constexpr int S = sizeof(CRGB);
         const u8 *p = c - 3*S;
-        // [1, 6, 15, 20, 15, 6, 1]
-        return (u16)p[0] + (u16)p[S] * 6  + (u16)p[2*S] * 15
-             + (u16)p[3*S] * 20 + (u16)p[4*S] * 15 + (u16)p[5*S] * 6
-             + (u16)p[6*S];
+        // [4, 24, 60, 80, 60, 24, 4] (rescaled from [1,6,15,20,15,6,1] so sum=256, shift-by-8 is free)
+        return (u16)p[0] * 4 + (u16)p[S] * 24  + (u16)p[2*S] * 60
+             + (u16)p[3*S] * 80 + (u16)p[4*S] * 60 + (u16)p[5*S] * 24
+             + (u16)p[6*S] * 4;
     }
 };
 
@@ -430,7 +435,7 @@ template <> struct conv1ch<4> {
 template <int R>
 __attribute__((noinline)) FL_OPTIMIZE_FUNCTION
 static void apply_pass_1ch(const CRGB *pad, CRGB *out, int count, int stride) {
-    constexpr int shift = 2 * R;
+    constexpr int shift = (R == 0) ? 0 : 8;
     for (int i = 0; i < count; ++i) {
         const u8 *base = pad[R + i].raw;
         out->r = static_cast<u8>(conv1ch<R>::apply(base + 0) >> shift);
@@ -445,7 +450,7 @@ template <int R>
 __attribute__((noinline)) FL_OPTIMIZE_FUNCTION
 static void apply_pass_alpha_1ch(const CRGB *pad, CRGB *out, int count,
                                   int stride, alpha8 alpha) {
-    constexpr int shift = 2 * R;
+    constexpr int shift = (R == 0) ? 0 : 8;
     u16 a1 = static_cast<u16>(alpha.value) + 1;
     for (int i = 0; i < count; ++i) {
         const u8 *base = pad[R + i].raw;
@@ -464,7 +469,7 @@ template <int R>
 __attribute__((noinline)) FL_OPTIMIZE_FUNCTION
 static void apply_pass_alpha_1ch(const CRGB *pad, CRGB *out, int count,
                                   int stride, alpha16 alpha) {
-    constexpr int shift = 2 * R;
+    constexpr int shift = (R == 0) ? 0 : 8;
     u32 a1 = static_cast<u32>(alpha.value) + 1;
     for (int i = 0; i < count; ++i) {
         const u8 *base = pad[R + i].raw;
@@ -515,6 +520,168 @@ static void apply_pass_alpha(const RGB_T *pad, RGB_T *out, int count,
 }
 
 
+// ── Row-major vertical pass (non-AVR) ──────────────────────────────────
+// Processes vertical convolution in row-major order for cache efficiency.
+// Instead of gathering individual columns into a linear buffer (strided
+// reads + writes), iterates row by row with sequential memory access.
+// Uses a ring buffer of R+1 saved rows to hold originals of overwritten rows.
+// scratch must have at least (R+2)*w elements.
+#if !defined(FL_IS_AVR)
+
+template <int R, typename RGB_T, typename acc_t, bool ApplyAlpha, typename AlphaT>
+FL_OPTIMIZE_FUNCTION
+static void vpass_rowmajor_impl(
+    RGB_T *pixels, int w, int h,
+    RGB_T *scratch, AlphaT alpha)
+{
+    constexpr int shift = 2 * R;
+    using P = pixel_ops<RGB_T>;
+
+    // Ring buffer: bufs[0..R-1] = saved previous rows, bufs[R] = save slot.
+    // Extra zero_row for bottom-boundary padding.
+    RGB_T *bufs[5] = {nullptr, nullptr, nullptr, nullptr, nullptr};
+    for (int i = 0; i <= R; ++i)
+        bufs[i] = scratch + i * w;
+    RGB_T *zero_row = scratch + (R + 1) * w;
+
+    // Zero all: first R buffers (top-boundary padding) + zero_row.
+    __builtin_memset(scratch, 0, (R + 2) * w * sizeof(RGB_T));
+
+    for (int y = 0; y < h; ++y) {
+        RGB_T *out_row = pixels + y * w;
+
+        // Save current row before we overwrite it.
+        FL_BUILTIN_MEMCPY(bufs[R], out_row, w * sizeof(RGB_T));
+
+        // Forward row pointers (rows y+1 .. y+R, or zero_row if OOB).
+        const RGB_T *fwd[4] = {zero_row, zero_row, zero_row, zero_row};
+        for (int k = 0; k < R; ++k)
+            fwd[k] = (y + 1 + k < h) ? (pixels + (y + 1 + k) * w) : zero_row;
+
+        // Process all pixels in this output row.
+        // For u8-channel types (CRGB), process as raw byte stream — all
+        // channels use the same kernel weights, so we treat the row as a
+        // flat u8 array of w*sizeof(RGB_T) bytes. This produces a simpler
+        // loop that the compiler can optimize better at low -O levels.
+        if (sizeof(typename RGB_T::fp) == 1 && !ApplyAlpha) {
+            // Raw byte fast path (CRGB without alpha).
+            const int nbytes = w * (int)sizeof(RGB_T);
+            const u8 *b0 = (const u8 *)bufs[0];
+            const u8 *bc = (const u8 *)bufs[R]; // center
+            u8 *ob = (u8 *)out_row;
+
+            if (R == 1) {
+                const u8 *f0 = (const u8 *)fwd[0];
+                for (int i = 0; i < nbytes; ++i)
+                    ob[i] = (u8)(((u16)b0[i] + ((u16)bc[i] << 1) + (u16)f0[i]) >> 2);
+            } else if (R == 2) {
+                const u8 *b1 = (const u8 *)bufs[1];
+                const u8 *f0 = (const u8 *)fwd[0];
+                const u8 *f1 = (const u8 *)fwd[1];
+                for (int i = 0; i < nbytes; ++i) {
+                    u16 s04 = (u16)b0[i] + (u16)f1[i];
+                    u16 s13 = (u16)b1[i] + (u16)f0[i];
+                    ob[i] = (u8)((s04 + s13 * 4 + (u16)bc[i] * 6) >> 4);
+                }
+            } else if (R == 3) {
+                const u8 *b1 = (const u8 *)bufs[1];
+                const u8 *b2 = (const u8 *)bufs[2];
+                const u8 *f0 = (const u8 *)fwd[0];
+                const u8 *f1 = (const u8 *)fwd[1];
+                const u8 *f2 = (const u8 *)fwd[2];
+                for (int i = 0; i < nbytes; ++i) {
+                    u16 s06 = (u16)b0[i] + (u16)f2[i];
+                    u16 s15 = (u16)b1[i] + (u16)f1[i];
+                    u16 s24 = (u16)b2[i] + (u16)f0[i];
+                    ob[i] = (u8)((s06 + s15 * 6 + s24 * 15 + (u16)bc[i] * 20) >> 6);
+                }
+            } else { // R == 4
+                const u8 *b1 = (const u8 *)bufs[1];
+                const u8 *b2 = (const u8 *)bufs[2];
+                const u8 *b3 = (const u8 *)bufs[3];
+                const u8 *f0 = (const u8 *)fwd[0];
+                const u8 *f1 = (const u8 *)fwd[1];
+                const u8 *f2 = (const u8 *)fwd[2];
+                const u8 *f3 = (const u8 *)fwd[3];
+                for (int i = 0; i < nbytes; ++i) {
+                    u16 s08 = (u16)b0[i] + (u16)f3[i];
+                    u16 s17 = (u16)b1[i] + (u16)f2[i];
+                    u16 s26 = (u16)b2[i] + (u16)f1[i];
+                    u16 s35 = (u16)b3[i] + (u16)f0[i];
+                    ob[i] = (u8)((s08 + s17 * 8 + s26 * 28 + s35 * 56 + (u16)bc[i] * 70) >> 8);
+                }
+            }
+        } else {
+            // Generic path: per-pixel struct access (CRGB16 or alpha case).
+            for (int x = 0; x < w; ++x) {
+                acc_t r, g, b;
+
+                if (R == 1) {
+                    r = (P::ch(bufs[0][x].r) + P::ch(fwd[0][x].r)) + (P::ch(bufs[1][x].r) << 1);
+                    g = (P::ch(bufs[0][x].g) + P::ch(fwd[0][x].g)) + (P::ch(bufs[1][x].g) << 1);
+                    b = (P::ch(bufs[0][x].b) + P::ch(fwd[0][x].b)) + (P::ch(bufs[1][x].b) << 1);
+                } else if (R == 2) {
+                    const acc_t sr04 = P::ch(bufs[0][x].r) + P::ch(fwd[1][x].r);
+                    const acc_t sg04 = P::ch(bufs[0][x].g) + P::ch(fwd[1][x].g);
+                    const acc_t sb04 = P::ch(bufs[0][x].b) + P::ch(fwd[1][x].b);
+                    const acc_t sr13 = P::ch(bufs[1][x].r) + P::ch(fwd[0][x].r);
+                    const acc_t sg13 = P::ch(bufs[1][x].g) + P::ch(fwd[0][x].g);
+                    const acc_t sb13 = P::ch(bufs[1][x].b) + P::ch(fwd[0][x].b);
+                    r = sr04 + sr13 * 4 + P::ch(bufs[2][x].r) * 6;
+                    g = sg04 + sg13 * 4 + P::ch(bufs[2][x].g) * 6;
+                    b = sb04 + sb13 * 4 + P::ch(bufs[2][x].b) * 6;
+                } else if (R == 3) {
+                    const acc_t sr06 = P::ch(bufs[0][x].r) + P::ch(fwd[2][x].r);
+                    const acc_t sg06 = P::ch(bufs[0][x].g) + P::ch(fwd[2][x].g);
+                    const acc_t sb06 = P::ch(bufs[0][x].b) + P::ch(fwd[2][x].b);
+                    const acc_t sr15 = P::ch(bufs[1][x].r) + P::ch(fwd[1][x].r);
+                    const acc_t sg15 = P::ch(bufs[1][x].g) + P::ch(fwd[1][x].g);
+                    const acc_t sb15 = P::ch(bufs[1][x].b) + P::ch(fwd[1][x].b);
+                    const acc_t sr24 = P::ch(bufs[2][x].r) + P::ch(fwd[0][x].r);
+                    const acc_t sg24 = P::ch(bufs[2][x].g) + P::ch(fwd[0][x].g);
+                    const acc_t sb24 = P::ch(bufs[2][x].b) + P::ch(fwd[0][x].b);
+                    r = sr06 + sr15 * 6 + sr24 * 15 + P::ch(bufs[3][x].r) * 20;
+                    g = sg06 + sg15 * 6 + sg24 * 15 + P::ch(bufs[3][x].g) * 20;
+                    b = sb06 + sb15 * 6 + sb24 * 15 + P::ch(bufs[3][x].b) * 20;
+                } else { // R == 4
+                    const acc_t sr08 = P::ch(bufs[0][x].r) + P::ch(fwd[3][x].r);
+                    const acc_t sg08 = P::ch(bufs[0][x].g) + P::ch(fwd[3][x].g);
+                    const acc_t sb08 = P::ch(bufs[0][x].b) + P::ch(fwd[3][x].b);
+                    const acc_t sr17 = P::ch(bufs[1][x].r) + P::ch(fwd[2][x].r);
+                    const acc_t sg17 = P::ch(bufs[1][x].g) + P::ch(fwd[2][x].g);
+                    const acc_t sb17 = P::ch(bufs[1][x].b) + P::ch(fwd[2][x].b);
+                    const acc_t sr26 = P::ch(bufs[2][x].r) + P::ch(fwd[1][x].r);
+                    const acc_t sg26 = P::ch(bufs[2][x].g) + P::ch(fwd[1][x].g);
+                    const acc_t sb26 = P::ch(bufs[2][x].b) + P::ch(fwd[1][x].b);
+                    const acc_t sr35 = P::ch(bufs[3][x].r) + P::ch(fwd[0][x].r);
+                    const acc_t sg35 = P::ch(bufs[3][x].g) + P::ch(fwd[0][x].g);
+                    const acc_t sb35 = P::ch(bufs[3][x].b) + P::ch(fwd[0][x].b);
+                    r = sr08 + sr17 * 8 + sr26 * 28 + sr35 * 56 + P::ch(bufs[4][x].r) * 70;
+                    g = sg08 + sg17 * 8 + sg26 * 28 + sg35 * 56 + P::ch(bufs[4][x].g) * 70;
+                    b = sb08 + sb17 * 8 + sb26 * 28 + sb35 * 56 + P::ch(bufs[4][x].b) * 70;
+                }
+
+                if (ApplyAlpha) {
+                    out_row[x] = P::make(static_cast<acc_t>(r >> shift),
+                                         static_cast<acc_t>(g >> shift),
+                                         static_cast<acc_t>(b >> shift), alpha);
+                } else {
+                    out_row[x] = P::make(static_cast<acc_t>(r >> shift),
+                                         static_cast<acc_t>(g >> shift),
+                                         static_cast<acc_t>(b >> shift));
+                }
+            }
+        }
+
+        // Rotate ring buffer: discard oldest, current becomes newest saved.
+        RGB_T *recycled = bufs[0];
+        for (int i = 0; i < R; ++i) bufs[i] = bufs[i + 1];
+        bufs[R] = recycled;
+    }
+}
+
+#endif // !FL_IS_AVR
+
 } // namespace blur_detail
 
 // Separable Gaussian blur: horizontal pass then vertical pass.
@@ -550,9 +717,14 @@ void blurGaussianImpl(Canvas<RGB_T> &canvas, AlphaT alpha) {
         return;
     }
 
-    // Padded pixel buffer: max(2*hRadius + w, 2*vRadius + h).
+    // Padded pixel buffer: max of horizontal pad and vertical scratch.
     const int hPadSize = 2 * hRadius + w;
+#if defined(FL_IS_AVR)
     const int vPadSize = 2 * vRadius + h;
+#else
+    // Row-major vertical pass needs (R+2)*w: R+1 ring buffers + 1 zero row.
+    const int vPadSize = vRadius > 0 ? (vRadius + 2) * w : 0;
+#endif
     const int padSize = hPadSize > vPadSize ? hPadSize : vPadSize;
     RGB_T *pad = blur_detail::get_padbuf<RGB_T>(padSize);
 
@@ -619,8 +791,10 @@ void blurGaussianImpl(Canvas<RGB_T> &canvas, AlphaT alpha) {
         }
     }
 
-    // ── Vertical pass (linearized column → reuse interior_row kernel) ──
+    // ── Vertical pass ──────────────────────────────────────────────────
     if (vRadius > 0) {
+#if defined(FL_IS_AVR)
+        // AVR: column-by-column with per-channel noinline + O3.
         constexpr int vShift = 2 * vRadius;
 
         // Zero the fixed padding regions once (reused for every column).
@@ -628,8 +802,7 @@ void blurGaussianImpl(Canvas<RGB_T> &canvas, AlphaT alpha) {
         __builtin_memset(pad + vRadius + h, 0, vRadius * sizeof(RGB_T));
 
         for (int x = 0; x < w; ++x) {
-
-            // Linearize column into padded region (pointer increment avoids multiply).
+            // Linearize column into padded region.
             {
                 const RGB_T *src = pixels + x;
                 RGB_T *dst = pad + vRadius;
@@ -638,54 +811,25 @@ void blurGaussianImpl(Canvas<RGB_T> &canvas, AlphaT alpha) {
                     src += w;
                 }
             }
-
-            // Apply interior_row kernel (reused for columns via linearization).
-            // Write back with stride=w to scatter back to column positions.
-#if defined(FL_IS_AVR)
-            // AVR: per-channel noinline + O3 for all radii.
             if (applyAlpha)
                 blur_detail::apply_pass_alpha_1ch<vRadius>(
                     pad, pixels + x, h, w, alpha);
             else
                 blur_detail::apply_pass_1ch<vRadius>(
                     pad, pixels + x, h, w);
-#else
-            if (vRadius <= 1) {
-                // Inline loop for small kernels (pointer increment avoids multiply).
-                RGB_T *dst = pixels + x;
-                if (applyAlpha) {
-                    for (int y = 0; y < h; ++y) {
-                        acc_t r, g, b;
-                        blur_detail::interior_row<vRadius, RGB_T, acc_t>::apply(
-                            pad, vRadius + y, r, g, b);
-                        *dst = P::make(static_cast<acc_t>(r >> vShift),
-                                       static_cast<acc_t>(g >> vShift),
-                                       static_cast<acc_t>(b >> vShift), alpha);
-                        dst += w;
-                    }
-                } else {
-                    for (int y = 0; y < h; ++y) {
-                        acc_t r, g, b;
-                        blur_detail::interior_row<vRadius, RGB_T, acc_t>::apply(
-                            pad, vRadius + y, r, g, b);
-                        *dst = P::make(static_cast<acc_t>(r >> vShift),
-                                       static_cast<acc_t>(g >> vShift),
-                                       static_cast<acc_t>(b >> vShift));
-                        dst += w;
-                    }
-                }
-            } else {
-                // Noinline call for large kernels (register pressure relief).
-                if (applyAlpha) {
-                    blur_detail::apply_pass_alpha<vRadius, RGB_T, acc_t>(
-                        pad, pixels + x, h, w, alpha);
-                } else {
-                    blur_detail::apply_pass<vRadius, RGB_T, acc_t>(
-                        pad, pixels + x, h, w);
-                }
-            }
-#endif
         }
+#else
+        // Non-AVR: row-major vertical pass for cache efficiency.
+        // Processes all columns simultaneously per row (sequential access),
+        // using a ring buffer of R+1 saved rows for overwritten history.
+        if (applyAlpha) {
+            blur_detail::vpass_rowmajor_impl<vRadius, RGB_T, acc_t, true>(
+                pixels, w, h, pad, alpha);
+        } else {
+            blur_detail::vpass_rowmajor_impl<vRadius, RGB_T, acc_t, false>(
+                pixels, w, h, pad, alpha);
+        }
+#endif
     }
 }
 
