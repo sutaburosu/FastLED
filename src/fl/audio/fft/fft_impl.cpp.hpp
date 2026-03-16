@@ -16,8 +16,9 @@
 #include "fl/audio/fft/fft_impl.h"
 #include "fl/stl/string.h"
 #include "fl/stl/compiler_control.h"
-#include "fl/stl/fixed_point/u16x16.h"
+#include "fl/stl/fixed_point.h"
 #include "fl/stl/vector.h"
+#include "fl/gfx/alpha.h"
 #include "fl/system/log.h"
 
 #include "fl/stl/cstring.h"
@@ -48,30 +49,17 @@
 
 namespace fl {
 
-    // Resolve FFTMode::AUTO based on bin count.
-    // <= 32 bins → LOG_REBIN (fast, no quality difference at this resolution)
-    // > 32 bins  → CQ_NAIVE or CQ_OCTAVE based on kernel conditioning
-    static FFTMode resolveMode(FFTMode mode, int samples, float fmin,
-                               float fmax, int bands) {
-        if (mode != FFTMode::AUTO) return mode;
-        if (bands <= 32) return FFTMode::LOG_REBIN;
-        // Check kernel conditioning: N_window = N * fmin / fmax.
-        // When >= 2, CQ_NAIVE (single FFT + kernels) works well.
-        // When < 2, kernels degenerate and we need octave-wise CQT.
-        int winMin = static_cast<int>(
-            static_cast<float>(samples) * fmin / fmax);
-        return (winMin >= 2) ? FFTMode::CQ_NAIVE : FFTMode::CQ_OCTAVE;
-    }
+    // Delegates to FFT_Args::resolve() — single source of truth.
 
 class FFTContext {
   public:
     FFTContext(int samples, int bands, float fmin, float fmax, int sample_rate,
-              FFTMode mode)
+              FFTMode mode, FFTWindow window)
         : m_fftr_cfg(nullptr), m_input_samples(samples),
           m_kernels(nullptr),
-          m_mode(resolveMode(mode, samples, fmin, fmax, bands)),
-          m_totalBands(bands), m_fmin(fmin), m_fmax(fmax),
-          m_sampleRate(sample_rate) {
+          m_mode(mode), m_totalBands(bands), m_fmin(fmin), m_fmax(fmax),
+          m_sampleRate(sample_rate), m_window(window) {
+        FFT_Args::resolveModeEnums(m_mode, m_window, bands, samples, fmin, fmax);
         fl::memset(&m_cq_cfg, 0, sizeof(m_cq_cfg));
 
         m_fftr_cfg = kiss_fftr_alloc(samples, 0, nullptr, nullptr);
@@ -206,8 +194,16 @@ class FFTContext {
                        static_cast<float>(m_sampleRate), 0, m_totalBands);
         buildLinearBinLut(m_linearBinLut, m_input_samples);
 
-        // Pre-compute Hanning window as Q15 integer coefficients
-        computeHanningWindow(m_hanningWindow, m_input_samples);
+        // Pre-compute window as Q15 integer coefficients
+        computeWindow(m_window_buf, m_input_samples, m_window);
+
+        // Pre-compute bin-width normalization factors for LOG_REBIN.
+        // Without normalization, wider high-frequency bins accumulate more
+        // sidelobe energy than narrow low-frequency bins, creating visible
+        // "aliasing" artifacts during a tone sweep.
+        computeLogRebinNormFactors(m_logBinNormFactors, m_logBinLut,
+                                   m_input_samples, static_cast<float>(m_sampleRate),
+                                   0, m_totalBands);
     }
 
     void runLogRebin(span<const i16> buffer, FFTBins *out) {
@@ -216,9 +212,9 @@ class FFTContext {
         const int bands = m_totalBands;
         const int numRawBins = N / 2 + 1;
 
-        // Apply Q15 Hanning window (integer multiply, no float)
+        // Apply Q15 window (integer multiply, no float)
         FASTLED_STACK_ARRAY(kiss_fft_scalar, windowed, N);
-        applyWindowQ15(buffer.data(), m_hanningWindow.data(), windowed, N);
+        applyWindow(buffer.data(), m_window_buf.data(), windowed, N);
 
         FASTLED_STACK_ARRAY(kiss_fft_cpx, fft, N);
         kiss_fftr(m_fftr_cfg, windowed, fft);
@@ -241,15 +237,16 @@ class FFTContext {
         logRebinRange(mag, N, static_cast<float>(m_sampleRate),
                       0, bands, rawBinsI, m_logBinLut);
 
-        // Store raw magnitudes and compute dB
+        // Store raw magnitudes (dB computed lazily by FFTBins::db())
         fl::vector<float> &rawBins = out->raw_mut();
-        fl::vector<float> &dbBins = out->db_mut();
         rawBins.resize(bands);
-        dbBins.resize(bands);
         for (int i = 0; i < bands; ++i) {
             rawBins[i] = static_cast<float>(rawBinsI[i]);
-            dbBins[i] = fastDb(rawBinsI[i]);
         }
+
+        // Store bin-width normalization factors so consumers can optionally
+        // normalize (e.g. for equalization display). Raw output is unchanged.
+        out->setNormFactors(m_logBinNormFactors);
     }
 
     // ---- Naive single-FFT path (narrow frequency ranges) ----
@@ -263,6 +260,8 @@ class FFTContext {
         m_cq_cfg.min_val = FL_FFT_MIN_VAL;
         m_kernels = generate_kernels(m_cq_cfg);
         buildLinearBinLut(m_linearBinLut, samples);
+        // Note: CQ kernels already apply Hamming windowing in frequency domain.
+        // Adding time-domain Hanning would double-window and over-attenuate.
     }
 
     void runNaive(span<const i16> buffer, FFTBins *out) {
@@ -287,41 +286,37 @@ class FFTContext {
 
         const int bands = m_cq_cfg.bands;
         fl::vector<float> &rawBins = out->raw_mut();
-        fl::vector<float> &dbBins = out->db_mut();
         rawBins.resize(bands);
-        dbBins.resize(bands);
         for (int i = 0; i < bands; ++i) {
             i32 real = cq[i].r;
             i32 imag = cq[i].i;
 #ifdef FIXED_POINT
-            u16 magnitude = fastMag(real, imag);
-            rawBins[i] = static_cast<float>(magnitude);
-            dbBins[i] = fastDb(static_cast<u32>(magnitude));
+            rawBins[i] = static_cast<float>(fastMag(real, imag));
 #else
             float r2 = float(real * real);
             float i2 = float(imag * imag);
-            float magnitude = sqrt(r2 + i2);
-            rawBins[i] = magnitude;
-            dbBins[i] = (magnitude > 0.0f) ? 20.0f * log10f(magnitude) : 0.0f;
+            rawBins[i] = sqrt(r2 + i2);
 #endif
         }
     }
 
-    // Fast integer magnitude: max(|re|,|im|) + 0.4*min(|re|,|im|)
+    // Fast integer magnitude: max(|re|,|im|) + 0.40625*min(|re|,|im|)
     // Max error ~3.5% vs exact sqrt(re²+im²). No float, no division.
+    // 0.40625 = 13/32, exactly representable → bit-exact with original.
     static inline u16 fastMag(i32 re, i32 im) {
         u32 a = (re >= 0) ? static_cast<u32>(re) : static_cast<u32>(-re);
         u32 b = (im >= 0) ? static_cast<u32>(im) : static_cast<u32>(-im);
         u32 mx = (a > b) ? a : b;
         u32 mn = (a <= b) ? a : b;
-        return static_cast<u16>(mx + ((mn * 13) >> 5));
+        static constexpr u16x16 kMinWeight(0.40625f);
+        return static_cast<u16>(mx + (kMinWeight * static_cast<i32>(mn)).to_int());
     }
 
     // Fast integer dB conversion: 20 * log10(x) = 6.02060 * log2(x).
     // Uses MSB position for integer part, corrected linear interpolation
     // for fractional part. Max error ~0.05 dB — imperceptible for audio
     // visualization. No log10f, no division.
-    // Internally uses fixed-point Q16.16 in FIXED16 mode, converts to float at output.
+    // Internally uses fixed-point u16x16 in FIXED16 mode, converts to float at output.
     static inline float fastDb(u32 x) {
         if (x == 0) return 0.0f;
 
@@ -336,34 +331,36 @@ class FFTContext {
             if (v >= 0x2u)     { msb += 1; }
         }
 
-        // Normalized mantissa in Q0.16: t = (x / 2^msb - 1) * 65536
-        u32 t16;
+        // Normalized mantissa in [0, 1) as u16x16
+        u32 t_raw;
         if (msb >= 16) {
-            t16 = (x >> (msb - 16)) - 65536u;
+            t_raw = (x >> (msb - 16)) - 65536u;
         } else {
-            t16 = (x << (16 - msb)) - 65536u;
+            t_raw = (x << (16 - msb)) - 65536u;
         }
+        u16x16 t = u16x16::from_raw(t_raw);
 
         // log2(1+t) ~= t + 0.345 * t * (1-t)  [max error ~0.008]
-        // All in Q0.16 integer arithmetic:
-        u32 complement = 65536u - t16;
-        u32 prod = (t16 * complement) >> 16;          // t*(1-t) in Q0.16
-        u32 correction = (prod * 22610u) >> 16;        // 0.345 * t*(1-t), 22610 = 0.345*65536
-        u32 frac16 = t16 + correction;
+        // 22610 = 0.345 * 65536 (from_raw preserves exact original constant)
+        static constexpr u16x16 one(1.0f);
+        static constexpr u16x16 kCorrection = u16x16::from_raw(22610u);
+        u16x16 complement = one - t;
+        u16x16 prod = t * complement;
+        u16x16 correction = prod * kCorrection;
+        u16x16 frac = t + correction;
 
-        // log2(x) in Q16.16 = (msb << 16) + frac16
-        u32 log2_q16 = (static_cast<u32>(msb) << 16) + frac16;
+        // log2(x) = msb + frac, assembled as u16x16
+        u16x16 log2_val = u16x16::from_raw(
+            (static_cast<u32>(msb) << 16) + frac.raw());
 
         // 20*log10(x) = 6.02060 * log2(x)
 #if FASTLED_FFT_PRECISION == FASTLED_FFT_FIXED16
-        // Pure Q16.16 fixed-point multiply, then convert to float at output.
-        // 6.02060 in Q16.16 = 394593
-        constexpr u32 DB_SCALE_Q16 = 394593u;
-        u64 product = static_cast<u64>(log2_q16) * DB_SCALE_Q16;
-        fl::u16x16 db = fl::u16x16::from_raw(static_cast<u32>(product >> 16));
+        // 394593 = 6.02060 * 65536 (from_raw preserves exact original constant)
+        static constexpr u16x16 kDbScale = u16x16::from_raw(394593u);
+        u16x16 db = log2_val * kDbScale;
         return db.to_float();
 #else
-        return 6.02060f * (static_cast<float>(log2_q16) * (1.0f / 65536.0f));
+        return 6.02060f * log2_val.to_float();
 #endif
     }
 
@@ -460,30 +457,71 @@ class FFTContext {
         }
     }
 
-    // Compute Hanning window as Q15 integers (range [0, 32767]).
-    // Q15 multiply: (sample * win) >> 15 ≈ sample * win_float.
-    static void computeHanningWindow(fl::vector<i16> &win, int N) {
+    // Compute window function as alpha16 (UNORM16) coefficients in [0, 1].
+    // Uses fixed-point arithmetic throughout to avoid float on MCUs.
+    static void computeWindow(fl::vector<alpha16> &win, int N, FFTWindow type) {
+        using FP = fl::fixed_point<16, 16>;
         win.resize(N);
-        const float invNm1 = 1.0f / static_cast<float>(N - 1);
+
+        // NONE: rectangular window (all coefficients = 1.0)
+        if (type == FFTWindow::NONE) {
+            for (int n = 0; n < N; ++n) {
+                win[n] = alpha16(65535);
+            }
+            return;
+        }
+
+        const FP two_pi(6.2831853f);   // 2π
+        const FP invNm1 = FP(1) / FP(N - 1);
+        const FP phase_step = two_pi * invNm1;
+
+        // Blackman-Harris coefficients
+        constexpr FP bh_a0(0.35875f);
+        constexpr FP bh_a1(0.48829f);
+        constexpr FP bh_a2(0.14128f);
+        constexpr FP bh_a3(0.01168f);
+        // Hanning coefficients
+        constexpr FP half(0.5f);
+        constexpr FP one(1.0f);
+
+        FP phase(0.0f);
         for (int n = 0; n < N; ++n) {
-            float phase = 2.0f * static_cast<float>(FL_M_PI) *
-                          static_cast<float>(n) * invNm1;
-            float w = 0.5f * (1.0f - fl::cosf(phase));
-            win[n] = static_cast<i16>(w * 32767.0f + 0.5f);
+            FP w;
+            switch (type) {
+            case FFTWindow::BLACKMAN_HARRIS: {
+                // 4-term Blackman-Harris: -92 dB sidelobe rejection
+                FP phase2 = phase + phase;
+                FP phase3 = phase2 + phase;
+                w = bh_a0 - bh_a1 * FP::cos(phase)
+                    + bh_a2 * FP::cos(phase2)
+                    - bh_a3 * FP::cos(phase3);
+                break;
+            }
+            case FFTWindow::HANNING:
+            default:
+                w = half * (one - FP::cos(phase));
+                break;
+            }
+            i32 raw = w.raw();
+            if (raw < 0) raw = 0;          // guard against FP rounding
+            if (raw > 65535) raw = 65535;   // 1.0 in s16x16 = 65536, clamp for u16
+            win[n] = alpha16(static_cast<unsigned short>(raw));
+            phase = phase + phase_step;
         }
     }
 
-    // Apply Q15 Hanning window: out[i] = (sample[i] * win[i]) >> 15
-    static void applyWindowQ15(const kiss_fft_scalar *samples,
-                               const i16 *win, kiss_fft_scalar *out, int N) {
+    // Apply window: out[i] = sample[i] * win[i]
+    // Window coefficients are alpha16 (UNORM16 [0,1]); uses scale_signed().
+    static void applyWindow(const kiss_fft_scalar *samples,
+                            const alpha16 *win, kiss_fft_scalar *out, int N) {
         for (int i = 0; i < N; ++i) {
             out[i] = static_cast<kiss_fft_scalar>(
-                (static_cast<i32>(samples[i]) * static_cast<i32>(win[i])) >> 15);
+                win[i].scale_signed(static_cast<int>(samples[i])));
         }
     }
 
-    void initHanningWindow() {
-        computeHanningWindow(m_hanningWindow, m_input_samples);
+    void initWindow() {
+        computeWindow(m_window_buf, m_input_samples, m_window);
     }
 
     // ---- Octave-wise CQT path (wide frequency ranges) ----
@@ -514,7 +552,7 @@ class FFTContext {
 
         // Log-spaced center frequencies for all bins
         float logRatio = logf(fmax / fmin);
-        fl::vector<float> centerFreqs(bands);
+        FASTLED_STACK_ARRAY(float, centerFreqs, bands);
         for (int i = 0; i < bands; i++) {
             centerFreqs[i] =
                 fmin *
@@ -523,7 +561,7 @@ class FFTContext {
         }
 
         // Assign each bin to an octave: oct j spans [fmin*2^j, fmin*2^(j+1))
-        fl::vector<int> binOctave(bands);
+        FASTLED_STACK_ARRAY(int, binOctave, bands);
         for (int i = 0; i < bands; i++) {
             int oct =
                 static_cast<int>(floorf(log2f(centerFreqs[i] / fmin)));
@@ -585,6 +623,8 @@ class FFTContext {
         m_fftOut.resize(samples);
 
         buildLinearBinLut(m_linearBinLut, samples);
+        // Note: CQ kernels already apply Hamming windowing in frequency domain.
+        // Adding time-domain Hanning would double-window and over-attenuate.
     }
 
     void runOctaveWise(span<const i16> buffer, FFTBins *out) {
@@ -615,12 +655,9 @@ class FFTContext {
 
         // Prepare CQ output bins
         fl::vector<float> &rawBins = out->raw_mut();
-        fl::vector<float> &dbBins = out->db_mut();
         rawBins.resize(m_totalBands);
-        dbBins.resize(m_totalBands);
         for (int i = 0; i < m_totalBands; i++) {
             rawBins[i] = 0.0f;
-            dbBins[i] = 0.0f;
         }
 
         // Pre-allocate CQ accumulator once (avoids alloca in loop)
@@ -652,15 +689,11 @@ class FFTContext {
                 i32 real = cq[i].r;
                 i32 imag = cq[i].i;
 #ifdef FIXED_POINT
-                u16 m = fastMag(real, imag);
-                rawBins[binIdx] = static_cast<float>(m);
-                dbBins[binIdx] = fastDb(static_cast<u32>(m));
+                rawBins[binIdx] = static_cast<float>(fastMag(real, imag));
 #else
                 float r2 = float(real * real);
                 float i2 = float(imag * imag);
-                float m = sqrt(r2 + i2);
-                rawBins[binIdx] = m;
-                dbBins[binIdx] = (m > 0.0f) ? 20.0f * log10f(m) : 0.0f;
+                rawBins[binIdx] = sqrt(r2 + i2);
 #endif
             }
         }
@@ -679,7 +712,7 @@ class FFTContext {
         float logRatio = logf(fmax / fmin);
 
         // Log-spaced center frequencies for all bins
-        fl::vector<float> centerFreqs(bands);
+        FASTLED_STACK_ARRAY(float, centerFreqs, bands);
         for (int i = 0; i < bands; i++) {
             centerFreqs[i] =
                 fmin * expf(logRatio * static_cast<float>(i) /
@@ -733,8 +766,8 @@ class FFTContext {
 
         computeBinEdgesQ16();
 
-        // Hanning window for the full-rate 512pt FFT (upper tier)
-        initHanningWindow();
+        // Window for the full-rate 512pt FFT (upper tier)
+        initWindow();
 
         // Mid-tier: 2 decimation steps → samples/4 at sr/4
         // Zero-pad 2x: 128 real samples → 256pt FFT → 43 Hz bins
@@ -742,7 +775,7 @@ class FFTContext {
         m_hybridMidFs = static_cast<float>(sr) / 4.0f;
         m_hybridMidFft = kiss_fftr_alloc(m_hybridMidN * 2, 0, nullptr, nullptr);
         m_hybridMidFftOut.resize(m_hybridMidN * 2);
-        computeHanningWindow(m_hybridMidWindow, m_hybridMidN);
+        computeWindow(m_hybridMidWindow, m_hybridMidN, m_window);
 
         // Bass-tier: 3 decimation steps → samples/8 at sr/8
         m_hybridSmallN = samples / 8;
@@ -750,7 +783,7 @@ class FFTContext {
         m_hybridSmallFft =
             kiss_fftr_alloc(m_hybridSmallN, 0, nullptr, nullptr);
         m_hybridSmallFftOut.resize(m_hybridSmallN);
-        computeHanningWindow(m_hybridBassWindow, m_hybridSmallN);
+        computeWindow(m_hybridBassWindow, m_hybridSmallN, m_window);
 
         // Work buffer for decimation (reused across phases)
         m_workBuf.resize(samples);
@@ -767,6 +800,31 @@ class FFTContext {
                        m_hybridSmallFs,
                        0, m_hybridSplitBin);
         buildLinearBinLut(m_linearBinLut, samples);
+
+        // Pre-compute normalization factors for each hybrid tier
+        computeLogRebinNormFactors(m_hybridNormUpper, m_logBinLut,
+                                   samples, static_cast<float>(sr),
+                                   m_hybridMidSplitBin, bands);
+        computeLogRebinNormFactors(m_hybridNormMid, m_logBinLutMid,
+                                   m_hybridMidN * 2, m_hybridMidFs,
+                                   m_hybridSplitBin, m_hybridMidSplitBin);
+        computeLogRebinNormFactors(m_hybridNormBass, m_logBinLutBass,
+                                   m_hybridSmallN, m_hybridSmallFs,
+                                   0, m_hybridSplitBin);
+
+        // Pre-compute merged norm factors (avoids per-frame allocation)
+        m_hybridMergedNorm.resize(bands);
+        for (int i = 0; i < bands; ++i) {
+            if (i >= m_hybridMidSplitBin && i < static_cast<int>(m_hybridNormUpper.size())) {
+                m_hybridMergedNorm[i] = m_hybridNormUpper[i];
+            } else if (i >= m_hybridSplitBin && i < static_cast<int>(m_hybridNormMid.size())) {
+                m_hybridMergedNorm[i] = m_hybridNormMid[i];
+            } else if (i < static_cast<int>(m_hybridNormBass.size())) {
+                m_hybridMergedNorm[i] = m_hybridNormBass[i];
+            } else {
+                m_hybridMergedNorm[i] = 1.0f;
+            }
+        }
     }
 
     void runHybrid(span<const i16> buffer, FFTBins *out) {
@@ -782,7 +840,7 @@ class FFTContext {
 
         // Phase 1: Windowed 512pt FFT → LOG_REBIN for upper bins
         FASTLED_STACK_ARRAY(kiss_fft_scalar, windowed, N);
-        applyWindowQ15(buffer.data(), m_hanningWindow.data(), windowed, N);
+        applyWindow(buffer.data(), m_window_buf.data(), windowed, N);
 
         kiss_fftr(m_fftr_cfg, windowed, m_fftOut.data());
 
@@ -818,7 +876,7 @@ class FFTContext {
             int midFftN = m_hybridMidN * 2;
             int midRawBins = midFftN / 2 + 1;
             FASTLED_STACK_ARRAY(kiss_fft_scalar, midWindowed, midFftN);
-            applyWindowQ15(m_workBuf.data(), m_hybridMidWindow.data(),
+            applyWindow(m_workBuf.data(), m_hybridMidWindow.data(),
                            midWindowed, m_hybridMidN);
             for (int i = m_hybridMidN; i < midFftN; ++i) {
                 midWindowed[i] = 0;
@@ -841,7 +899,7 @@ class FFTContext {
         if (m_hybridSplitBin > 0 && m_hybridSmallFft) {
             int bassRawBins = m_hybridSmallN / 2 + 1;
             FASTLED_STACK_ARRAY(kiss_fft_scalar, bassWindowed, m_hybridSmallN);
-            applyWindowQ15(m_workBuf.data(), m_hybridBassWindow.data(),
+            applyWindow(m_workBuf.data(), m_hybridBassWindow.data(),
                            bassWindowed, m_hybridSmallN);
             kiss_fftr(m_hybridSmallFft, bassWindowed,
                       m_hybridSmallFftOut.data());
@@ -853,18 +911,59 @@ class FFTContext {
                           m_logBinLutBass);
         }
 
-        // Store raw magnitudes and compute dB
+        // Store raw magnitudes (dB computed lazily by FFTBins::db())
         fl::vector<float> &rawBins = out->raw_mut();
-        fl::vector<float> &dbBins = out->db_mut();
         rawBins.resize(m_totalBands);
-        dbBins.resize(m_totalBands);
         for (int i = 0; i < m_totalBands; ++i) {
             rawBins[i] = static_cast<float>(rawBinsI[i]);
-            dbBins[i] = fastDb(rawBinsI[i]);
         }
+
+        // Use pre-computed merged norm factors (no per-frame allocation)
+        out->setNormFactors(m_hybridMergedNorm);
     }
 
     // ---- Shared utilities ----
+
+    // Compute bin-width normalization factors for LOG_REBIN.
+    // Counts how many FFT bins map to each output bin via the LUT,
+    // then stores 1/count as the normalization factor. Bins with 0 FFT bins
+    // get factor 1.0 (no scaling).
+    void computeLogRebinNormFactors(fl::vector<float>& normFactors,
+                                     const fl::vector<u8>& lut,
+                                     int fftN, float fs,
+                                     int binStart, int binEnd) {
+        int bands = binEnd - binStart;
+        normFactors.resize(binEnd);
+        for (int i = 0; i < binEnd; ++i) {
+            normFactors[i] = 1.0f;
+        }
+
+        // Count FFT bins mapping to each output bin using same bounds as logRebinRange
+        const int numRawBins = fftN / 2 + 1;
+        const u16x16 rawBinHz(fs / static_cast<float>(fftN));
+        const u16x16 halfBin = rawBinHz >> 1;
+        const u16x16 loEdge(m_logBinEdges[binStart]);
+        const u16x16 hiEdge(m_logBinEdges[binEnd]);
+
+        int kStart = 0;
+        if (loEdge > halfBin) {
+            kStart = static_cast<int>(
+                u16x16::ceil((loEdge - halfBin) / rawBinHz).to_int());
+        }
+        int kEnd = static_cast<int>(
+            u16x16::ceil((hiEdge + halfBin) / rawBinHz).to_int());
+        if (kEnd > numRawBins) kEnd = numRawBins;
+
+        FASTLED_STACK_ARRAY(float, counts, binEnd);
+        for (int k = kStart; k < kEnd; ++k) {
+            counts[lut[k]] += 1.0f;
+        }
+
+        for (int i = binStart; i < binEnd; ++i) {
+            normFactors[i] = (counts[i] > 0.0f) ? 1.0f / counts[i] : 1.0f;
+        }
+        (void)bands;
+    }
 
     // LOG_REBIN helper: group FFT bins into CQ output bins [binStart, binEnd)
     // Uses pre-computed LUT for O(1) bin mapping per FFT bin.
@@ -915,17 +1014,22 @@ class FFTContext {
         }
     }
 
-    // 3-tap halfband filter [0.25, 0.5, 0.25] + decimate by 2.
-    // -13dB stopband rejection — adequate for CQ magnitude analysis.
+    // 7-tap halfband filter + decimate by 2.
+    // h = [-1/32, 0, 9/32, 1/2, 9/32, 0, -1/32]
+    // Stopband rejection: ~-45dB per stage (vs -13dB for old 3-tap).
+    // Total rejection with 3 decimation stages: ~-135dB.
     static void decimateBy2(kiss_fft_scalar *buf, int len) {
         int outLen = len / 2;
         for (int i = 0; i < outLen; i++) {
             int idx = i * 2;
-            i32 prev = (idx > 0) ? buf[idx - 1] : buf[idx];
-            i32 curr = buf[idx];
-            i32 next = (idx + 1 < len) ? buf[idx + 1] : buf[idx];
-            buf[i] =
-                static_cast<kiss_fft_scalar>((prev + 2 * curr + next) / 4);
+            auto s = [&](int offset) -> i32 {
+                int j = idx + offset;
+                if (j < 0) j = 0;
+                if (j >= len) j = len - 1;
+                return buf[j];
+            };
+            i32 val = -s(-3) + 9*s(-1) + 16*s(0) + 9*s(1) - s(3);
+            buf[i] = static_cast<kiss_fft_scalar>(val / 32);
         }
     }
 
@@ -942,7 +1046,8 @@ class FFTContext {
     // Log-rebin path only
     fl::vector<float> m_logBinEdges;   // bands+1 geometric bin edges (float)
     fl::vector<u16x16> m_logBinEdgesQ16;  // bands+1 geometric bin edges (Q16.16)
-    fl::vector<i16> m_hanningWindow;   // N pre-computed Hanning coefficients (Q15)
+    fl::vector<alpha16> m_window_buf;   // N pre-computed window coefficients (UNORM16 [0,1])
+    fl::vector<float> m_logBinNormFactors;  // Per-bin width normalization (1/count)
 
     // Octave-wise CQ path (also used by Hybrid)
     FFTMode m_mode;
@@ -965,8 +1070,12 @@ class FFTContext {
     kiss_fftr_cfg m_hybridMidFft = nullptr;
     fl::vector<kiss_fft_cpx> m_hybridMidFftOut;
     int m_hybridMidSplitBin = 0;   // bins >= this use upper FFT
-    fl::vector<i16> m_hybridBassWindow;  // Q15 Hanning window for bass
-    fl::vector<i16> m_hybridMidWindow;   // Q15 Hanning window for mid
+    fl::vector<alpha16> m_hybridBassWindow;  // UNORM16 window for bass
+    fl::vector<alpha16> m_hybridMidWindow;   // UNORM16 window for mid
+    fl::vector<float> m_hybridNormUpper; // Normalization factors for upper tier
+    fl::vector<float> m_hybridNormMid;   // Normalization factors for mid tier
+    fl::vector<float> m_hybridNormBass;  // Normalization factors for bass tier
+    fl::vector<float> m_hybridMergedNorm; // Pre-computed merged norm factors
 
     // Pre-computed bin mapping LUTs (built at init, used at runtime)
     fl::vector<u8> m_logBinLut;       // FFT bin k → log-bin index (primary FFT)
@@ -980,12 +1089,13 @@ class FFTContext {
     int m_totalBands;
     float m_fmin, m_fmax;
     int m_sampleRate;
+    FFTWindow m_window;
 };
 
 FFTImpl::FFTImpl(const FFT_Args &args) {
     mContext = fl::make_unique<FFTContext>(args.samples, args.bands, args.fmin,
                                           args.fmax, args.sample_rate,
-                                          args.mode);
+                                          args.mode, args.window);
 }
 
 FFTImpl::~FFTImpl() { mContext.reset(); }

@@ -1,12 +1,11 @@
 
 #include "fl/audio/audio.h"
 #include "fl/audio/fft/fft.h"
-#include "fl/stl/thread_local.h"
-#include "fl/stl/math.h"
 #include "fl/stl/math.h"
 #include "fl/stl/move.h"
 #include "fl/stl/mutex.h"
 #include "fl/stl/shared_ptr.h"
+#include "fl/stl/singleton.h"
 #include "fl/stl/span.h"
 #include "fl/stl/vector.h"
 #include "fl/stl/int.h"
@@ -15,18 +14,21 @@ namespace fl {
 
 namespace {
 
-FFT &get_flex_fft() {
-    static ThreadLocal<FFT> gFlexFFT;
-    return gFlexFFT.access();
-}
+struct GuardedFFT {
+    void run(fl::span<const fl::i16> sample, FFTBins *out,
+             const FFT_Args &args) {
+        fl::unique_lock<fl::mutex> lock(mtx);
+        fft.run(sample, out, args);
+    }
+
+  private:
+    fl::mutex mtx;
+    FFT fft;
+};
 
 // Object pool implementation
 
 struct AudioSamplePool {
-    static AudioSamplePool& instance() {
-        static AudioSamplePool s_pool;
-        return s_pool;
-    }
     void put(AudioSampleImplPtr&& impl) {
         if (impl.unique()) {
             // There is no more shared_ptr to this object, so we can recycle it.
@@ -62,7 +64,7 @@ struct AudioSamplePool {
 
 AudioSample::~AudioSample() {
     if (mImpl) {
-        AudioSamplePool::instance().put(fl::move(mImpl));
+        fl::Singleton<AudioSamplePool>::instance().put(fl::move(mImpl));
     }
 }
 
@@ -172,7 +174,7 @@ void SoundLevelMeter::processBlock(const fl::i16 *samples, fl::size count) {
 }
 
 void AudioSample::fft(FFTBins *out) const {
-            fl::span<const fl::i16> sample = pcm();
+    fl::span<const fl::i16> sample = pcm();
     FFT_Args args;
     args.samples = sample.size();
     args.bands = out->bands();
@@ -180,7 +182,7 @@ void AudioSample::fft(FFTBins *out) const {
     args.fmax = FFT_Args::DefaultMaxFrequency();
     args.sample_rate =
         FFT_Args::DefaultSampleRate(); // TODO: get sample rate from AudioSample
-    get_flex_fft().run(sample, out, args);
+    fl::Singleton<GuardedFFT>::instance().run(sample, out, args);
 }
 
 
@@ -196,7 +198,7 @@ void AudioSample::applyGain(float gain) {
 }
 
 AudioSample::AudioSample(fl::span<const fl::i16> span, fl::u32 timestamp) {
-    mImpl = AudioSamplePool::instance().getOrCreate();
+    mImpl = fl::Singleton<AudioSamplePool>::instance().getOrCreate();
     auto begin = span.data();
     auto end = begin + span.size();
     mImpl->assign(begin, end, timestamp);

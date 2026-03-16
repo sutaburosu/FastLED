@@ -535,8 +535,8 @@ FL_TEST_CASE("FFT sweep - LOG_REBIN 16 bins continuous diagnostic") {
     FL_CHECK_GT(avgConc, 0.40f);
     FL_CHECK_GT(worstConc, 0.15f);
     FL_CHECK_LT(avgActive, 5.0f);
-    // Hanning window reduces spectral leakage — max active bins should be ≤8.
-    FL_CHECK_LE(maxActive, 8);
+    // Blackman-Harris wider main lobe → max active bins up to 10.
+    FL_CHECK_LE(maxActive, 10);
 }
 
 // Focused test: low-frequency region where jitter is most visible.
@@ -662,11 +662,12 @@ FL_TEST_CASE("FFT sweep - single tone leakage LOG_REBIN") {
                      << " expected=" << expectedBin << " conc=" << concentration
                      << " significant_bins=" << significantBins);
 
-        // Hanning window reduces spectral leakage: expect ≤5 significant bins
-        // and ≥40% energy concentration for a pure tone.
-        FL_CHECK_LE(significantBins, 5);
+        // Blackman-Harris has wider main lobe than Hanning (8 vs 4 FFT bins),
+        // so energy spreads to more adjacent log-spaced bins at low freq.
+        // Sidelobe floor is -92 dB vs -31 dB, so distant bins stay clean.
+        FL_CHECK_LE(significantBins, 7);
         FL_CHECK_LE(binError, 1);
-        FL_CHECK_GT(concentration, 0.40f);
+        FL_CHECK_GT(concentration, 0.30f);
     }
 }
 
@@ -932,6 +933,115 @@ FL_TEST_CASE("FFT sweep - band independence bass+treble") {
 
     // Mid should be a small fraction of total (leakage only)
     FL_CHECK_LT(midFrac, 0.25f);
+}
+
+// ============================================================================
+// High-band aliasing diagnostic for Equalizer config (16 bins, 60-5120 Hz)
+// Tests that LOG_REBIN bin-width normalization prevents high-frequency bins
+// from accumulating disproportionate sidelobe energy.
+// ============================================================================
+
+FL_TEST_CASE("FFT sweep - high-band aliasing diagnostic (Equalizer config)") {
+    const int bands = 16;
+    const float fmin = 60.0f;
+    const float fmax = 5120.0f;
+    const int sampleRate = 44100;
+    const int samplesPerFrame = 512;
+    const float fftBinHz = static_cast<float>(sampleRate) / static_cast<float>(samplesPerFrame);
+
+    // Print bin info table
+    float logRatio = fl::logf(fmax / fmin);
+    FASTLED_WARN("=== Equalizer config bin info (16 bins, 60-5120 Hz) ===");
+    FASTLED_WARN("FFT bin width: " << fftBinHz << " Hz");
+    for (int i = 0; i < bands; ++i) {
+        float center = fmin * fl::expf(logRatio * static_cast<float>(i) /
+                                        static_cast<float>(bands - 1));
+        float lo = (i == 0) ? fmin : fmin * fl::expf(logRatio * (2.0f * static_cast<float>(i) - 1.0f) /
+                                                       (2.0f * static_cast<float>(bands - 1)));
+        float hi = (i == bands - 1) ? fmax : fmin * fl::expf(logRatio * (2.0f * static_cast<float>(i) + 1.0f) /
+                                                               (2.0f * static_cast<float>(bands - 1)));
+        float width = hi - lo;
+        float fftBins = width / fftBinHz;
+        FASTLED_WARN("  Bin " << i << ": center=" << center << "Hz width="
+                     << width << "Hz mapped_fft_bins=" << fftBins);
+    }
+
+    // Sweep upper bins (bins 10-15, ~2000-5120 Hz) with fine steps
+    const int numSteps = 200;
+    int correctPeaks = 0;
+    int totalSteps = 0;
+    float worstAliasMetric = 0.0f;
+    int worstAliasBin = -1;
+
+    fl::FFT_Args args(samplesPerFrame, bands, fmin, fmax, sampleRate,
+                      fl::FFTMode::LOG_REBIN);
+    fl::FFTImpl fft(args);
+
+    // Sweep from ~1500 Hz to ~5120 Hz (upper region)
+    float sweepFmin = 1500.0f;
+    float sweepFmax = 5000.0f;
+
+    for (int step = 0; step < numSteps; ++step) {
+        float t = static_cast<float>(step) / static_cast<float>(numSteps - 1);
+        float freq = sweepFmin * fl::expf(fl::logf(sweepFmax / sweepFmin) * t);
+
+        auto samples = makeSine(freq, samplesPerFrame, static_cast<float>(sampleRate));
+        fl::FFTBins bins(bands);
+        fft.run(samples, &bins);
+
+        // Use bin-width-normalized magnitudes for aliasing analysis
+        auto normBins = bins.rawNormalized();
+
+        // Find peak bin and total energy
+        int peakBin = 0;
+        float peakEnergy = 0.0f;
+        float totalEnergy = 0.0f;
+        for (int i = 0; i < bands; ++i) {
+            float e = normBins[i];
+            totalEnergy += e;
+            if (e > peakEnergy) {
+                peakEnergy = e;
+                peakBin = i;
+            }
+        }
+
+        int expectedBin = bins.freqToBin(freq);
+
+        // Compute aliasing metric: energy outside peak +/-1 bins vs total
+        float adjacentEnergy = 0.0f;
+        for (int i = 0; i < bands; ++i) {
+            int dist = i - peakBin;
+            if (dist < 0) dist = -dist;
+            if (dist <= 1) {
+                adjacentEnergy += normBins[i];
+            }
+        }
+        float aliasMetric = (totalEnergy > 0.0f)
+            ? 1.0f - (adjacentEnergy / totalEnergy) : 0.0f;
+
+        if (aliasMetric > worstAliasMetric) {
+            worstAliasMetric = aliasMetric;
+            worstAliasBin = peakBin;
+        }
+
+        totalSteps++;
+        int diff = peakBin - expectedBin;
+        if (diff < 0) diff = -diff;
+        if (diff <= 1) {
+            correctPeaks++;
+        }
+    }
+
+    float correctRate = static_cast<float>(correctPeaks) / static_cast<float>(totalSteps);
+    FASTLED_WARN("=== High-band aliasing results ===");
+    FASTLED_WARN("Correct peaks (within +/-1): " << correctPeaks << "/" << totalSteps
+                 << " (" << correctRate << ")");
+    FASTLED_WARN("Worst alias metric: " << worstAliasMetric << " at bin " << worstAliasBin);
+
+    // Assertions: aliasing metric < 0.30 (30% max leakage to non-adjacent bins)
+    FL_CHECK_LT(worstAliasMetric, 0.30f);
+    // Peak bin matches expected within +/-1 for >= 90% of sweep steps
+    FL_CHECK_GE(correctRate, 0.90f);
 }
 
 // Amplitude linearity: doubling the input amplitude should roughly

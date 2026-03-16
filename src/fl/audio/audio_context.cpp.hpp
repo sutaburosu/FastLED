@@ -30,8 +30,8 @@ AudioContext::AudioContext(const AudioSample& sample)
 
 AudioContext::~AudioContext() = default;
 
-shared_ptr<const FFTBins> AudioContext::getFFT(int bands, float fmin, float fmax, FFTMode mode) {
-    FFT_Args args(mSample.size(), bands, fmin, fmax, mSampleRate, mode);
+shared_ptr<const FFTBins> AudioContext::getFFT(int bands, float fmin, float fmax, FFTMode mode, FFTWindow window) {
+    FFT_Args args(mSample.size(), bands, fmin, fmax, mSampleRate, mode, window);
 
     // O(1) cache lookup using hash map
     fl::size argsHash = hashFFTArgs(args);
@@ -101,9 +101,9 @@ BandEnergy AudioContext::getBandEnergy() {
     return out;
 }
 
-shared_ptr<const FFTBins> AudioContext::getFFT16(FFTMode mode) {
+shared_ptr<const FFTBins> AudioContext::getFFT16(FFTMode mode, FFTWindow window) {
     return getFFT(16, FFT_Args::DefaultMinFrequency(),
-                  FFT_Args::DefaultMaxFrequency(), mode);
+                  FFT_Args::DefaultMaxFrequency(), mode, window);
 }
 
 void AudioContext::setFFTHistoryDepth(int depth) {

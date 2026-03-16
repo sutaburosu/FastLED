@@ -840,8 +840,10 @@ FL_TEST_CASE("AudioReactive - Multiple frequency ranges") {
     float bassEnergy1 = bassData.bassEnergy;
     FL_CHECK(bassEnergy1 > 0.0f);
 
-    // Process mid frequency (700 Hz — falls in log-rebin bins 6-7)
-    vector<i16> midSamples = generateSineWave(512, 700.0f, 22050.0f, 10000);
+    // Process mid frequency (370 Hz at 22050 sampleRate).
+    // AudioSample::fft() uses 44100 Hz internally, so the FFT interprets
+    // this as ~740 Hz, which lands in CQ bins 6-7 (the mid range).
+    vector<i16> midSamples = generateSineWave(512, 370.0f, 22050.0f, 15000);
     AudioSample midAudio = createSample(midSamples, 9000);
     audio.processSample(midAudio);
 

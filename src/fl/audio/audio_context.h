@@ -32,7 +32,8 @@ public:
         int bands = 16,
         float fmin = FFT_Args::DefaultMinFrequency(),
         float fmax = FFT_Args::DefaultMaxFrequency(),
-        FFTMode mode = FFTMode::AUTO
+        FFTMode mode = FFTMode::AUTO,
+        FFTWindow window = FFTWindow::BLACKMAN_HARRIS
     );
     bool hasFFT() const { return !mFFTCache.empty(); }
 
@@ -42,7 +43,8 @@ public:
 
     // Standard 16-bin FFT (174.6-4698.3 Hz).
     // Detectors that need 16 bins should use this to share a single cached FFT.
-    shared_ptr<const FFTBins> getFFT16(FFTMode mode = FFTMode::LOG_REBIN);
+    shared_ptr<const FFTBins> getFFT16(FFTMode mode = FFTMode::LOG_REBIN,
+                                       FFTWindow window = FFTWindow::BLACKMAN_HARRIS);
 
     // ----- FFT History (for temporal analysis) -----
     void setFFTHistoryDepth(int depth);

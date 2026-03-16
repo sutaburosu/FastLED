@@ -114,6 +114,17 @@ struct alpha16 {
     alpha16& operator--() { --value; return *this; }
     alpha16 operator--(int) { alpha16 t = *this; --value; return t; }
 
+    /// Scale a signed integer by this alpha (UNORM16 semantics).
+    /// result = (v * (raw + 1)) >> 16
+    /// Identity: scale_signed(x) == x when raw == 65535
+    /// Zero:     scale_signed(x) == 0 when raw == 0 and |x| < 65536
+    template <typename T>
+    constexpr T scale_signed(T v) const {
+        return static_cast<T>(
+            (static_cast<long long>(v) *
+             static_cast<long long>(static_cast<unsigned int>(value) + 1u)) >> 16);
+    }
+
   private:
     static constexpr unsigned short _clamp(float f) {
         return static_cast<unsigned short>(

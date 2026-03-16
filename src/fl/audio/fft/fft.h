@@ -9,6 +9,19 @@ namespace fl {
 
 class FFTImpl;
 class AudioSample;  // IWYU pragma: keep
+class FloatVectorPool;
+
+// Time-domain window function applied before FFT.
+//   AUTO           — Selects best window based on FFTMode (see resolveArgs)
+//   NONE           — No windowing (rectangular window)
+//   HANNING        — Classic cosine window, -31 dB sidelobe rejection
+//   BLACKMAN_HARRIS — 4-term window, -92 dB sidelobe rejection
+enum class FFTWindow {
+    AUTO,
+    NONE,
+    HANNING,
+    BLACKMAN_HARRIS,
+};
 
 // Controls which algorithm produces the log-spaced (CQ) output bins.
 //   AUTO         — LOG_REBIN for <= 32 bins, CQ_NAIVE or CQ_OCTAVE for > 32
@@ -29,91 +42,75 @@ class FFTBins {
     friend class AudioContext;
 
   public:
-    FFTBins(fl::size n) : mBands(n) {
-        mBinsRaw.reserve(n);
-        mBinsDb.reserve(n);
-        mBinsLinear.reserve(n);
-    }
+    FFTBins(fl::size n);
+    ~FFTBins();
 
     FFTBins(const FFTBins &) = default;
     FFTBins &operator=(const FFTBins &) = default;
     FFTBins(FFTBins &&) noexcept = default;
     FFTBins &operator=(FFTBins &&) noexcept = default;
 
-    void clear() {
-        mBinsRaw.clear();
-        mBinsDb.clear();
-        mBinsLinear.clear();
-    }
+    void clear();
 
     // Configured band count (stable across clear/populate cycles)
-    fl::size bands() const { return mBands; }
+    fl::size bands() const;
 
     // Read-only span accessors
-    fl::span<const float> raw() const { return mBinsRaw; }
-    fl::span<const float> db() const { return mBinsDb; }
+    fl::span<const float> raw() const;
+
+    // dB magnitudes: 20 * log10(raw[i]).
+    // Lazily computed from raw() on first access; cached until raw changes.
+    fl::span<const float> db() const;
+
+    // Bin-width-normalized raw magnitudes: raw[i] * normFactor[i].
+    // Corrects for wider high-frequency bins accumulating more sidelobe energy.
+    // Use this for equalization display; use raw() for feature extraction.
+    // Returns a span into an internal buffer (no per-call allocation).
+    // Lazily recomputed only when raw bins or norm factors change.
+    fl::span<const float> rawNormalized() const;
 
     // Linear-spaced magnitude bins captured directly from raw FFT output.
     // Same count as CQ bins, evenly spaced from linearFmin() to linearFmax().
-    fl::span<const float> linear() const { return mBinsLinear; }
-    float linearFmin() const { return mLinearFmin; }
-    float linearFmax() const { return mLinearFmax; }
+    fl::span<const float> linear() const;
+    float linearFmin() const;
+    float linearFmax() const;
 
     // CQ parameters (set by FFTImpl after populating bins)
-    float fmin() const { return mFmin; }
-    float fmax() const { return mFmax; }
-    int sampleRate() const { return mSampleRate; }
+    float fmin() const;
+    float fmax() const;
+    int sampleRate() const;
 
     // Log-spaced center frequency for CQ bin i
-    float binToFreq(int i) const {
-        int nbands = static_cast<int>(mBinsRaw.size());
-        if (nbands <= 1) return mFmin;
-        float m = fl::logf(mFmax / mFmin);
-        return mFmin * fl::expf(m * static_cast<float>(i) / static_cast<float>(nbands - 1));
-    }
+    float binToFreq(int i) const;
 
     // Find which CQ bin contains a given frequency (inverse of binToFreq)
-    int freqToBin(float freq) const {
-        int nbands = static_cast<int>(mBinsRaw.size());
-        if (nbands <= 1) return 0;
-        if (freq <= mFmin) return 0;
-        if (freq >= mFmax) return nbands - 1;
-        float m = fl::logf(mFmax / mFmin);
-        float bin = fl::logf(freq / mFmin) / m * static_cast<float>(nbands - 1);
-        int result = static_cast<int>(bin + 0.5f);
-        if (result < 0) return 0;
-        if (result >= nbands) return nbands - 1;
-        return result;
-    }
+    int freqToBin(float freq) const;
 
     // Frequency boundary between adjacent CQ bins i and i+1 (geometric mean)
-    float binBoundary(int i) const {
-        float f_i = binToFreq(i);
-        float f_next = binToFreq(i + 1);
-        return fl::sqrtf(f_i * f_next);
-    }
+    float binBoundary(int i) const;
 
   private:
-    // Mutable accessors for FFTContext (the only writer)
-    fl::vector<float>& raw_mut() { return mBinsRaw; }
-    fl::vector<float>& db_mut() { return mBinsDb; }
-    fl::vector<float>& linear_mut() { return mBinsLinear; }
+    static FloatVectorPool& pool();
 
-    void setParams(float fmin, float fmax, int sampleRate) {
-        mFmin = fmin;
-        mFmax = fmax;
-        mSampleRate = sampleRate;
-    }
+    // Mutable accessors for FFTContext (the only writer).
+    // raw_mut() invalidates derived caches (db, normalized).
+    fl::vector<float>& raw_mut();
+    fl::vector<float>& linear_mut();
 
-    void setLinearParams(float linearFmin, float linearFmax) {
-        mLinearFmin = linearFmin;
-        mLinearFmax = linearFmax;
-    }
+    void setParams(float fmin, float fmax, int sampleRate);
+    void setLinearParams(float linearFmin, float linearFmax);
 
-    fl::vector<float> mBinsRaw;
-    fl::vector<float> mBinsDb;
-    fl::vector<float> mBinsLinear;
+    // Copy data into the existing buffer to reuse pooled capacity.
+    void setNormFactors(const fl::vector<float>& factors);
+
     fl::size mBands;
+    fl::vector<float> mBinsRaw;
+    fl::vector<float> mBinsLinear;
+    fl::vector<float> mNormFactors;
+    mutable fl::vector<float> mBinsDb;             // lazily computed from mBinsRaw
+    mutable fl::vector<float> mBinsRawNormalized;  // lazily computed from mBinsRaw + mNormFactors
+    mutable bool mDbDirty = true;                  // invalidated when raw changes
+    mutable bool mNormalizedDirty = true;           // invalidated when raw or normFactors change
     float mFmin = 174.6f;
     float mFmax = 4698.3f;
     int mSampleRate = 44100;
@@ -134,14 +131,22 @@ struct FFT_Args {
     float fmax = DefaultMaxFrequency();
     int sample_rate = DefaultSampleRate();
     FFTMode mode = FFTMode::AUTO;
+    FFTWindow window = FFTWindow::AUTO;
 
     FFT_Args(int samples = DefaultSamples(), int bands = DefaultBands(),
              float fmin = DefaultMinFrequency(),
              float fmax = DefaultMaxFrequency(),
              int sample_rate = DefaultSampleRate(),
-             FFTMode mode = FFTMode::AUTO)
+             FFTMode mode = FFTMode::AUTO,
+             FFTWindow window = FFTWindow::AUTO)
         : samples(samples), bands(bands), fmin(fmin), fmax(fmax),
-          sample_rate(sample_rate), mode(mode) {}
+          sample_rate(sample_rate), mode(mode), window(window) {}
+
+    // Resolve AUTO values for mode and window in-place.
+    // Mode is resolved first; window depends on the resolved mode.
+    // Takes bins (band count), samples, fmin, fmax as context.
+    static void resolveModeEnums(FFTMode &mode, FFTWindow &window, int bands,
+                                 int samples, float fmin, float fmax);
 
     bool operator==(const FFT_Args &other) const ;
     bool operator!=(const FFT_Args &other) const { return !(*this == other); }
