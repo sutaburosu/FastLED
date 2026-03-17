@@ -1092,3 +1092,779 @@ FL_TEST_CASE("FFT sweep - amplitude linearity LOG_REBIN") {
     FL_CHECK_GT(ratio, 1.8f);
     FL_CHECK_LT(ratio, 2.2f);
 }
+
+// ============================================================================
+// Adversarial FFT tone sweep tests
+// Tests high-frequency bin quality, spectral leakage, normalization,
+// boundary effects, and cross-mode consistency.
+// ============================================================================
+
+namespace {
+
+// Deterministic PRNG for white noise generation (LCG)
+struct SimplePRNG {
+    ::fl::u32 state;
+    SimplePRNG(::fl::u32 seed = 12345u) : state(seed) {}
+    ::fl::u32 next() {
+        state = state * 1664525u + 1013904223u;
+        return state;
+    }
+    // Returns i16 in [-16384, 16383]
+    ::fl::i16 nextI16() {
+        return static_cast<::fl::i16>(
+            (static_cast<::fl::i32>(next() & 0xFFFFu) - 32768) / 2);
+    }
+};
+
+const char* advModeName(::fl::FFTMode mode) {
+    switch (mode) {
+    case ::fl::FFTMode::LOG_REBIN: return "LOG_REBIN";
+    case ::fl::FFTMode::CQ_NAIVE: return "CQ_NAIVE";
+    case ::fl::FFTMode::CQ_OCTAVE: return "CQ_OCTAVE";
+    case ::fl::FFTMode::CQ_HYBRID: return "CQ_HYBRID";
+    default: return "UNKNOWN";
+    }
+}
+
+} // namespace
+
+// Test 1: High-Bin Spectral Leakage (All Modes)
+// Pure tone at center of bins 13, 14, 15 — checks concentration and distant leakage.
+FL_TEST_CASE("FFT adversarial - high-bin spectral leakage (all modes)") {
+    const int bands = 16;
+    const float fmin = fl::FFT_Args::DefaultMinFrequency();
+    const float fmax = fl::FFT_Args::DefaultMaxFrequency();
+    const int sampleRate = fl::FFT_Args::DefaultSampleRate();
+    const int N = fl::FFT_Args::DefaultSamples();
+    float logRatio = fl::logf(fmax / fmin);
+
+    fl::FFTMode modes[] = {
+        fl::FFTMode::LOG_REBIN,
+        fl::FFTMode::CQ_NAIVE,
+        fl::FFTMode::CQ_OCTAVE,
+        fl::FFTMode::CQ_HYBRID
+    };
+
+    for (fl::FFTMode mode : modes) {
+        fl::FFT_Args args(N, bands, fmin, fmax, sampleRate, mode);
+        fl::FFTImpl fft(args);
+
+        for (int targetBin = 13; targetBin <= 15; ++targetBin) {
+            float centerFreq = fmin * fl::expf(logRatio * static_cast<float>(targetBin) /
+                                                static_cast<float>(bands - 1));
+
+            auto samples = makeSine(centerFreq, N, static_cast<float>(sampleRate));
+            fl::FFTBins bins(bands);
+            fft.run(samples, &bins);
+
+            float peakEnergy = 0.0f;
+            int peakBin = 0;
+            float totalEnergy = 0.0f;
+            for (int i = 0; i < bands; ++i) {
+                float e = bins.raw()[i];
+                totalEnergy += e;
+                if (e > peakEnergy) {
+                    peakEnergy = e;
+                    peakBin = i;
+                }
+            }
+
+            float concentration = (totalEnergy > 0.0f) ? peakEnergy / totalEnergy : 0.0f;
+
+            // Distant leakage: energy in bins far from peak (>= 3 bins below peak)
+            float distantEnergy = 0.0f;
+            for (int i = 0; i < peakBin - 2; ++i) {
+                distantEnergy += bins.raw()[i];
+            }
+            float distantLeakage = (totalEnergy > 0.0f) ? distantEnergy / totalEnergy : 0.0f;
+
+            FASTLED_WARN(advModeName(mode) << " bin " << targetBin
+                         << " (freq=" << centerFreq << "Hz): conc=" << concentration
+                         << " distant_leak=" << distantLeakage
+                         << " peak_bin=" << peakBin);
+
+            // Per-mode concentration thresholds:
+            // CQ_NAIVE uses single-FFT CQ kernels → lower concentration at high bins.
+            // CQ_OCTAVE has wider kernel main lobes → slightly lower concentration.
+            float concThreshold = (mode == fl::FFTMode::CQ_NAIVE) ? 0.25f :
+                                  (mode == fl::FFTMode::CQ_OCTAVE) ? 0.35f : 0.40f;
+            FL_CHECK_GT(concentration, concThreshold);
+            FL_CHECK_LT(distantLeakage, 0.20f);
+        }
+    }
+}
+
+// Test 2: Near-Nyquist Aliasing
+// Config: 16 bands, 60-20000 Hz. Tones at 18000, 19000, 20000 Hz.
+FL_TEST_CASE("FFT adversarial - near-Nyquist aliasing") {
+    const int bands = 16;
+    const float fmin = 60.0f;
+    const float fmax = 20000.0f;
+    const int sampleRate = 44100;
+    const int N = 512;
+
+    float testFreqs[] = {18000.0f, 19000.0f, 20000.0f};
+
+    for (float freq : testFreqs) {
+        fl::FFT_Args args(N, bands, fmin, fmax, sampleRate, fl::FFTMode::LOG_REBIN);
+        fl::FFTImpl fft(args);
+
+        auto samples = makeSine(freq, N, static_cast<float>(sampleRate));
+        fl::FFTBins bins(bands);
+        fft.run(samples, &bins);
+
+        int peakBin = 0;
+        float peakEnergy = 0.0f;
+        float totalEnergy = 0.0f;
+        float bottomHalfEnergy = 0.0f;
+        for (int i = 0; i < bands; ++i) {
+            float e = bins.raw()[i];
+            totalEnergy += e;
+            if (e > peakEnergy) {
+                peakEnergy = e;
+                peakBin = i;
+            }
+            if (i < bands / 2) {
+                bottomHalfEnergy += e;
+            }
+        }
+
+        float bottomFrac = (totalEnergy > 0.0f) ? bottomHalfEnergy / totalEnergy : 0.0f;
+
+        FASTLED_WARN("Near-Nyquist " << freq << "Hz: peak_bin=" << peakBin
+                     << " bottom_half_frac=" << bottomFrac
+                     << " total_energy=" << totalEnergy);
+
+        // Peak should be in top 2 bins
+        FL_CHECK_GE(peakBin, bands - 2);
+        // Energy in bottom half should be < 5% (aliasing check)
+        FL_CHECK_LT(bottomFrac, 0.05f);
+    }
+
+    // Nyquist tone: sin(n*pi) = 0, so total energy should be near-zero
+    {
+        float nyquistFreq = static_cast<float>(sampleRate) / 2.0f;
+        fl::FFT_Args args(N, bands, fmin, fmax, sampleRate, fl::FFTMode::LOG_REBIN);
+        fl::FFTImpl fft(args);
+
+        auto samples = makeSine(nyquistFreq, N, static_cast<float>(sampleRate));
+        fl::FFTBins bins(bands);
+        fft.run(samples, &bins);
+
+        float totalEnergy = 0.0f;
+        float bottomHalfEnergy = 0.0f;
+        for (int i = 0; i < bands; ++i) {
+            totalEnergy += bins.raw()[i];
+            if (i < bands / 2) {
+                bottomHalfEnergy += bins.raw()[i];
+            }
+        }
+
+        float bottomFrac = (totalEnergy > 0.0f) ? bottomHalfEnergy / totalEnergy : 0.0f;
+        FASTLED_WARN("Nyquist " << nyquistFreq << "Hz: bottom_half_frac=" << bottomFrac
+                     << " total_energy=" << totalEnergy);
+
+        // Nyquist sine samples to zero; aliasing check only if there's energy
+        FL_CHECK_LT(bottomFrac, 0.10f);
+    }
+}
+
+// Test 3: White Noise Normalization Flatness
+// Deterministic PRNG white noise through LOG_REBIN.
+FL_TEST_CASE("FFT adversarial - white noise normalization flatness") {
+    const int bands = 16;
+    const int N = 512;
+    const int sampleRate = 44100;
+
+    SimplePRNG rng(42);
+    ::fl::vector<::fl::i16> noiseSamples;
+    noiseSamples.resize(N);
+    for (int i = 0; i < N; ++i) {
+        noiseSamples[i] = rng.nextI16();
+    }
+
+    fl::FFT_Args args(N, bands,
+                      fl::FFT_Args::DefaultMinFrequency(),
+                      fl::FFT_Args::DefaultMaxFrequency(),
+                      sampleRate, fl::FFTMode::LOG_REBIN);
+    fl::FFTImpl fft(args);
+    fl::FFTBins bins(bands);
+    fft.run(noiseSamples, &bins);
+
+    // rawNormalized() should be flatter than raw()
+    auto normBins = bins.rawNormalized();
+    auto rawBins = bins.raw();
+
+    float normSum = 0.0f;
+    float rawMax = 0.0f, rawMin = 1e30f;
+
+    for (int i = 0; i < bands; ++i) {
+        normSum += normBins[i];
+        if (rawBins[i] > rawMax) rawMax = rawBins[i];
+        if (rawBins[i] > 0.0f && rawBins[i] < rawMin) rawMin = rawBins[i];
+    }
+
+    float normMean = normSum / static_cast<float>(bands);
+    float normVariance = 0.0f;
+    for (int i = 0; i < bands; ++i) {
+        float diff = normBins[i] - normMean;
+        normVariance += diff * diff;
+    }
+    normVariance /= static_cast<float>(bands);
+    // Manual sqrt: iterative Newton's method for test code
+    float normStddev = normVariance;
+    for (int iter = 0; iter < 10; ++iter) {
+        if (normStddev <= 0.0f) break;
+        normStddev = 0.5f * (normStddev + normVariance / normStddev);
+    }
+    float normCV = (normMean > 0.0f) ? normStddev / normMean : 0.0f;
+
+    float rawRatio = (rawMin > 0.0f) ? rawMax / rawMin : 0.0f;
+
+    FASTLED_WARN("White noise: normCV=" << normCV << " rawMax/rawMin=" << rawRatio);
+    for (int i = 0; i < bands; ++i) {
+        FASTLED_WARN("  bin " << i << ": raw=" << rawBins[i]
+                     << " norm=" << normBins[i]);
+    }
+
+    // rawNormalized() coefficient of variation should be < 0.60
+    FL_CHECK_LT(normCV, 0.60f);
+    // raw() max/min ratio > 3.0 (proves raw IS biased toward wide high bins)
+    FL_CHECK_GT(rawRatio, 3.0f);
+}
+
+// Test 4: Top-Quartile vs Mid-Range Concentration Comparison
+// 100-frame sweep over bins 12-15 vs bins 4-8.
+FL_TEST_CASE("FFT adversarial - top-quartile vs mid-range concentration") {
+    const int bands = 16;
+    const float fmin = fl::FFT_Args::DefaultMinFrequency();
+    const float fmax = fl::FFT_Args::DefaultMaxFrequency();
+    const int sampleRate = fl::FFT_Args::DefaultSampleRate();
+    const int N = fl::FFT_Args::DefaultSamples();
+    float logRatio = fl::logf(fmax / fmin);
+
+    fl::FFTMode modes[] = {fl::FFTMode::LOG_REBIN, fl::FFTMode::CQ_OCTAVE};
+
+    for (fl::FFTMode mode : modes) {
+        fl::FFT_Args args(N, bands, fmin, fmax, sampleRate, mode);
+        fl::FFTImpl fft(args);
+
+        // Sweep bins 12-15 (top quartile)
+        const int topFrames = 100;
+        float topConcSum = 0.0f;
+        for (int frame = 0; frame < topFrames; ++frame) {
+            float t = static_cast<float>(frame) / static_cast<float>(topFrames - 1);
+            float binF = 12.0f + t * 3.0f;
+            float freq = fmin * fl::expf(logRatio * binF /
+                                          static_cast<float>(bands - 1));
+
+            auto samples = makeSine(freq, N, static_cast<float>(sampleRate));
+            fl::FFTBins bins(bands);
+            fft.run(samples, &bins);
+
+            float peakE = 0.0f, totalE = 0.0f;
+            for (int i = 0; i < bands; ++i) {
+                float e = bins.raw()[i];
+                totalE += e;
+                if (e > peakE) peakE = e;
+            }
+            topConcSum += (totalE > 0.0f) ? peakE / totalE : 0.0f;
+        }
+
+        // Sweep bins 4-8 (mid range)
+        const int midFrames = 100;
+        float midConcSum = 0.0f;
+        for (int frame = 0; frame < midFrames; ++frame) {
+            float t = static_cast<float>(frame) / static_cast<float>(midFrames - 1);
+            float binF = 4.0f + t * 4.0f;
+            float freq = fmin * fl::expf(logRatio * binF /
+                                          static_cast<float>(bands - 1));
+
+            auto samples = makeSine(freq, N, static_cast<float>(sampleRate));
+            fl::FFTBins bins(bands);
+            fft.run(samples, &bins);
+
+            float peakE = 0.0f, totalE = 0.0f;
+            for (int i = 0; i < bands; ++i) {
+                float e = bins.raw()[i];
+                totalE += e;
+                if (e > peakE) peakE = e;
+            }
+            midConcSum += (totalE > 0.0f) ? peakE / totalE : 0.0f;
+        }
+
+        float topAvg = topConcSum / static_cast<float>(topFrames);
+        float midAvg = midConcSum / static_cast<float>(midFrames);
+
+        FASTLED_WARN(advModeName(mode) << ": top_quartile_avg_conc=" << topAvg
+                     << " mid_range_avg_conc=" << midAvg);
+
+        FL_CHECK_GT(topAvg, 0.35f);
+        if (midAvg > 0.0f) {
+            float ratio = topAvg / midAvg;
+            FASTLED_WARN(advModeName(mode) << ": high/mid ratio=" << ratio);
+            FL_CHECK_GT(ratio, 0.70f);
+        }
+    }
+}
+
+// Test 5: High-Bin Boundary Energy Split
+// Tone at geometric mean between adjacent high bins.
+FL_TEST_CASE("FFT adversarial - high-bin boundary energy split") {
+    const int bands = 16;
+    const float fmin = fl::FFT_Args::DefaultMinFrequency();
+    const float fmax = fl::FFT_Args::DefaultMaxFrequency();
+    const int sampleRate = fl::FFT_Args::DefaultSampleRate();
+    const int N = fl::FFT_Args::DefaultSamples();
+    float logRatio = fl::logf(fmax / fmin);
+
+    fl::FFTMode modes[] = {
+        fl::FFTMode::LOG_REBIN,
+        fl::FFTMode::CQ_NAIVE,
+        fl::FFTMode::CQ_OCTAVE,
+        fl::FFTMode::CQ_HYBRID
+    };
+
+    for (fl::FFTMode mode : modes) {
+        fl::FFT_Args args(N, bands, fmin, fmax, sampleRate, mode);
+        fl::FFTImpl fft(args);
+
+        // Test boundaries: bins 13-14 and bins 14-15
+        for (int p = 0; p < 2; ++p) {
+            int binA = (p == 0) ? 13 : 14;
+            int binB = (p == 0) ? 14 : 15;
+
+            float freqA = fmin * fl::expf(logRatio * static_cast<float>(binA) /
+                                            static_cast<float>(bands - 1));
+            float freqB = fmin * fl::expf(logRatio * static_cast<float>(binB) /
+                                            static_cast<float>(bands - 1));
+            // Geometric mean = boundary frequency
+            float boundaryFreq = freqA * fl::expf(0.5f * fl::logf(freqB / freqA));
+
+            auto samples = makeSine(boundaryFreq, N, static_cast<float>(sampleRate));
+            fl::FFTBins bins(bands);
+            fft.run(samples, &bins);
+
+            float eA = bins.raw()[binA];
+            float eB = bins.raw()[binB];
+            float eSum = eA + eB;
+            float minE = (eA < eB) ? eA : eB;
+            float splitRatio = (eSum > 0.0f) ? minE / eSum : 0.0f;
+
+            FASTLED_WARN(advModeName(mode) << " boundary " << binA << "-" << binB
+                         << " (freq=" << boundaryFreq << "Hz): eA=" << eA
+                         << " eB=" << eB << " split=" << splitRatio);
+
+            FL_CHECK_GT(splitRatio, 0.15f);
+            FL_CHECK_GT(eA, 0.0f);
+            FL_CHECK_GT(eB, 0.0f);
+        }
+    }
+}
+
+// Test 6: CQ_HYBRID Tier Boundary Continuity
+// Sweep with fine resolution across tier boundaries (~698 Hz, ~1397 Hz).
+FL_TEST_CASE("FFT adversarial - CQ_HYBRID tier boundary continuity") {
+    const int bands = 16;
+    const float fmin = fl::FFT_Args::DefaultMinFrequency();
+    const float fmax = fl::FFT_Args::DefaultMaxFrequency();
+    const int sampleRate = fl::FFT_Args::DefaultSampleRate();
+    const int N = fl::FFT_Args::DefaultSamples();
+
+    fl::FFT_Args args(N, bands, fmin, fmax, sampleRate, fl::FFTMode::CQ_HYBRID);
+    fl::FFTImpl fft(args);
+
+    // Tier boundaries at ~698 Hz (fmin*4) and ~1397 Hz (fmin*8)
+    float boundaries[] = {fmin * 4.0f, fmin * 8.0f};
+
+    for (int b = 0; b < 2; ++b) {
+        float boundary = boundaries[b];
+        const int steps = 50;
+        float prevPeakEnergy = -1.0f;
+        int prevPeakBin = -1;
+        float maxJumpRatio = 0.0f;
+        int backwardTransitions = 0;
+
+        for (int step = 0; step < steps; ++step) {
+            float t = static_cast<float>(step) / static_cast<float>(steps - 1);
+            float freq = boundary * (0.8f + 0.4f * t); // 80% to 120%
+
+            auto samples = makeSine(freq, N, static_cast<float>(sampleRate));
+            fl::FFTBins bins(bands);
+            fft.run(samples, &bins);
+
+            float peakEnergy = 0.0f;
+            int peakBin = 0;
+            for (int i = 0; i < bands; ++i) {
+                if (bins.raw()[i] > peakEnergy) {
+                    peakEnergy = bins.raw()[i];
+                    peakBin = i;
+                }
+            }
+
+            if (prevPeakEnergy > 0.0f && peakEnergy > 0.0f) {
+                float ratio = (peakEnergy > prevPeakEnergy) ?
+                    peakEnergy / prevPeakEnergy : prevPeakEnergy / peakEnergy;
+                if (ratio > maxJumpRatio) maxJumpRatio = ratio;
+            }
+            if (prevPeakBin >= 0 && peakBin < prevPeakBin) {
+                backwardTransitions++;
+            }
+
+            prevPeakEnergy = peakEnergy;
+            prevPeakBin = peakBin;
+        }
+
+        FASTLED_WARN("CQ_HYBRID tier boundary ~" << boundary
+                     << "Hz: maxJumpRatio=" << maxJumpRatio
+                     << " backwardTransitions=" << backwardTransitions);
+
+        FL_CHECK_LT(maxJumpRatio, 3.0f);
+        FL_CHECK_EQ(backwardTransitions, 0);
+    }
+}
+
+// Test 7: CQ_OCTAVE Decimation Boundary Aliasing
+// 64 bands, 20-11025 Hz. High-frequency tones should stay in top quartile.
+// Tests at 8000 and 10000 Hz (well within range, avoiding fmax edge artifacts).
+FL_TEST_CASE("FFT adversarial - CQ_OCTAVE decimation boundary aliasing") {
+    const int bands = 64;
+    const float fmin = 20.0f;
+    const float fmax = 11025.0f;
+    const int sampleRate = 44100;
+    const int N = 512;
+
+    fl::FFT_Args args(N, bands, fmin, fmax, sampleRate, fl::FFTMode::CQ_OCTAVE);
+    fl::FFTImpl fft(args);
+
+    float testFreqs[] = {8000.0f, 10000.0f};
+
+    for (float freq : testFreqs) {
+        auto samples = makeSine(freq, N, static_cast<float>(sampleRate));
+        fl::FFTBins bins(bands);
+        fft.run(samples, &bins);
+
+        float totalEnergy = 0.0f;
+        float bottomHalfEnergy = 0.0f;
+        int peakBin = 0;
+        float peakEnergy = 0.0f;
+
+        for (int i = 0; i < bands; ++i) {
+            float e = bins.raw()[i];
+            totalEnergy += e;
+            if (e > peakEnergy) {
+                peakEnergy = e;
+                peakBin = i;
+            }
+            if (i < bands / 2) {
+                bottomHalfEnergy += e;
+            }
+        }
+
+        float bottomFrac = (totalEnergy > 0.0f) ? bottomHalfEnergy / totalEnergy : 0.0f;
+
+        FASTLED_WARN("CQ_OCTAVE " << freq << "Hz: peak_bin=" << peakBin
+                     << " bottom_half_frac=" << bottomFrac
+                     << " total_energy=" << totalEnergy);
+
+        FL_CHECK_LT(bottomFrac, 0.10f);
+        FL_CHECK_GE(peakBin, bands * 3 / 4); // top quartile
+    }
+}
+
+// Test 8: High vs Low Bin Concentration Symmetry
+// Same-amplitude pure tone at bin 1 center vs bin 14 center.
+FL_TEST_CASE("FFT adversarial - high vs low bin concentration symmetry") {
+    const int bands = 16;
+    const float fmin = fl::FFT_Args::DefaultMinFrequency();
+    const float fmax = fl::FFT_Args::DefaultMaxFrequency();
+    const int sampleRate = fl::FFT_Args::DefaultSampleRate();
+    const int N = fl::FFT_Args::DefaultSamples();
+    float logRatio = fl::logf(fmax / fmin);
+
+    fl::FFT_Args args(N, bands, fmin, fmax, sampleRate, fl::FFTMode::LOG_REBIN);
+    fl::FFTImpl fft(args);
+
+    // Low bin (bin 1) center frequency
+    float lowFreq = fmin * fl::expf(logRatio * 1.0f / static_cast<float>(bands - 1));
+    // High bin (bin 14) center frequency
+    float highFreq = fmin * fl::expf(logRatio * 14.0f / static_cast<float>(bands - 1));
+
+    auto lowSamples = makeSine(lowFreq, N, static_cast<float>(sampleRate));
+    auto highSamples = makeSine(highFreq, N, static_cast<float>(sampleRate));
+
+    fl::FFTBins lowBins(bands), highBins(bands);
+    fft.run(lowSamples, &lowBins);
+    fft.run(highSamples, &highBins);
+
+    // Measure concentration for each
+    float lowPeak = 0.0f, lowTotal = 0.0f;
+    float highPeak = 0.0f, highTotal = 0.0f;
+    for (int i = 0; i < bands; ++i) {
+        float eL = lowBins.raw()[i];
+        float eH = highBins.raw()[i];
+        lowTotal += eL;
+        highTotal += eH;
+        if (eL > lowPeak) lowPeak = eL;
+        if (eH > highPeak) highPeak = eH;
+    }
+
+    float lowConc = (lowTotal > 0.0f) ? lowPeak / lowTotal : 0.0f;
+    float highConc = (highTotal > 0.0f) ? highPeak / highTotal : 0.0f;
+
+    FASTLED_WARN("Concentration symmetry: low_bin1=" << lowConc
+                 << " (freq=" << lowFreq << "Hz)"
+                 << " high_bin14=" << highConc
+                 << " (freq=" << highFreq << "Hz)");
+
+    float ratio = (lowConc > 0.0f) ? highConc / lowConc : 0.0f;
+    FASTLED_WARN("  high/low ratio=" << ratio);
+    FL_CHECK_GT(ratio, 0.65f);
+}
+
+// Test 9: All-Mode High-Bin Peak Agreement
+// Tones at 3000, 3500, 4000, 4500 Hz — all 4 modes must agree on peak bin within +/-1.
+FL_TEST_CASE("FFT adversarial - all-mode high-bin peak agreement") {
+    const int bands = 16;
+    const float fmin = fl::FFT_Args::DefaultMinFrequency();
+    const float fmax = fl::FFT_Args::DefaultMaxFrequency();
+    const int sampleRate = fl::FFT_Args::DefaultSampleRate();
+    const int N = fl::FFT_Args::DefaultSamples();
+
+    float testFreqs[] = {3000.0f, 3500.0f, 4000.0f, 4500.0f};
+
+    fl::FFTMode modes[] = {
+        fl::FFTMode::LOG_REBIN,
+        fl::FFTMode::CQ_NAIVE,
+        fl::FFTMode::CQ_OCTAVE,
+        fl::FFTMode::CQ_HYBRID
+    };
+
+    for (float freq : testFreqs) {
+        int peakBins[4];
+        int modeIdx = 0;
+
+        for (fl::FFTMode mode : modes) {
+            fl::FFT_Args args(N, bands, fmin, fmax, sampleRate, mode);
+            fl::FFTImpl fft(args);
+
+            auto samples = makeSine(freq, N, static_cast<float>(sampleRate));
+            fl::FFTBins bins(bands);
+            fft.run(samples, &bins);
+
+            float peakE = 0.0f;
+            int peakBin = 0;
+            for (int i = 0; i < bands; ++i) {
+                if (bins.raw()[i] > peakE) {
+                    peakE = bins.raw()[i];
+                    peakBin = i;
+                }
+            }
+            peakBins[modeIdx++] = peakBin;
+        }
+
+        FASTLED_WARN("Peak agreement " << freq << "Hz: LOG=" << peakBins[0]
+                     << " NAIVE=" << peakBins[1] << " OCTAVE=" << peakBins[2]
+                     << " HYBRID=" << peakBins[3]);
+
+        // All modes must agree within +/-1
+        for (int i = 0; i < 4; ++i) {
+            for (int j = i + 1; j < 4; ++j) {
+                int diff = peakBins[i] - peakBins[j];
+                if (diff < 0) diff = -diff;
+                FL_CHECK_LE(diff, 1);
+            }
+        }
+    }
+}
+
+// Test 10: Systematic Top-Half Sweep (All Modes)
+// 200 frames sweeping bins 8-15 for each mode.
+FL_TEST_CASE("FFT adversarial - systematic top-half sweep (all modes)") {
+    const int bands = 16;
+    const float fmin = fl::FFT_Args::DefaultMinFrequency();
+    const float fmax = fl::FFT_Args::DefaultMaxFrequency();
+    const int sampleRate = fl::FFT_Args::DefaultSampleRate();
+    const int N = fl::FFT_Args::DefaultSamples();
+    const int numFrames = 200;
+    float logRatio = fl::logf(fmax / fmin);
+
+    fl::FFTMode modes[] = {
+        fl::FFTMode::LOG_REBIN,
+        fl::FFTMode::CQ_NAIVE,
+        fl::FFTMode::CQ_OCTAVE,
+        fl::FFTMode::CQ_HYBRID
+    };
+
+    for (fl::FFTMode mode : modes) {
+        fl::FFT_Args args(N, bands, fmin, fmax, sampleRate, mode);
+        fl::FFTImpl fft(args);
+
+        int correctPeaks = 0;
+        float concSum = 0.0f;
+        int maxActive = 0;
+
+        for (int frame = 0; frame < numFrames; ++frame) {
+            float t = static_cast<float>(frame) / static_cast<float>(numFrames - 1);
+            // Sweep bins 8-15
+            float binF = 8.0f + t * 7.0f;
+            float freq = fmin * fl::expf(logRatio * binF /
+                                          static_cast<float>(bands - 1));
+
+            auto samples = makeSine(freq, N, static_cast<float>(sampleRate));
+            fl::FFTBins bins(bands);
+            fft.run(samples, &bins);
+
+            float peakE = 0.0f, totalE = 0.0f;
+            int peakBin = 0;
+            int activeBins = 0;
+
+            for (int i = 0; i < bands; ++i) {
+                float e = bins.raw()[i];
+                totalE += e;
+                if (e > peakE) {
+                    peakE = e;
+                    peakBin = i;
+                }
+            }
+
+            float threshold = peakE * 0.1f;
+            for (int i = 0; i < bands; ++i) {
+                if (bins.raw()[i] > threshold) activeBins++;
+            }
+
+            float conc = (totalE > 0.0f) ? peakE / totalE : 0.0f;
+            concSum += conc;
+            if (activeBins > maxActive) maxActive = activeBins;
+
+            int expectedBin = bins.freqToBin(freq);
+            int diff = peakBin - expectedBin;
+            if (diff < 0) diff = -diff;
+            if (diff <= 1) correctPeaks++;
+        }
+
+        float accuracy = static_cast<float>(correctPeaks) /
+                          static_cast<float>(numFrames);
+        float avgConc = concSum / static_cast<float>(numFrames);
+
+        FASTLED_WARN(advModeName(mode) << " top-half sweep: accuracy=" << accuracy
+                     << " avgConc=" << avgConc << " maxActive=" << maxActive);
+
+        FL_CHECK_GT(accuracy, 0.85f);
+
+        // Per-mode thresholds reflecting algorithmic characteristics:
+        // LOG_REBIN/CQ_HYBRID: sharp bin assignment → high concentration, few active
+        // CQ_OCTAVE: octave-wise CQ → wider kernel main lobe → more active bins
+        // CQ_NAIVE: single-FFT CQ → inherently lower concentration at high bins
+        if (mode == fl::FFTMode::CQ_NAIVE) {
+            FL_CHECK_GT(avgConc, 0.25f);
+            FL_CHECK_LE(maxActive, 7);
+        } else if (mode == fl::FFTMode::CQ_OCTAVE) {
+            FL_CHECK_GT(avgConc, 0.35f);
+            FL_CHECK_LE(maxActive, 10);
+        } else {
+            // LOG_REBIN, CQ_HYBRID
+            FL_CHECK_GT(avgConc, 0.35f);
+            FL_CHECK_LE(maxActive, 5);
+        }
+    }
+}
+
+// ============================================================================
+// Zero-leakage-at-distance-3 test
+// For a pure sine centered on any output bin, there should be effectively
+// zero energy in bins 3+ away from the peak.
+//
+// Blackman-Harris window has -92 dB sidelobes, which produce only mag=0-1
+// quantization noise in the 16-bit fixed-point FFT. After log-rebinning,
+// distant output bins accumulate at most 1-2 energy from this noise.
+// The test uses a threshold of 3.0 to account for this quantization floor.
+//
+// The BH main lobe is 8 FFT bins wide (~690 Hz at 512/44100). For output
+// bins narrower than ~130 Hz, this main lobe extends to 3+ output bins —
+// a fundamental resolution limit. The test skips these bins.
+// ============================================================================
+
+FL_TEST_CASE("FFT adversarial - zero leakage at distance 3 (LOG_REBIN)") {
+    const int bands = 16;
+    const float fmin = fl::FFT_Args::DefaultMinFrequency();
+    const float fmax = fl::FFT_Args::DefaultMaxFrequency();
+    const int sampleRate = fl::FFT_Args::DefaultSampleRate();
+    const int N = fl::FFT_Args::DefaultSamples();
+    const float fftBinHz = static_cast<float>(sampleRate) / static_cast<float>(N);
+    const float logRatio = fl::logf(fmax / fmin);
+    const float binRatio = fl::expf(logRatio / static_cast<float>(bands - 1));
+
+    // Skip criterion: output bin width must exceed 1.5x FFT bin width.
+    // The Blackman-Harris main lobe (8 FFT bins = ~690 Hz) extends 3+
+    // output bins when binWidth < ~130 Hz. Using 1.5 * fftBinHz (~129 Hz)
+    // as the threshold ensures the BH main lobe stays within 2 output bins.
+    const float minBinWidth = 1.5f * fftBinHz;
+
+    // Quantization noise floor: BH sidelobes at -92 dB produce mag=0-1 in
+    // the u16 fastMag output. After rebinning, distant bins accumulate ≤2
+    // energy from this noise. Any value above this threshold is real leakage.
+    const float noiseFloor = 3.0f;
+
+    fl::FFT_Args args(N, bands, fmin, fmax, sampleRate, fl::FFTMode::LOG_REBIN);
+    fl::FFTImpl fft(args);
+
+    int testedBins = 0;
+    int passedBins = 0;
+
+    for (int targetBin = 0; targetBin < bands; ++targetBin) {
+        float centerFreq = fmin * fl::expf(logRatio * static_cast<float>(targetBin) /
+                                            static_cast<float>(bands - 1));
+        // Approximate output bin width
+        float binWidth = centerFreq * (binRatio - 1.0f / binRatio) / 2.0f;
+
+        // Skip bins where BH main lobe extends 3+ output bins
+        if (binWidth < minBinWidth) {
+            FASTLED_WARN("  Bin " << targetBin << ": SKIP (width=" << binWidth
+                         << "Hz < " << minBinWidth << "Hz)");
+            continue;
+        }
+
+        testedBins++;
+
+        auto samples = makeSine(centerFreq, N, static_cast<float>(sampleRate));
+        fl::FFTBins bins(bands);
+        fft.run(samples, &bins);
+
+        // Find peak
+        int peakBin = 0;
+        float peakEnergy = 0.0f;
+        for (int i = 0; i < bands; ++i) {
+            float e = bins.raw()[i];
+            if (e > peakEnergy) {
+                peakEnergy = e;
+                peakBin = i;
+            }
+        }
+
+        // Check every bin at distance >= 3 from peak for near-zero energy
+        bool binPassed = true;
+        for (int i = 0; i < bands; ++i) {
+            int dist = i - peakBin;
+            if (dist < 0) dist = -dist;
+            if (dist >= 3 && bins.raw()[i] >= noiseFloor) {
+                FASTLED_WARN("  Bin " << targetBin << " (center=" << centerFreq
+                             << "Hz, width=" << binWidth << "Hz): LEAK at output bin "
+                             << i << " (dist=" << dist << ") energy=" << bins.raw()[i]);
+                binPassed = false;
+            }
+        }
+
+        if (binPassed) {
+            passedBins++;
+            FASTLED_WARN("  Bin " << targetBin << " (center=" << centerFreq
+                         << "Hz, width=" << binWidth << "Hz): PASS (peak=" << peakBin << ")");
+        }
+    }
+
+    FASTLED_WARN("Zero-leakage test: " << passedBins << "/" << testedBins
+                 << " bins passed (bins with width >= " << minBinWidth << "Hz)");
+
+    // All tested bins must pass
+    FL_CHECK_EQ(passedBins, testedBins);
+}

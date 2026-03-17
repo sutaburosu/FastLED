@@ -261,6 +261,11 @@ void FFT_Args::resolveModeEnums(FFTMode &mode, FFTWindow &window, int bands,
         case FFTMode::CQ_HYBRID:
             // These paths apply time-domain windowing before FFT.
             // BLACKMAN_HARRIS: -92 dB sidelobe rejection (vs -31 dB HANNING).
+            // Sidelobes produce only mag=0-1 quantization noise, ensuring
+            // distant output bins have near-zero energy (≤2) for pure tones.
+            // Main lobe is 8 FFT bins wide (~690 Hz at 512/44100), so
+            // output bins narrower than ~130 Hz may see main lobe leakage
+            // at distance 3+ — a fundamental resolution limit.
             window = FFTWindow::BLACKMAN_HARRIS;
             break;
         case FFTMode::CQ_NAIVE:

@@ -187,6 +187,13 @@ class FFTContext {
                 mFmax * expf(logRatio / denom);
         }
 
+        // Clamp top bin edge to Nyquist — prevents incomplete bin coverage
+        // and bad normalization when fmax is close to Nyquist.
+        float nyquist = static_cast<float>(mSampleRate) / 2.0f;
+        if (mLogBinEdges[bands] > nyquist) {
+            mLogBinEdges[bands] = nyquist;
+        }
+
         computeBinEdgesQ16();
 
         // Pre-compute bin mapping LUTs
@@ -764,6 +771,12 @@ class FFTContext {
             mLogBinEdges[bands] = fmax * expf(logRatio / denom);
         }
 
+        // Clamp top bin edge to Nyquist
+        float nyquist = static_cast<float>(sr) / 2.0f;
+        if (mLogBinEdges[bands] > nyquist) {
+            mLogBinEdges[bands] = nyquist;
+        }
+
         computeBinEdgesQ16();
 
         // Window for the full-rate 512pt FFT (upper tier)
@@ -846,6 +859,7 @@ class FFTContext {
 
         deinterleave(mFftOut.data(), re, im, numRawBins);
         batchMag(re, im, mag, numRawBins);
+
         computeLinearBins(mag, N, out);
 
         // Integer accumulation for log-rebin
@@ -885,6 +899,7 @@ class FFTContext {
                       mHybridMidFftOut.data());
             deinterleave(mHybridMidFftOut.data(), re, im, midRawBins);
             batchMag(re, im, mag, midRawBins);
+
             logRebinRange(mag, midFftN,
                           mHybridMidFs,
                           mHybridSplitBin, mHybridMidSplitBin, rawBinsI,
