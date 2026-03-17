@@ -230,6 +230,48 @@ void validateHardware() {
 - For new files: Fix immediately by asking user to rename
 - For existing files: Create GitHub issue or ask user if they want to rename now
 
+### src/** changes - SIGNED INTEGER OVERFLOW (UNDEFINED BEHAVIOR)
+
+**Core Principle**: Signed integer arithmetic that can overflow is undefined behavior in C++. Compilers exploit this for optimization, causing silent miscompilation. All potentially-overflowing arithmetic on signed types (`i8`, `i16`, `i32`) must be performed in the corresponding unsigned type, then cast back.
+
+**Rules**:
+1. ❌ **NEVER add/subtract signed integers that may overflow**
+   - ❌ Bad: `return Derived::from_raw(mValue + b.mValue);`
+   - ✅ Good: `return Derived::from_raw(static_cast<raw_type>(static_cast<unsigned_raw_type>(mValue) + static_cast<unsigned_raw_type>(b.mValue)));`
+2. ❌ **NEVER negate a signed value without casting to unsigned first**
+   - ❌ Bad: `return Derived::from_raw(-mValue);` (negating INT_MIN is UB)
+   - ✅ Good: `return Derived::from_raw(static_cast<raw_type>(0u - static_cast<unsigned_raw_type>(mValue)));`
+3. ❌ **NEVER left-shift a signed value**
+   - ❌ Bad: `static_cast<i32>(val) << 8;` (shifting into sign bit is UB)
+   - ✅ Good: `static_cast<i32>(static_cast<u32>(val) << 8);`
+4. ❌ **NEVER negate a signed value when assigning to unsigned**
+   - ❌ Bad: `u32 v = -value;` (where value is signed)
+   - ✅ Good: `u32 v = -static_cast<u32>(value);`
+
+**Check Process**:
+1. Scan for arithmetic operators (`+`, `-`, `<<`, unary `-`) on signed integer types
+2. Focus especially on: fixed-point types (`s16x16`, `s12x4`, `s24x8`, `s8x24`), SIMD code, charconv
+3. Scan for `static_cast<i32>(.*) <<` — signed left-shift pattern
+4. Scan for negation of signed values assigned to unsigned types
+5. If found: Report violation and fix by casting operands to unsigned before the operation
+
+### **/*.h and **/*.cpp changes - REDUNDANT VIRTUAL ON OVERRIDE METHODS
+
+**Core Principle**: When `override` is present, `virtual` is redundant and must be removed. When a method overrides a base class virtual, `override` must be present.
+
+**Rules**:
+1. ❌ **NEVER use `virtual` together with `override`** — `override` already implies virtuality
+   - ❌ Bad: `virtual void init() override { }`
+   - ✅ Good: `void init() override { }`
+2. ❌ **NEVER omit `override` on methods that override a base class virtual**
+   - ❌ Bad: `virtual u16 getMaxRefreshRate() const { return 800; }` (overrides base but missing `override`)
+   - ✅ Good: `u16 getMaxRefreshRate() const override { return 800; }`
+
+**Check Process**:
+1. Scan for regex `virtual\s+.*\boverride\b` — redundant virtual, remove it
+2. For new method declarations with `virtual`, check if the class has a base class with the same method — if so, replace `virtual` with `override`
+3. If found: Fix directly by removing the redundant `virtual` keyword
+
 ### src/** changes - SINGLETON AND THREAD-LOCAL SINGLETON USAGE
 
 **Core Principle**: Use `fl::Singleton<T>` for process-wide singletons and `fl::SingletonThreadLocal<T>` for thread-local heap-allocated scratch buffers. Never use raw `static ThreadLocal<T>` — always use the wrapper.
@@ -381,6 +423,81 @@ class MockI2S {
 - **Hard to debug**: Multi-threaded tests are non-deterministic and unreproducible
 - **Determinism**: Simulated time guarantees reproducible behavior
 
+### tests/** changes - FL_CHECK vs FL_REQUIRE FOR PRECONDITIONS
+
+**Core Principle**: When code after an assertion depends on the asserted condition being true, use `FL_REQUIRE` (which aborts on failure), not `FL_CHECK` (which logs and continues). Using `FL_CHECK` for preconditions leads to crashes or undefined behavior when the check fails silently.
+
+**Rules**:
+1. ❌ **NEVER use `FL_CHECK` when subsequent code depends on the condition**
+   - ❌ Bad: `FL_CHECK(ids.size() == 1); uint32_t id = ids[0];` (crash if size != 1)
+   - ✅ Good: `FL_REQUIRE(ids.size() == 1); uint32_t id = ids[0];`
+2. ❌ **NEVER use `FL_CHECK` before array/pointer access that requires the check**
+   - ❌ Bad: `FL_CHECK(ptr != nullptr); ptr->doThing();`
+   - ✅ Good: `FL_REQUIRE(ptr != nullptr); ptr->doThing();`
+3. ✅ **`FL_CHECK` is fine for non-critical assertions** where execution can safely continue
+   - ✅ OK: `FL_CHECK(count > 0);` when subsequent code handles count==0 gracefully
+
+**Check Process**:
+1. Scan for `FL_CHECK(...)` in test code
+2. Check if subsequent lines (within 3 lines) access/dereference/index the checked variable
+3. If found: Replace `FL_CHECK` with `FL_REQUIRE` and report
+
+### tests/** changes - STACK-USE-AFTER-SCOPE WITH LED ARRAYS
+
+**Core Principle**: Tests that register stack-allocated `CRGB` arrays with `FastLED.addLeds()` or `CLEDController` must detach those pointers before the array goes out of scope. Otherwise, subsequent tests may access freed stack memory through stale controller pointers.
+
+**Anti-Pattern** (❌ BAD):
+```cpp
+FL_TEST_CASE("my test") {
+    CRGB leds[NUM_LEDS];
+    FastLED.addLeds<WS2812>(leds, NUM_LEDS);
+    // ... test code ...
+    FastLED.clear(true);
+    // BUG: leds[] goes out of scope but controller still holds pointer
+}
+```
+
+**Correct Pattern** (✅ GOOD):
+```cpp
+FL_TEST_CASE("my test") {
+    CRGB leds[NUM_LEDS];
+    FastLED.addLeds<WS2812>(leds, NUM_LEDS);
+    // ... test code ...
+    // Detach LED pointers before leds[] goes out of scope
+    for (auto* p = CLEDController::head(); p; p = p->next()) {
+        p->setLeds(nullptr, 0);
+    }
+    ActiveStripTracker::resetForTesting();
+}
+```
+
+**Check Process**:
+1. In test files, scan for stack-allocated `CRGB` arrays combined with `addLeds`
+2. Verify that before the scope closes, the test detaches the LED pointer from the controller
+3. If missing: Report violation and add the detach pattern
+
+### src/platforms/** changes - MISSING PLATFORM VERSION GUARDS
+
+**Core Principle**: Platform SDK functions that may not exist in all versions must be wrapped with version guards. Unguarded calls cause compilation failures on older SDK versions.
+
+**Rules**:
+1. ❌ **NEVER call ESP-IDF functions without version guards** when the function was added in a specific IDF version
+   - ❌ Bad: `usb_serial_jtag_is_connected();` (not available in IDF < 5.3)
+   - ✅ Good:
+     ```cpp
+     #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 3, 0)
+         return usb_serial_jtag_is_connected();
+     #else
+         return true;  // Conservative fallback
+     #endif
+     ```
+2. ✅ **Always provide a conservative fallback** in the `#else` branch
+
+**Check Process**:
+1. In `src/platforms/` files, scan for new ESP-IDF API calls (`esp_*`, `usb_*`, `gpio_*`, etc.)
+2. Check if the call is inside a version guard (`#if ESP_IDF_VERSION >= ...`)
+3. If missing: Report violation and wrap with appropriate version guard
+
 ### src/** and tests/** changes - UNNECESSARY SUPPRESSION COMMENTS
 
 **Core Principle**: AI coding agents frequently add suppression comments that aren't needed. Every suppression comment must be audited.
@@ -420,6 +537,53 @@ class MockI2S {
 2. Verify the suppressed pattern actually exists in the code on that line
 3. If the suppression is unnecessary: remove it and report
 
+### src/** changes - API UNIT CHANGES MUST PROPAGATE TO ALL CALL SITES
+
+**Core Principle**: When changing the unit of a function parameter (e.g., milliseconds to microseconds), all call sites must be updated in the same changeset. Partial propagation causes silent bugs where callers pass values in the old unit.
+
+**Rules**:
+1. ❌ **NEVER change parameter units without updating all callers**
+   - ❌ Bad: Changing `delay_ms(u32 ms)` to `delay_us(u32 us)` but leaving callers passing `1` instead of `1000`
+   - ✅ Good: Update signature AND all call sites in the same diff
+2. ✅ **Verify by searching for all callers** when a function signature changes units
+
+**Check Process**:
+1. Scan diff for function signature changes where parameter names contain unit suffixes (`_ms`, `_us`, `_sec`, `_bytes`, `_bits`)
+2. If a unit change is detected, verify ALL call sites in the codebase are updated
+3. If incomplete: Report violation and list the missed call sites
+
+### src/** changes - UNUSED VARIABLES AFTER REFACTORING
+
+**Core Principle**: When refactoring code, remove variables that are no longer referenced. Dead variables are noise and can mislead readers about data flow.
+
+**Rules**:
+1. ❌ **Remove variables whose only surviving reference is their declaration**
+   - ❌ Bad: `u32 lastWarnTime = startTime;` with no subsequent reads after surrounding code was deleted
+   - ✅ Good: Delete the declaration entirely
+2. ❌ **Remove variables assigned but never read** (write-only variables)
+
+**Check Process**:
+1. In the diff, check if deleted code was the only reader of a variable that remains declared
+2. If the variable is now write-only or unreferenced: Remove it and report
+
+### src/** changes - PERFORMANCE ATTRIBUTES ON HOT-PATH FUNCTIONS
+
+**Core Principle**: Performance-critical functions should use FastLED's optimization macros rather than relying on global optimization settings.
+
+**Available Macros**:
+- `FL_OPTIMIZE_FUNCTION` — forces `-O2` even in debug builds (for functions that must be fast)
+- `FL_NO_INLINE_IF_AVR` — prevents inlining on AVR to reduce register pressure and code bloat
+- `FL_BUILTIN_MEMCPY` — uses compiler built-in memcpy instead of libc call
+
+**When to flag**:
+- New or modified functions in known hot-path files (`blur.cpp.hpp`, `scale8.h`, `primitives.h`, color math)
+- Functions doing tight loops over pixel data without `FL_OPTIMIZE_FUNCTION`
+- Functions with large stack frames on AVR without `FL_NO_INLINE_IF_AVR`
+
+**Check Process**:
+1. For changes in hot-path files, check if new functions have appropriate optimization attributes
+2. If missing: Suggest adding the appropriate macro and report
+
 ## Output Format
 
 ```
@@ -444,6 +608,14 @@ class MockI2S {
   - Singleton/ThreadLocal misuse: N
   - Alignment attribute violations: N
   - Unnecessary suppression comments: N
+  - Signed integer overflow (UB): N
+  - Redundant virtual on override: N
+  - FL_CHECK vs FL_REQUIRE misuse: N
+  - Test stack-use-after-scope: N
+  - API unit change propagation: N
+  - Platform version guards missing: N
+  - Unused variables after refactoring: N
+  - Missing performance attributes: N
   - Other: N
 - Violations fixed: N
 - User confirmations needed: N
