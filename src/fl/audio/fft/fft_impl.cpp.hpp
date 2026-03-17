@@ -22,6 +22,7 @@
 #include "fl/system/log.h"
 
 #include "fl/stl/cstring.h"
+#include "fl/stl/thread_local.h"
 
 #ifndef FL_AUDIO_SAMPLE_RATE
 #define FL_AUDIO_SAMPLE_RATE 44100
@@ -148,6 +149,23 @@ class FFTContext {
     }
 
   private:
+    // Thread-local scratch buffers to avoid stack overflow on ESP32 tasks
+    // with limited stack (~4-8 KB). Buffers persist across calls and are
+    // resized on demand.
+    struct FftScratch {
+        fl::vector<kiss_fft_scalar> re;
+        fl::vector<kiss_fft_scalar> im;
+        fl::vector<u16> mag;
+        fl::vector<kiss_fft_scalar> windowed;
+        fl::vector<kiss_fft_cpx> fftOut;
+        fl::vector<u32> rawBinsI;
+    };
+
+    static FftScratch &scratch() {
+        static fl::ThreadLocal<FftScratch> tls;
+        return tls.access();
+    }
+
     // ---- Log-rebin path (fast, no CQ kernels) ----
     //
     // Single 512-point FFT, then group the linear FFT bins into
@@ -219,36 +237,36 @@ class FFTContext {
         const int bands = mTotalBands;
         const int numRawBins = N / 2 + 1;
 
-        // Apply Q15 window (integer multiply, no float)
-        FASTLED_STACK_ARRAY(kiss_fft_scalar, windowed, N);
-        applyWindow(buffer.data(), mWindowBuf.data(), windowed, N);
+        // Use thread-local scratch buffers to avoid stack overflow on
+        // ESP32 tasks with limited stack (~4-8 KB).
+        FftScratch &s = scratch();
+        s.windowed.resize(N);
+        s.fftOut.resize(N);
+        s.re.resize(numRawBins);
+        s.im.resize(numRawBins);
+        s.mag.resize(numRawBins);
+        s.rawBinsI.resize(bands);
 
-        FASTLED_STACK_ARRAY(kiss_fft_cpx, fft, N);
-        kiss_fftr(mFftrCfg, windowed, fft);
+        applyWindow(buffer.data(), mWindowBuf.data(), s.windowed.data(), N);
+        kiss_fftr(mFftrCfg, s.windowed.data(), s.fftOut.data());
 
         // Deinterleave AoS → SoA and batch-compute magnitudes
-        FASTLED_STACK_ARRAY(kiss_fft_scalar, re, numRawBins);
-        FASTLED_STACK_ARRAY(kiss_fft_scalar, im, numRawBins);
-        FASTLED_STACK_ARRAY(u16, mag, numRawBins);
-        deinterleave(fft, re, im, numRawBins);
-        batchMag(re, im, mag, numRawBins);
+        deinterleave(s.fftOut.data(), s.re.data(), s.im.data(), numRawBins);
+        batchMag(s.re.data(), s.im.data(), s.mag.data(), numRawBins);
 
         // Linear bins (same as other paths)
-        computeLinearBins(mag, N, out);
+        computeLinearBins(s.mag.data(), N, out);
 
         // Group FFT bins into log-spaced output bins (integer accumulation)
-        FASTLED_STACK_ARRAY(u32, rawBinsI, bands);
-        for (int i = 0; i < bands; ++i) {
-            rawBinsI[i] = 0;
-        }
-        logRebinRange(mag, N, static_cast<float>(mSampleRate),
-                      0, bands, rawBinsI, mLogBinLut);
+        fl::memset(s.rawBinsI.data(), 0, sizeof(u32) * bands);
+        logRebinRange(s.mag.data(), N, static_cast<float>(mSampleRate),
+                      0, bands, s.rawBinsI.data(), mLogBinLut);
 
         // Store raw magnitudes (dB computed lazily by FFTBins::db())
         fl::vector<float> &rawBins = out->raw_mut();
         rawBins.resize(bands);
         for (int i = 0; i < bands; ++i) {
-            rawBins[i] = static_cast<float>(rawBinsI[i]);
+            rawBins[i] = static_cast<float>(s.rawBinsI[i]);
         }
 
         // Store bin-width normalization factors so consumers can optionally
@@ -276,20 +294,22 @@ class FFTContext {
         const int fftSize = mInputSamples;
         const int numRawBins = fftSize / 2 + 1;
 
-        FASTLED_STACK_ARRAY(kiss_fft_cpx, fft, fftSize);
-        kiss_fftr(mFftrCfg, buffer.data(), fft);
+        FftScratch &s = scratch();
+        s.fftOut.resize(fftSize);
+        s.re.resize(numRawBins);
+        s.im.resize(numRawBins);
+        s.mag.resize(numRawBins);
+
+        kiss_fftr(mFftrCfg, buffer.data(), s.fftOut.data());
 
         // Deinterleave AoS → SoA and batch-compute magnitudes
-        FASTLED_STACK_ARRAY(kiss_fft_scalar, re, numRawBins);
-        FASTLED_STACK_ARRAY(kiss_fft_scalar, im, numRawBins);
-        FASTLED_STACK_ARRAY(u16, mag, numRawBins);
-        deinterleave(fft, re, im, numRawBins);
-        batchMag(re, im, mag, numRawBins);
+        deinterleave(s.fftOut.data(), s.re.data(), s.im.data(), numRawBins);
+        batchMag(s.re.data(), s.im.data(), s.mag.data(), numRawBins);
 
-        computeLinearBins(mag, fftSize, out);
+        computeLinearBins(s.mag.data(), fftSize, out);
 
         FASTLED_STACK_ARRAY(kiss_fft_cpx, cq, mCqCfg.bands);
-        apply_kernels(fft, cq, mKernels, mCqCfg);
+        apply_kernels(s.fftOut.data(), cq, mKernels, mCqCfg);
 
         const int bands = mCqCfg.bands;
         fl::vector<float> &rawBins = out->raw_mut();
@@ -652,13 +672,14 @@ class FFTContext {
         kiss_fftr(mFftrCfg, mWorkBuf.data(), mFftOut.data());
 
         // Deinterleave AoS → SoA and batch-compute magnitudes
-        FASTLED_STACK_ARRAY(kiss_fft_scalar, re, numRawBins);
-        FASTLED_STACK_ARRAY(kiss_fft_scalar, im, numRawBins);
-        FASTLED_STACK_ARRAY(u16, mag, numRawBins);
-        deinterleave(mFftOut.data(), re, im, numRawBins);
-        batchMag(re, im, mag, numRawBins);
+        FftScratch &s = scratch();
+        s.re.resize(numRawBins);
+        s.im.resize(numRawBins);
+        s.mag.resize(numRawBins);
+        deinterleave(mFftOut.data(), s.re.data(), s.im.data(), numRawBins);
+        batchMag(s.re.data(), s.im.data(), s.mag.data(), numRawBins);
 
-        computeLinearBins(mag, N, out);
+        computeLinearBins(s.mag.data(), N, out);
 
         // Prepare CQ output bins
         fl::vector<float> &rawBins = out->raw_mut();
@@ -846,32 +867,31 @@ class FFTContext {
 
         out->setParams(mFmin, mFmax, mSampleRate);
 
-        // Reusable SoA + magnitude buffers (sized to largest FFT)
-        FASTLED_STACK_ARRAY(kiss_fft_scalar, re, numRawBins);
-        FASTLED_STACK_ARRAY(kiss_fft_scalar, im, numRawBins);
-        FASTLED_STACK_ARRAY(u16, mag, numRawBins);
+        // Use thread-local scratch buffers
+        FftScratch &s = scratch();
+        s.re.resize(numRawBins);
+        s.im.resize(numRawBins);
+        s.mag.resize(numRawBins);
+        s.windowed.resize(N);
+        s.rawBinsI.resize(mTotalBands);
 
         // Phase 1: Windowed 512pt FFT → LOG_REBIN for upper bins
-        FASTLED_STACK_ARRAY(kiss_fft_scalar, windowed, N);
-        applyWindow(buffer.data(), mWindowBuf.data(), windowed, N);
+        applyWindow(buffer.data(), mWindowBuf.data(), s.windowed.data(), N);
 
-        kiss_fftr(mFftrCfg, windowed, mFftOut.data());
+        kiss_fftr(mFftrCfg, s.windowed.data(), mFftOut.data());
 
-        deinterleave(mFftOut.data(), re, im, numRawBins);
-        batchMag(re, im, mag, numRawBins);
+        deinterleave(mFftOut.data(), s.re.data(), s.im.data(), numRawBins);
+        batchMag(s.re.data(), s.im.data(), s.mag.data(), numRawBins);
 
-        computeLinearBins(mag, N, out);
+        computeLinearBins(s.mag.data(), N, out);
 
         // Integer accumulation for log-rebin
-        FASTLED_STACK_ARRAY(u32, rawBinsI, mTotalBands);
-        for (int i = 0; i < mTotalBands; i++) {
-            rawBinsI[i] = 0;
-        }
+        fl::memset(s.rawBinsI.data(), 0, sizeof(u32) * mTotalBands);
 
         // Upper tier: LOG_REBIN for bins [mHybridMidSplitBin, mTotalBands)
-        logRebinRange(mag, N,
+        logRebinRange(s.mag.data(), N,
                       static_cast<float>(mSampleRate),
-                      mHybridMidSplitBin, mTotalBands, rawBinsI,
+                      mHybridMidSplitBin, mTotalBands, s.rawBinsI.data(),
                       mLogBinLut);
 
         // Decimate signal: 512 → 256 → 128 (2 steps for mid tier)
@@ -889,20 +909,20 @@ class FFTContext {
         if (mHybridMidSplitBin > mHybridSplitBin && mHybridMidFft) {
             int midFftN = mHybridMidN * 2;
             int midRawBins = midFftN / 2 + 1;
-            FASTLED_STACK_ARRAY(kiss_fft_scalar, midWindowed, midFftN);
+            s.windowed.resize(midFftN);
             applyWindow(mWorkBuf.data(), mHybridMidWindow.data(),
-                           midWindowed, mHybridMidN);
+                           s.windowed.data(), mHybridMidN);
             for (int i = mHybridMidN; i < midFftN; ++i) {
-                midWindowed[i] = 0;
+                s.windowed[i] = 0;
             }
-            kiss_fftr(mHybridMidFft, midWindowed,
+            kiss_fftr(mHybridMidFft, s.windowed.data(),
                       mHybridMidFftOut.data());
-            deinterleave(mHybridMidFftOut.data(), re, im, midRawBins);
-            batchMag(re, im, mag, midRawBins);
+            deinterleave(mHybridMidFftOut.data(), s.re.data(), s.im.data(), midRawBins);
+            batchMag(s.re.data(), s.im.data(), s.mag.data(), midRawBins);
 
-            logRebinRange(mag, midFftN,
+            logRebinRange(s.mag.data(), midFftN,
                           mHybridMidFs,
-                          mHybridSplitBin, mHybridMidSplitBin, rawBinsI,
+                          mHybridSplitBin, mHybridMidSplitBin, s.rawBinsI.data(),
                           mLogBinLutMid);
         }
 
@@ -913,16 +933,16 @@ class FFTContext {
         // Phase 3: Windowed 64pt FFT → LOG_REBIN for bass bins
         if (mHybridSplitBin > 0 && mHybridSmallFft) {
             int bassRawBins = mHybridSmallN / 2 + 1;
-            FASTLED_STACK_ARRAY(kiss_fft_scalar, bassWindowed, mHybridSmallN);
+            s.windowed.resize(mHybridSmallN);
             applyWindow(mWorkBuf.data(), mHybridBassWindow.data(),
-                           bassWindowed, mHybridSmallN);
-            kiss_fftr(mHybridSmallFft, bassWindowed,
+                           s.windowed.data(), mHybridSmallN);
+            kiss_fftr(mHybridSmallFft, s.windowed.data(),
                       mHybridSmallFftOut.data());
-            deinterleave(mHybridSmallFftOut.data(), re, im, bassRawBins);
-            batchMag(re, im, mag, bassRawBins);
-            logRebinRange(mag, mHybridSmallN,
+            deinterleave(mHybridSmallFftOut.data(), s.re.data(), s.im.data(), bassRawBins);
+            batchMag(s.re.data(), s.im.data(), s.mag.data(), bassRawBins);
+            logRebinRange(s.mag.data(), mHybridSmallN,
                           mHybridSmallFs,
-                          0, mHybridSplitBin, rawBinsI,
+                          0, mHybridSplitBin, s.rawBinsI.data(),
                           mLogBinLutBass);
         }
 
@@ -930,7 +950,7 @@ class FFTContext {
         fl::vector<float> &rawBins = out->raw_mut();
         rawBins.resize(mTotalBands);
         for (int i = 0; i < mTotalBands; ++i) {
-            rawBins[i] = static_cast<float>(rawBinsI[i]);
+            rawBins[i] = static_cast<float>(s.rawBinsI[i]);
         }
 
         // Use pre-computed merged norm factors (no per-frame allocation)
