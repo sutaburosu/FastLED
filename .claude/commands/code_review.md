@@ -230,6 +230,79 @@ void validateHardware() {
 - For new files: Fix immediately by asking user to rename
 - For existing files: Create GitHub issue or ask user if they want to rename now
 
+### src/** changes - SINGLETON AND THREAD-LOCAL SINGLETON USAGE
+
+**Core Principle**: Use `fl::Singleton<T>` for process-wide singletons and `fl::SingletonThreadLocal<T>` for thread-local heap-allocated scratch buffers. Never use raw `static ThreadLocal<T>` — always use the wrapper.
+
+**When to use `fl::Singleton<T>`**:
+- Process-wide shared state (managers, registries, schedulers)
+- Objects that must be shared across threads (with internal locking in T)
+- Example: `Singleton<LockedRandom>` where `LockedRandom` contains `fl::mutex` + `fl_random`
+
+**When to use `fl::SingletonThreadLocal<T>`**:
+- Large scratch buffers that would blow the stack if allocated locally
+- Thread-local caches (each thread gets its own instance, no locking needed)
+- Any pattern that was previously `static ThreadLocal<T> tl; return tl.access();`
+- Examples: FFT scratch buffers, pixel reorder buffers, trace storage, temp allocators
+
+**Rules**:
+1. ❌ **NEVER use raw `static ThreadLocal<T>`** — use `SingletonThreadLocal<T>::instance()` instead
+   - ❌ Bad: `static fl::ThreadLocal<T> tl; return tl.access();`
+   - ✅ Good: `return SingletonThreadLocal<T>::instance();`
+2. ❌ **NEVER use the C++ `thread_local` keyword** — use `SingletonThreadLocal<T>::instance()` instead
+   - The keyword doesn't work on AVR and single-threaded embedded platforms
+   - The linter (`ThreadLocalKeywordChecker`) enforces this
+3. ❌ **NEVER put locking in header-only types to avoid circular includes** — put the lock in the singleton's T (defined in the .cpp.hpp)
+   - ❌ Bad: Adding `fl::mutex` to `fl_random` in `random.h` (causes circular includes)
+   - ✅ Good: `struct LockedRandom { fl::mutex mtx; fl_random rng; };` in `random.cpp.hpp`, then `Singleton<LockedRandom>::instance().rng`
+4. ❌ **`fl::Singleton<T>` and `fl::SingletonThreadLocal<T>` MUST be in `.cpp.hpp` files, NEVER in `.h` headers**
+   - These use internal linkage (static storage) — putting them in headers creates per-translation-unit copies
+   - ❌ Bad: `Singleton<Foo>::instance()` in `foo.h`
+   - ✅ Good: `Singleton<Foo>::instance()` in `foo.cpp.hpp`
+   - **Exception**: `fl::SingletonShared<T>` — designed for `.h` headers, uses a process-wide registry to share across DLL/translation unit boundaries (for template code, cross-DLL singletons)
+5. ✅ **All singleton types are never destroyed** — aligned storage + placement new, no static destruction order issues
+6. ✅ **All singleton types use LSAN ScopedDisabler** — no false leak reports
+
+**Check Process**:
+1. Scan for `static.*ThreadLocal<` — should be `SingletonThreadLocal<T>::instance()` instead
+2. Scan for `\bthread_local\b` keyword — should be `SingletonThreadLocal<T>::instance()` instead
+3. Scan for `fl::mutex` or `fl::unique_lock` in `.h` files — locking belongs in `.cpp.hpp` impl structs
+4. Scan for `Singleton<` or `SingletonThreadLocal<` in `.h` files — must be in `.cpp.hpp` (except `SingletonShared<`)
+5. Scan for large stack allocations (`fl::vector<T> buf;` as local variable in hot paths) — suggest `SingletonThreadLocal`
+
+### src/** changes - ALIGNMENT ATTRIBUTES FOR RAW STORAGE
+
+**Core Principle**: Any raw `char[]` buffer used with placement `new` MUST be properly aligned using `FL_ALIGN_AS_T` or `FL_ALIGNAS` macros. Never use bare `alignas()` directly — the FL_ macros handle platform quirks (GCC 4.x, AVR, ESP8266, WASM).
+
+**Rules**:
+1. ❌ **NEVER use unaligned `char[]` for placement new**
+   - ❌ Bad: `static char buf[sizeof(T)]; new (buf) T();`
+   - ✅ Good: `struct FL_ALIGN_AS_T(alignof(T)) S { char data[sizeof(T)]; }; static S s; new (&s.data) T();`
+2. ❌ **NEVER use bare `alignas()` or `__attribute__((aligned(...)))` directly**
+   - ❌ Bad: `alignas(T) char buf[sizeof(T)];`
+   - ❌ Bad: `__attribute__((aligned(8))) char buf[sizeof(T)];`
+   - ✅ Good: Use `FL_ALIGNAS(N)` for numeric alignment or `FL_ALIGN_AS_T(expr)` for template-dependent expressions
+3. ✅ **Use the correct alignment macro for the context**:
+   - `FL_ALIGNAS(N)` — numeric constant alignment (e.g., `FL_ALIGNAS(8)`)
+   - `FL_ALIGN_AS(T)` — align to match type T (non-template contexts)
+   - `FL_ALIGN_AS_T(expr)` — template-dependent alignment expressions (e.g., `FL_ALIGN_AS_T(alignof(T))`)
+   - `FL_ALIGN_MAX` — maximum platform alignment (for type-erased storage)
+4. ✅ **Wrap aligned buffer in a struct** — applying alignment to a struct is more portable than to a bare array
+   - ✅ Pattern: `struct FL_ALIGN_AS_T(alignof(T)) AlignedStorage { char data[sizeof(T)]; };`
+
+**Platform Behavior Summary** (defined in `fl/stl/align.h`):
+- **AVR**: All alignment macros are no-ops (8-bit, no alignment needed)
+- **ESP8266**: Capped at 4-byte alignment (no `memalign()` available)
+- **GCC < 5.0**: Uses `__attribute__((aligned(...)))` (alignas bug with template exprs)
+- **WASM/Emscripten**: `FL_ALIGN_AS_T` and `FL_ALIGN_AS` are no-ops
+- **Modern compilers**: Uses standard `alignas()`
+
+**Check Process**:
+1. Scan for `new (` (placement new) — verify the target buffer has proper alignment
+2. Scan for bare `alignas(` — should use `FL_ALIGNAS`, `FL_ALIGN_AS`, or `FL_ALIGN_AS_T` instead
+3. Scan for `__attribute__((aligned` — should use FL_ macros instead
+4. Scan for `char buf[sizeof(` or `char data[sizeof(` without an enclosing aligned struct
+
 ### tests/** and **/*_mock.* changes - AVOID THREADING IN MOCKS
 
 **Core Principle**: Mock/test implementations MUST be synchronous and deterministic. Threading introduces flakiness.
@@ -308,6 +381,45 @@ class MockI2S {
 - **Hard to debug**: Multi-threaded tests are non-deterministic and unreproducible
 - **Determinism**: Simulated time guarantees reproducible behavior
 
+### src/** and tests/** changes - UNNECESSARY SUPPRESSION COMMENTS
+
+**Core Principle**: AI coding agents frequently add suppression comments that aren't needed. Every suppression comment must be audited.
+
+**Known Suppression Comments** (complete list from codebase):
+- `// ok bare allocation` — suppresses `BareAllocationChecker` (bare new/delete/malloc/free)
+- `// ok sleep for` — suppresses `SleepForChecker` (raw OS sleep)
+- `// ok thread_local` — suppresses `ThreadLocalKeywordChecker` (raw thread_local keyword)
+- `// ok header path` / `// ok include path` — suppresses `HeaderPathValidator` (include path validation)
+- `// ok reinterpret cast` — suppresses `ReinterpretCastChecker`
+- `// ok include` / `// ok include cpp` — suppresses various include checkers
+- `// ok platform headers` — suppresses `PlatformIncludesChecker` (platform headers in .h files)
+- `// ok relative include` — suppresses `RelativeIncludeChecker`
+- `// ok static in header` / `// okay static in header` / `// okay static definition in header` / `// okay static in class` — suppresses `StaticInHeaderChecker`
+- `// ok no namespace fl` / `// okay fl namespace` — suppresses namespace checkers
+- `// okay std namespace` — suppresses `StdNamespaceChecker`
+- `// ok span from pointer` — suppresses `SpanFromPointerChecker`
+- `// ok bare using` — suppresses bare using-declaration checker
+- `// ok no header` — suppresses header pair checker
+- `// ok reading register` — suppresses volatile/register access checker
+- `// okay banned header` — suppresses `BannedHeadersChecker`
+- `// NOLINT` / `// NOLINTBEGIN` / `// NOLINTEND` — suppresses clang-tidy
+- `// okay static in header` — suppresses static-in-header for intentional static locals
+
+**Exempt from audit** (assume correct unless obviously wrong):
+- `// IWYU pragma:` — Include-What-You-Use pragmas are generally intentional and validated by the IWYU tool itself; do not flag these
+
+**Rules**:
+1. ❌ **Flag every NEW suppression comment** — verify the suppressed pattern actually exists on that line
+   - ❌ Bad: `int x = 5; // ok bare allocation` (no allocation here — unnecessary suppression)
+   - ✅ Good: `T* ptr = new T(); // ok bare allocation` (genuine bare allocation that's intentional)
+2. ❌ **Remove suppressions where the violation was fixed** — if the code was refactored to avoid the pattern, the suppression is dead weight
+3. ❌ **Flag speculative suppressions** — AI agents often add suppressions "just in case" on code that doesn't trigger any checker
+
+**Check Process**:
+1. For each new/modified line containing `// ok `, `// okay `, `// NOLINT`, or `// IWYU pragma:`
+2. Verify the suppressed pattern actually exists in the code on that line
+3. If the suppression is unnecessary: remove it and report
+
 ## Output Format
 
 ```
@@ -329,6 +441,9 @@ class MockI2S {
   - Arduino String usage: N
   - Type annotation issues: N
   - Threading in mocks/tests: N
+  - Singleton/ThreadLocal misuse: N
+  - Alignment attribute violations: N
+  - Unnecessary suppression comments: N
   - Other: N
 - Violations fixed: N
 - User confirmations needed: N
