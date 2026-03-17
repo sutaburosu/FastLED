@@ -1054,6 +1054,9 @@ def build(
         build_dir = get_build_dir(mode)
         sketch_cache_dir = get_sketch_cache_dir(example)
         output_js = Path(output)
+        # Auto-fix: if output looks like a directory (no .js suffix), append fastled.js
+        if output_js.suffix != ".js":
+            output_js = output_js / "fastled.js"
         output_dir = output_js.parent
 
         print(f"[WASM] Building {example} (mode: {mode})")
