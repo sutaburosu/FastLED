@@ -69,8 +69,8 @@ CFastLED FastLED;  // global constructor allowed in this case.
 
 FL_DISABLE_WARNING_POP
 
-CLEDController *CLEDController::m_pHead = nullptr;
-CLEDController *CLEDController::m_pTail = nullptr;
+CLEDController *CLEDController::mPHead = nullptr;
+CLEDController *CLEDController::mPTail = nullptr;
 static fl::u32 lastshow = 0;
 
 /// Global frame counter, used for debugging ESP implementations
@@ -86,11 +86,11 @@ fl::u32 _retry_cnt=0;
 CFastLED::CFastLED() {
 	// clear out the array of led controllers
 	// m_nControllers = 0;
-	m_Scale = 255;
-	m_nFPS = 0;
-	m_pPowerFunc = nullptr;
-	m_nPowerData = 0xFFFFFFFF;
-	m_nMinMicros = 0;
+	mScale = 255;
+	mNFPS = 0;
+	mPPowerFunc = nullptr;
+	mNPowerData = 0xFFFFFFFF;
+	mNMinMicros = 0;
 }
 
 void CFastLED::init() {
@@ -164,23 +164,23 @@ void CFastLED::clear(ClearFlags flags) {
 
 	// Reset POWER_SETTINGS - reset power management to defaults
 	if (clearFlag(ClearFlags::POWER_SETTINGS)) {
-		FastLED.m_pPowerFunc = nullptr;      // No power limiting function
-		FastLED.m_nPowerData = 0xFFFFFFFF;   // No power limit (max value)
+		FastLED.mPPowerFunc = nullptr;      // No power limiting function
+		FastLED.mNPowerData = 0xFFFFFFFF;   // No power limit (max value)
 	}
 
 	// Reset BRIGHTNESS - reset global brightness to 255 (full brightness)
 	if (clearFlag(ClearFlags::BRIGHTNESS)) {
-		FastLED.m_Scale = 255;
+		FastLED.mScale = 255;
 	}
 
 	// Reset REFRESH_RATE - reset refresh rate limiting to unlimited
 	if (clearFlag(ClearFlags::REFRESH_RATE)) {
-		FastLED.m_nMinMicros = 0;  // No minimum delay between frames
+		FastLED.mNMinMicros = 0;  // No minimum delay between frames
 	}
 
 	// Reset FPS_COUNTER - reset FPS tracking counter to 0
 	if (clearFlag(ClearFlags::FPS_COUNTER)) {
-		FastLED.m_nFPS = 0;
+		FastLED.mNFPS = 0;
 	}
 
 	// Reset CHANNELS - remove all channels from controller list
@@ -227,12 +227,12 @@ static void* gControllersData[MAX_CLED_CONTROLLERS];
 FL_KEEP_ALIVE void CFastLED::show(fl::u8 scale) {
 	FL_SCOPED_TRACE;
 	onBeginFrame();
-	while(m_nMinMicros && ((fl::micros()-lastshow) < m_nMinMicros));
+	while(mNMinMicros && ((fl::micros()-lastshow) < mNMinMicros));
 	lastshow = fl::micros();
 
 	// If we have a function for computing power, use it!
-	if(m_pPowerFunc) {
-		scale = (*m_pPowerFunc)(scale, m_nPowerData);
+	if(mPPowerFunc) {
+		scale = (*mPPowerFunc)(scale, mNPowerData);
 	}
 
 
@@ -246,7 +246,7 @@ FL_KEEP_ALIVE void CFastLED::show(fl::u8 scale) {
 			gControllersData[length] = nullptr;
 		}
 		length++;
-		if (m_nFPS < 100) { pCur->setDither(0); }
+		if (mNFPS < 100) { pCur->setDither(0); }
 		pCur = pCur->next();
 	}
 
@@ -302,12 +302,12 @@ CLEDController & CFastLED::operator[](int x) {
 }
 
 void CFastLED::showColor(const CRGB & color, fl::u8 scale) {
-	while(m_nMinMicros && ((fl::micros()-lastshow) < m_nMinMicros));
+	while(mNMinMicros && ((fl::micros()-lastshow) < mNMinMicros));
 	lastshow = fl::micros();
 
 	// If we have a function for computing power, use it!
-	if(m_pPowerFunc) {
-		scale = (*m_pPowerFunc)(scale, m_nPowerData);
+	if(mPPowerFunc) {
+		scale = (*mPPowerFunc)(scale, mNPowerData);
 	}
 
 	int length = 0;
@@ -324,7 +324,7 @@ void CFastLED::showColor(const CRGB & color, fl::u8 scale) {
 
 	pCur = CLEDController::head();
 	while(pCur && length < MAX_CLED_CONTROLLERS) {
-		if(m_nFPS < 100) { pCur->setDither(0); }
+		if(mNFPS < 100) { pCur->setDither(0); }
 		if (pCur->getEnabled()) {
 			pCur->showColorInternal(color, scale);
 		}
@@ -408,12 +408,12 @@ fl::u32 CFastLED::getEstimatedPowerInMilliWatts(bool apply_limiter) const {
 	});
 
 	// Determine effective brightness
-	fl::u8 effective_brightness = m_Scale;
+	fl::u8 effective_brightness = mScale;
 
-	if (apply_limiter && m_pPowerFunc) {
+	if (apply_limiter && mPPowerFunc) {
 		// Power limiting is enabled and user wants limited power - calculate brightness after limiting
-		// This calls calculate_max_brightness_for_power_mW(m_Scale, m_nPowerData)
-		effective_brightness = (*m_pPowerFunc)(m_Scale, m_nPowerData);
+		// This calls calculate_max_brightness_for_power_mW(mScale, mNPowerData)
+		effective_brightness = (*mPPowerFunc)(mScale, mNPowerData);
 	}
 
 	// Scale by effective brightness (linear scaling)
@@ -484,7 +484,7 @@ void CFastLED::countFPS(int nFrames) {
 		if(now == 0) {
 			now = 1; // prevent division by zero below
 		}
-		m_nFPS = (br * 1000) / now;
+		mNFPS = (br * 1000) / now;
 		br = 0;
 		lastframe = fl::millis();
 	}
@@ -492,15 +492,15 @@ void CFastLED::countFPS(int nFrames) {
 
 void CFastLED::setMaxRefreshRate(fl::u16 refresh, bool constrain) {
 	if(constrain) {
-		// if we're constraining, the new value of m_nMinMicros _must_ be higher than previously (because we're only
+		// if we're constraining, the new value of mNMinMicros _must_ be higher than previously (because we're only
 		// allowed to slow things down if constraining)
 		if(refresh > 0) {
-			m_nMinMicros = ((1000000 / refresh) > m_nMinMicros) ? (1000000 / refresh) : m_nMinMicros;
+			mNMinMicros = ((1000000 / refresh) > mNMinMicros) ? (1000000 / refresh) : mNMinMicros;
 		}
 	} else if(refresh > 0) {
-		m_nMinMicros = 1000000 / refresh;
+		mNMinMicros = 1000000 / refresh;
 	} else {
-		m_nMinMicros = 0;
+		mNMinMicros = 0;
 	}
 }
 

@@ -1187,30 +1187,30 @@ struct json_value {
     class array_iterator {
     private:
         using variant_t = typename json_value::variant_t;
-        variant_t* m_variant;
-        size_t m_index;
+        variant_t* mVariant;
+        size_t mIndex;
         
         // Helper to get the size of the array regardless of its type
         size_t get_size() const {
-            if (!m_variant) return 0;
+            if (!mVariant) return 0;
             
-            if (m_variant->is<json_array>()) {
-                auto ptr = m_variant->ptr<json_array>();
+            if (mVariant->is<json_array>()) {
+                auto ptr = mVariant->ptr<json_array>();
                 return ptr ? ptr->size() : 0;
             }
             
-            if (m_variant->is<fl::vector<i16>>()) {
-                auto ptr = m_variant->ptr<fl::vector<i16>>();
+            if (mVariant->is<fl::vector<i16>>()) {
+                auto ptr = mVariant->ptr<fl::vector<i16>>();
                 return ptr ? ptr->size() : 0;
             }
             
-            if (m_variant->is<fl::vector<u8>>()) {
-                auto ptr = m_variant->ptr<fl::vector<u8>>();
+            if (mVariant->is<fl::vector<u8>>()) {
+                auto ptr = mVariant->ptr<fl::vector<u8>>();
                 return ptr ? ptr->size() : 0;
             }
             
-            if (m_variant->is<fl::vector<float>>()) {
-                auto ptr = m_variant->ptr<fl::vector<float>>();
+            if (mVariant->is<fl::vector<float>>()) {
+                auto ptr = mVariant->ptr<fl::vector<float>>();
                 return ptr ? ptr->size() : 0;
             }
             
@@ -1219,14 +1219,14 @@ struct json_value {
         
         // Helper to convert current element to target type T
         parse_result<T> get_value() const {
-            if (!m_variant || m_index >= get_size()) {
+            if (!mVariant || mIndex >= get_size()) {
                 return parse_result<T>(Error("Index out of bounds"));
             }
             
-            if (m_variant->is<json_array>()) {
-                auto ptr = m_variant->ptr<json_array>();
-                if (ptr && m_index < ptr->size() && (*ptr)[m_index]) {
-                    auto& val = *((*ptr)[m_index]);
+            if (mVariant->is<json_array>()) {
+                auto ptr = mVariant->ptr<json_array>();
+                if (ptr && mIndex < ptr->size() && (*ptr)[mIndex]) {
+                    auto& val = *((*ptr)[mIndex]);
                     
                     // Try to convert to T using the json_value conversion methods
                     // Using FastLED type traits instead of std:: ones
@@ -1265,28 +1265,28 @@ struct json_value {
                 }
             }
             
-            if (m_variant->is<fl::vector<i16>>()) {
-                auto ptr = m_variant->ptr<fl::vector<i16>>();
-                if (ptr && m_index < ptr->size()) {
-                    return parse_result<T>(static_cast<T>((*ptr)[m_index]));
+            if (mVariant->is<fl::vector<i16>>()) {
+                auto ptr = mVariant->ptr<fl::vector<i16>>();
+                if (ptr && mIndex < ptr->size()) {
+                    return parse_result<T>(static_cast<T>((*ptr)[mIndex]));
                 } else {
                     return parse_result<T>(Error("Index out of bounds in i16 array"));
                 }
             }
             
-            if (m_variant->is<fl::vector<u8>>()) {
-                auto ptr = m_variant->ptr<fl::vector<u8>>();
-                if (ptr && m_index < ptr->size()) {
-                    return parse_result<T>(static_cast<T>((*ptr)[m_index]));
+            if (mVariant->is<fl::vector<u8>>()) {
+                auto ptr = mVariant->ptr<fl::vector<u8>>();
+                if (ptr && mIndex < ptr->size()) {
+                    return parse_result<T>(static_cast<T>((*ptr)[mIndex]));
                 } else {
                     return parse_result<T>(Error("Index out of bounds in u8 array"));
                 }
             }
             
-            if (m_variant->is<fl::vector<float>>()) {
-                auto ptr = m_variant->ptr<fl::vector<float>>();
-                if (ptr && m_index < ptr->size()) {
-                    return parse_result<T>(static_cast<T>((*ptr)[m_index]));
+            if (mVariant->is<fl::vector<float>>()) {
+                auto ptr = mVariant->ptr<fl::vector<float>>();
+                if (ptr && mIndex < ptr->size()) {
+                    return parse_result<T>(static_cast<T>((*ptr)[mIndex]));
                 } else {
                     return parse_result<T>(Error("Index out of bounds in float array"));
                 }
@@ -1296,15 +1296,15 @@ struct json_value {
         }
         
     public:
-        array_iterator() : m_variant(nullptr), m_index(0) {}
-        array_iterator(variant_t* variant, size_t index) : m_variant(variant), m_index(index) {}
+        array_iterator() : mVariant(nullptr), mIndex(0) {}
+        array_iterator(variant_t* variant, size_t index) : mVariant(variant), mIndex(index) {}
         
         parse_result<T> operator*() const {
             return get_value();
         }
         
         array_iterator& operator++() {
-            ++m_index;
+            ++mIndex;
             return *this;
         }
         
@@ -1315,11 +1315,11 @@ struct json_value {
         }
         
         bool operator!=(const array_iterator& other) const {
-            return m_index != other.m_index || m_variant != other.m_variant;
+            return mIndex != other.mIndex || mVariant != other.mVariant;
         }
         
         bool operator==(const array_iterator& other) const {
-            return m_index == other.m_index && m_variant == other.m_variant;
+            return mIndex == other.mIndex && mVariant == other.mVariant;
         }
     };
     
@@ -1505,19 +1505,19 @@ struct json_value {
     // Iterator support for objects
     class iterator {
     private:
-        json_object::iterator m_iter;
+        json_object::iterator mIter;
 
     public:
         using iterator_category = fl::forward_iterator_tag;
 
         iterator() = default;
-        iterator(json_object::iterator iter) : m_iter(iter) {}
+        iterator(json_object::iterator iter) : mIter(iter) {}
         
         // Getter for const iterator conversion
-        json_object::iterator get_iter() const { return m_iter; }
+        json_object::iterator get_iter() const { return mIter; }
         
         iterator& operator++() {
-            ++m_iter;
+            ++mIter;
             return *this;
         }
         
@@ -1528,11 +1528,11 @@ struct json_value {
         }
         
         bool operator!=(const iterator& other) const {
-            return m_iter != other.m_iter;
+            return mIter != other.mIter;
         }
         
         bool operator==(const iterator& other) const {
-            return m_iter == other.m_iter;
+            return mIter == other.mIter;
         }
         
         struct KeyValue {
@@ -1544,7 +1544,7 @@ struct json_value {
         };
         
         KeyValue operator*() const {
-            return KeyValue(m_iter->first, m_iter->second);
+            return KeyValue(mIter->first, mIter->second);
         }
         
         // Remove operator-> to avoid static variable issues
@@ -1553,13 +1553,13 @@ struct json_value {
     // Iterator for JSON objects (const version)
     class const_iterator {
     private:
-        json_object::const_iterator m_iter;
+        json_object::const_iterator mIter;
         
     public:
         using iterator_category = fl::forward_iterator_tag;
 
         const_iterator() = default;
-        const_iterator(json_object::const_iterator iter) : m_iter(iter) {}
+        const_iterator(json_object::const_iterator iter) : mIter(iter) {}
         
         // Factory method for conversion from iterator
         static const_iterator from_object_iterator(const iterator& other) {
@@ -1573,7 +1573,7 @@ struct json_value {
         }
         
         const_iterator& operator++() {
-            ++m_iter;
+            ++mIter;
             return *this;
         }
         
@@ -1584,11 +1584,11 @@ struct json_value {
         }
         
         bool operator!=(const const_iterator& other) const {
-            return m_iter != other.m_iter;
+            return mIter != other.mIter;
         }
         
         bool operator==(const const_iterator& other) const {
-            return m_iter == other.m_iter;
+            return mIter == other.mIter;
         }
         
         struct KeyValue {
@@ -1600,7 +1600,7 @@ struct json_value {
         };
         
         KeyValue operator*() const {
-            return KeyValue(m_iter->first, m_iter->second);
+            return KeyValue(mIter->first, mIter->second);
         }
         
         // Remove operator-> to avoid static variable issues

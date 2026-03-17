@@ -92,7 +92,7 @@ template <int VAL> void getScalars(u8 & sppr, u8 & spr) {
 
 template <u8 _DATA_PIN, u8 _CLOCK_PIN, u32 _SPI_CLOCK_DIVIDER, u32 pSPIX>
 class ARMHardwareSPIOutput {
-  Selectable *m_pSelect;
+  Selectable *mPSelect;
 
   static inline void enable_pins(void) __attribute__((always_inline)) {
     switch(_DATA_PIN) {
@@ -143,11 +143,11 @@ class ARMHardwareSPIOutput {
   }
 
 public:
-  ARMHardwareSPIOutput() { m_pSelect = nullptr; }
-  ARMHardwareSPIOutput(Selectable *pSelect) { m_pSelect = pSelect; }
+  ARMHardwareSPIOutput() { mPSelect = nullptr; }
+  ARMHardwareSPIOutput(Selectable *pSelect) { mPSelect = pSelect; }
 
   // set the object representing the selectable
-  void setSelect(Selectable *pSelect) { m_pSelect = pSelect; }
+  void setSelect(Selectable *pSelect) { mPSelect = pSelect; }
 
   // initialize the SPI subssytem
   void init() {
@@ -171,7 +171,7 @@ public:
 
   // latch the CS select
   void inline select() __attribute__((always_inline)) {
-    if(m_pSelect != nullptr) { m_pSelect->select(); }
+    if(mPSelect != nullptr) { mPSelect->select(); }
     setSPIRate();
     enable_pins();
   }
@@ -180,7 +180,7 @@ public:
   // release the CS select
   void inline release() __attribute__((always_inline)) {
     disable_pins();
-    if(m_pSelect != nullptr) { m_pSelect->release(); }
+    if(mPSelect != nullptr) { mPSelect->release(); }
   }
 
   void endTransaction() {

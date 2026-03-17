@@ -30,12 +30,12 @@ namespace fl {
 
 template <u8 _DATA_PIN, u8 _CLOCK_PIN, u32 _SPI_CLOCK_DIVIDER>
 class AVRUSART1SPIOutput {
-	Selectable *m_pSelect;
+	Selectable *mPSelect;
 
 public:
-	AVRUSART1SPIOutput() { m_pSelect = nullptr; }
-	AVRUSART1SPIOutput(Selectable *pSelect) { m_pSelect = pSelect; }
-	void setSelect(Selectable *pSelect) { m_pSelect = pSelect; }
+	AVRUSART1SPIOutput() { mPSelect = nullptr; }
+	AVRUSART1SPIOutput(Selectable *pSelect) { mPSelect = pSelect; }
+	void setSelect(Selectable *pSelect) { mPSelect = pSelect; }
 
 	void init() {
 		UBRR1 = 0;
@@ -103,16 +103,16 @@ public:
 	void disable_pins() { }
 
 	void select() {
-		if(m_pSelect != nullptr) {
-			m_pSelect->select();
+		if(mPSelect != nullptr) {
+			mPSelect->select();
 		}
 		enable_pins();
 		setSPIRate();
 	}
 
 	void release() {
-		if(m_pSelect != nullptr) {
-			m_pSelect->release();
+		if(mPSelect != nullptr) {
+			mPSelect->release();
 		}
 		disable_pins();
 	}
@@ -187,12 +187,12 @@ public:
 #if defined(UBRR0)
 template <u8 _DATA_PIN, u8 _CLOCK_PIN, u32 _SPI_CLOCK_DIVIDER>
 class AVRUSART0SPIOutput {
-	Selectable *m_pSelect;
+	Selectable *mPSelect;
 
 public:
-	AVRUSART0SPIOutput() { m_pSelect = nullptr; }
-	AVRUSART0SPIOutput(Selectable *pSelect) { m_pSelect = pSelect; }
-	void setSelect(Selectable *pSelect) { m_pSelect = pSelect; }
+	AVRUSART0SPIOutput() { mPSelect = nullptr; }
+	AVRUSART0SPIOutput(Selectable *pSelect) { mPSelect = pSelect; }
+	void setSelect(Selectable *pSelect) { mPSelect = pSelect; }
 
 	void init() {
 		UBRR0 = 0;
@@ -259,16 +259,16 @@ public:
 	void disable_pins() { }
 
 	void select() {
-		if(m_pSelect != nullptr) {
-			m_pSelect->select();
+		if(mPSelect != nullptr) {
+			mPSelect->select();
 		}
 		enable_pins();
 		setSPIRate();
 	}
 
 	void release() {
-		if(m_pSelect != nullptr) {
-			m_pSelect->release();
+		if(mPSelect != nullptr) {
+			mPSelect->release();
 		}
 		disable_pins();
 	}
@@ -346,12 +346,12 @@ public:
 
 template <u8 _DATA_PIN, u8 _CLOCK_PIN, u32 _SPI_CLOCK_DIVIDER>
 class AVRHardwareSPIOutput {
-	Selectable *m_pSelect;
+	Selectable *mPSelect;
 
 public:
-	AVRHardwareSPIOutput() { m_pSelect = nullptr; }
-	AVRHardwareSPIOutput(Selectable *pSelect) { m_pSelect = pSelect; }
-	void setSelect(Selectable *pSelect) { m_pSelect = pSelect; }
+	AVRHardwareSPIOutput() { mPSelect = nullptr; }
+	AVRHardwareSPIOutput(Selectable *pSelect) { mPSelect = pSelect; }
+	void setSelect(Selectable *pSelect) { mPSelect = pSelect; }
 
 	void init() {
 		FastPin<_CLOCK_PIN>::setOutput();
@@ -438,16 +438,16 @@ public:
 	void disable_pins() { }
 
 	void select() {
-		if(m_pSelect != nullptr) {
-			m_pSelect->select();
+		if(mPSelect != nullptr) {
+			mPSelect->select();
 		}
 		enable_pins();
 		setSPIRate();
 	}
 
 	void release() {
-		if(m_pSelect != nullptr) {
-			m_pSelect->release();
+		if(mPSelect != nullptr) {
+			mPSelect->release();
 		}
 		disable_pins();
 	}
@@ -535,13 +535,13 @@ public:
 
 template <u8 _DATA_PIN, u8 _CLOCK_PIN, u32 _SPI_CLOCK_DIVIDER>
 class AVRHardwareSPIOutput {
-	Selectable *m_pSelect;
+	Selectable *mPSelect;
 	bool mWait;
 
 public:
-	AVRHardwareSPIOutput() { m_pSelect = nullptr; mWait = false;}
-	AVRHardwareSPIOutput(Selectable *pSelect) { m_pSelect = pSelect; }
-	void setSelect(Selectable *pSelect) { m_pSelect = pSelect; }
+	AVRHardwareSPIOutput() { mPSelect = nullptr; mWait = false;}
+	AVRHardwareSPIOutput(Selectable *pSelect) { mPSelect = pSelect; }
+	void setSelect(Selectable *pSelect) { mPSelect = pSelect; }
 
 	void setSPIRate() {
 		SPCR &= ~ ( (1<<SPR1) | (1<<SPR0) ); 	// clear out the prescalar bits
@@ -634,13 +634,13 @@ public:
 	}
 
 	void select() {
-		if(m_pSelect != nullptr) { m_pSelect->select(); }
+		if(mPSelect != nullptr) { mPSelect->select(); }
 		enable_pins();
 		setSPIRate();
 	}
 
 	void release() {
-		if(m_pSelect != nullptr) { m_pSelect->release(); }
+		if(mPSelect != nullptr) { mPSelect->release(); }
 		disable_pins();
 	}
 
@@ -723,13 +723,13 @@ public:
 
 template <u8 _DATA_PIN, u8 _CLOCK_PIN, u32 _SPI_CLOCK_DIVIDER>
 class AVRHardwareSPIOutput {
-	Selectable *m_pSelect;
+	Selectable *mPSelect;
 	bool mWait;
 
 public:
-	AVRHardwareSPIOutput() { m_pSelect = nullptr; mWait = false;}
-	AVRHardwareSPIOutput(Selectable *pSelect) { m_pSelect = pSelect; }
-	void setSelect(Selectable *pSelect) { m_pSelect = pSelect; }
+	AVRHardwareSPIOutput() { mPSelect = nullptr; mWait = false;}
+	AVRHardwareSPIOutput(Selectable *pSelect) { mPSelect = pSelect; }
+	void setSelect(Selectable *pSelect) { mPSelect = pSelect; }
 
 	void setSPIRate() {
 		SPCR0 &= ~ ( (1<<SPR10) | (1<<SPR0) ); 	// clear out the prescalar bits
@@ -822,13 +822,13 @@ public:
 	}
 
 	void select() {
-		if(m_pSelect != nullptr) { m_pSelect->select(); }
+		if(mPSelect != nullptr) { mPSelect->select(); }
 		enable_pins();
 		setSPIRate();
 	}
 
 	void release() {
-		if(m_pSelect != nullptr) { m_pSelect->release(); }
+		if(mPSelect != nullptr) { mPSelect->release(); }
 		disable_pins();
 	}
 

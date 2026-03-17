@@ -467,7 +467,7 @@ private:
         }
     };
 
-    Slab* slabs_;
+    Slab* mSlabs;
     fl::size mTotalAllocated;
     fl::size mTotalDeallocated;
 
@@ -491,15 +491,15 @@ private:
         slab->allocated_blocks.reset(); // All blocks start as free
         
         // Add slab to the slab list
-        slab->next = slabs_;
-        slabs_ = slab;
+        slab->next = mSlabs;
+        mSlabs = slab;
         
         return slab;
     }
 
     void* allocateFromSlab(fl::size n = 1) {
         // Try to find n contiguous free blocks in existing slabs
-        for (Slab* slab = slabs_; slab; slab = slab->next) {
+        for (Slab* slab = mSlabs; slab; slab = slab->next) {
             void* ptr = findContiguousBlocks(slab, n);
             if (ptr) {
                 return ptr;
@@ -513,7 +513,7 @@ private:
             }
             
             // Try again with the new slab
-            return findContiguousBlocks(slabs_, n);
+            return findContiguousBlocks(mSlabs, n);
         }
         
         // Request too large for slab, fall back to malloc
@@ -549,7 +549,7 @@ private:
         }
         
         // Find which slab this block belongs to
-        for (Slab* slab = slabs_; slab; slab = slab->next) {
+        for (Slab* slab = mSlabs; slab; slab = slab->next) {
             u8* slab_start = slab->memory;
             u8* slab_end = slab_start + SLAB_MEMORY_SIZE;
             u8* block_ptr = fl::bit_cast_ptr<u8>(ptr);
@@ -573,7 +573,7 @@ private:
 
 public:
     // Constructor
-    SlabAllocator() : slabs_(nullptr), mTotalAllocated(0), mTotalDeallocated(0) {}
+    SlabAllocator() : mSlabs(nullptr), mTotalAllocated(0), mTotalDeallocated(0) {}
     
     // Destructor
     ~SlabAllocator() {
@@ -586,8 +586,8 @@ public:
     
     // Movable
     SlabAllocator(SlabAllocator&& other) noexcept 
-        : slabs_(other.slabs_), mTotalAllocated(other.mTotalAllocated), mTotalDeallocated(other.mTotalDeallocated) {
-        other.slabs_ = nullptr;
+        : mSlabs(other.mSlabs), mTotalAllocated(other.mTotalAllocated), mTotalDeallocated(other.mTotalDeallocated) {
+        other.mSlabs = nullptr;
         other.mTotalAllocated = 0;
         other.mTotalDeallocated = 0;
     }
@@ -595,10 +595,10 @@ public:
     SlabAllocator& operator=(SlabAllocator&& other) noexcept {
         if (this != &other) {
             cleanup();
-            slabs_ = other.slabs_;
+            mSlabs = other.mSlabs;
             mTotalAllocated = other.mTotalAllocated;
             mTotalDeallocated = other.mTotalDeallocated;
-            other.slabs_ = nullptr;
+            other.mSlabs = nullptr;
             other.mTotalAllocated = 0;
             other.mTotalDeallocated = 0;
         }
@@ -632,7 +632,7 @@ public:
         
         // Try to deallocate from slab first
         bool found_in_slab = false;
-        for (Slab* slab = slabs_; slab; slab = slab->next) {
+        for (Slab* slab = mSlabs; slab; slab = slab->next) {
             u8* slab_start = slab->memory;
             u8* slab_end = slab_start + SLAB_MEMORY_SIZE;
             u8* block_ptr = fl::bit_cast_ptr<u8>(static_cast<void*>(ptr));
@@ -658,7 +658,7 @@ public:
     // Get number of slabs
     fl::size getSlabCount() const {
         fl::size count = 0;
-        for (Slab* slab = slabs_; slab; slab = slab->next) {
+        for (Slab* slab = mSlabs; slab; slab = slab->next) {
             ++count;
         }
         return count;
@@ -666,11 +666,11 @@ public:
 
     // Cleanup all slabs
     void cleanup() {
-        while (slabs_) {
-            Slab* next = slabs_->next;
-            slabs_->~Slab();
-            Free(slabs_);
-            slabs_ = next;
+        while (mSlabs) {
+            Slab* next = mSlabs->next;
+            mSlabs->~Slab();
+            Free(mSlabs);
+            mSlabs = next;
         }
         mTotalAllocated = 0;
         mTotalDeallocated = 0;
@@ -801,11 +801,11 @@ private:
         }
     };
     
-    InlinedStorage m_inlined_storage;
-    BaseAllocator m_base_allocator;
-    fl::size m_inlined_used = 0;
-    fl::bitset_fixed<N> m_free_bits;  // Track free slots for inlined memory only
-    fl::size m_active_allocations = 0;  // Track current active allocations
+    InlinedStorage mInlinedStorage;
+    BaseAllocator mBaseAllocator;
+    fl::size mInlinedUsed = 0;
+    fl::bitset_fixed<N> mFreeBits;  // Track free slots for inlined memory only
+    fl::size mActiveAllocations = 0;  // Track current active allocations
 
 public:
     // Type definitions required by STL
@@ -829,18 +829,18 @@ public:
     // Copy constructor
     allocator_inlined(const allocator_inlined& other) noexcept {
         // Copy inlined data
-        m_inlined_used = other.m_inlined_used;
-        for (fl::size i = 0; i < m_inlined_used; ++i) {
+        mInlinedUsed = other.mInlinedUsed;
+        for (fl::size i = 0; i < mInlinedUsed; ++i) {
             new (&get_inlined_ptr()[i]) T(other.get_inlined_ptr()[i]);
         }
         
         // Copy free bits
-        m_free_bits = other.m_free_bits;
+        mFreeBits = other.mFreeBits;
         
         // Note: Heap allocations are not copied, only inlined data
         
         // Copy active allocations count
-        m_active_allocations = other.m_active_allocations;
+        mActiveAllocations = other.mActiveAllocations;
     }
 
     // Copy assignment
@@ -849,18 +849,18 @@ public:
             clear();
             
             // Copy inlined data
-            m_inlined_used = other.m_inlined_used;
-            for (fl::size i = 0; i < m_inlined_used; ++i) {
+            mInlinedUsed = other.mInlinedUsed;
+            for (fl::size i = 0; i < mInlinedUsed; ++i) {
                 new (&get_inlined_ptr()[i]) T(other.get_inlined_ptr()[i]);
             }
             
             // Copy free bits
-            m_free_bits = other.m_free_bits;
+            mFreeBits = other.mFreeBits;
             
             // Note: Heap allocations are not copied, only inlined data
             
             // Copy active allocations count
-            m_active_allocations = other.m_active_allocations;
+            mActiveAllocations = other.mActiveAllocations;
         }
         return *this;
     }
@@ -884,32 +884,32 @@ public:
         
         // For large allocations (n > 1), use base allocator directly
         if (n > 1) {
-            T* ptr = m_base_allocator.allocate(n);
+            T* ptr = mBaseAllocator.allocate(n);
             if (ptr) {
-                m_active_allocations += n;
+                mActiveAllocations += n;
             }
             return ptr;
         }
         
         // For single allocations, first try inlined memory
         // Find first free inlined slot
-        fl::i32 free_slot = m_free_bits.find_first(false);
+        fl::i32 free_slot = mFreeBits.find_first(false);
         if (free_slot >= 0 && static_cast<fl::size>(free_slot) < N) {
             // Mark the inlined slot as used
-            m_free_bits.set(static_cast<fl::u32>(free_slot), true);
+            mFreeBits.set(static_cast<fl::u32>(free_slot), true);
             
             // Update inlined usage tracking
-            if (static_cast<fl::size>(free_slot) + 1 > m_inlined_used) {
-                m_inlined_used = static_cast<fl::size>(free_slot) + 1;
+            if (static_cast<fl::size>(free_slot) + 1 > mInlinedUsed) {
+                mInlinedUsed = static_cast<fl::size>(free_slot) + 1;
             }
-            m_active_allocations++;
+            mActiveAllocations++;
             return &get_inlined_ptr()[static_cast<fl::size>(free_slot)];
         }
         
         // No inlined slots available, use heap allocation
-        T* ptr = m_base_allocator.allocate(1);
+        T* ptr = mBaseAllocator.allocate(1);
         if (ptr) {
-            m_active_allocations++;
+            mActiveAllocations++;
         }
         return ptr;
     }
@@ -929,16 +929,16 @@ public:
             fl::size slot_index = (p - inlined_start);
             for (fl::size i = 0; i < n; ++i) {
                 if (slot_index + i < N) {
-                    m_free_bits.set(slot_index + i, false); // Mark as free
+                    mFreeBits.set(slot_index + i, false); // Mark as free
                 }
             }
-            m_active_allocations -= n;
+            mActiveAllocations -= n;
             return;
         }
         
         // Fallback to base allocator for heap allocations
-        m_base_allocator.deallocate(p, n);
-        m_active_allocations -= n;
+        mBaseAllocator.deallocate(p, n);
+        mActiveAllocations -= n;
     }
 
     // Construct an object at the specified address
@@ -958,12 +958,12 @@ public:
     // Clear all allocated memory
     void clear() {
         // Destroy inlined objects
-        for (fl::size i = 0; i < m_inlined_used; ++i) {
+        for (fl::size i = 0; i < mInlinedUsed; ++i) {
             get_inlined_ptr()[i].~T();
         }
-        m_inlined_used = 0;
-        m_free_bits.reset();
-        m_active_allocations = 0;
+        mInlinedUsed = 0;
+        mFreeBits.reset();
+        mActiveAllocations = 0;
         
         // Clean up the base allocator (for SlabAllocator, this clears slabs and free lists)
         cleanup_base_allocator();
@@ -971,7 +971,7 @@ public:
 
     // Get total allocated size
     fl::size total_size() const {
-        return m_active_allocations;
+        return mActiveAllocations;
     }
 
     // Get inlined capacity
@@ -981,16 +981,16 @@ public:
 
     // Check if using inlined storage
     bool is_using_inlined() const {
-        return m_active_allocations == m_inlined_used;
+        return mActiveAllocations == mInlinedUsed;
     }
 
 private:
     T* get_inlined_ptr() {
-        return fl::bit_cast_ptr<T>(m_inlined_storage.data);
+        return fl::bit_cast_ptr<T>(mInlinedStorage.data);
     }
 
     const T* get_inlined_ptr() const {
-        return fl::bit_cast_ptr<const T>(m_inlined_storage.data);
+        return fl::bit_cast_ptr<const T>(mInlinedStorage.data);
     }
     
     // SFINAE helper to detect if base allocator has cleanup() method
@@ -1008,7 +1008,7 @@ private:
     }
     
     void cleanup_base_allocator_impl(fl::true_type) {
-        m_base_allocator.cleanup();
+        mBaseAllocator.cleanup();
     }
     
     void cleanup_base_allocator_impl(fl::false_type) {

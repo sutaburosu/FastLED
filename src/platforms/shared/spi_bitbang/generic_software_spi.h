@@ -47,17 +47,17 @@ class GenericSoftwareSPIOutput {
 	// are 8 bits wide while on arm they are 32.
 	typedef typename fl::FastPin<DATA_PIN>::port_t data_t;
 	typedef typename fl::FastPin<CLOCK_PIN>::port_t clock_t;
-	Selectable 	*m_pSelect;  ///< SPI chip select
+	Selectable 	*mPSelect;  ///< SPI chip select
 
 public:
 	/// Default constructor
-	GenericSoftwareSPIOutput() { m_pSelect = nullptr; }
+	GenericSoftwareSPIOutput() { mPSelect = nullptr; }
 	/// Constructor with selectable for SPI chip select
-	GenericSoftwareSPIOutput(Selectable *pSelect) { m_pSelect = pSelect; }
+	GenericSoftwareSPIOutput(Selectable *pSelect) { mPSelect = pSelect; }
 
 	/// Set the pointer for the SPI chip select
 	/// @param pSelect pointer to chip select control
-	void setSelect(Selectable *pSelect) { m_pSelect = pSelect; }
+	void setSelect(Selectable *pSelect) { mPSelect = pSelect; }
 
 	/// Set the clock/data pins to output and make sure the chip select is released.
 	void init() {
@@ -250,10 +250,10 @@ public:
 	/// @par
 	/// @todo Move select responsibility out of the SPI classes entirely,
 	///       make it up to the caller to remember to lock/select the line?
-	void select() { if(m_pSelect != nullptr) { m_pSelect->select(); } } // fl::FastPin<SELECT_PIN>::hi(); }
+	void select() { if(mPSelect != nullptr) { mPSelect->select(); } } // fl::FastPin<SELECT_PIN>::hi(); }
 
 	/// Release the SPI chip select line
-	void release() { if(m_pSelect != nullptr) { m_pSelect->release(); } } // fl::FastPin<SELECT_PIN>::lo(); }
+	void release() { if(mPSelect != nullptr) { mPSelect->release(); } } // fl::FastPin<SELECT_PIN>::lo(); }
 
 	void endTransaction() {
 		waitFully();

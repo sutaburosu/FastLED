@@ -20,25 +20,25 @@ struct DMABufferInternalData {
 // DMABuffer implementations
 
 DMABuffer::DMABuffer()
-    : m_internal(), error_code(SPIError::NOT_INITIALIZED), is_ok(false) {}
+    : mInternal(), error_code(SPIError::NOT_INITIALIZED), is_ok(false) {}
 
 DMABuffer::DMABuffer(size_t size)
-    : m_internal(fl::make_shared<DMABufferInternalData>(size)),
+    : mInternal(fl::make_shared<DMABufferInternalData>(size)),
       error_code(SPIError::NOT_INITIALIZED),
-      is_ok(m_internal != nullptr) {
+      is_ok(mInternal != nullptr) {
     if (!is_ok) {
         error_code = SPIError::ALLOCATION_FAILED;
     }
 }
 
 DMABuffer::DMABuffer(fl::shared_ptr<u8> ptr, size_t size)
-    : m_internal(fl::make_shared<DMABufferInternalData>()),
+    : mInternal(fl::make_shared<DMABufferInternalData>()),
       error_code(SPIError::NOT_INITIALIZED),
       is_ok(true) {
-    if (m_internal && ptr && size > 0) {
+    if (mInternal && ptr && size > 0) {
         // Copy data from external pointer into internal vector
-        m_internal->buffer.resize(size);
-        fl::memcpy(m_internal->buffer.data(), ptr.get(), size);
+        mInternal->buffer.resize(size);
+        fl::memcpy(mInternal->buffer.data(), ptr.get(), size);
     } else {
         is_ok = false;
         error_code = SPIError::ALLOCATION_FAILED;
@@ -46,17 +46,17 @@ DMABuffer::DMABuffer(fl::shared_ptr<u8> ptr, size_t size)
 }
 
 DMABuffer::DMABuffer(SPIError err)
-    : m_internal(), error_code(err), is_ok(false) {}
+    : mInternal(), error_code(err), is_ok(false) {}
 
 bool DMABuffer::ok() const {
-    return is_ok && m_internal != nullptr;
+    return is_ok && mInternal != nullptr;
 }
 
 fl::span<u8> DMABuffer::data() const {
     if (!ok()) {
         return fl::span<u8>();
     }
-    return m_internal->buffer;
+    return mInternal->buffer;
 }
 
 SPIError DMABuffer::error() const {
@@ -64,7 +64,7 @@ SPIError DMABuffer::error() const {
 }
 
 void DMABuffer::reset() {
-    m_internal.reset();
+    mInternal.reset();
     is_ok = false;
     error_code = SPIError::NOT_INITIALIZED;
 }
@@ -73,7 +73,7 @@ size_t DMABuffer::size() const {
     if (!ok()) {
         return 0;
     }
-    return m_internal->buffer.size();
+    return mInternal->buffer.size();
 }
 
 // SPITransmitRequest implementations

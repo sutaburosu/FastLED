@@ -21,11 +21,11 @@ CLEDController::~CLEDController() {
 }
 
 /// Create an led controller object, add it to the chain of controllers
-CLEDController::CLEDController() : m_Leds(), mSettings() {
+CLEDController::CLEDController() : mLeds(), mSettings() {
     addToList();
 }
 
-CLEDController::CLEDController(RegistrationMode mode) : m_Leds(), mSettings() {
+CLEDController::CLEDController(RegistrationMode mode) : mLeds(), mSettings() {
     if (mode == RegistrationMode::AutoRegister) {
         addToList();
     }
@@ -40,27 +40,27 @@ void CLEDController::addToList() {
     #endif
 
     // Add to linked list
-    if(m_pHead==nullptr) { m_pHead = this; }
-    if(m_pTail != nullptr) { m_pTail->m_pNext = this; }
-    m_pTail = this;
+    if(mPHead==nullptr) { mPHead = this; }
+    if(mPTail != nullptr) { mPTail->mPNext = this; }
+    mPTail = this;
 }
 
 bool CLEDController::isInList() const {
-    CLEDController* curr = m_pHead;
+    CLEDController* curr = mPHead;
     while (curr != nullptr) {
         if (curr == this) {
             return true;
         }
-        curr = curr->m_pNext;
+        curr = curr->mPNext;
     }
     return false;
 }
 
 void CLEDController::clearLedDataInternal(int nLeds) {
     // On common code that runs on avr, every byte counts.
-    fl::u16 n = nLeds >= 0 ? static_cast<fl::u16>(nLeds) : static_cast<fl::u16>(m_Leds.size());
-    if (m_Leds.data()) {
-        fl::memset((void*)m_Leds.data(), 0, sizeof(CRGB) * n);
+    fl::u16 n = nLeds >= 0 ? static_cast<fl::u16>(nLeds) : static_cast<fl::u16>(mLeds.size());
+    if (mLeds.data()) {
+        fl::memset((void*)mLeds.data(), 0, sizeof(CRGB) * n);
     }
 
 }
@@ -72,7 +72,7 @@ void CLEDController::removeFromList(CLEDController* controller) {
 
     // Remove the specified controller from the linked list
     CLEDController* prev = nullptr;
-    CLEDController* curr = m_pHead;
+    CLEDController* curr = mPHead;
 
     // Find the controller in the linked list
     while (curr != nullptr) {
@@ -80,26 +80,26 @@ void CLEDController::removeFromList(CLEDController* controller) {
             // Found it - remove from list
             if (prev == nullptr) {
                 // Removing head
-                m_pHead = controller->m_pNext;
-                if (m_pHead == nullptr) {
+                mPHead = controller->mPNext;
+                if (mPHead == nullptr) {
                     // List is now empty
-                    m_pTail = nullptr;
+                    mPTail = nullptr;
                 }
             } else {
                 // Removing from middle or end
-                prev->m_pNext = controller->m_pNext;
-                if (controller->m_pNext == nullptr) {
+                prev->mPNext = controller->mPNext;
+                if (controller->mPNext == nullptr) {
                     // Removing tail
-                    m_pTail = prev;
+                    mPTail = prev;
                 }
             }
 
             // Clear the controller's next pointer
-            controller->m_pNext = nullptr;
+            controller->mPNext = nullptr;
             break;
         }
         prev = curr;
-        curr = curr->m_pNext;
+        curr = curr->mPNext;
     }
 }
 

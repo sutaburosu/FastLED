@@ -64,7 +64,7 @@
         "check_platforms_fl_namespace.py",
         "check_using_namespace.py",
         "cpp_include_checker.py",
-        "google_member_style_checker.py",
+        "member_style_checker.py",
         "headers_exist_checker.py",
         "include_after_namespace_checker.py",
         "logging_in_iram_checker.py",

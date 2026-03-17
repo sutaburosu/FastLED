@@ -37,7 +37,6 @@ from ci.lint_cpp.cpp_include_checker import CppIncludeChecker
 from ci.lint_cpp.ctype_global_checker import CtypeGlobalChecker
 from ci.lint_cpp.fastled_header_usage_checker import FastLEDHeaderUsageChecker
 from ci.lint_cpp.fl_is_defined_checker import FlIsDefinedChecker
-from ci.lint_cpp.google_member_style_checker import GoogleMemberStyleChecker
 from ci.lint_cpp.headers_exist_checker import HeadersExistChecker
 from ci.lint_cpp.impl_hpp_includes_checker import ImplHppIncludesChecker
 from ci.lint_cpp.include_after_namespace_checker import IncludeAfterNamespaceChecker
@@ -45,6 +44,7 @@ from ci.lint_cpp.include_paths_checker import IncludePathsChecker
 from ci.lint_cpp.is_header_include_checker import IsHeaderIncludeChecker
 from ci.lint_cpp.iwyu_pragma_block_checker import IwyuPragmaBlockChecker
 from ci.lint_cpp.logging_in_iram_checker import LoggingInIramChecker
+from ci.lint_cpp.member_style_checker import MemberStyleChecker
 from ci.lint_cpp.namespace_platforms_checker import NamespacePlatformsChecker
 from ci.lint_cpp.native_platform_defines_checker import NativePlatformDefinesChecker
 from ci.lint_cpp.no_cpp_in_fl_checker import NoCppInFlChecker
@@ -161,7 +161,7 @@ def create_checkers(
         CppHppIncludesChecker(),
         ImplHppIncludesChecker(),
         IncludeAfterNamespaceChecker(),
-        GoogleMemberStyleChecker(),
+        MemberStyleChecker(),
         NumericLimitMacroChecker(),
         StaticInHeaderChecker(),
         LoggingInIramChecker(),

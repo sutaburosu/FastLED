@@ -42,7 +42,7 @@ sstream& operator<<(sstream& s, SPIError err);
 /// @note Internally holds fl::vector with allocator_psram for efficient DMA operations
 struct DMABuffer {
 private:
-    fl::shared_ptr<DMABufferInternalData> m_internal;  ///< Shared ownership of internal data
+    fl::shared_ptr<DMABufferInternalData> mInternal;  ///< Shared ownership of internal data
     SPIError error_code;
     bool is_ok;
 

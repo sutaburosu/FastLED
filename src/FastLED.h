@@ -557,11 +557,11 @@ inline ClearFlags& operator|=(ClearFlags& a, ClearFlags b) {
 /// @nosubgrouping
 class CFastLED {
 	// int m_nControllers;
-	fl::u8  m_Scale;         ///< the current global brightness scale setting
-	        fl::u16 m_nFPS;          ///< tracking for current frames per second (FPS) value
-	fl::u32 m_nMinMicros;    ///< minimum µs between frames, used for capping frame rates
-	fl::u32 m_nPowerData;    ///< max power use parameter
-	power_func m_pPowerFunc;  ///< function for overriding brightness when using FastLED.show();
+	fl::u8  mScale;         ///< the current global brightness scale setting
+	        fl::u16 mNFPS;          ///< tracking for current frames per second (FPS) value
+	fl::u32 mNMinMicros;    ///< minimum µs between frames, used for capping frame rates
+	fl::u32 mNPowerData;    ///< max power use parameter
+	power_func mPPowerFunc;  ///< function for overriding brightness when using FastLED.show();
 	static fl::vector<fl::ChannelPtr> mChannels; ///< stored ChannelPtrs to keep them alive
 #if SKETCH_HAS_LOTS_OF_MEMORY
 	static fl::vector<fl::shared_ptr<fl::AudioProcessor>> mAudioProcessors; ///< stored AudioProcessors to keep them alive
@@ -1197,11 +1197,11 @@ public:
 
 	/// Set the global brightness scaling
 	/// @param scale a 0-255 value for how much to scale all leds before writing them out
-	void setBrightness(fl::u8 scale) { m_Scale = scale; }
+	void setBrightness(fl::u8 scale) { mScale = scale; }
 
 	/// Get the current global brightness setting
 	/// @returns the current global brightness value
-	fl::u8 getBrightness() { return m_Scale; }
+	fl::u8 getBrightness() { return mScale; }
 
 	/// @name Channel Bus Manager Controls
 	/// Configure platform-specific channel bus drivers
@@ -1256,7 +1256,7 @@ public:
 
 	/// Set the maximum power to be used, given in milliwatts
 	/// @param milliwatts the max power draw desired, in milliwatts
-	inline void setMaxPowerInMilliWatts(fl::u32 milliwatts) { m_pPowerFunc = static_cast<power_func>(&calculate_max_brightness_for_power_mW); m_nPowerData = milliwatts; }
+	inline void setMaxPowerInMilliWatts(fl::u32 milliwatts) { mPPowerFunc = static_cast<power_func>(&calculate_max_brightness_for_power_mW); mNPowerData = milliwatts; }
 
 	/// @name Power Model Configuration
 	/// Configure LED power consumption for accurate power management
@@ -1335,7 +1335,7 @@ public:
 	void show(fl::u8 scale);
 
 	/// Update all our controllers with the current led colors
-	void show() { show(m_Scale); }
+	void show() { show(mScale); }
 
 	// Called automatically at the end of show().
 	void onEndFrame();
@@ -1378,7 +1378,7 @@ public:
 
 	/// Set all leds on all controllers to the given color
 	/// @param color what color to set the leds to
-	void showColor(const CRGB & color) { showColor(color, m_Scale); }
+	void showColor(const CRGB & color) { showColor(color, mScale); }
 
 	/// Delay for the given number of milliseconds.  Provided to allow the library to be used on platforms
 	/// that don't have a delay function (to allow code to be more portable). 
@@ -1418,7 +1418,7 @@ public:
 
 	/// Get the number of frames/second being written out
 	/// @returns the most recently computed FPS value
-	        fl::u16 getFPS() { return m_nFPS; }
+	        fl::u16 getFPS() { return mNFPS; }
 
 	/// Get how many controllers have been registered
 	/// @returns the number of controllers (strips) that have been added with addLeds()

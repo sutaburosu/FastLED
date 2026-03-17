@@ -8,7 +8,7 @@ namespace test {
 // SubcaseImpl Implementation
 // ============================================================================
 
-SubcaseImpl::SubcaseImpl(const char* name, const char* file, int line) : m_entered(false) {
+SubcaseImpl::SubcaseImpl(const char* name, const char* file, int line) : mEntered(false) {
     SubcaseCtx* ctx = _fl_get_subcase_ctx();
     if (!ctx) return;
 
@@ -24,7 +24,7 @@ SubcaseImpl::SubcaseImpl(const char* name, const char* file, int line) : m_enter
     // Check if we should enter this subcase
     if (node.to_enter == node.seen) {
         // We want to execute this subcase iteration
-        m_entered = true;
+        mEntered = true;
         subcase_ctx.needs_rerun = true;  // Signal that another pass is needed
     }
 

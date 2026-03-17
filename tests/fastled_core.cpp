@@ -745,7 +745,7 @@ FL_TEST_CASE("FastLED.clear() with REFRESH_RATE flag resets refresh rate") {
     FastLED.clear(ClearFlags::REFRESH_RATE);
 
     // Refresh rate should be unlimited (0 microseconds minimum)
-    // Can't directly test m_nMinMicros, but reset should work without error
+    // Can't directly test mNMinMicros, but reset should work without error
 }
 
 FL_TEST_CASE("FastLED.clear() with FPS_COUNTER flag resets FPS tracking") {

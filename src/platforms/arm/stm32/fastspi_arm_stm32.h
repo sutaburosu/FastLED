@@ -49,13 +49,13 @@ private:
     // MbedSPI requires pin parameters (MISO, MOSI, SCK) in constructor
 
     #ifdef FL_IS_STM32_MBED
-        arduino::MbedSPI* m_spi;
+        arduino::MbedSPI* mSpi;
     #else
-        SPIClass m_spi;
+        SPIClass mSpi;
     #endif
-    bool m_initialized;
+    bool mInitialized;
 #endif
-    Selectable* m_pSelect;
+    Selectable* mPSelect;
 
 public:
     // Verify that the pins are valid
@@ -63,23 +63,23 @@ public:
     static_assert(FastPin<CLOCK_PIN>::validpin(), "Invalid clock pin specified");
 
     STM32SPIOutput()
-        : m_pSelect(nullptr)
+        : mPSelect(nullptr)
 #if FASTLED_STM32_USE_HAL
         #ifdef FL_IS_STM32_MBED
-            , m_spi(nullptr)
+            , mSpi(nullptr)
         #endif
-        , m_initialized(false)
+        , mInitialized(false)
 #endif
     {
     }
 
     STM32SPIOutput(Selectable* pSelect)
-        : m_pSelect(pSelect)
+        : mPSelect(pSelect)
 #if FASTLED_STM32_USE_HAL
         #ifdef FL_IS_STM32_MBED
-            , m_spi(nullptr)
+            , mSpi(nullptr)
         #endif
-        , m_initialized(false)
+        , mInitialized(false)
 #endif
     {
     }
@@ -87,36 +87,36 @@ public:
 #if FASTLED_STM32_USE_HAL && defined(FL_IS_STM32_MBED)
     // Destructor for Arduino Mbed - clean up allocated SPIClass
     ~STM32SPIOutput() {
-        if (m_spi) {
-            delete m_spi;  // ok bare allocation
-            m_spi = nullptr;
+        if (mSpi) {
+            delete mSpi;  // ok bare allocation
+            mSpi = nullptr;
         }
     }
 #endif
 
     // Set the object representing the selectable
     void setSelect(Selectable* pSelect) {
-        m_pSelect = pSelect;
+        mPSelect = pSelect;
     }
 
     // Initialize the SPI subsystem
     void init() {
 #if FASTLED_STM32_USE_HAL
-        if (!m_initialized) {
+        if (!mInitialized) {
             // Initialize SPI with specified pins
             // Note: STM32duino's SPI.begin() uses the default SPI pins
             // For custom pins, we rely on the board's pin mapping
             #ifdef FL_IS_STM32_MBED
-                if (!m_spi) {
+                if (!mSpi) {
                     // Arduino Mbed requires MbedSPI with pin parameters
                     // SPIClass is abstract, so we use MbedSPI(MISO, MOSI, SCK)
-                    m_spi = new arduino::MbedSPI(SPI_MISO, SPI_MOSI, SPI_SCK);  // ok bare allocation
+                    mSpi = new arduino::MbedSPI(SPI_MISO, SPI_MOSI, SPI_SCK);  // ok bare allocation
                 }
-                m_spi->begin();
+                mSpi->begin();
             #else
-                m_spi.begin();
+                mSpi.begin();
             #endif
-            m_initialized = true;
+            mInitialized = true;
         }
 #else
         // Set pins to output mode
@@ -166,11 +166,11 @@ public:
     void writeByte(u8 b) {
 #if FASTLED_STM32_USE_HAL
         #ifdef FL_IS_STM32_MBED
-            if (m_spi) {
-                m_spi->transfer(b);
+            if (mSpi) {
+                mSpi->transfer(b);
             }
         #else
-            m_spi.transfer(b);
+            mSpi.transfer(b);
         #endif
 #else
         // Software SPI fallback - bitbang implementation
@@ -196,30 +196,30 @@ public:
         if (spi_speed > 36000000) spi_speed = 36000000; // Cap at 36 MHz
 
         #ifdef FL_IS_STM32_MBED
-            if (m_spi) {
-                m_spi->beginTransaction(SPISettings(spi_speed, MSBFIRST, SPI_MODE0));
+            if (mSpi) {
+                mSpi->beginTransaction(SPISettings(spi_speed, MSBFIRST, SPI_MODE0));
             }
         #else
-            m_spi.beginTransaction(SPISettings(spi_speed, MSBFIRST, SPI_MODE0));
+            mSpi.beginTransaction(SPISettings(spi_speed, MSBFIRST, SPI_MODE0));
         #endif
 #endif
-        if (m_pSelect != nullptr) {
-            m_pSelect->select();
+        if (mPSelect != nullptr) {
+            mPSelect->select();
         }
     }
 
     // Release the SPI line (end transaction)
     void release() {
-        if (m_pSelect != nullptr) {
-            m_pSelect->release();
+        if (mPSelect != nullptr) {
+            mPSelect->release();
         }
 #if FASTLED_STM32_USE_HAL
         #ifdef FL_IS_STM32_MBED
-            if (m_spi) {
-                m_spi->endTransaction();
+            if (mSpi) {
+                mSpi->endTransaction();
             }
         #else
-            m_spi.endTransaction();
+            mSpi.endTransaction();
         #endif
 #endif
     }
@@ -240,11 +240,11 @@ public:
         while (len--) {
 #if FASTLED_STM32_USE_HAL
             #ifdef FL_IS_STM32_MBED
-                if (m_spi) {
-                    m_spi->transfer(value);
+                if (mSpi) {
+                    mSpi->transfer(value);
                 }
             #else
-                m_spi.transfer(value);
+                mSpi.transfer(value);
             #endif
 #else
             writeByte(value);

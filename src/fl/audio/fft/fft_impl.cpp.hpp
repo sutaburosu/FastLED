@@ -55,20 +55,20 @@ class FFTContext {
   public:
     FFTContext(int samples, int bands, float fmin, float fmax, int sample_rate,
               FFTMode mode, FFTWindow window)
-        : m_fftr_cfg(nullptr), m_input_samples(samples),
-          m_kernels(nullptr),
-          m_mode(mode), m_totalBands(bands), m_fmin(fmin), m_fmax(fmax),
-          m_sampleRate(sample_rate), m_window(window) {
-        FFT_Args::resolveModeEnums(m_mode, m_window, bands, samples, fmin, fmax);
-        fl::memset(&m_cq_cfg, 0, sizeof(m_cq_cfg));
+        : mFftrCfg(nullptr), mInputSamples(samples),
+          mKernels(nullptr),
+          mMode(mode), mTotalBands(bands), mFmin(fmin), mFmax(fmax),
+          mSampleRate(sample_rate), mWindow(window) {
+        FFT_Args::resolveModeEnums(mMode, mWindow, bands, samples, fmin, fmax);
+        fl::memset(&mCqCfg, 0, sizeof(mCqCfg));
 
-        m_fftr_cfg = kiss_fftr_alloc(samples, 0, nullptr, nullptr);
-        if (!m_fftr_cfg) {
+        mFftrCfg = kiss_fftr_alloc(samples, 0, nullptr, nullptr);
+        if (!mFftrCfg) {
             FASTLED_WARN("Failed to allocate FFTImpl context");
             return;
         }
 
-        switch (m_mode) {
+        switch (mMode) {
         case FFTMode::LOG_REBIN:
             initLogRebin();
             break;
@@ -88,29 +88,29 @@ class FFTContext {
     }
 
     ~FFTContext() {
-        if (m_fftr_cfg) {
-            kiss_fftr_free(m_fftr_cfg);
+        if (mFftrCfg) {
+            kiss_fftr_free(mFftrCfg);
         }
-        if (m_kernels) {
-            free_kernels(m_kernels, m_cq_cfg);
+        if (mKernels) {
+            free_kernels(mKernels, mCqCfg);
         }
-        for (int i = 0; i < static_cast<int>(m_octaves.size()); i++) {
-            if (m_octaves[i].kernels) {
-                free_kernels(m_octaves[i].kernels, m_octaves[i].cfg);
+        for (int i = 0; i < static_cast<int>(mOctaves.size()); i++) {
+            if (mOctaves[i].kernels) {
+                free_kernels(mOctaves[i].kernels, mOctaves[i].cfg);
             }
         }
-        if (m_hybridSmallFft) {
-            kiss_fftr_free(m_hybridSmallFft);
+        if (mHybridSmallFft) {
+            kiss_fftr_free(mHybridSmallFft);
         }
-        if (m_hybridMidFft) {
-            kiss_fftr_free(m_hybridMidFft);
+        if (mHybridMidFft) {
+            kiss_fftr_free(mHybridMidFft);
         }
     }
 
-    fl::size sampleSize() const { return m_input_samples; }
+    fl::size sampleSize() const { return mInputSamples; }
 
     void run(span<const i16> buffer, FFTBins *out) {
-        switch (m_mode) {
+        switch (mMode) {
         case FFTMode::LOG_REBIN:
             runLogRebin(buffer, out);
             break;
@@ -130,18 +130,18 @@ class FFTContext {
     }
 
     fl::string info() const {
-        FFTBins tmp(m_totalBands);
-        tmp.setParams(m_fmin, m_fmax, m_sampleRate);
-        for (int i = 0; i < m_totalBands; ++i) {
+        FFTBins tmp(mTotalBands);
+        tmp.setParams(mFmin, mFmax, mSampleRate);
+        for (int i = 0; i < mTotalBands; ++i) {
             tmp.raw_mut().push_back(0.0f);
         }
 
         fl::sstream ss;
         ss << "FFTImpl Frequency Bands (CQ log-spaced): ";
-        for (int i = 0; i < m_totalBands; ++i) {
-            float f_low = (i == 0) ? m_fmin : tmp.binBoundary(i - 1);
+        for (int i = 0; i < mTotalBands; ++i) {
+            float f_low = (i == 0) ? mFmin : tmp.binBoundary(i - 1);
             float f_high =
-                (i == m_totalBands - 1) ? m_fmax : tmp.binBoundary(i);
+                (i == mTotalBands - 1) ? mFmax : tmp.binBoundary(i);
             ss << f_low << "Hz-" << f_high << "Hz, ";
         }
         return ss.str();
@@ -164,60 +164,60 @@ class FFTContext {
         //           = fmin * exp(logRatio * (2*i - 1) / (2*(bands-1)))
         //
         // edge[0] and edge[bands] extend half a bin beyond fmin/fmax.
-        const int bands = m_totalBands;
-        m_logBinEdges.resize(bands + 1);
-        float logRatio = logf(m_fmax / m_fmin);
+        const int bands = mTotalBands;
+        mLogBinEdges.resize(bands + 1);
+        float logRatio = logf(mFmax / mFmin);
         if (bands <= 1) {
-            m_logBinEdges[0] = m_fmin;
-            m_logBinEdges[1] = m_fmax;
+            mLogBinEdges[0] = mFmin;
+            mLogBinEdges[1] = mFmax;
         } else {
             float denom = 2.0f * static_cast<float>(bands - 1);
             // Edge below first center (half-bin below fmin)
-            m_logBinEdges[0] =
-                m_fmin * expf(-logRatio / denom);
+            mLogBinEdges[0] =
+                mFmin * expf(-logRatio / denom);
             // Intermediate edges: geometric mean of adjacent CQ centers
             for (int i = 1; i < bands; i++) {
-                m_logBinEdges[i] =
-                    m_fmin *
+                mLogBinEdges[i] =
+                    mFmin *
                     expf(logRatio * (2.0f * static_cast<float>(i) - 1.0f) /
                          denom);
             }
             // Edge above last center (half-bin above fmax)
-            m_logBinEdges[bands] =
-                m_fmax * expf(logRatio / denom);
+            mLogBinEdges[bands] =
+                mFmax * expf(logRatio / denom);
         }
 
         computeBinEdgesQ16();
 
         // Pre-compute bin mapping LUTs
-        buildLogBinLut(m_logBinLut, m_input_samples,
-                       static_cast<float>(m_sampleRate), 0, m_totalBands);
-        buildLinearBinLut(m_linearBinLut, m_input_samples);
+        buildLogBinLut(mLogBinLut, mInputSamples,
+                       static_cast<float>(mSampleRate), 0, mTotalBands);
+        buildLinearBinLut(mLinearBinLut, mInputSamples);
 
         // Pre-compute window as Q15 integer coefficients
-        computeWindow(m_window_buf, m_input_samples, m_window);
+        computeWindow(mWindowBuf, mInputSamples, mWindow);
 
         // Pre-compute bin-width normalization factors for LOG_REBIN.
         // Without normalization, wider high-frequency bins accumulate more
         // sidelobe energy than narrow low-frequency bins, creating visible
         // "aliasing" artifacts during a tone sweep.
-        computeLogRebinNormFactors(m_logBinNormFactors, m_logBinLut,
-                                   m_input_samples, static_cast<float>(m_sampleRate),
-                                   0, m_totalBands);
+        computeLogRebinNormFactors(mLogBinNormFactors, mLogBinLut,
+                                   mInputSamples, static_cast<float>(mSampleRate),
+                                   0, mTotalBands);
     }
 
     void runLogRebin(span<const i16> buffer, FFTBins *out) {
-        out->setParams(m_fmin, m_fmax, m_sampleRate);
-        const int N = m_input_samples;
-        const int bands = m_totalBands;
+        out->setParams(mFmin, mFmax, mSampleRate);
+        const int N = mInputSamples;
+        const int bands = mTotalBands;
         const int numRawBins = N / 2 + 1;
 
         // Apply Q15 window (integer multiply, no float)
         FASTLED_STACK_ARRAY(kiss_fft_scalar, windowed, N);
-        applyWindow(buffer.data(), m_window_buf.data(), windowed, N);
+        applyWindow(buffer.data(), mWindowBuf.data(), windowed, N);
 
         FASTLED_STACK_ARRAY(kiss_fft_cpx, fft, N);
-        kiss_fftr(m_fftr_cfg, windowed, fft);
+        kiss_fftr(mFftrCfg, windowed, fft);
 
         // Deinterleave AoS → SoA and batch-compute magnitudes
         FASTLED_STACK_ARRAY(kiss_fft_scalar, re, numRawBins);
@@ -234,8 +234,8 @@ class FFTContext {
         for (int i = 0; i < bands; ++i) {
             rawBinsI[i] = 0;
         }
-        logRebinRange(mag, N, static_cast<float>(m_sampleRate),
-                      0, bands, rawBinsI, m_logBinLut);
+        logRebinRange(mag, N, static_cast<float>(mSampleRate),
+                      0, bands, rawBinsI, mLogBinLut);
 
         // Store raw magnitudes (dB computed lazily by FFTBins::db())
         fl::vector<float> &rawBins = out->raw_mut();
@@ -246,31 +246,31 @@ class FFTContext {
 
         // Store bin-width normalization factors so consumers can optionally
         // normalize (e.g. for equalization display). Raw output is unchanged.
-        out->setNormFactors(m_logBinNormFactors);
+        out->setNormFactors(mLogBinNormFactors);
     }
 
     // ---- Naive single-FFT path (narrow frequency ranges) ----
 
     void initNaive(int samples, int bands, float fmin, float fmax, int sr) {
-        m_cq_cfg.samples = samples;
-        m_cq_cfg.bands = bands;
-        m_cq_cfg.fmin = fmin;
-        m_cq_cfg.fmax = fmax;
-        m_cq_cfg.fs = sr;
-        m_cq_cfg.min_val = FL_FFT_MIN_VAL;
-        m_kernels = generate_kernels(m_cq_cfg);
-        buildLinearBinLut(m_linearBinLut, samples);
+        mCqCfg.samples = samples;
+        mCqCfg.bands = bands;
+        mCqCfg.fmin = fmin;
+        mCqCfg.fmax = fmax;
+        mCqCfg.fs = sr;
+        mCqCfg.min_val = FL_FFT_MIN_VAL;
+        mKernels = generate_kernels(mCqCfg);
+        buildLinearBinLut(mLinearBinLut, samples);
         // Note: CQ kernels already apply Hamming windowing in frequency domain.
         // Adding time-domain Hanning would double-window and over-attenuate.
     }
 
     void runNaive(span<const i16> buffer, FFTBins *out) {
-        out->setParams(m_fmin, m_fmax, m_sampleRate);
-        const int fftSize = m_input_samples;
+        out->setParams(mFmin, mFmax, mSampleRate);
+        const int fftSize = mInputSamples;
         const int numRawBins = fftSize / 2 + 1;
 
         FASTLED_STACK_ARRAY(kiss_fft_cpx, fft, fftSize);
-        kiss_fftr(m_fftr_cfg, buffer.data(), fft);
+        kiss_fftr(mFftrCfg, buffer.data(), fft);
 
         // Deinterleave AoS → SoA and batch-compute magnitudes
         FASTLED_STACK_ARRAY(kiss_fft_scalar, re, numRawBins);
@@ -281,10 +281,10 @@ class FFTContext {
 
         computeLinearBins(mag, fftSize, out);
 
-        FASTLED_STACK_ARRAY(kiss_fft_cpx, cq, m_cq_cfg.bands);
-        apply_kernels(fft, cq, m_kernels, m_cq_cfg);
+        FASTLED_STACK_ARRAY(kiss_fft_cpx, cq, mCqCfg.bands);
+        apply_kernels(fft, cq, mKernels, mCqCfg);
 
-        const int bands = m_cq_cfg.bands;
+        const int bands = mCqCfg.bands;
         fl::vector<float> &rawBins = out->raw_mut();
         rawBins.resize(bands);
         for (int i = 0; i < bands; ++i) {
@@ -387,10 +387,10 @@ class FFTContext {
 
     // Compute Q16.16 bin edges from float bin edges for integer inner loops.
     void computeBinEdgesQ16() {
-        int n = static_cast<int>(m_logBinEdges.size());
-        m_logBinEdgesQ16.resize(n);
+        int n = static_cast<int>(mLogBinEdges.size());
+        mLogBinEdgesQ16.resize(n);
         for (int i = 0; i < n; ++i) {
-            m_logBinEdgesQ16[i] = u16x16(m_logBinEdges[i]);
+            mLogBinEdgesQ16[i] = u16x16(mLogBinEdges[i]);
         }
     }
 
@@ -408,7 +408,7 @@ class FFTContext {
             int lo = binStart, hi = binEnd - 1;
             while (lo < hi) {
                 int mid = (lo + hi + 1) / 2;
-                if (m_logBinEdgesQ16[mid] <= freq)
+                if (mLogBinEdgesQ16[mid] <= freq)
                     lo = mid;
                 else
                     hi = mid - 1;
@@ -421,26 +421,26 @@ class FFTContext {
     // output bin it maps to. Moves the u16x16 division from runtime to init.
     void buildLinearBinLut(fl::vector<u8>& lut, int fftN) {
         const int numRawBins = fftN / 2 + 1;
-        const int numLinearBins = m_totalBands;
+        const int numLinearBins = mTotalBands;
         lut.resize(numRawBins);
 
-        const u16x16 rawBinHz(static_cast<float>(m_sampleRate) /
+        const u16x16 rawBinHz(static_cast<float>(mSampleRate) /
                               static_cast<float>(fftN));
         const u16x16 halfBin = rawBinHz >> 1;
-        const u16x16 fminFP(m_fmin);
-        const u16x16 fmaxFP(m_fmax);
+        const u16x16 fminFP(mFmin);
+        const u16x16 fmaxFP(mFmax);
         const u16x16 linearBinHz(
-            (m_fmax - m_fmin) / static_cast<float>(numLinearBins));
+            (mFmax - mFmin) / static_cast<float>(numLinearBins));
 
         // Pre-compute loop bounds (stored for runtime use)
-        m_linearKStart = 0;
+        mLinearKStart = 0;
         if (fminFP > halfBin) {
-            m_linearKStart = static_cast<int>(
+            mLinearKStart = static_cast<int>(
                 u16x16::ceil((fminFP - halfBin) / rawBinHz).to_int());
         }
-        m_linearKEnd = static_cast<int>(
+        mLinearKEnd = static_cast<int>(
             u16x16::ceil((fmaxFP + halfBin) / rawBinHz).to_int());
-        if (m_linearKEnd > numRawBins) m_linearKEnd = numRawBins;
+        if (mLinearKEnd > numRawBins) mLinearKEnd = numRawBins;
 
         for (int k = 0; k < numRawBins; ++k) {
             u16x16 freq = rawBinHz * static_cast<u32>(k);
@@ -521,7 +521,7 @@ class FFTContext {
     }
 
     void initWindow() {
-        computeWindow(m_window_buf, m_input_samples, m_window);
+        computeWindow(mWindowBuf, mInputSamples, mWindow);
     }
 
     // ---- Octave-wise CQT path (wide frequency ranges) ----
@@ -573,8 +573,8 @@ class FFTContext {
         }
 
         // Build per-octave CQ kernel sets
-        m_octaves.resize(numOctaves);
-        m_maxBinsPerOctave = 0;
+        mOctaves.resize(numOctaves);
+        mMaxBinsPerOctave = 0;
         for (int oct = 0; oct < numOctaves; oct++) {
             int first = -1, last = -1;
             for (int i = 0; i < bands; i++) {
@@ -585,7 +585,7 @@ class FFTContext {
                 }
             }
 
-            OctaveInfo &oi = m_octaves[oct];
+            OctaveInfo &oi = mOctaves[oct];
             fl::memset(&oi.cfg, 0, sizeof(oi.cfg));
             oi.kernels = nullptr;
             if (first < 0) {
@@ -596,8 +596,8 @@ class FFTContext {
 
             oi.firstBin = first;
             oi.numBins = last - first + 1;
-            if (oi.numBins > m_maxBinsPerOctave) {
-                m_maxBinsPerOctave = oi.numBins;
+            if (oi.numBins > mMaxBinsPerOctave) {
+                mMaxBinsPerOctave = oi.numBins;
             }
 
             // Decimation: top octave (numOctaves-1) uses original sample rate.
@@ -619,70 +619,70 @@ class FFTContext {
         }
 
         // Pre-allocate reusable buffers
-        m_workBuf.resize(samples);
-        m_fftOut.resize(samples);
+        mWorkBuf.resize(samples);
+        mFftOut.resize(samples);
 
-        buildLinearBinLut(m_linearBinLut, samples);
+        buildLinearBinLut(mLinearBinLut, samples);
         // Note: CQ kernels already apply Hamming windowing in frequency domain.
         // Adding time-domain Hanning would double-window and over-attenuate.
     }
 
     void runOctaveWise(span<const i16> buffer, FFTBins *out) {
-        const int N = m_input_samples;
-        const int numOctaves = static_cast<int>(m_octaves.size());
+        const int N = mInputSamples;
+        const int numOctaves = static_cast<int>(mOctaves.size());
         const int numRawBins = N / 2 + 1;
 
-        out->setParams(m_fmin, m_fmax, m_sampleRate);
+        out->setParams(mFmin, mFmax, mSampleRate);
 
         // Copy input to working buffer
         int workLen = N;
         for (int i = 0; i < N; i++) {
-            m_workBuf[i] =
+            mWorkBuf[i] =
                 (i < static_cast<int>(buffer.size())) ? buffer[i] : 0;
         }
 
         // FFT at full sample rate (for linear bins + top octave CQ)
-        kiss_fftr(m_fftr_cfg, m_workBuf.data(), m_fftOut.data());
+        kiss_fftr(mFftrCfg, mWorkBuf.data(), mFftOut.data());
 
         // Deinterleave AoS → SoA and batch-compute magnitudes
         FASTLED_STACK_ARRAY(kiss_fft_scalar, re, numRawBins);
         FASTLED_STACK_ARRAY(kiss_fft_scalar, im, numRawBins);
         FASTLED_STACK_ARRAY(u16, mag, numRawBins);
-        deinterleave(m_fftOut.data(), re, im, numRawBins);
+        deinterleave(mFftOut.data(), re, im, numRawBins);
         batchMag(re, im, mag, numRawBins);
 
         computeLinearBins(mag, N, out);
 
         // Prepare CQ output bins
         fl::vector<float> &rawBins = out->raw_mut();
-        rawBins.resize(m_totalBands);
-        for (int i = 0; i < m_totalBands; i++) {
+        rawBins.resize(mTotalBands);
+        for (int i = 0; i < mTotalBands; i++) {
             rawBins[i] = 0.0f;
         }
 
         // Pre-allocate CQ accumulator once (avoids alloca in loop)
-        FASTLED_STACK_ARRAY(kiss_fft_cpx, cq, m_maxBinsPerOctave);
+        FASTLED_STACK_ARRAY(kiss_fft_cpx, cq, mMaxBinsPerOctave);
 
         // Process octaves from top (highest freq) to bottom (lowest freq).
         // Top octave uses the FFT already computed above.
         // Each lower octave: decimate signal by 2x, then FFT + CQ.
         for (int oct = numOctaves - 1; oct >= 0; oct--) {
-            const OctaveInfo &oi = m_octaves[oct];
+            const OctaveInfo &oi = mOctaves[oct];
             if (oi.numBins <= 0 || !oi.kernels)
                 continue;
 
             if (oct != numOctaves - 1) {
-                decimateBy2(m_workBuf.data(), workLen);
+                decimateBy2(mWorkBuf.data(), workLen);
                 workLen = workLen / 2;
                 // Zero-pad remainder so FFT sees clean input
                 for (int i = workLen; i < N; i++)
-                    m_workBuf[i] = 0;
-                kiss_fftr(m_fftr_cfg, m_workBuf.data(), m_fftOut.data());
+                    mWorkBuf[i] = 0;
+                kiss_fftr(mFftrCfg, mWorkBuf.data(), mFftOut.data());
             }
 
             // Zero the CQ accumulator and apply kernels
             fl::memset(cq, 0, sizeof(kiss_fft_cpx) * oi.numBins);
-            apply_kernels(m_fftOut.data(), cq, oi.kernels, oi.cfg);
+            apply_kernels(mFftOut.data(), cq, oi.kernels, oi.cfg);
 
             for (int i = 0; i < oi.numBins; i++) {
                 int binIdx = oi.firstBin + i;
@@ -730,38 +730,38 @@ class FFTContext {
         if (bassMidFreq >= midUpperFreq) bassMidFreq = midUpperFreq * 0.5f;
 
         // Find split bin indices
-        m_hybridSplitBin = 0;
+        mHybridSplitBin = 0;
         for (int i = 0; i < bands; i++) {
             if (centerFreqs[i] < bassMidFreq)
-                m_hybridSplitBin = i + 1;
+                mHybridSplitBin = i + 1;
         }
-        m_hybridMidSplitBin = m_hybridSplitBin;
-        for (int i = m_hybridSplitBin; i < bands; i++) {
+        mHybridMidSplitBin = mHybridSplitBin;
+        for (int i = mHybridSplitBin; i < bands; i++) {
             if (centerFreqs[i] < midUpperFreq)
-                m_hybridMidSplitBin = i + 1;
+                mHybridMidSplitBin = i + 1;
         }
 
         // Ensure each tier has at least 1 bin
-        if (m_hybridSplitBin < 1) m_hybridSplitBin = 1;
-        if (m_hybridMidSplitBin <= m_hybridSplitBin)
-            m_hybridMidSplitBin = m_hybridSplitBin + 1;
-        if (m_hybridMidSplitBin >= bands)
-            m_hybridMidSplitBin = bands - 1;
+        if (mHybridSplitBin < 1) mHybridSplitBin = 1;
+        if (mHybridMidSplitBin <= mHybridSplitBin)
+            mHybridMidSplitBin = mHybridSplitBin + 1;
+        if (mHybridMidSplitBin >= bands)
+            mHybridMidSplitBin = bands - 1;
 
         // LOG_REBIN bin edges (shared by all three tiers)
-        m_logBinEdges.resize(bands + 1);
+        mLogBinEdges.resize(bands + 1);
         if (bands <= 1) {
-            m_logBinEdges[0] = fmin;
-            m_logBinEdges[1] = fmax;
+            mLogBinEdges[0] = fmin;
+            mLogBinEdges[1] = fmax;
         } else {
             float denom = 2.0f * static_cast<float>(bands - 1);
-            m_logBinEdges[0] = fmin * expf(-logRatio / denom);
+            mLogBinEdges[0] = fmin * expf(-logRatio / denom);
             for (int i = 1; i < bands; i++) {
-                m_logBinEdges[i] =
+                mLogBinEdges[i] =
                     fmin * expf(logRatio *
                                 (2.0f * static_cast<float>(i) - 1.0f) / denom);
             }
-            m_logBinEdges[bands] = fmax * expf(logRatio / denom);
+            mLogBinEdges[bands] = fmax * expf(logRatio / denom);
         }
 
         computeBinEdgesQ16();
@@ -771,67 +771,67 @@ class FFTContext {
 
         // Mid-tier: 2 decimation steps → samples/4 at sr/4
         // Zero-pad 2x: 128 real samples → 256pt FFT → 43 Hz bins
-        m_hybridMidN = samples / 4;
-        m_hybridMidFs = static_cast<float>(sr) / 4.0f;
-        m_hybridMidFft = kiss_fftr_alloc(m_hybridMidN * 2, 0, nullptr, nullptr);
-        m_hybridMidFftOut.resize(m_hybridMidN * 2);
-        computeWindow(m_hybridMidWindow, m_hybridMidN, m_window);
+        mHybridMidN = samples / 4;
+        mHybridMidFs = static_cast<float>(sr) / 4.0f;
+        mHybridMidFft = kiss_fftr_alloc(mHybridMidN * 2, 0, nullptr, nullptr);
+        mHybridMidFftOut.resize(mHybridMidN * 2);
+        computeWindow(mHybridMidWindow, mHybridMidN, mWindow);
 
         // Bass-tier: 3 decimation steps → samples/8 at sr/8
-        m_hybridSmallN = samples / 8;
-        m_hybridSmallFs = static_cast<float>(sr) / 8.0f;
-        m_hybridSmallFft =
-            kiss_fftr_alloc(m_hybridSmallN, 0, nullptr, nullptr);
-        m_hybridSmallFftOut.resize(m_hybridSmallN);
-        computeWindow(m_hybridBassWindow, m_hybridSmallN, m_window);
+        mHybridSmallN = samples / 8;
+        mHybridSmallFs = static_cast<float>(sr) / 8.0f;
+        mHybridSmallFft =
+            kiss_fftr_alloc(mHybridSmallN, 0, nullptr, nullptr);
+        mHybridSmallFftOut.resize(mHybridSmallN);
+        computeWindow(mHybridBassWindow, mHybridSmallN, mWindow);
 
         // Work buffer for decimation (reused across phases)
-        m_workBuf.resize(samples);
-        m_fftOut.resize(samples);
+        mWorkBuf.resize(samples);
+        mFftOut.resize(samples);
 
         // Pre-computed bin mapping LUTs for each tier
-        buildLogBinLut(m_logBinLut, samples,
+        buildLogBinLut(mLogBinLut, samples,
                        static_cast<float>(sr),
-                       m_hybridMidSplitBin, bands);
-        buildLogBinLut(m_logBinLutMid, m_hybridMidN * 2,
-                       m_hybridMidFs,
-                       m_hybridSplitBin, m_hybridMidSplitBin);
-        buildLogBinLut(m_logBinLutBass, m_hybridSmallN,
-                       m_hybridSmallFs,
-                       0, m_hybridSplitBin);
-        buildLinearBinLut(m_linearBinLut, samples);
+                       mHybridMidSplitBin, bands);
+        buildLogBinLut(mLogBinLutMid, mHybridMidN * 2,
+                       mHybridMidFs,
+                       mHybridSplitBin, mHybridMidSplitBin);
+        buildLogBinLut(mLogBinLutBass, mHybridSmallN,
+                       mHybridSmallFs,
+                       0, mHybridSplitBin);
+        buildLinearBinLut(mLinearBinLut, samples);
 
         // Pre-compute normalization factors for each hybrid tier
-        computeLogRebinNormFactors(m_hybridNormUpper, m_logBinLut,
+        computeLogRebinNormFactors(mHybridNormUpper, mLogBinLut,
                                    samples, static_cast<float>(sr),
-                                   m_hybridMidSplitBin, bands);
-        computeLogRebinNormFactors(m_hybridNormMid, m_logBinLutMid,
-                                   m_hybridMidN * 2, m_hybridMidFs,
-                                   m_hybridSplitBin, m_hybridMidSplitBin);
-        computeLogRebinNormFactors(m_hybridNormBass, m_logBinLutBass,
-                                   m_hybridSmallN, m_hybridSmallFs,
-                                   0, m_hybridSplitBin);
+                                   mHybridMidSplitBin, bands);
+        computeLogRebinNormFactors(mHybridNormMid, mLogBinLutMid,
+                                   mHybridMidN * 2, mHybridMidFs,
+                                   mHybridSplitBin, mHybridMidSplitBin);
+        computeLogRebinNormFactors(mHybridNormBass, mLogBinLutBass,
+                                   mHybridSmallN, mHybridSmallFs,
+                                   0, mHybridSplitBin);
 
         // Pre-compute merged norm factors (avoids per-frame allocation)
-        m_hybridMergedNorm.resize(bands);
+        mHybridMergedNorm.resize(bands);
         for (int i = 0; i < bands; ++i) {
-            if (i >= m_hybridMidSplitBin && i < static_cast<int>(m_hybridNormUpper.size())) {
-                m_hybridMergedNorm[i] = m_hybridNormUpper[i];
-            } else if (i >= m_hybridSplitBin && i < static_cast<int>(m_hybridNormMid.size())) {
-                m_hybridMergedNorm[i] = m_hybridNormMid[i];
-            } else if (i < static_cast<int>(m_hybridNormBass.size())) {
-                m_hybridMergedNorm[i] = m_hybridNormBass[i];
+            if (i >= mHybridMidSplitBin && i < static_cast<int>(mHybridNormUpper.size())) {
+                mHybridMergedNorm[i] = mHybridNormUpper[i];
+            } else if (i >= mHybridSplitBin && i < static_cast<int>(mHybridNormMid.size())) {
+                mHybridMergedNorm[i] = mHybridNormMid[i];
+            } else if (i < static_cast<int>(mHybridNormBass.size())) {
+                mHybridMergedNorm[i] = mHybridNormBass[i];
             } else {
-                m_hybridMergedNorm[i] = 1.0f;
+                mHybridMergedNorm[i] = 1.0f;
             }
         }
     }
 
     void runHybrid(span<const i16> buffer, FFTBins *out) {
-        const int N = m_input_samples;
+        const int N = mInputSamples;
         const int numRawBins = N / 2 + 1;
 
-        out->setParams(m_fmin, m_fmax, m_sampleRate);
+        out->setParams(mFmin, mFmax, mSampleRate);
 
         // Reusable SoA + magnitude buffers (sized to largest FFT)
         FASTLED_STACK_ARRAY(kiss_fft_scalar, re, numRawBins);
@@ -840,86 +840,86 @@ class FFTContext {
 
         // Phase 1: Windowed 512pt FFT → LOG_REBIN for upper bins
         FASTLED_STACK_ARRAY(kiss_fft_scalar, windowed, N);
-        applyWindow(buffer.data(), m_window_buf.data(), windowed, N);
+        applyWindow(buffer.data(), mWindowBuf.data(), windowed, N);
 
-        kiss_fftr(m_fftr_cfg, windowed, m_fftOut.data());
+        kiss_fftr(mFftrCfg, windowed, mFftOut.data());
 
-        deinterleave(m_fftOut.data(), re, im, numRawBins);
+        deinterleave(mFftOut.data(), re, im, numRawBins);
         batchMag(re, im, mag, numRawBins);
         computeLinearBins(mag, N, out);
 
         // Integer accumulation for log-rebin
-        FASTLED_STACK_ARRAY(u32, rawBinsI, m_totalBands);
-        for (int i = 0; i < m_totalBands; i++) {
+        FASTLED_STACK_ARRAY(u32, rawBinsI, mTotalBands);
+        for (int i = 0; i < mTotalBands; i++) {
             rawBinsI[i] = 0;
         }
 
-        // Upper tier: LOG_REBIN for bins [m_hybridMidSplitBin, m_totalBands)
+        // Upper tier: LOG_REBIN for bins [mHybridMidSplitBin, mTotalBands)
         logRebinRange(mag, N,
-                      static_cast<float>(m_sampleRate),
-                      m_hybridMidSplitBin, m_totalBands, rawBinsI,
-                      m_logBinLut);
+                      static_cast<float>(mSampleRate),
+                      mHybridMidSplitBin, mTotalBands, rawBinsI,
+                      mLogBinLut);
 
         // Decimate signal: 512 → 256 → 128 (2 steps for mid tier)
         int workLen = N;
         for (int i = 0; i < N; i++) {
-            m_workBuf[i] =
+            mWorkBuf[i] =
                 (i < static_cast<int>(buffer.size())) ? buffer[i] : 0;
         }
-        decimateBy2(m_workBuf.data(), workLen);
+        decimateBy2(mWorkBuf.data(), workLen);
         workLen /= 2;
-        decimateBy2(m_workBuf.data(), workLen);
+        decimateBy2(mWorkBuf.data(), workLen);
         workLen /= 2;
 
         // Phase 2: Zero-padded 256pt FFT (128 windowed + 128 zeros) → LOG_REBIN for mid bins
-        if (m_hybridMidSplitBin > m_hybridSplitBin && m_hybridMidFft) {
-            int midFftN = m_hybridMidN * 2;
+        if (mHybridMidSplitBin > mHybridSplitBin && mHybridMidFft) {
+            int midFftN = mHybridMidN * 2;
             int midRawBins = midFftN / 2 + 1;
             FASTLED_STACK_ARRAY(kiss_fft_scalar, midWindowed, midFftN);
-            applyWindow(m_workBuf.data(), m_hybridMidWindow.data(),
-                           midWindowed, m_hybridMidN);
-            for (int i = m_hybridMidN; i < midFftN; ++i) {
+            applyWindow(mWorkBuf.data(), mHybridMidWindow.data(),
+                           midWindowed, mHybridMidN);
+            for (int i = mHybridMidN; i < midFftN; ++i) {
                 midWindowed[i] = 0;
             }
-            kiss_fftr(m_hybridMidFft, midWindowed,
-                      m_hybridMidFftOut.data());
-            deinterleave(m_hybridMidFftOut.data(), re, im, midRawBins);
+            kiss_fftr(mHybridMidFft, midWindowed,
+                      mHybridMidFftOut.data());
+            deinterleave(mHybridMidFftOut.data(), re, im, midRawBins);
             batchMag(re, im, mag, midRawBins);
             logRebinRange(mag, midFftN,
-                          m_hybridMidFs,
-                          m_hybridSplitBin, m_hybridMidSplitBin, rawBinsI,
-                          m_logBinLutMid);
+                          mHybridMidFs,
+                          mHybridSplitBin, mHybridMidSplitBin, rawBinsI,
+                          mLogBinLutMid);
         }
 
         // Decimate 1 more step: 128 → 64 (reuse unwindowed workBuf)
-        decimateBy2(m_workBuf.data(), workLen);
+        decimateBy2(mWorkBuf.data(), workLen);
         workLen /= 2;
 
         // Phase 3: Windowed 64pt FFT → LOG_REBIN for bass bins
-        if (m_hybridSplitBin > 0 && m_hybridSmallFft) {
-            int bassRawBins = m_hybridSmallN / 2 + 1;
-            FASTLED_STACK_ARRAY(kiss_fft_scalar, bassWindowed, m_hybridSmallN);
-            applyWindow(m_workBuf.data(), m_hybridBassWindow.data(),
-                           bassWindowed, m_hybridSmallN);
-            kiss_fftr(m_hybridSmallFft, bassWindowed,
-                      m_hybridSmallFftOut.data());
-            deinterleave(m_hybridSmallFftOut.data(), re, im, bassRawBins);
+        if (mHybridSplitBin > 0 && mHybridSmallFft) {
+            int bassRawBins = mHybridSmallN / 2 + 1;
+            FASTLED_STACK_ARRAY(kiss_fft_scalar, bassWindowed, mHybridSmallN);
+            applyWindow(mWorkBuf.data(), mHybridBassWindow.data(),
+                           bassWindowed, mHybridSmallN);
+            kiss_fftr(mHybridSmallFft, bassWindowed,
+                      mHybridSmallFftOut.data());
+            deinterleave(mHybridSmallFftOut.data(), re, im, bassRawBins);
             batchMag(re, im, mag, bassRawBins);
-            logRebinRange(mag, m_hybridSmallN,
-                          m_hybridSmallFs,
-                          0, m_hybridSplitBin, rawBinsI,
-                          m_logBinLutBass);
+            logRebinRange(mag, mHybridSmallN,
+                          mHybridSmallFs,
+                          0, mHybridSplitBin, rawBinsI,
+                          mLogBinLutBass);
         }
 
         // Store raw magnitudes (dB computed lazily by FFTBins::db())
         fl::vector<float> &rawBins = out->raw_mut();
-        rawBins.resize(m_totalBands);
-        for (int i = 0; i < m_totalBands; ++i) {
+        rawBins.resize(mTotalBands);
+        for (int i = 0; i < mTotalBands; ++i) {
             rawBins[i] = static_cast<float>(rawBinsI[i]);
         }
 
         // Use pre-computed merged norm factors (no per-frame allocation)
-        out->setNormFactors(m_hybridMergedNorm);
+        out->setNormFactors(mHybridMergedNorm);
     }
 
     // ---- Shared utilities ----
@@ -942,8 +942,8 @@ class FFTContext {
         const int numRawBins = fftN / 2 + 1;
         const u16x16 rawBinHz(fs / static_cast<float>(fftN));
         const u16x16 halfBin = rawBinHz >> 1;
-        const u16x16 loEdge(m_logBinEdges[binStart]);
-        const u16x16 hiEdge(m_logBinEdges[binEnd]);
+        const u16x16 loEdge(mLogBinEdges[binStart]);
+        const u16x16 hiEdge(mLogBinEdges[binEnd]);
 
         int kStart = 0;
         if (loEdge > halfBin) {
@@ -974,8 +974,8 @@ class FFTContext {
         // Compute loop bounds to skip out-of-range FFT bins
         const u16x16 rawBinHz(fs / static_cast<float>(fftN));
         const u16x16 halfBin = rawBinHz >> 1;
-        const u16x16 loEdge(m_logBinEdges[binStart]);
-        const u16x16 hiEdge(m_logBinEdges[binEnd]);
+        const u16x16 loEdge(mLogBinEdges[binStart]);
+        const u16x16 hiEdge(mLogBinEdges[binEnd]);
 
         int kStart = 0;
         if (loEdge > halfBin) {
@@ -992,11 +992,11 @@ class FFTContext {
     }
 
     void computeLinearBins(const u16 *mag, int /*nfft*/, FFTBins *out) {
-        const int numLinearBins = m_totalBands;
+        const int numLinearBins = mTotalBands;
 
         fl::vector<float> &linBins = out->linear_mut();
         linBins.resize(numLinearBins);
-        out->setLinearParams(m_fmin, m_fmax);
+        out->setLinearParams(mFmin, mFmax);
 
         // Integer accumulation using pre-computed LUT
         FASTLED_STACK_ARRAY(u32, linBinsI, numLinearBins);
@@ -1004,8 +1004,8 @@ class FFTContext {
             linBinsI[i] = 0;
         }
 
-        for (int k = m_linearKStart; k < m_linearKEnd; ++k) {
-            linBinsI[m_linearBinLut[k]] += static_cast<u32>(mag[k]);
+        for (int k = mLinearKStart; k < mLinearKEnd; ++k) {
+            linBinsI[mLinearBinLut[k]] += static_cast<u32>(mag[k]);
         }
 
         // Convert to float
@@ -1036,60 +1036,60 @@ class FFTContext {
     // ---- Member variables ----
 
     // Shared
-    kiss_fftr_cfg m_fftr_cfg;
-    int m_input_samples;
+    kiss_fftr_cfg mFftrCfg;
+    int mInputSamples;
 
     // Naive CQ path only
-    cq_kernels_t m_kernels;
-    cq_kernel_cfg m_cq_cfg;
+    cq_kernels_t mKernels;
+    cq_kernel_cfg mCqCfg;
 
     // Log-rebin path only
-    fl::vector<float> m_logBinEdges;   // bands+1 geometric bin edges (float)
-    fl::vector<u16x16> m_logBinEdgesQ16;  // bands+1 geometric bin edges (Q16.16)
-    fl::vector<alpha16> m_window_buf;   // N pre-computed window coefficients (UNORM16 [0,1])
-    fl::vector<float> m_logBinNormFactors;  // Per-bin width normalization (1/count)
+    fl::vector<float> mLogBinEdges;   // bands+1 geometric bin edges (float)
+    fl::vector<u16x16> mLogBinEdgesQ16;  // bands+1 geometric bin edges (Q16.16)
+    fl::vector<alpha16> mWindowBuf;   // N pre-computed window coefficients (UNORM16 [0,1])
+    fl::vector<float> mLogBinNormFactors;  // Per-bin width normalization (1/count)
 
     // Octave-wise CQ path (also used by Hybrid)
-    FFTMode m_mode;
-    fl::vector<OctaveInfo> m_octaves;
-    fl::vector<kiss_fft_scalar> m_workBuf; // reusable decimation buffer
-    fl::vector<kiss_fft_cpx> m_fftOut;     // reusable FFT output buffer
-    int m_maxBinsPerOctave = 0;
+    FFTMode mMode;
+    fl::vector<OctaveInfo> mOctaves;
+    fl::vector<kiss_fft_scalar> mWorkBuf; // reusable decimation buffer
+    fl::vector<kiss_fft_cpx> mFftOut;     // reusable FFT output buffer
+    int mMaxBinsPerOctave = 0;
 
     // Hybrid 3-tier path
-    int m_hybridSplitBin = 0;      // bins < this use bass FFT
-    int m_hybridNumCqOctaves = 0;
-    int m_hybridNumDecim = 0;
-    int m_hybridSmallN = 0;        // bass FFT size (samples/8)
-    float m_hybridSmallFs = 0.0f;  // bass sample rate (sr/8)
-    kiss_fftr_cfg m_hybridSmallFft = nullptr;
-    fl::vector<kiss_fft_cpx> m_hybridSmallFftOut;
+    int mHybridSplitBin = 0;      // bins < this use bass FFT
+    int mHybridNumCqOctaves = 0;
+    int mHybridNumDecim = 0;
+    int mHybridSmallN = 0;        // bass FFT size (samples/8)
+    float mHybridSmallFs = 0.0f;  // bass sample rate (sr/8)
+    kiss_fftr_cfg mHybridSmallFft = nullptr;
+    fl::vector<kiss_fft_cpx> mHybridSmallFftOut;
     // Mid-tier (3-tier hybrid)
-    int m_hybridMidN = 0;          // mid FFT size (samples/4)
-    float m_hybridMidFs = 0.0f;    // mid sample rate (sr/4)
-    kiss_fftr_cfg m_hybridMidFft = nullptr;
-    fl::vector<kiss_fft_cpx> m_hybridMidFftOut;
-    int m_hybridMidSplitBin = 0;   // bins >= this use upper FFT
-    fl::vector<alpha16> m_hybridBassWindow;  // UNORM16 window for bass
-    fl::vector<alpha16> m_hybridMidWindow;   // UNORM16 window for mid
-    fl::vector<float> m_hybridNormUpper; // Normalization factors for upper tier
-    fl::vector<float> m_hybridNormMid;   // Normalization factors for mid tier
-    fl::vector<float> m_hybridNormBass;  // Normalization factors for bass tier
-    fl::vector<float> m_hybridMergedNorm; // Pre-computed merged norm factors
+    int mHybridMidN = 0;          // mid FFT size (samples/4)
+    float mHybridMidFs = 0.0f;    // mid sample rate (sr/4)
+    kiss_fftr_cfg mHybridMidFft = nullptr;
+    fl::vector<kiss_fft_cpx> mHybridMidFftOut;
+    int mHybridMidSplitBin = 0;   // bins >= this use upper FFT
+    fl::vector<alpha16> mHybridBassWindow;  // UNORM16 window for bass
+    fl::vector<alpha16> mHybridMidWindow;   // UNORM16 window for mid
+    fl::vector<float> mHybridNormUpper; // Normalization factors for upper tier
+    fl::vector<float> mHybridNormMid;   // Normalization factors for mid tier
+    fl::vector<float> mHybridNormBass;  // Normalization factors for bass tier
+    fl::vector<float> mHybridMergedNorm; // Pre-computed merged norm factors
 
     // Pre-computed bin mapping LUTs (built at init, used at runtime)
-    fl::vector<u8> m_logBinLut;       // FFT bin k → log-bin index (primary FFT)
-    fl::vector<u8> m_linearBinLut;    // FFT bin k → linear-bin index (primary FFT)
-    fl::vector<u8> m_logBinLutMid;    // HYBRID mid-tier LUT (256pt)
-    fl::vector<u8> m_logBinLutBass;   // HYBRID bass-tier LUT (64pt)
-    int m_linearKStart = 0;           // Pre-computed linear bin loop bounds
-    int m_linearKEnd = 0;
+    fl::vector<u8> mLogBinLut;       // FFT bin k → log-bin index (primary FFT)
+    fl::vector<u8> mLinearBinLut;    // FFT bin k → linear-bin index (primary FFT)
+    fl::vector<u8> mLogBinLutMid;    // HYBRID mid-tier LUT (256pt)
+    fl::vector<u8> mLogBinLutBass;   // HYBRID bass-tier LUT (64pt)
+    int mLinearKStart = 0;           // Pre-computed linear bin loop bounds
+    int mLinearKEnd = 0;
 
     // Used by both paths
-    int m_totalBands;
-    float m_fmin, m_fmax;
-    int m_sampleRate;
-    FFTWindow m_window;
+    int mTotalBands;
+    float mFmin, mFmax;
+    int mSampleRate;
+    FFTWindow mWindow;
 };
 
 FFTImpl::FFTImpl(const FFT_Args &args) {

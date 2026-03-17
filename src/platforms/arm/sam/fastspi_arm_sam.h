@@ -30,7 +30,7 @@ namespace fl {
 
 template <u8 _DATA_PIN, u8 _CLOCK_PIN, u32 _SPI_CLOCK_DIVIDER>
 class SAMHardwareSPIOutput {
-	Selectable *m_pSelect;
+	Selectable *mPSelect;
 
 	static inline void waitForEmpty() { while ((m_SPI->SPI_SR & SPI_SR_TDRE) == 0); }
 
@@ -54,8 +54,8 @@ class SAMHardwareSPIOutput {
 	}
 
 public:
-	SAMHardwareSPIOutput() { m_pSelect = nullptr; }
-	SAMHardwareSPIOutput(Selectable *pSelect) { m_pSelect = pSelect; }
+	SAMHardwareSPIOutput() { mPSelect = nullptr; }
+	SAMHardwareSPIOutput(Selectable *pSelect) { mPSelect = pSelect; }
 
 	// set the object representing the selectable
 	void setSelect(Selectable *pSelect) { /* TODO */ }
@@ -92,10 +92,10 @@ public:
 	}
 
 	// latch the CS select
-	void inline select() __attribute__((always_inline)) { if(m_pSelect != nullptr) { m_pSelect->select(); } }
+	void inline select() __attribute__((always_inline)) { if(mPSelect != nullptr) { mPSelect->select(); } }
 
 	// release the CS select
-	void inline release() __attribute__((always_inline)) { if(m_pSelect != nullptr) { m_pSelect->release(); } }
+	void inline release() __attribute__((always_inline)) { if(mPSelect != nullptr) { mPSelect->release(); } }
 
 	void endTransaction() {
 		waitFully();
@@ -200,10 +200,10 @@ namespace fl {
 template <u8 _DATA_PIN, u8 _CLOCK_PIN, u32 _SPI_CLOCK_DIVIDER>
 class SAMDHardwareSPIOutput {
 private:
-	Sercom* m_SPI;
-	Selectable *m_pSelect;
-	u8 m_sercom_num;
-	bool m_initialized;
+	Sercom* mSPI;
+	Selectable *mPSelect;
+	u8 mSercomNum;
+	bool mInitialized;
 
 	static inline void waitForEmpty(Sercom* spi) {
 		while (!spi->SPI.INTFLAG.bit.DRE);
@@ -214,17 +214,17 @@ private:
 	}
 
 public:
-	SAMDHardwareSPIOutput() : m_SPI(nullptr), m_pSelect(nullptr), m_sercom_num(0), m_initialized(false) {}
-	SAMDHardwareSPIOutput(Selectable *pSelect) : m_SPI(nullptr), m_pSelect(pSelect), m_sercom_num(0), m_initialized(false) {}
+	SAMDHardwareSPIOutput() : mSPI(nullptr), mPSelect(nullptr), mSercomNum(0), mInitialized(false) {}
+	SAMDHardwareSPIOutput(Selectable *pSelect) : mSPI(nullptr), mPSelect(pSelect), mSercomNum(0), mInitialized(false) {}
 
 	// set the object representing the selectable
-	void setSelect(Selectable *pSelect) { m_pSelect = pSelect; }
+	void setSelect(Selectable *pSelect) { mPSelect = pSelect; }
 
 	// Helper to get SERCOM instance from Arduino's SPI object
 	// On SAMD, the default SPI object uses a specific SERCOM
 	// We'll use Arduino's built-in SPI functionality if available
 	void init() {
-		if (m_initialized) {
+		if (mInitialized) {
 			return;
 		}
 
@@ -242,10 +242,10 @@ public:
 		#if defined(FL_IS_SAMD51)
 		// SAMD51 - Arduino core typically uses SERCOM1 or specific board SERCOM
 		// Use the SPI peripheral that Arduino configured
-		m_SPI = &(::SPI);
+		mSPI = &(::SPI);
 		#elif defined(FL_IS_SAMD21)
 		// SAMD21 - Arduino core typically uses SERCOM4
-		m_SPI = &(::SPI);
+		mSPI = &(::SPI);
 		#endif
 
 		// Configure SPI settings
@@ -257,15 +257,15 @@ public:
 		::SPI.beginTransaction(SPISettings(clock_hz, MSBFIRST, SPI_MODE0));
 		::SPI.endTransaction();
 
-		m_initialized = true;
+		mInitialized = true;
 	}
 
 	// latch the CS select
 	void inline select() __attribute__((always_inline)) {
-		if(m_pSelect != nullptr) {
-			m_pSelect->select();
+		if(mPSelect != nullptr) {
+			mPSelect->select();
 		}
-		if (m_initialized) {
+		if (mInitialized) {
 			u32 clock_hz = F_CPU / _SPI_CLOCK_DIVIDER;
 			if (clock_hz > 24000000) clock_hz = 24000000;
 			::SPI.beginTransaction(SPISettings(clock_hz, MSBFIRST, SPI_MODE0));
@@ -274,11 +274,11 @@ public:
 
 	// release the CS select
 	void inline release() __attribute__((always_inline)) {
-		if (m_initialized) {
+		if (mInitialized) {
 			::SPI.endTransaction();
 		}
-		if(m_pSelect != nullptr) {
-			m_pSelect->release();
+		if(mPSelect != nullptr) {
+			mPSelect->release();
 		}
 	}
 

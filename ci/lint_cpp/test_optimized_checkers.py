@@ -16,7 +16,7 @@ from ci.lint_cpp.banned_headers_checker import (
     BannedHeadersChecker,
 )
 from ci.lint_cpp.cpp_include_checker import CppIncludeChecker
-from ci.lint_cpp.google_member_style_checker import GoogleMemberStyleChecker
+from ci.lint_cpp.member_style_checker import MemberStyleChecker
 from ci.lint_cpp.numeric_limit_macros_checker import NumericLimitMacroChecker
 from ci.lint_cpp.static_in_headers_checker import StaticInHeaderChecker
 from ci.util.check_files import FileContent, MultiCheckerFileProcessor
@@ -126,19 +126,21 @@ class TestCppIncludeChecker(unittest.TestCase):
 
 
 # ============================================================================
-# GoogleMemberStyleChecker
+# MemberStyleChecker
 # ============================================================================
 
 
-class TestGoogleMemberStyleChecker(unittest.TestCase):
-    """Verify pre-compiled regex detects Google-style members."""
+class TestMemberStyleChecker(unittest.TestCase):
+    """Verify pre-compiled regex detects non-standard member naming."""
 
     def _check(
         self, content: str, path: str = "src/fl/test.h"
     ) -> list[tuple[int, str]]:
-        checker = GoogleMemberStyleChecker()
+        checker = MemberStyleChecker()
         checker.check_file_content(_make(content, path))
         return checker.violations.get(path, [])
+
+    # --- Trailing underscore (Google style) ---
 
     def test_detects_trailing_underscore(self):
         violations = self._check("class Foo {\n    int state_;\n};")
@@ -155,6 +157,51 @@ class TestGoogleMemberStyleChecker(unittest.TestCase):
 
     def test_string_literal_ignored(self):
         violations = self._check('const char* s = "state_";')
+        self.assertEqual(len(violations), 0)
+
+    # --- m_ prefix style ---
+
+    def test_detects_m_underscore_camel(self):
+        violations = self._check("class Foo {\n    int m_hybridNumDecim = 0;\n};")
+        self.assertEqual(len(violations), 1)
+        self.assertIn("mHybridNumDecim", violations[0][1])
+
+    def test_detects_m_underscore_simple(self):
+        violations = self._check("class Foo {\n    bool m_isReady;\n};")
+        self.assertEqual(len(violations), 1)
+        self.assertIn("mIsReady", violations[0][1])
+
+    def test_detects_m_underscore_snake(self):
+        violations = self._check("class Foo {\n    int m_some_var;\n};")
+        self.assertEqual(len(violations), 1)
+        self.assertIn("mSomeVar", violations[0][1])
+
+    def test_detects_m_underscore_pointer(self):
+        violations = self._check("class Foo {\n    uint8_t* m_dataPtr;\n};")
+        self.assertEqual(len(violations), 1)
+        self.assertIn("mDataPtr", violations[0][1])
+
+    def test_detects_m_underscore_with_init(self):
+        violations = self._check("class Foo {\n    int m_count = 42;\n};")
+        self.assertEqual(len(violations), 1)
+        self.assertIn("mCount", violations[0][1])
+
+    def test_m_underscore_in_comment_ignored(self):
+        violations = self._check("// int m_hybridNumDecim = 0;")
+        self.assertEqual(len(violations), 0)
+
+    def test_constructor_param_trailing_underscore_ignored(self):
+        violations = self._check(
+            "Foo(const Bar& timing_, const char* name_) : timing(timing_), name(name_) {}"
+        )
+        self.assertEqual(len(violations), 0)
+
+    def test_constructor_param_m_underscore_ignored(self):
+        violations = self._check("void foo(int m_value, float m_other) {}")
+        self.assertEqual(len(violations), 0)
+
+    def test_m_underscore_in_string_ignored(self):
+        violations = self._check('const char* s = "m_hybridNumDecim";')
         self.assertEqual(len(violations), 0)
 
 

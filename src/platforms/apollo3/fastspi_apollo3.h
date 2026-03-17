@@ -21,14 +21,14 @@ namespace fl {
 
 template <u8 _DATA_PIN, u8 _CLOCK_PIN, u32 _SPI_CLOCK_DIVIDER>
 class APOLLO3HardwareSPIOutput {
-	Selectable *m_pSelect;
+	Selectable *mPSelect;
 
 public:
-	APOLLO3HardwareSPIOutput() { m_pSelect = nullptr; }
-	APOLLO3HardwareSPIOutput(Selectable *pSelect) { m_pSelect = pSelect; }
+	APOLLO3HardwareSPIOutput() { mPSelect = nullptr; }
+	APOLLO3HardwareSPIOutput(Selectable *pSelect) { mPSelect = pSelect; }
 
 	// set the object representing the selectable
-	void setSelect(Selectable *pSelect) { m_pSelect = pSelect; }
+	void setSelect(Selectable *pSelect) { mPSelect = pSelect; }
 
 	// initialize the pins for fastgpio
 	void init() {

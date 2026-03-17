@@ -18,17 +18,17 @@
 /// idea of interfaces - it's possible this could be done with virtual classes, need to decide if i want that overhead)
 template <fl::u8 _DATA_PIN, fl::u8 _CLOCK_PIN, fl::u32 _SPI_CLOCK_DIVIDER>
 class NOPSPIOutput {
-	Selectable *m_pSelect;
+	Selectable *mPSelect;
 
 public:
 	/// Default Constructor
-	NOPSPIOutput() { m_pSelect = nullptr; }
+	NOPSPIOutput() { mPSelect = nullptr; }
 
 	/// Constructor with selectable
-	NOPSPIOutput(Selectable *pSelect) { m_pSelect = pSelect; }
+	NOPSPIOutput(Selectable *pSelect) { mPSelect = pSelect; }
 
 	/// set the object representing the selectable
-	void setSelect(Selectable *pSelect) { m_pSelect = pSelect;  }
+	void setSelect(Selectable *pSelect) { mPSelect = pSelect;  }
 
 	/// initialize the SPI subssytem
 	void init() { /* TODO */ }

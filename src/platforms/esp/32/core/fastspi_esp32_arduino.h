@@ -118,8 +118,8 @@ class ESP32SPIOutput {
     static constexpr i8 spiMiso = -1;
     static constexpr i8 spiCs = -1;
 
-    SPIClass m_ledSPI;
-	Selectable 	*m_pSelect;
+    SPIClass mLedSPI;
+	Selectable 	*mPSelect;
 
 public:
 	// Verify that the pins are valid
@@ -127,17 +127,17 @@ public:
 	static_assert(FastPin<CLOCK_PIN>::validpin(), "Invalid clock pin specified");
 
 	ESP32SPIOutput() :
-	  m_ledSPI(FASTLED_ESP32_SPI_BUS),
-	  m_pSelect(nullptr) {}
+	  mLedSPI(FASTLED_ESP32_SPI_BUS),
+	  mPSelect(nullptr) {}
 	ESP32SPIOutput(Selectable *pSelect) :
-	  m_ledSPI(FASTLED_ESP32_SPI_BUS),
-	  m_pSelect(pSelect) {}
-	void setSelect(Selectable *pSelect) { m_pSelect = pSelect; }
+	  mLedSPI(FASTLED_ESP32_SPI_BUS),
+	  mPSelect(pSelect) {}
+	void setSelect(Selectable *pSelect) { mPSelect = pSelect; }
 
 	void init() {
 		// set the pins to output and make sure the select is released (which apparently means hi?  This is a bit
 		// confusing to me)
-		m_ledSPI.begin(spiClk, spiMiso, spiMosi, spiCs);
+		mLedSPI.begin(spiClk, spiMiso, spiMosi, spiCs);
 		release();
 	}
 
@@ -158,13 +158,13 @@ public:
 
 	// naive writeByte implelentation, simply calls writeBit on the 8 bits in the byte.
 	void writeByte(u8 b) {
-		m_ledSPI.transfer(b);
+		mLedSPI.transfer(b);
 	}
 
 	void writePixelsBulk(const CRGB* pixels, size_t n) {
 		u8* data = reinterpret_cast<u8*>(const_cast<CRGB*>(pixels)); // ok reinterpret cast - Arduino SPI API requires non-const, const_cast needed
 		size_t n_bytes = n * 3;
-		m_ledSPI.writePixels(data, n_bytes);
+		mLedSPI.writePixels(data, n_bytes);
 	}
 
 public:
@@ -172,14 +172,14 @@ public:
 	// select the SPI output (TODO: research whether this really means hi or lo.  Alt TODO: move select responsibility out of the SPI classes
 	// entirely, make it up to the caller to remember to lock/select the line?)
 	void select() {
-		m_ledSPI.beginTransaction(SPISettings(SPI_SPEED, MSBFIRST, SPI_MODE0));
-		if(m_pSelect != nullptr) { m_pSelect->select(); }
+		mLedSPI.beginTransaction(SPISettings(SPI_SPEED, MSBFIRST, SPI_MODE0));
+		if(mPSelect != nullptr) { mPSelect->select(); }
 	}
 
 	// release the SPI line
 	void release() {
-		if(m_pSelect != nullptr) { m_pSelect->release(); }
-		m_ledSPI.endTransaction();
+		if(mPSelect != nullptr) { mPSelect->release(); }
+		mLedSPI.endTransaction();
 	}
 
 	void endTransaction() {
@@ -187,7 +187,7 @@ public:
 		release();
 	}
 
-	// Write out len bytes of the given value out over m_ledSPI.  Useful for quickly flushing, say, a line of 0's down the line.
+	// Write out len bytes of the given value out over mLedSPI.  Useful for quickly flushing, say, a line of 0's down the line.
 	void writeBytesValue(u8 value, int len) {
 		select();
 		writeBytesValueRaw(value, len);
@@ -196,7 +196,7 @@ public:
 
 	void writeBytesValueRaw(u8 value, int len) {
 		while(len--) {
-			m_ledSPI.transfer(value);
+			mLedSPI.transfer(value);
 		}
 	}
 
@@ -208,7 +208,7 @@ public:
 		while(data != end) {
 			writeByte(D::adjust(*data++));
 		}
-		D::postBlock(len, &m_ledSPI);
+		D::postBlock(len, &mLedSPI);
 		release();
 	}
 
@@ -224,7 +224,7 @@ public:
 	template <u8 BIT> inline void writeBit(u8 b) {
 		// Test bit BIT in value b, send 0xFF if set, 0x00 if clear
 		// This matches the behavior of other platforms (AVR, ARM, etc.)
-		m_ledSPI.transfer((b & (1 << BIT)) ? 0xFF : 0x00);
+		mLedSPI.transfer((b & (1 << BIT)) ? 0xFF : 0x00);
 	}
 
 	// write a block of uint8_ts out in groups of three.  len is the total number of uint8_ts to write out.  The template

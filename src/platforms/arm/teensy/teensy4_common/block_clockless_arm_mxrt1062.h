@@ -24,36 +24,36 @@ class FlexibleInlineBlockClocklessController : public CPixelLEDController<RGB_OR
     static constexpr u32 T2 = TIMING::T2;
     static constexpr u32 T3 = TIMING::T3;
     u8 m_bitOffsets[16];
-    u8 m_nActualLanes;
-    u8 m_nLowBit;
-    u8 m_nHighBit;
-    u32 m_nWriteMask;
-    u8 m_nOutBlocks;
+    u8 mNActualLanes;
+    u8 mNLowBit;
+    u8 mNHighBit;
+    u32 mNWriteMask;
+    u8 mNOutBlocks;
     u32 m_offsets[3];
     u32 MS_COUNTER;
     CMinWait<WAIT_TIME> mWait;
 
 public:
-    virtual int size() { return CLEDController::size() * m_nActualLanes; }
+    virtual int size() { return CLEDController::size() * mNActualLanes; }
 
     // For each pin, if we've hit our lane count, break, otherwise set the pin to output,
     // store the bit offset in our offset array, add this pin to the write mask, and if this
     // pin ends a block sequence, then break out of the switch as well
     #define _BLOCK_PIN(P) case P: {                             \
-        if(m_nActualLanes == LANES) break;                      \
+        if(mNActualLanes == LANES) break;                      \
         fl::FastPin<P>::setOutput();                            \
-        m_bitOffsets[m_nActualLanes++] = fl::FastPin<P>::pinbit();  \
-        m_nWriteMask |= fl::FastPin<P>::mask();                 \
+        m_bitOffsets[mNActualLanes++] = fl::FastPin<P>::pinbit();  \
+        mNWriteMask |= fl::FastPin<P>::mask();                 \
         if( P == 27 || P == 7 || P == 30) break;                \
     }
 
     virtual void init() {
         // pre-initialize
         fl::memset(m_bitOffsets,0,16);
-        m_nActualLanes = 0;
-        m_nLowBit = 33;
-        m_nHighBit = 0;
-        m_nWriteMask = 0;
+        mNActualLanes = 0;
+        mNLowBit = 33;
+        mNHighBit = 0;
+        mNWriteMask = 0;
 	MS_COUNTER = 0;
 
         // setup the bits and data tracking for parallel output
@@ -97,12 +97,12 @@ public:
             _BLOCK_PIN(30);
         }
 
-        for(int i = 0; i < m_nActualLanes; ++i) {
-            if(m_bitOffsets[i] < m_nLowBit) { m_nLowBit = m_bitOffsets[i]; }
-            if(m_bitOffsets[i] > m_nHighBit) { m_nHighBit = m_bitOffsets[i]; }
+        for(int i = 0; i < mNActualLanes; ++i) {
+            if(m_bitOffsets[i] < mNLowBit) { mNLowBit = m_bitOffsets[i]; }
+            if(m_bitOffsets[i] > mNHighBit) { mNHighBit = m_bitOffsets[i]; }
         }
 
-        m_nOutBlocks = (m_nHighBit + 8)/8;
+        mNOutBlocks = (mNHighBit + 8)/8;
 
     }
 
@@ -143,24 +143,24 @@ public:
         for(u32 i = 8; i > 0;) {
             --i;
             while(ARM_DWT_CYCCNT < next_mark);
-            *fl::FastPin<FIRST_PIN>::sport() = m_nWriteMask;
+            *fl::FastPin<FIRST_PIN>::sport() = mNWriteMask;
             next_mark = ARM_DWT_CYCCNT + m_offsets[0];
 
             u32 out = (b2.bg[3][i] << 24) | (b2.bg[2][i] << 16) | (b2.bg[1][i] << 8) | b2.bg[0][i];
 
-            out = ((~out) & m_nWriteMask);
+            out = ((~out) & mNWriteMask);
             while((next_mark - ARM_DWT_CYCCNT) > m_offsets[1]);
             *fl::FastPin<FIRST_PIN>::cport() = out;
 
-            out = m_nWriteMask;
+            out = mNWriteMask;
             while((next_mark - ARM_DWT_CYCCNT) > m_offsets[2]);
             *fl::FastPin<FIRST_PIN>::cport() = out;
 
             // Read and store up to two bytes
-            if (x < m_nActualLanes) {
+            if (x < mNActualLanes) {
                 b.bytes[m_bitOffsets[x]] = pixels.template loadAndScale<PX>(pixels, x, d, scale);
                 ++x;
-                if (x < m_nActualLanes) {
+                if (x < mNActualLanes) {
                     b.bytes[m_bitOffsets[x]] = pixels.template loadAndScale<PX>(pixels, x, d, scale);
                     ++x;
                 }
@@ -173,7 +173,7 @@ public:
         _outlines b0;
         u32 start = ARM_DWT_CYCCNT;
 
-        for(int i = 0; i < m_nActualLanes; ++i) {
+        for(int i = 0; i < mNActualLanes; ++i) {
             b0.bytes[m_bitOffsets[i]] = allpixels.loadAndScale0(i);
         }
 

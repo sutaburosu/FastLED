@@ -187,12 +187,12 @@ inline fl::ThreadLocal<SubcaseCtx*>& _fl_get_subcase_ctx() {
 }
 
 class SubcaseImpl {
-    bool m_entered;
+    bool mEntered;
 
 public:
     SubcaseImpl(const char* name, const char* file, int line);
     ~SubcaseImpl();
-    operator bool() const { return m_entered; }
+    operator bool() const { return mEntered; }
 };
 
 #define FL_SUBCASE(name) if (fl::test::SubcaseImpl _sc = fl::test::SubcaseImpl(name, __FILE__, __LINE__))

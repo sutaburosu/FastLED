@@ -128,34 +128,34 @@ namespace fl {
 
 class json {
 private:
-    fl::shared_ptr<json_value> m_value;
+    fl::shared_ptr<json_value> mValue;
 
 public:
     // Constructors
-    json() : m_value() {}  // Default initialize to nullptr
-    json(fl::nullptr_t) : m_value(fl::make_shared<json_value>(nullptr)) {}
-    json(bool b) : m_value(fl::make_shared<json_value>(b)) {}
-    json(int i) : m_value(fl::make_shared<json_value>(static_cast<i64>(i))) {}
-    json(i64 i) : m_value(fl::make_shared<json_value>(i)) {}
-    json(float f) : m_value(fl::make_shared<json_value>(f)) {}  // Use float directly
-    json(double d) : m_value(fl::make_shared<json_value>(static_cast<float>(d))) {}  // Convert double to float
-    json(const fl::string& s) : m_value(fl::make_shared<json_value>(s)) {}
+    json() : mValue() {}  // Default initialize to nullptr
+    json(fl::nullptr_t) : mValue(fl::make_shared<json_value>(nullptr)) {}
+    json(bool b) : mValue(fl::make_shared<json_value>(b)) {}
+    json(int i) : mValue(fl::make_shared<json_value>(static_cast<i64>(i))) {}
+    json(i64 i) : mValue(fl::make_shared<json_value>(i)) {}
+    json(float f) : mValue(fl::make_shared<json_value>(f)) {}  // Use float directly
+    json(double d) : mValue(fl::make_shared<json_value>(static_cast<float>(d))) {}  // Convert double to float
+    json(const fl::string& s) : mValue(fl::make_shared<json_value>(s)) {}
     json(const char* s): json(fl::string(s)) {}
-    json(json_array a) : m_value(fl::make_shared<json_value>(fl::move(a))) {}
-    json(json_object o) : m_value(fl::make_shared<json_value>(fl::move(o))) {}
+    json(json_array a) : mValue(fl::make_shared<json_value>(fl::move(a))) {}
+    json(json_object o) : mValue(fl::make_shared<json_value>(fl::move(o))) {}
     // Constructor from shared_ptr<json_value>
-    json(const fl::shared_ptr<json_value>& value) : m_value(value) {}
+    json(const fl::shared_ptr<json_value>& value) : mValue(value) {}
     
     // Factory method to create a json from a json_value
-    static json from_value(const json_value& value) {
+    static json fromValue(const json_value& value) {
         json result;
-        result.m_value = fl::make_shared<json_value>(value);
+        result.mValue = fl::make_shared<json_value>(value);
         return result;
     }
     
     // Constructor for fl::vector<float> - converts to JSON array
-    json(const fl::vector<float>& vec) : m_value(fl::make_shared<json_value>(json_array{})) {
-        auto ptr = m_value->data.ptr<json_array>();
+    json(const fl::vector<float>& vec) : mValue(fl::make_shared<json_value>(json_array{})) {
+        auto ptr = mValue->data.ptr<json_array>();
         if (ptr) {
             for (const auto& item : vec) {
                 ptr->push_back(fl::make_shared<json_value>(item));  // Use float directly
@@ -168,65 +168,65 @@ public:
         json result;
         auto value = fl::make_shared<json_value>(fl::string(1, c));
         //FASTLED_WARN("Created json_value with string: " << value->is_string() << ", int: " << value->is_int());
-        result.m_value = value;
+        result.mValue = value;
         //FASTLED_WARN("json has string: " << result.is_string() << ", int: " << result.is_int());
         return result;
     }
 
     // Copy constructor
-    json(const json& other) : m_value(other.m_value) {}
+    json(const json& other) : mValue(other.mValue) {}
 
     // Assignment operator
     json& operator=(const json& other) {
-        //FL_WARN("json& operator=(const json& other): " << (other.m_value ? other.m_value.get() : 0));
+        //FL_WARN("json& operator=(const json& other): " << (other.mValue ? other.mValue.get() : 0));
         if (this != &other) {
-            m_value = other.m_value;
+            mValue = other.mValue;
         }
         return *this;
     }
 
     json& operator=(json&& other) {
         if (this != &other) {
-            m_value = fl::move(other.m_value);
+            mValue = fl::move(other.mValue);
         }
         return *this;
     }
     
     // Assignment operators for primitive types to avoid ambiguity
     json& operator=(bool value) {
-        m_value = fl::make_shared<json_value>(value);
+        mValue = fl::make_shared<json_value>(value);
         return *this;
     }
     
     json& operator=(int value) {
-        m_value = fl::make_shared<json_value>(static_cast<i64>(value));
+        mValue = fl::make_shared<json_value>(static_cast<i64>(value));
         return *this;
     }
     
     json& operator=(float value) {
-        m_value = fl::make_shared<json_value>(value);
+        mValue = fl::make_shared<json_value>(value);
         return *this;
     }
     
     json& operator=(double value) {
-        m_value = fl::make_shared<json_value>(static_cast<float>(value));
+        mValue = fl::make_shared<json_value>(static_cast<float>(value));
         return *this;
     }
     
     json& operator=(const fl::string& value) {
-        m_value = fl::make_shared<json_value>(value);
+        mValue = fl::make_shared<json_value>(value);
         return *this;
     }
     
     json& operator=(const char* value) {
-        m_value = fl::make_shared<json_value>(fl::string(value));
+        mValue = fl::make_shared<json_value>(fl::string(value));
         return *this;
     }
     
     // Assignment operator for fl::vector<float>
     json& operator=(fl::vector<float> vec) {
-        m_value = fl::make_shared<json_value>(json_array{});
-        auto ptr = m_value->data.ptr<json_array>();
+        mValue = fl::make_shared<json_value>(json_array{});
+        auto ptr = mValue->data.ptr<json_array>();
         if (ptr) {
             for (const auto& item : vec) {
                 ptr->push_back(fl::make_shared<json_value>(item));  // Use float directly
@@ -236,65 +236,65 @@ public:
     }
 
     // Type queries
-    bool is_null() const { return m_value ? m_value->is_null() : true; }
-    bool is_bool() const { return m_value && m_value->is_bool(); }
-    bool is_int() const { return m_value && (m_value->is_int() || m_value->is_bool()); }
-    bool is_float() const { return m_value && m_value->is_float(); }
-    bool is_double() const { return m_value && m_value->is_double(); }
+    bool is_null() const { return mValue ? mValue->is_null() : true; }
+    bool is_bool() const { return mValue && mValue->is_bool(); }
+    bool is_int() const { return mValue && (mValue->is_int() || mValue->is_bool()); }
+    bool is_float() const { return mValue && mValue->is_float(); }
+    bool is_double() const { return mValue && mValue->is_double(); }
     // is_number() returns true if the value is any numeric type (int or float)
-    bool is_number() const { return m_value && m_value->is_number(); }
-    bool is_string() const { return m_value && m_value->is_string(); }
-    bool is_array() const { return m_value && m_value->is_array(); }
-    bool is_generic_array() const { return m_value && m_value->is_generic_array(); }
-    bool is_object() const { return m_value && m_value->is_object(); }
-    bool is_audio() const { return m_value && m_value->is_audio(); }
-    bool is_bytes() const { return m_value && m_value->is_bytes(); }
-    bool is_floats() const { return m_value && m_value->is_floats(); }
+    bool is_number() const { return mValue && mValue->is_number(); }
+    bool is_string() const { return mValue && mValue->is_string(); }
+    bool is_array() const { return mValue && mValue->is_array(); }
+    bool is_generic_array() const { return mValue && mValue->is_generic_array(); }
+    bool is_object() const { return mValue && mValue->is_object(); }
+    bool is_audio() const { return mValue && mValue->is_audio(); }
+    bool is_bytes() const { return mValue && mValue->is_bytes(); }
+    bool is_floats() const { return mValue && mValue->is_floats(); }
 
     // Safe extractors
-    fl::optional<bool> as_bool() const { return m_value ? m_value->as_bool() : fl::nullopt; }
+    fl::optional<bool> as_bool() const { return mValue ? mValue->as_bool() : fl::nullopt; }
     fl::optional<i64> as_int() const { 
-        if (!m_value) return fl::nullopt;
-        return m_value->as_int(); 
+        if (!mValue) return fl::nullopt;
+        return mValue->as_int(); 
     }
     
     template<typename IntType>
     fl::optional<IntType> as_int() const { 
-        if (!m_value) return fl::nullopt;
-        return m_value->template as_int<IntType>(); 
+        if (!mValue) return fl::nullopt;
+        return mValue->template as_int<IntType>(); 
     }
     
     fl::optional<float> as_float() const { 
-        if (!m_value) return fl::nullopt;
-        return m_value->as_float();
+        if (!mValue) return fl::nullopt;
+        return mValue->as_float();
     }
     
     fl::optional<double> as_double() const { 
-        if (!m_value) return fl::nullopt;
-        return m_value->as_double();
+        if (!mValue) return fl::nullopt;
+        return mValue->as_double();
     }
     
     template<typename FloatType>
     fl::optional<FloatType> as_float() const { 
-        if (!m_value) return fl::nullopt;
-        return m_value->template as_float<FloatType>(); 
+        if (!mValue) return fl::nullopt;
+        return mValue->template as_float<FloatType>(); 
     }
     
     fl::optional<fl::string> as_string() const { 
-        if (!m_value) return fl::nullopt;
-        return m_value->as_string(); 
+        if (!mValue) return fl::nullopt;
+        return mValue->as_string(); 
     }
-    fl::optional<json_array> as_array() const { return m_value ? m_value->as_array() : fl::nullopt; }
-    fl::optional<json_object> as_object() const { return m_value ? m_value->as_object() : fl::nullopt; }
-    fl::optional<fl::vector<i16>> as_audio() const { return m_value ? m_value->as_audio() : fl::nullopt; }
-    fl::optional<fl::vector<u8>> as_bytes() const { return m_value ? m_value->as_bytes() : fl::nullopt; }
-    fl::optional<fl::vector<float>> as_floats() const { return m_value ? m_value->as_floats() : fl::nullopt; }
+    fl::optional<json_array> as_array() const { return mValue ? mValue->as_array() : fl::nullopt; }
+    fl::optional<json_object> as_object() const { return mValue ? mValue->as_object() : fl::nullopt; }
+    fl::optional<fl::vector<i16>> as_audio() const { return mValue ? mValue->as_audio() : fl::nullopt; }
+    fl::optional<fl::vector<u8>> as_bytes() const { return mValue ? mValue->as_bytes() : fl::nullopt; }
+    fl::optional<fl::vector<float>> as_floats() const { return mValue ? mValue->as_floats() : fl::nullopt; }
 
     // NEW ERGONOMIC API: try_as<T>() - Explicit optional handling
     // Use when you need to explicitly handle conversion failure
     template<typename T>
     fl::optional<T> try_as() const {
-        if (!m_value) {
+        if (!mValue) {
             return fl::nullopt;
         }
         return as_impl<T>();
@@ -320,14 +320,14 @@ private:
     template<typename T>
     typename fl::enable_if<fl::is_integral<T>::value && !fl::is_same<T, bool>::value, fl::optional<T>>::type
     as_impl() const {
-        return m_value->template as_int<T>();
+        return mValue->template as_int<T>();
     }
     
     // Boolean type
     template<typename T>
     typename fl::enable_if<fl::is_same<T, bool>::value, fl::optional<T>>::type
     as_impl() const {
-        return m_value->as_bool();
+        return mValue->as_bool();
     }
     
     // Floating point types
@@ -335,47 +335,47 @@ private:
     typename fl::enable_if<fl::is_floating_point<T>::value, fl::optional<T>>::type
     as_impl() const {
         // Force template call by explicitly using the templated method
-        return m_value->template as_float<T>();
+        return mValue->template as_float<T>();
     }
     
     // String type
     template<typename T>
     typename fl::enable_if<fl::is_same<T, fl::string>::value, fl::optional<T>>::type
     as_impl() const {
-        return m_value->as_string();
+        return mValue->as_string();
     }
     
     // Array type
     template<typename T>
     typename fl::enable_if<fl::is_same<T, json_array>::value, fl::optional<T>>::type
     as_impl() const {
-        return m_value->as_array();
+        return mValue->as_array();
     }
     
     // Object type
     template<typename T>
     typename fl::enable_if<fl::is_same<T, json_object>::value, fl::optional<T>>::type
     as_impl() const {
-        return m_value->as_object();
+        return mValue->as_object();
     }
     
     // Specialized vector types
     template<typename T>
     typename fl::enable_if<fl::is_same<T, fl::vector<i16>>::value, fl::optional<T>>::type
     as_impl() const {
-        return m_value->as_audio();
+        return mValue->as_audio();
     }
     
     template<typename T>
     typename fl::enable_if<fl::is_same<T, fl::vector<u8>>::value, fl::optional<T>>::type
     as_impl() const {
-        return m_value->as_bytes();
+        return mValue->as_bytes();
     }
     
     template<typename T>
     typename fl::enable_if<fl::is_same<T, fl::vector<float>>::value, fl::optional<T>>::type
     as_impl() const {
-        return m_value->as_floats();
+        return mValue->as_floats();
     }
 
     // Helper methods for getting default values for each type
@@ -437,45 +437,45 @@ public:
 
     // Iterator support for objects
     json_value::iterator begin() { 
-        if (!m_value) return json_value::iterator(json_object().begin());
-        return m_value->begin(); 
+        if (!mValue) return json_value::iterator(json_object().begin());
+        return mValue->begin(); 
     }
     json_value::iterator end() { 
-        if (!m_value) return json_value::iterator(json_object().end());
-        return m_value->end(); 
+        if (!mValue) return json_value::iterator(json_object().end());
+        return mValue->end(); 
     }
     json_value::const_iterator begin() const { 
-        if (!m_value) return json_value::const_iterator::from_iterator(json_object().begin());
-        return json_value::const_iterator::from_object_iterator(m_value->begin()); 
+        if (!mValue) return json_value::const_iterator::from_iterator(json_object().begin());
+        return json_value::const_iterator::from_object_iterator(mValue->begin()); 
     }
     json_value::const_iterator end() const { 
-        if (!m_value) return json_value::const_iterator::from_iterator(json_object().end());
-        return json_value::const_iterator::from_object_iterator(m_value->end()); 
+        if (!mValue) return json_value::const_iterator::from_iterator(json_object().end());
+        return json_value::const_iterator::from_object_iterator(mValue->end()); 
     }
     
     // Iterator support for arrays with type conversion
     template<typename T>
     typename json_value::template array_iterator<T> begin_array() {
-        if (!m_value) return typename json_value::template array_iterator<T>();
-        return m_value->template begin_array<T>();
+        if (!mValue) return typename json_value::template array_iterator<T>();
+        return mValue->template begin_array<T>();
     }
     
     template<typename T>
     typename json_value::template array_iterator<T> end_array() {
-        if (!m_value) return typename json_value::template array_iterator<T>();
-        return m_value->template end_array<T>();
+        if (!mValue) return typename json_value::template array_iterator<T>();
+        return mValue->template end_array<T>();
     }
     
     template<typename T>
     typename json_value::template array_iterator<T> begin_array() const {
-        if (!m_value) return typename json_value::template array_iterator<T>();
-        return m_value->template begin_array<T>();
+        if (!mValue) return typename json_value::template array_iterator<T>();
+        return mValue->template begin_array<T>();
     }
     
     template<typename T>
     typename json_value::template array_iterator<T> end_array() const {
-        if (!m_value) return typename json_value::template array_iterator<T>();
-        return m_value->template end_array<T>();
+        if (!mValue) return typename json_value::template array_iterator<T>();
+        return mValue->template end_array<T>();
     }
     
     // Free functions for range-based for loops
@@ -487,7 +487,7 @@ public:
     // Object iteration support (needed for screenmap conversion)
     fl::vector<fl::string> keys() const {
         fl::vector<fl::string> result;
-        if (m_value && m_value->is_object()) {
+        if (mValue && mValue->is_object()) {
             for (auto it = begin(); it != end(); ++it) {
                 auto keyValue = *it;
                 result.push_back(keyValue.first);
@@ -502,22 +502,22 @@ public:
 
     // Indexing for fluid chaining
     json operator[](size_t idx) {
-        if (!m_value) {
-            m_value = fl::make_shared<json_value>(json_array{});
+        if (!mValue) {
+            mValue = fl::make_shared<json_value>(json_array{});
         }
         // If we're indexing into a specialized array, convert it to regular json_array first
-        if (m_value->data.is<fl::vector<i16>>() || 
-            m_value->data.is<fl::vector<u8>>() || 
-            m_value->data.is<fl::vector<float>>()) {
+        if (mValue->data.is<fl::vector<i16>>() || 
+            mValue->data.is<fl::vector<u8>>() || 
+            mValue->data.is<fl::vector<float>>()) {
             // Convert to regular json_array
-            auto arr = m_value->as_array();
+            auto arr = mValue->as_array();
             if (arr) {
-                m_value = fl::make_shared<json_value>(fl::move(*arr));
+                mValue = fl::make_shared<json_value>(fl::move(*arr));
             }
         }
         // Get the shared_ptr directly from the json_array to maintain reference semantics
-        if (m_value->data.is<json_array>()) {
-            auto arr = m_value->as_array();
+        if (mValue->data.is<json_array>()) {
+            auto arr = mValue->as_array();
             if (arr) {
                 // Ensure the array is large enough
                 if (idx >= arr->size()) {
@@ -532,23 +532,23 @@ public:
     }
     
     const json operator[](size_t idx) const {
-        if (!m_value) {
+        if (!mValue) {
             return json(nullptr);
         }
         // Handle regular json_array
-        if (m_value->data.is<json_array>()) {
-            auto arr = m_value->as_array();
+        if (mValue->data.is<json_array>()) {
+            auto arr = mValue->as_array();
             if (arr && idx < arr->size()) {
                 return json((*arr)[idx]);
             }
         }
         // For specialized arrays, we need to convert them to regular arrays first
         // This is needed for compatibility with existing code that expects json_array
-        if (m_value->data.is<fl::vector<i16>>() || 
-            m_value->data.is<fl::vector<u8>>() || 
-            m_value->data.is<fl::vector<float>>()) {
+        if (mValue->data.is<fl::vector<i16>>() || 
+            mValue->data.is<fl::vector<u8>>() || 
+            mValue->data.is<fl::vector<float>>()) {
             // Convert to regular json_array
-            auto arr = m_value->as_array();
+            auto arr = mValue->as_array();
             if (arr && idx < arr->size()) {
                 return json((*arr)[idx]);
             }
@@ -557,11 +557,11 @@ public:
     }
     
     json operator[](const fl::string &key) {
-        if (!m_value || !m_value->is_object()) {
-            m_value = fl::make_shared<json_value>(json_object{});
+        if (!mValue || !mValue->is_object()) {
+            mValue = fl::make_shared<json_value>(json_object{});
         }
         // Get reference to the json_value
-        auto objPtr = m_value->data.ptr<json_object>();
+        auto objPtr = mValue->data.ptr<json_object>();
         if (objPtr) {
             // If key doesn't exist, create a new json_value and insert it
             if (objPtr->find(key) == objPtr->end()) {
@@ -570,16 +570,16 @@ public:
             // Return a new json object that wraps the shared_ptr to the json_value
             return json((*objPtr)[key]);
         }
-        // Should not happen if m_value is properly initialized as an object
+        // Should not happen if mValue is properly initialized as an object
         //return *reinterpret_cast<json*>(&get_null_value());
         return json(nullptr);
     }
     
     const json operator[](const fl::string &key) const {
-        if (!m_value || !m_value->is_object()) {
+        if (!mValue || !mValue->is_object()) {
             return json(nullptr);
         }
-        auto obj = m_value->as_object();
+        auto obj = mValue->as_object();
         if (obj && obj->find(key) != obj->end()) {
             return json((*obj)[key]);
         }
@@ -588,22 +588,22 @@ public:
 
     // Contains methods for checking existence
     bool contains(size_t idx) const { 
-        return m_value && m_value->contains(idx); 
+        return mValue && mValue->contains(idx); 
     }
     bool contains(const fl::string &key) const { 
-        return m_value && m_value->contains(key); 
+        return mValue && mValue->contains(key); 
     }
 
     // Size method
     size_t size() const { 
-        return m_value ? m_value->size() : 0; 
+        return mValue ? mValue->size() : 0; 
     }
 
     // Default-value operator (pipe)
     template<typename T>
     T operator|(const T& fallback) const {
-        if (!m_value) return fallback;
-        return (*m_value) | fallback;
+        if (!mValue) return fallback;
+        return (*mValue) | fallback;
     }
     
     // NEW ERGONOMIC API: as_or<T>(default) - Conversion with custom defaults
@@ -617,16 +617,16 @@ public:
 
     // has_value method for compatibility
     bool has_value() const {
-        return m_value && !m_value->is_null();
+        return mValue && !mValue->is_null();
     }
 
     // Get access to the internal json_value for direct variant visiting
     // Returns nullptr if no value is set
-    const json_value* internal_value() const { return m_value.get(); }
+    const json_value* internal_value() const { return mValue.get(); }
 
     // Method to set the internal value (for json_value::to_string())
     void set_value(const fl::shared_ptr<json_value>& value) {
-        m_value = value;
+        mValue = value;
     }
     
     // Public method to access to_string_native for json_value::to_string()
@@ -643,7 +643,7 @@ public:
         auto parsed = json_value::parse2(txt);
         if (parsed) {
             json result;
-            result.m_value = parsed;
+            result.mValue = parsed;
             return result;
         }
         return json(nullptr);
@@ -664,17 +664,17 @@ public:
     
     // Set methods for building objects
     void set(const fl::string& key, const json& value) {
-        if (!m_value || !m_value->is_object()) {
-            m_value = fl::make_shared<json_value>(json_object{});
+        if (!mValue || !mValue->is_object()) {
+            mValue = fl::make_shared<json_value>(json_object{});
         }
         // Directly assign the value to the object without going through json::operator[]
-        auto objPtr = m_value->data.ptr<json_object>();
+        auto objPtr = mValue->data.ptr<json_object>();
         if (objPtr) {
             // Create or update the entry directly
-            if (value.m_value) {
-                (*objPtr)[key] = value.m_value;
+            if (value.mValue) {
+                (*objPtr)[key] = value.mValue;
             } else {
-                // If value has null m_value, create a null json_value
+                // If value has null mValue, create a null json_value
                 (*objPtr)[key] = fl::make_shared<json_value>(nullptr);
             }
         }
@@ -708,25 +708,25 @@ public:
     
     // Array push_back methods
     void push_back(const json& value) {
-        if (!m_value || !m_value->is_array()) {
-            m_value = fl::make_shared<json_value>(json_array{});
+        if (!mValue || !mValue->is_array()) {
+            mValue = fl::make_shared<json_value>(json_array{});
         }
         // If we're pushing to a packed array, convert it to regular json_array first
-        if (m_value->is_array() && 
-            (m_value->data.is<fl::vector<i16>>() || 
-             m_value->data.is<fl::vector<u8>>() || 
-             m_value->data.is<fl::vector<float>>())) {
+        if (mValue->is_array() && 
+            (mValue->data.is<fl::vector<i16>>() || 
+             mValue->data.is<fl::vector<u8>>() || 
+             mValue->data.is<fl::vector<float>>())) {
             // Convert to regular json_array
-            auto arr = m_value->as_array();
+            auto arr = mValue->as_array();
             if (arr) {
-                m_value = fl::make_shared<json_value>(fl::move(*arr));
+                mValue = fl::make_shared<json_value>(fl::move(*arr));
             }
         }
         // For arrays, we need to manually handle the insertion since our indexing
         // mechanism auto-creates elements
-        auto ptr = m_value->data.ptr<json_array>();
+        auto ptr = mValue->data.ptr<json_array>();
         if (ptr) {
-            ptr->push_back(value.m_value);
+            ptr->push_back(value.mValue);
         }
     }
     

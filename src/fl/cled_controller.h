@@ -31,12 +31,12 @@ namespace fl {
 class CLEDController {
 protected:
     friend class CFastLED;
-    fl::span<CRGB> m_Leds;     ///< span of LED data used by this controller
-    CLEDController *m_pNext = nullptr;   ///< pointer to the next LED controller in the linked list
+    fl::span<CRGB> mLeds;     ///< span of LED data used by this controller
+    CLEDController *mPNext = nullptr;   ///< pointer to the next LED controller in the linked list
     ChannelOptions mSettings;  ///< Optional channel settings (correction, temperature, dither, rgbw, affinity)
-    bool m_enabled = true;
-    static CLEDController *m_pHead;  ///< pointer to the first LED controller in the linked list
-    static CLEDController *m_pTail;  ///< pointer to the last LED controller in the linked list
+    bool mEnabled = true;
+    static CLEDController *mPHead;  ///< pointer to the first LED controller in the linked list
+    static CLEDController *mPTail;  ///< pointer to the last LED controller in the linked list
 
     /// @brief Registration mode for constructor
     enum class RegistrationMode {
@@ -78,8 +78,8 @@ public:
         return *this;  // builder pattern.
     }
 
-    void setEnabled(bool enabled) { m_enabled = enabled; }
-    bool getEnabled() { return m_enabled; }
+    void setEnabled(bool enabled) { mEnabled = enabled; }
+    bool getEnabled() { return mEnabled; }
 
     CLEDController();
     // If we added virtual to the AVR boards then we are going to add 600 bytes of memory to the binary
@@ -105,7 +105,7 @@ public:
 
     // Compatibility with the 3.8.x codebase.
     VIRTUAL_IF_NOT_AVR void showLeds(fl::u8 brightness) {
-        void* data = beginShowLeds(m_Leds.size());
+        void* data = beginShowLeds(mLeds.size());
         showLedsInternal(brightness);
         endShowLeds(data);
     }
@@ -120,7 +120,7 @@ public:
     /// @param brightness the brightness of the LEDs
     /// @see show(const CRGB*, int, CRGB)
     void showInternal(const CRGB *data, int nLeds, fl::u8 brightness) {
-        if (m_enabled) {
+        if (mEnabled) {
            show(data, nLeds,brightness);
         }
     }
@@ -133,7 +133,7 @@ public:
     /// @param brightness the brightness of the LEDs
     /// @see showColor(const CRGB&, int, CRGB)
     void showColorInternal(const CRGB &data, int nLeds, fl::u8 brightness) {
-        if (m_enabled) {
+        if (mEnabled) {
             showColor(data, nLeds, brightness);
         }
     }
@@ -142,8 +142,8 @@ public:
     /// @param brightness the brightness of the LEDs
     /// @see show(const CRGB*, int, fl::u8)
     void showLedsInternal(fl::u8 brightness) {
-        if (m_enabled) {
-            show(m_Leds.data(), m_Leds.size(), brightness);
+        if (mEnabled) {
+            show(mLeds.data(), mLeds.size(), brightness);
         }
     }
 
@@ -153,18 +153,18 @@ public:
     /// @param brightness the brightness of the LEDs
     /// @see showColor(const CRGB&, int, CRGB)
     void showColorInternal(const CRGB & data, fl::u8 brightness) {
-        if (m_enabled) {
-            showColor(data, m_Leds.size(), brightness);
+        if (mEnabled) {
+            showColor(data, mLeds.size(), brightness);
         }
     }
 
     /// Get the first LED controller in the linked list of controllers
-    /// @returns CLEDController::m_pHead
-    static CLEDController *head() { return m_pHead; }
+    /// @returns CLEDController::mPHead
+    static CLEDController *head() { return mPHead; }
 
     /// Get the next controller in the linked list after this one.  Will return nullptr at the end of the linked list.
-    /// @returns CLEDController::m_pNext
-    CLEDController *next() { return m_pNext; }
+    /// @returns CLEDController::mPNext
+    CLEDController *next() { return mPNext; }
 
     /// Visit all controllers in the linked list with a visitor
     /// The visitor must be a callable that accepts (const CLEDController*, fl::span<const CRGB>)
@@ -180,21 +180,21 @@ public:
     }
 
     /// Get the next controller in the linked list after this one (const version).  Will return nullptr at the end of the linked list.
-    /// @returns CLEDController::m_pNext
-    const CLEDController *next() const { return m_pNext; }
+    /// @returns CLEDController::mPNext
+    const CLEDController *next() const { return mPNext; }
 
     /// Set the default array of LEDs to be used by this controller
     /// @param data pointer to the LED data
     /// @param nLeds the number of LEDs in the LED data
     CLEDController & setLeds(CRGB *data, int nLeds) {
-        m_Leds = fl::span<CRGB>(data, nLeds);
+        mLeds = fl::span<CRGB>(data, nLeds);
         return *this;
     }
 
     /// Set the default array of LEDs to be used by this controller (span version)
     /// @param leds span of LED data
     CLEDController & setLeds(fl::span<CRGB> leds) {
-        m_Leds = leds;
+        mLeds = leds;
         return *this;
     }
 
@@ -213,29 +213,29 @@ public:
     static void removeFromList(CLEDController* controller);
 
     /// How many LEDs does this controller manage?
-    /// @returns CLEDController::m_Leds.size()
-    virtual int size() const { return m_Leds.size(); }
+    /// @returns CLEDController::mLeds.size()
+    virtual int size() const { return mLeds.size(); }
 
     /// How many Lanes does this controller manage?
     /// @returns 1 for a non-Parallel controller
     virtual int lanes() { return 1; }
 
     /// Pointer to the CRGB array for this controller
-    /// @returns CLEDController::m_Leds.data()
-    CRGB* leds() { return m_Leds.data(); }
+    /// @returns CLEDController::mLeds.data()
+    CRGB* leds() { return mLeds.data(); }
 
     /// Const pointer to the CRGB array for this controller
-    /// @returns CLEDController::m_Leds.data()
-    const CRGB* leds() const { return m_Leds.data(); }
+    /// @returns CLEDController::mLeds.data()
+    const CRGB* leds() const { return mLeds.data(); }
 
     /// Span of LEDs managed by this controller
-    /// @returns CLEDController::m_Leds
-    fl::span<CRGB> ledsSpan() { return m_Leds; }
+    /// @returns CLEDController::mLeds
+    fl::span<CRGB> ledsSpan() { return mLeds; }
 
     /// Reference to the n'th LED managed by the controller
     /// @param x the LED number to retrieve
-    /// @returns reference to CLEDController::m_Leds[x]
-    CRGB &operator[](int x) { return m_Leds[x]; }
+    /// @returns reference to CLEDController::mLeds[x]
+    CRGB &operator[](int x) { return mLeds[x]; }
 
     /// Set the dithering mode for this controller to use
     /// @param ditherMode the dithering mode to set

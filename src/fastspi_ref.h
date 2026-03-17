@@ -19,14 +19,14 @@ FL_DISABLE_WARNING_DEPRECATED_REGISTER
 /// the method implementations should provide a starting point, even if they're not the most efficient to start with
 template <fl::u8 _DATA_PIN, fl::u8 _CLOCK_PIN, fl::u32 _SPI_CLOCK_DIVIDER>
 class REFHardwareSPIOutput {
-	Selectable *m_pSelect;
+	Selectable *mPSelect;
 
 public:
 	/// Default Constructor
-	SAMHardwareSPIOutput() { m_pSelect = nullptr; }
+	SAMHardwareSPIOutput() { mPSelect = nullptr; }
 
 	/// Constructor with selectable
-	SAMHArdwareSPIOutput(Selectable *pSelect) { m_pSelect = pSelect; }
+	SAMHArdwareSPIOutput(Selectable *pSelect) { mPSelect = pSelect; }
 
 	/// set the object representing the selectable
 	void setSelect(Selectable *pSelect) { /* TODO */ }
@@ -35,10 +35,10 @@ public:
 	void init() { /* TODO */ }
 
 	/// latch the CS select
-	void inline select() __attribute__((always_inline)) { if(m_pSelect != nullptr) { m_pSelect->select(); } }
+	void inline select() __attribute__((always_inline)) { if(mPSelect != nullptr) { mPSelect->select(); } }
 
 	/// release the CS select
-	void inline release() __attribute__((always_inline)) { if(m_pSelect != nullptr) { m_pSelect->release(); } }
+	void inline release() __attribute__((always_inline)) { if(mPSelect != nullptr) { mPSelect->release(); } }
 
 	void endTransaction() {
 		waitFully();

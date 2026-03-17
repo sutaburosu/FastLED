@@ -57,7 +57,7 @@ private:
 
     using NodeAllocator = typename Allocator::template rebind<RBNode>::other;
 
-    RBNode* root_;
+    RBNode* mRoot;
     fl::size mSize;
     Compare mComp;
     NodeAllocator mAlloc;
@@ -71,7 +71,7 @@ private:
         }
         y->parent = x->parent;
         if (x->parent == nullptr) {
-            root_ = y;
+            mRoot = y;
         } else if (x == x->parent->left) {
             x->parent->left = y;
         } else {
@@ -89,7 +89,7 @@ private:
         }
         y->parent = x->parent;
         if (x->parent == nullptr) {
-            root_ = y;
+            mRoot = y;
         } else if (x == x->parent->right) {
             x->parent->right = y;
         } else {
@@ -135,12 +135,12 @@ private:
                 }
             }
         }
-        root_->color = Color::kBlack;
+        mRoot->color = Color::kBlack;
     }
 
     void transplant(RBNode* u, RBNode* v) {
         if (u->parent == nullptr) {
-            root_ = v;
+            mRoot = v;
         } else if (u == u->parent->left) {
             u->parent->left = v;
         } else {
@@ -167,7 +167,7 @@ private:
 
     // Fixed to properly use xParent when x is nullptr; removes unused parameter warning and centralizes erase fixup
     void deleteFixup(RBNode* x, RBNode* xParent) {
-        while ((x != root_) && (x == nullptr || x->color == Color::kBlack)) {
+        while ((x != mRoot) && (x == nullptr || x->color == Color::kBlack)) {
             if (x == (xParent ? xParent->left : nullptr)) {
                 RBNode* w = xParent ? xParent->right : nullptr;
                 if (w && w->color == Color::kRed) {
@@ -191,7 +191,7 @@ private:
                     if (xParent) xParent->color = Color::kBlack;
                     if (w && w->right) w->right->color = Color::kBlack;
                     if (xParent) rotateLeft(xParent);
-                    x = root_;
+                    x = mRoot;
                 }
             } else {
                 RBNode* w = xParent ? xParent->left : nullptr;
@@ -216,7 +216,7 @@ private:
                     if (xParent) xParent->color = Color::kBlack;
                     if (w && w->left) w->left->color = Color::kBlack;
                     if (xParent) rotateRight(xParent);
-                    x = root_;
+                    x = mRoot;
                 }
             }
         }
@@ -224,7 +224,7 @@ private:
     }
 
     RBNode* findNode(const value_type& value) const {
-        RBNode* current = root_;
+        RBNode* current = mRoot;
         while (current != nullptr) {
             if (mComp(value, current->data)) {
                 current = current->left;
@@ -264,7 +264,7 @@ private:
     template <typename U>
     fl::pair<iterator, bool> insertImpl(U&& value) {
         RBNode* parent = nullptr;
-        RBNode* current = root_;
+        RBNode* current = mRoot;
         
         while (current != nullptr) {
             parent = current;
@@ -285,7 +285,7 @@ private:
         mAlloc.construct(newNode, fl::forward<U>(value), Color::kRed, parent);
         
         if (parent == nullptr) {
-            root_ = newNode;
+            mRoot = newNode;
         } else if (mComp(newNode->data, parent->data)) {
             parent->left = newNode;
         } else {
@@ -300,7 +300,7 @@ private:
 
     // Bound helpers to avoid duplication between const/non-const
     RBNode* lowerBoundNode(const value_type& value) const {
-        RBNode* current = root_;
+        RBNode* current = mRoot;
         RBNode* result = nullptr;
         while (current != nullptr) {
             if (!mComp(current->data, value)) {
@@ -314,7 +314,7 @@ private:
     }
 
     RBNode* upperBoundNode(const value_type& value) const {
-        RBNode* current = root_;
+        RBNode* current = mRoot;
         RBNode* result = nullptr;
         while (current != nullptr) {
             if (mComp(value, current->data)) {
@@ -394,8 +394,8 @@ public:
         iterator& operator--() {
             if (mNode) {
                 mNode = predecessor(mNode);
-            } else if (mTree && mTree->root_) {
-                mNode = mTree->maximum(mTree->root_);
+            } else if (mTree && mTree->mRoot) {
+                mNode = mTree->maximum(mTree->mRoot);
             }
             return *this;
         }
@@ -481,9 +481,9 @@ public:
         const_iterator& operator--() {
             if (mNode) {
                 mNode = predecessor(mNode);
-            } else if (mTree && mTree->root_) {
+            } else if (mTree && mTree->mRoot) {
                 // Decrementing from end() should give us the maximum element
-                mNode = mTree->maximum(mTree->root_);
+                mNode = mTree->maximum(mTree->mRoot);
             }
             return *this;
         }
@@ -589,9 +589,9 @@ public:
         reverse_iterator& operator--() {
             if (mNode) {
                 mNode = successor(mNode);
-            } else if (mTree && mTree->root_) {
+            } else if (mTree && mTree->mRoot) {
                 // Decrementing from rend() should give us the minimum element
-                mNode = mTree->minimum(mTree->root_);
+                mNode = mTree->minimum(mTree->mRoot);
             }
             return *this;
         }
@@ -679,9 +679,9 @@ public:
         const_reverse_iterator& operator--() {
             if (mNode) {
                 mNode = successor(mNode);
-            } else if (mTree && mTree->root_) {
+            } else if (mTree && mTree->mRoot) {
                 // Decrementing from rend() should give us the minimum element
-                mNode = mTree->minimum(mTree->root_);
+                mNode = mTree->minimum(mTree->mRoot);
             }
             return *this;
         }
@@ -703,12 +703,12 @@ public:
 
     // Constructors and destructor
     RedBlackTree(const Compare& comp = Compare(), const Allocator& alloc = Allocator())
-        : root_(nullptr), mSize(0), mComp(comp), mAlloc(alloc) {}
+        : mRoot(nullptr), mSize(0), mComp(comp), mAlloc(alloc) {}
 
     RedBlackTree(const RedBlackTree& other)
-        : root_(nullptr), mSize(other.mSize), mComp(other.mComp), mAlloc(other.mAlloc) {
-        if (other.root_) {
-            root_ = copyTree(other.root_);
+        : mRoot(nullptr), mSize(other.mSize), mComp(other.mComp), mAlloc(other.mAlloc) {
+        if (other.mRoot) {
+            mRoot = copyTree(other.mRoot);
         }
     }
 
@@ -718,8 +718,8 @@ public:
             mSize = other.mSize;
             mComp = other.mComp;
             mAlloc = other.mAlloc;
-            if (other.root_) {
-                root_ = copyTree(other.root_);
+            if (other.mRoot) {
+                mRoot = copyTree(other.mRoot);
             }
         }
         return *this;
@@ -727,8 +727,8 @@ public:
 
     // Move constructor
     RedBlackTree(RedBlackTree&& other)
-        : root_(other.root_), mSize(other.mSize), mComp(fl::move(other.mComp)), mAlloc(fl::move(other.mAlloc)) {
-        other.root_ = nullptr;
+        : mRoot(other.mRoot), mSize(other.mSize), mComp(fl::move(other.mComp)), mAlloc(fl::move(other.mAlloc)) {
+        other.mRoot = nullptr;
         other.mSize = 0;
     }
 
@@ -736,11 +736,11 @@ public:
     RedBlackTree& operator=(RedBlackTree&& other) {
         if (this != &other) {
             clear();
-            root_ = other.root_;
+            mRoot = other.mRoot;
             mSize = other.mSize;
             mComp = fl::move(other.mComp);
             mAlloc = fl::move(other.mAlloc);
-            other.root_ = nullptr;
+            other.mRoot = nullptr;
             other.mSize = 0;
         }
         return *this;
@@ -752,13 +752,13 @@ public:
 
     // Iterators
     iterator begin() {
-        if (root_ == nullptr) return iterator(nullptr, this);
-        return iterator(minimum(root_), this);
+        if (mRoot == nullptr) return iterator(nullptr, this);
+        return iterator(minimum(mRoot), this);
     }
 
     const_iterator begin() const {
-        if (root_ == nullptr) return const_iterator(nullptr, this);
-        return const_iterator(minimum(root_), this);
+        if (mRoot == nullptr) return const_iterator(nullptr, this);
+        return const_iterator(minimum(mRoot), this);
     }
 
     const_iterator cbegin() const {
@@ -779,8 +779,8 @@ public:
 
     // Reverse iterators
     reverse_iterator rbegin() {
-        if (root_ == nullptr) return reverse_iterator(nullptr, this);
-        return reverse_iterator(maximum(root_), this);
+        if (mRoot == nullptr) return reverse_iterator(nullptr, this);
+        return reverse_iterator(maximum(mRoot), this);
     }
 
     reverse_iterator rend() {
@@ -788,8 +788,8 @@ public:
     }
 
     const_reverse_iterator rbegin() const {
-        if (root_ == nullptr) return const_reverse_iterator(nullptr, this);
-        return const_reverse_iterator(maximum(root_), this);
+        if (mRoot == nullptr) return const_reverse_iterator(nullptr, this);
+        return const_reverse_iterator(maximum(mRoot), this);
     }
 
     const_reverse_iterator rend() const {
@@ -811,8 +811,8 @@ public:
 
     // Modifiers
     void clear() {
-        destroyTree(root_);
-        root_ = nullptr;
+        destroyTree(mRoot);
+        mRoot = nullptr;
         mSize = 0;
     }
 
@@ -901,7 +901,7 @@ public:
     }
 
     void swap(RedBlackTree& other) {
-        fl::swap(root_, other.root_);
+        fl::swap(mRoot, other.mRoot);
         fl::swap(mSize, other.mSize);
         fl::swap(mComp, other.mComp);
         fl::swap(mAlloc, other.mAlloc);

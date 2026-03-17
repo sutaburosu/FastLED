@@ -48,12 +48,12 @@ namespace fl {
 
 template <u8 DATA_PIN, u8 CLOCK_PIN, u32 SPI_SPEED>
 class ESP8266SPIOutput {
-	Selectable 	*m_pSelect;
+	Selectable 	*mPSelect;
 
 public:
-	ESP8266SPIOutput() { m_pSelect = nullptr; }
-	ESP8266SPIOutput(Selectable *pSelect) { m_pSelect = pSelect; }
-	void setSelect(Selectable *pSelect) { m_pSelect = pSelect; }
+	ESP8266SPIOutput() { mPSelect = nullptr; }
+	ESP8266SPIOutput(Selectable *pSelect) { mPSelect = pSelect; }
+	void setSelect(Selectable *pSelect) { mPSelect = pSelect; }
 
 	void init() {
 		// set the pins to output and make sure the select is released (which apparently means hi?  This is a bit
@@ -85,12 +85,12 @@ public:
 	// entirely, make it up to the caller to remember to lock/select the line?)
 	void select() { 
 		SPI.beginTransaction(SPISettings(3200000, MSBFIRST, SPI_MODE0));
-		if(m_pSelect != nullptr) { m_pSelect->select(); } 
+		if(mPSelect != nullptr) { mPSelect->select(); } 
 	} 
 
 	// release the SPI line
 	void release() {
-		if(m_pSelect != nullptr) { m_pSelect->release(); }
+		if(mPSelect != nullptr) { mPSelect->release(); }
 		SPI.endTransaction();
 	}
 

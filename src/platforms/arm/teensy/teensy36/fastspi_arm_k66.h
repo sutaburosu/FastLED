@@ -112,7 +112,7 @@ template <int VAL> void getScalars(u32 & preScalar, u32 & scalar, u32 & dbl) {
 
 template <u8 _DATA_PIN, u8 _CLOCK_PIN, u32 _SPI_CLOCK_DIVIDER, u32 pSPIX>
 class ARMHardwareSPIOutput {
-	Selectable *m_pSelect;
+	Selectable *mPSelect;
 	SPIState gState;
 
 	// Borrowed from the teensy3 SPSR emulation code -- note, enabling pin 7 disables pin 11 (and vice versa),
@@ -257,9 +257,9 @@ class ARMHardwareSPIOutput {
 	}
 
 public:
-	ARMHardwareSPIOutput() { m_pSelect = nullptr; }
-	ARMHardwareSPIOutput(Selectable *pSelect) { m_pSelect = pSelect; }
-	void setSelect(Selectable *pSelect) { m_pSelect = pSelect; }
+	ARMHardwareSPIOutput() { mPSelect = nullptr; }
+	ARMHardwareSPIOutput(Selectable *pSelect) { mPSelect = pSelect; }
+	void setSelect(Selectable *pSelect) { mPSelect = pSelect; }
 
 
 	void init() {
@@ -375,14 +375,14 @@ public:
 
 	void inline select() __attribute__((always_inline)) {
 		save_spi_state();
-		if(m_pSelect != nullptr) { m_pSelect->select(); }
+		if(mPSelect != nullptr) { mPSelect->select(); }
 		setSPIRate();
 		enable_pins();
 	}
 
 	void inline release() __attribute__((always_inline)) {
 		disable_pins();
-		if(m_pSelect != nullptr) { m_pSelect->release(); }
+		if(mPSelect != nullptr) { mPSelect->release(); }
 		restore_spi_state();
 	}
 

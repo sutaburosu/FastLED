@@ -1218,7 +1218,7 @@ struct SerializerVisitor {
 };
 
 fl::string json::to_string_native() const {
-    if (!m_value) {
+    if (!mValue) {
         return "null";
     }
 
@@ -1227,7 +1227,7 @@ fl::string json::to_string_native() const {
 
     // Use the visitor to serialize the value recursively
     SerializerVisitor visitor{json_chars};
-    visitor.serialize_value(m_value.get());
+    visitor.serialize_value(mValue.get());
 
     // Convert deque to fl::string efficiently
     fl::string result;
