@@ -20,15 +20,14 @@
 #include "fl/gfx/xypath_renderer.h"
 
 #include "fl/stl/atomic.h"
-#include "fl/stl/thread_local.h"
+#include "fl/stl/singleton.h"
 
 namespace fl {
 
 namespace { // anonymous namespace
 
 XYRasterU8Sparse &get_tls_raster() {
-    static ThreadLocal<XYRasterU8Sparse> tls_raster;
-    return tls_raster.access();
+    return SingletonThreadLocal<XYRasterU8Sparse>::instance();
 }
 
 } // namespace

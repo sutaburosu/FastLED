@@ -3,9 +3,10 @@
 """Checker to detect use of raw thread_local keyword.
 
 The built-in C++ thread_local keyword does not work on AVR and other
-single-threaded embedded platforms. Use fl::ThreadLocal<T> instead,
-which provides a portable abstraction that compiles to a simple global
-on single-threaded targets and POSIX thread-local storage on multi-threaded ones.
+single-threaded embedded platforms. Use fl::SingletonThreadLocal<T>::instance()
+instead, which provides a portable, leak-safe, never-destroyed thread-local
+singleton that compiles to a simple global on single-threaded targets and
+POSIX thread-local storage on multi-threaded ones.
 """
 
 import re
@@ -70,7 +71,15 @@ class ThreadLocalKeywordChecker(FileContentChecker):
             if self._THREAD_LOCAL_PATTERN.search(code_without_strings):
                 # Allow suppression with "// ok thread_local" on same line
                 if "// ok thread_local" not in line:
-                    violations.append((line_number, line.strip()))
+                    violations.append(
+                        (
+                            line_number,
+                            f"❌ Raw 'thread_local' keyword is banned — "
+                            f"use fl::SingletonThreadLocal<T>::instance() instead "
+                            f"(portable, never-destroyed, LSAN-safe): "
+                            f"{stripped}",
+                        )
+                    )
 
         # Store violations if any found
         if violations:
@@ -122,7 +131,7 @@ def main() -> None:
     run_checker_standalone(
         checker,
         [str(PROJECT_ROOT)],
-        "Found raw thread_local keyword usage",
+        "Found raw thread_local keyword — use fl::SingletonThreadLocal<T>::instance()",
         extensions=[".cpp", ".h", ".hpp", ".ino"],
     )
 

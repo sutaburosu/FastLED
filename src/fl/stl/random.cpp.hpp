@@ -1,13 +1,20 @@
 #include "fl/stl/random.h"
-#include "fl/stl/thread_local.h"
+#include "fl/stl/singleton.h"
+#include "fl/stl/mutex.h"
 
 namespace fl {
 
-// Global default random number generator instance
-// Use function with static local to avoid global constructor
+namespace {
+
+struct LockedRandom {
+    fl::mutex mtx;
+    fl_random rng;
+};
+
+} // namespace
+
 fl_random& default_random() {
-    static ThreadLocal<fl_random> instance;
-    return instance.access();
+    return Singleton<LockedRandom>::instance().rng;
 }
 
-} // namespace fl 
+} // namespace fl

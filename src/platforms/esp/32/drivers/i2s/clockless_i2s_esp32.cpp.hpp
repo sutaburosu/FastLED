@@ -5,7 +5,7 @@
 #include "platforms/is_platform.h"
 #ifdef FL_IS_ESP32
 
-#include "fl/stl/thread_local.h"
+#include "fl/stl/singleton.h"
 #include "fl/stl/vector.h"
 
 namespace fl {
@@ -16,8 +16,7 @@ namespace fl {
 ///          to avoid reallocation overhead on subsequent frames.
 /// @return Reference to thread-local uint8_t vector for RGBW-to-RGB conversion
 fl::vector<u8>& get_rgbw_scratchpad() {
-    static ThreadLocal<fl::vector<u8>> tls_buffer;
-    return tls_buffer.access();
+    return SingletonThreadLocal<fl::vector<u8>>::instance();
 }
 
 } // namespace fl

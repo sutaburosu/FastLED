@@ -1,7 +1,7 @@
 #include "platforms/is_platform.h"
 #include "fl/stl/allocator.h"
 #include "fl/stl/int.h"
-#include "fl/stl/thread_local.h"
+#include "fl/stl/singleton.h"
 #include "fl/stl/cstddef.h"
 #include "fl/stl/cstdlib.h"
 #include "fl/stl/string.h"
@@ -63,8 +63,7 @@ void (*Dealloc)(void *) = DefaultFree;
 MallocFreeHook* gMallocFreeHook = nullptr;
 
 int& tls_reintrancy_count() {
-    static fl::ThreadLocal<int> enabled;
-    return enabled.access();
+    return SingletonThreadLocal<int>::instance();
 }
 
 struct MemoryGuard {

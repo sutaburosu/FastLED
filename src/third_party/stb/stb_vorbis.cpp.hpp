@@ -268,7 +268,7 @@
 
 #include "fl/stl/limits.h"     // For fl::numeric_limits (instead of limits.h)
 #include "fl/stl/math.h"    // For FL_PI
-#include "fl/stl/thread_local.h"   // For ThreadLocal (thread-safe temp buffer)
+#include "fl/stl/singleton.h"   // For SingletonThreadLocal (thread-safe temp buffer)
 #include "fl/stl/vector.h"     // For fl::vector (heap temp buffer)
 
 // FastLED integration: use fl::FILE* for file I/O abstraction
@@ -626,8 +626,7 @@ struct StbvTempBuffer {
 };
 
 static StbvTempBuffer& get_stbv_temp_buffer() {
-    static fl::ThreadLocal<StbvTempBuffer> tls_buffer;
-    return tls_buffer.access();
+    return SingletonThreadLocal<StbvTempBuffer>::instance();
 }
 
 // Helper functions for temp allocation (replaces macros for non-alloc_buffer case)

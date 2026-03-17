@@ -3,6 +3,7 @@
 #include "fl/stl/align.h"           // FL_ALIGN_AS_T macro for aligned storage
 #include "fl/stl/new.h"         // Placement new operator  // IWYU pragma: keep
 #include "fl/stl/compiler_control.h" // FL_HAS_SANITIZER_LSAN macro
+#include "fl/stl/thread_local.h"
 
 #if FL_HAS_SANITIZER_LSAN
 #  include <sanitizer/lsan_interface.h>
@@ -114,6 +115,45 @@ template <typename T, int N = 0> class SingletonShared {
         T* ptr = new (&storage.data) T();
         return ptr;
     }
+};
+
+// Thread-local singleton — combines Singleton and ThreadLocal patterns.
+// Each thread gets its own T instance, but the ThreadLocal<T> container itself
+// is a process-wide singleton (never destroyed, same rationale as Singleton).
+//
+// Replaces the common pattern:
+//   T& get() { static ThreadLocal<T> tl; return tl.access(); }
+// with:
+//   T& get() { return SingletonThreadLocal<T>::instance(); }
+//
+// LSAN COMPATIBILITY: Uses __lsan::ScopedDisabler to prevent false positives.
+template <typename T, int N = 0> class SingletonThreadLocal {
+  public:
+    static T &instance() {
+        // Aligned char buffer storage — never destroyed
+        struct FL_ALIGN_AS_T(alignof(ThreadLocal<T>)) AlignedStorage {
+            char data[sizeof(ThreadLocal<T>)];
+        };
+
+        static AlignedStorage storage;
+        static ThreadLocal<T>* ptr = nullptr;
+        if (!ptr) {
+#if FL_HAS_SANITIZER_LSAN
+            __lsan::ScopedDisabler disabler;
+#endif
+            ptr = new (&storage.data) ThreadLocal<T>();
+        }
+        return ptr->access();
+    }
+
+    static T *instanceRef() { return &instance(); }
+
+    SingletonThreadLocal(const SingletonThreadLocal &) = delete;
+    SingletonThreadLocal &operator=(const SingletonThreadLocal &) = delete;
+
+  private:
+    SingletonThreadLocal() = default;
+    ~SingletonThreadLocal() = default;
 };
 
 } // namespace fl

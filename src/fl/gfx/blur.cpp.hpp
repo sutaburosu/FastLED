@@ -16,7 +16,7 @@
 #include "fl/stl/span.h"
 #include "fl/gfx/crgb.h"
 #include "fl/gfx/crgb16.h"
-#include "fl/stl/thread_local.h"
+#include "fl/stl/singleton.h"
 #include "fl/stl/vector.h"
 
 // Platform-neutral SIMD for blur kernels (SSE2, NEON, Xtensa PIE, scalar).
@@ -281,13 +281,12 @@ struct pixel_ops<CRGB16> {
 
 // Thread-local padded pixel buffer for zero-padding approach.
 template <typename RGB_T>
-static RGB_T *get_padbuf(int minSize) {
-    static fl::ThreadLocal<fl::vector<RGB_T>> tl_padbuf;
-    fl::vector<RGB_T> &buf = tl_padbuf.access();
+static fl::span<RGB_T> get_padbuf(int minSize) {
+    fl::vector<RGB_T> &buf = SingletonThreadLocal<fl::vector<RGB_T>>::instance();
     if (static_cast<int>(buf.size()) < minSize) {
         buf.resize(minSize);
     }
-    return buf.data();
+    return buf;
 }
 
 // Interior row pixel — fully-unrolled, no bounds checks.
@@ -1103,8 +1102,9 @@ void blurGaussianImpl(Canvas<RGB_T> &canvas, AlphaT alpha) {
         return;
     }
 
-    RGB_T *pad = blur_detail::get_padbuf<RGB_T>(
+    fl::span<RGB_T> padbuf = blur_detail::get_padbuf<RGB_T>(
         blur_detail::compute_pad_size<hRadius, vRadius, RGB_T>(w, h));
+    RGB_T *pad = padbuf.data();
     RGB_T *pixels = canvas.pixels;
 
     // ── Horizontal pass ──────────────────────────────────────────────

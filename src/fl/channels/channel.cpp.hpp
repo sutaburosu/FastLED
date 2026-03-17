@@ -25,7 +25,7 @@
 #include "fl/stl/iterator.h"
 #include "fl/engine_events.h"
 #include "fl/gfx/xymap.h"
-#include "fl/stl/thread_local.h"
+#include "fl/stl/singleton.h"
 
 namespace fl {
 
@@ -37,8 +37,7 @@ class ReorderingPixelIteratorAny {
     /// @brief Get thread-local buffer for addressing transformation
     /// @return Reference to thread-local CRGB vector (reused across calls)
     static fl::vector<CRGB>& getReorderBufferTLS() {
-        static fl::ThreadLocal<fl::vector<CRGB>> buffer;
-        return buffer.access();
+        return SingletonThreadLocal<fl::vector<CRGB>>::instance();
     }
     fl::optional<PixelController<RGB, 1, 0xFFFFFFFF>> mAddressedController;
     PixelIteratorAny mPixelIterator;

@@ -22,7 +22,7 @@
 #include "fl/system/log.h"
 
 #include "fl/stl/cstring.h"
-#include "fl/stl/thread_local.h"
+#include "fl/stl/singleton.h"
 
 #ifndef FL_AUDIO_SAMPLE_RATE
 #define FL_AUDIO_SAMPLE_RATE 44100
@@ -162,8 +162,7 @@ class FFTContext {
     };
 
     static FftScratch &scratch() {
-        static fl::ThreadLocal<FftScratch> tls;
-        return tls.access();
+        return SingletonThreadLocal<FftScratch>::instance();
     }
 
     // ---- Log-rebin path (fast, no CQ kernels) ----

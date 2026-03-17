@@ -177,7 +177,7 @@ def create_checkers(
         SpanFromPointerChecker(),  # Checks for span<T>(container.data(), container.size()) → span<T>(container)
         BareAllocationChecker(),  # Checks for bare new/delete/malloc/free — use fl::unique_ptr/fl::shared_ptr
         SleepForChecker(),  # Checks for sleep_for() — bypasses async runner, use fl::yield/fl::async_run
-        ThreadLocalKeywordChecker(),  # Checks for thread_local keyword — use fl::ThreadLocal<T>
+        ThreadLocalKeywordChecker(),  # Checks for thread_local keyword — use fl::SingletonThreadLocal<T>::instance()
         # Note: Private libc++ headers checking is now integrated into BannedHeadersChecker
         # Note: _build.hpp hierarchy checking is now integrated into test_unity_build.py
     ]

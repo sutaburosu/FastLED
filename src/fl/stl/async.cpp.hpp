@@ -2,13 +2,11 @@
 #include "fl/stl/functional.h"
 #include "fl/stl/singleton.h"
 #include "fl/stl/scope_exit.h"
-#include "fl/stl/thread_local.h"
 #include "fl/stl/algorithm.h"
 #include "fl/stl/task.h"
 #include "fl/stl/chrono.h"
 #include "fl/system/log.h"
 #include "fl/system/log.h"
-#include "fl/stl/thread_local.h"
 
 #include "fl/stl/new.h"
 #include "fl/system/yield.h"
@@ -22,8 +20,7 @@ namespace detail {
 /// @brief Get reference to thread-local await recursion depth
 /// @return Reference to the thread-local await depth counter
 int& await_depth_tls() {
-    static fl::ThreadLocal<int> s_await_depth(0); // okay static in header
-    return s_await_depth.access();
+    return SingletonThreadLocal<int>::instance();
 }
 } // namespace detail
 
@@ -76,8 +73,7 @@ size_t AsyncManager::total_active_tasks() const {
 
 void async_run(fl::u32 microseconds, AsyncFlags flags) {
     // Re-entrancy guard: detect if async_run is called from within async_run
-    static fl::ThreadLocal<bool> s_running(false); // okay static in header
-    bool& running = s_running.access();
+    bool& running = SingletonThreadLocal<bool>::instance();
     if (running) {
         FL_WARN_ONCE("async_run re-entrancy detected, skipping nested call");
         return;

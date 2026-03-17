@@ -19,7 +19,6 @@
 #include "fl/stl/weak_ptr.h"
 #include "fl/stl/queue.h"
 #include "fl/stl/unique_ptr.h"
-#include "fl/stl/thread_local.h"
 // IWYU pragma: end_keep
 
 namespace fl {
@@ -281,8 +280,7 @@ bool is_shutdown_requested() {
 //=============================================================================
 
 fl::detail::CoroutineContext*& runningStubCoroutineContext() {
-    static fl::ThreadLocal<fl::detail::CoroutineContext*> tl(nullptr);  // okay static in header
-    return tl.access();
+    return SingletonThreadLocal<fl::detail::CoroutineContext*>::instance();
 }
 
 //=============================================================================

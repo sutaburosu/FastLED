@@ -12,7 +12,7 @@
 #include "fl/stl/string.h"
 #include "fl/stl/chrono.h"
 #include "fl/system/log.h"
-#include "fl/stl/thread_local.h"
+#include "fl/stl/singleton.h"
 #include "fl/stl/stdio.h"
 
 // Configuration: Maximum stack depth (can be overridden at compile time)
@@ -44,9 +44,8 @@ struct TraceStorage {
 
 // Thread-local storage for trace data
 // When trace functions are not used, the optimizer can eliminate this entirely
-static ThreadLocal<TraceStorage>& getTraceStorage() {
-    static ThreadLocal<TraceStorage> storage;
-    return storage;
+static TraceStorage& getTraceStorage() {
+    return SingletonThreadLocal<TraceStorage>::instance();
 }
 
 // ScopedTrace static method implementations
@@ -55,7 +54,7 @@ void ScopedTrace::push(const char* function, int line) {
         return;  // Ignore null function names
     }
 
-    auto& storage = getTraceStorage().access();
+    auto& storage = getTraceStorage();
 
     // Always increment depth counter (tracks true depth even on overflow)
     storage.stackDepth++;
@@ -68,7 +67,7 @@ void ScopedTrace::push(const char* function, int line) {
 }
 
 void ScopedTrace::pop() {
-    auto& storage = getTraceStorage().access();
+    auto& storage = getTraceStorage();
 
     // Guard against underflow
     if (storage.stackDepth == 0) {
@@ -89,11 +88,11 @@ void ScopedTrace::pop() {
 }
 
 fl::size ScopedTrace::depth() {
-    return getTraceStorage().access().stackDepth;
+    return getTraceStorage().stackDepth;
 }
 
 fl::string ScopedTrace::dump() {
-    auto& storage = getTraceStorage().access();
+    auto& storage = getTraceStorage();
     fl::string result = "Stack trace (depth ";
 
     char depth_str[32];
@@ -137,7 +136,7 @@ void ScopedTrace::dump(fl::vector<TracePoint>* out) {
         return;
     }
 
-    auto& storage = getTraceStorage().access();
+    auto& storage = getTraceStorage();
     out->clear();
 
     // Copy all stored entries to the output vector as TracePoints
@@ -150,7 +149,7 @@ void ScopedTrace::dump(fl::vector<TracePoint>* out) {
 }
 
 void ScopedTrace::clear() {
-    auto& storage = getTraceStorage().access();
+    auto& storage = getTraceStorage();
     storage.callStack.resize(0);
     storage.stackDepth = 0;
 }
