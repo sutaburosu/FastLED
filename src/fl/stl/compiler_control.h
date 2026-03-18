@@ -44,8 +44,8 @@
   #define FL_DISABLE_WARNING_FLOAT_CONVERSION FL_DISABLE_WARNING(float-conversion)
   #define FL_DISABLE_WARNING_SIGN_CONVERSION FL_DISABLE_WARNING(sign-conversion)
   #define FL_DISABLE_WARNING_SHORTEN_64_TO_32 FL_DISABLE_WARNING(shorten-64-to-32)
-  // Clang doesn't have volatile warning, use no-op
-  #define FL_DISABLE_WARNING_VOLATILE
+  // Clang: -Wdeprecated-volatile warns about volatile in parameters/return types (C++20)
+  #define FL_DISABLE_WARNING_VOLATILE FL_DISABLE_WARNING(deprecated-volatile)
   #define FL_DISABLE_WARNING_DEPRECATED_REGISTER FL_DISABLE_WARNING(deprecated-register)
   // Clang doesn't have subobject-linkage warning, use no-op
   #define FL_DISABLE_WARNING_SUBOBJECT_LINKAGE
