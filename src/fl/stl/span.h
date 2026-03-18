@@ -4,6 +4,7 @@
 #include "fl/stl/math.h"
 #include "fl/gfx/geometry.h"
 #include "fl/stl/bit_cast.h"
+#include "fl/stl/initializer_list.h"
 #include "fl/stl/type_traits.h"
 #include "fl/stl/int.h"
 
@@ -91,6 +92,11 @@ template <typename T> class span<T, dynamic_extent> {
     // ======= CONSTRUCTORS =======
     span() : mData(nullptr), mSize(0) {}
     span(T *data, fl::size size) : mData(data), mSize(size) {}
+
+    // ======= INITIALIZER LIST CONSTRUCTOR (C++26-style, P2447R6) =======
+    // Only compiles for span<const T> since initializer_list::begin() returns const T*
+    span(fl::initializer_list<value_type> init)
+        : mData(init.begin()), mSize(init.size()) {}
 
     // ======= CONTAINER CONSTRUCTORS =======
     // Simple constructors that work for all cases
