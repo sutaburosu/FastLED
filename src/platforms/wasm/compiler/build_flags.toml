@@ -62,6 +62,7 @@ compiler_flags = [
     "-Wnon-c-typedef-for-linkage",             # Warn about non-C typedef issues
     "-Werror=bad-function-cast",               # Error on bad function casts
     "-Werror=cast-function-type",              # Error on function type cast issues
+    "-Werror=unused-private-field",            # Unused private fields are dead code
     
 
     

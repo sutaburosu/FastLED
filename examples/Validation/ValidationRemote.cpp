@@ -1901,7 +1901,6 @@ void ValidationRemoteControl::registerFunctions(fl::shared_ptr<ValidationState> 
     // Register "bleStatus" - Query BLE connection/subscription state
     mRemote->bind("bleStatus", [this](const fl::json& args) -> fl::json {
         fl::json response = fl::json::object();
-#if FL_BLE_AVAILABLE
         response.set("ble_active", mState->ble_server_active);
         fl::net::ble::StatusInfo info = fl::net::ble::queryStatus(mBleState);
         response.set("connected", info.connected);
@@ -1910,10 +1909,6 @@ void ValidationRemoteControl::registerFunctions(fl::shared_ptr<ValidationState> 
         response.set("tx_value_len", static_cast<int64_t>(info.txValueLen));
         response.set("ring_head", static_cast<int64_t>(info.ringHead));
         response.set("ring_tail", static_cast<int64_t>(info.ringTail));
-#else
-        response.set("ble_active", false);
-        response.set("error", "BLE not supported on this platform");
-#endif
         return response;
     });
 
@@ -2382,14 +2377,12 @@ void ValidationRemoteControl::tick(uint32_t current_millis) {
     // is sent (via push() above) before we call ble::destroyTransport().
     if (mPendingBleStop) {
         mPendingBleStop = false;
-#if FL_BLE_AVAILABLE
         mBleRemote.reset();  // destroy lambdas before freeing state they capture
         fl::net::ble::destroyTransport(mBleState);
         mBleState = nullptr;
         mState->ble_server_active = false;
         getBleState().ble_server_active = false;
         FL_WARN("[BLE] Deferred teardown complete");
-#endif
     }
 }
 
@@ -2421,7 +2414,6 @@ void ValidationRemoteControl::registerAllMethods(fl::Remote* remote) {
 }
 
 fl::json ValidationRemoteControl::startBleRemote() {
-#if FL_BLE_AVAILABLE
     if (mBleRemote) {
         fl::json response = fl::json::object();
         response.set("success", true);
@@ -2431,13 +2423,20 @@ fl::json ValidationRemoteControl::startBleRemote() {
     }
 
     // Create BLE GATT server (heap-allocates transport state)
+    // On stub platforms, createTransport returns nullptr and logs FL_ERROR.
     mBleState = fl::net::ble::createTransport(VALIDATION_BLE_DEVICE_NAME);
+    if (!mBleState) {
+        fl::json response = fl::json::object();
+        response.set("success", false);
+        response.set("error", "BLE not available on this platform");
+        return response;
+    }
 
     // Get transport lambdas that capture mBleState
-    auto [source, sink] = fl::net::ble::getTransportCallbacks(mBleState);
+    auto callbacks = fl::net::ble::getTransportCallbacks(mBleState);
 
     // Create BLE Remote instance with BLE transport
-    mBleRemote = fl::make_unique<fl::Remote>(source, sink);
+    mBleRemote = fl::make_unique<fl::Remote>(callbacks.first, callbacks.second);
 
     // Register RPC methods on the BLE remote
     registerAllMethods(mBleRemote.get());
@@ -2453,21 +2452,13 @@ fl::json ValidationRemoteControl::startBleRemote() {
     response.set("tx_uuid", FL_BLE_CHAR_TX_UUID);
     FL_WARN("[BLE] Remote created and advertising");
     return response;
-#else
-    fl::json response = fl::json::object();
-    response.set("success", false);
-    response.set("error", "BLE only supported on ESP32");
-    return response;
-#endif
 }
 
 fl::json ValidationRemoteControl::stopBleRemote() {
-#if FL_BLE_AVAILABLE
     // Defer actual BLE teardown to tick() so the RPC response is sent first.
     // BLEDevice::deinit(true) blocks long enough to prevent the response
     // from being transmitted over serial before the device resets BLE state.
     mPendingBleStop = true;
-#endif
     fl::json response = fl::json::object();
     response.set("success", true);
     return response;

@@ -66,6 +66,11 @@ if cpp_compiler.get_id() == 'gcc'
   base_warnings += ['-Werror=maybe-uninitialized']
 endif
 
+# Add Clang-specific warnings (unused-private-field is Clang-only, not available in GCC)
+if cpp_compiler.get_id() == 'clang'
+  base_warnings += ['-Werror=unused-private-field']
+endif
+
 # Group 3: Optimization and code generation flags (mode-dependent)
 # Common flags present in all modes (ABI-critical)
 base_common = [

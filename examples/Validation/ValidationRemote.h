@@ -92,7 +92,7 @@ public:
 private:
     fl::unique_ptr<fl::Remote> mRemote;      // Serial Remote RPC system instance
     fl::unique_ptr<fl::Remote> mBleRemote;   // BLE Remote RPC system instance (created by startBle)
-    fl::net::ble::TransportState* mBleState = nullptr; // Opaque BLE state (heap-allocated by ble::createTransport)
+    fl::net::ble::TransportState* mBleState = nullptr; // Opaque BLE state (heap-allocated by ble::createTransport, nullptr on stub platforms)
     fl::shared_ptr<ValidationState> mState;  // Shared validation state
     bool mPendingBleStop = false;            // Deferred BLE teardown flag (set by stopBle RPC)
 

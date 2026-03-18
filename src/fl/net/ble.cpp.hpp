@@ -9,6 +9,7 @@
 #pragma once
 
 #include "fl/net/ble.h"
+#include "fl/system/log.h"
 
 #if !FL_BLE_AVAILABLE
 
@@ -17,18 +18,22 @@ namespace net {
 namespace ble {
 
 TransportState* createTransport(const char*) {
+    FL_ERROR("BLE not implemented on this platform");
     return nullptr;
 }
 
 void destroyTransport(TransportState*) {
+    FL_ERROR("BLE not implemented on this platform");
 }
 
 StatusInfo queryStatus(const TransportState*) {
+    FL_ERROR("BLE not implemented on this platform");
     return StatusInfo{};
 }
 
 fl::pair<fl::function<fl::optional<fl::json>()>, fl::function<void(const fl::json&)>>
 getTransportCallbacks(TransportState*) {
+    FL_ERROR("BLE not implemented on this platform");
     return {
         fl::function<fl::optional<fl::json>()>([]() -> fl::optional<fl::json> { return fl::optional<fl::json>(); }),
         fl::function<void(const fl::json&)>([](const fl::json&) {})
