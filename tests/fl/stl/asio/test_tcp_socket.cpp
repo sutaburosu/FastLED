@@ -3,6 +3,8 @@
 #include "fl/stl/asio/error_code.cpp.hpp"
 #include "fl/stl/asio/ip/tcp.h"
 #include "fl/stl/asio/ip/tcp.cpp.hpp"
+#include "fl/stl/thread.h"
+#include "fl/stl/chrono.h"
 
 #include "test.h"
 
@@ -109,6 +111,7 @@ FL_TEST_CASE("tcp::socket - Loopback connect and I/O") {
         if (ec.code != errc::would_block) {
             break;
         }
+        fl::this_thread::sleep_for(fl::chrono::milliseconds(1));  // ok sleep for - blocking retry in test
     }
     FL_CHECK(ec.ok());
     FL_CHECK(server_peer.is_open());
