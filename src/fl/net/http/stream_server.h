@@ -1,5 +1,7 @@
 #pragma once
 
+#ifdef FASTLED_HAS_NETWORKING
+
 #include "fl/net/http/stream_transport.h"
 #include "fl/stl/asio/http/native_server.h"  // IWYU pragma: keep
 #include "fl/stl/asio/http/http_parser.h"
@@ -151,3 +153,5 @@ private:
 }  // namespace http
 }  // namespace net
 }  // namespace fl
+
+#endif // FASTLED_HAS_NETWORKING

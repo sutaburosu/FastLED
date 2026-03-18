@@ -1,5 +1,7 @@
 #pragma once
 
+#ifdef FASTLED_HAS_NETWORKING
+
 #include "fl/net/http/stream_client.h"
 #include "fl/stl/string.h"
 #include "fl/stl/stdint.h"
@@ -208,3 +210,5 @@ bool HttpStreamClient::readHttpResponseHeader() {
 }  // namespace http
 }  // namespace net
 }  // namespace fl
+
+#endif // FASTLED_HAS_NETWORKING

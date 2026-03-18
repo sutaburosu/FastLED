@@ -73,13 +73,6 @@ class FetchOptions;
 class FetchManager;
 class Response;
 
-#ifdef FL_IS_WASM
-// Forward declarations for WASM-specific types (defined in platforms/wasm/js_fetch.h)
-class WasmFetchRequest;
-class WasmFetch;
-extern WasmFetch wasm_fetch;
-#endif
-
 /// HTTP response class (unified interface)
 class Response {
 public:

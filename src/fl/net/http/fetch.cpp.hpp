@@ -46,7 +46,7 @@ namespace http {
 // Use existing WASM fetch infrastructure
 void fetch(const fl::string& url, const FetchCallback& callback) {
     // Use the existing WASM fetch implementation - no conversion needed since both use fl::response
-    wasm_fetch.get(url).response(callback);
+    ::fl::wasm_fetch.get(url).response(callback);
 }
 
 // Internal helper to execute a fetch request and return a promise
@@ -61,7 +61,7 @@ fl::promise<Response> execute_fetch_request(const fl::string& url, const FetchOp
     fl::string fetch_url = request.url().empty() ? url : request.url();
     
     // Convert our request to the existing WASM fetch system
-    auto wasm_request = WasmFetchRequest(fetch_url);
+    auto wasm_request = ::fl::WasmFetchRequest(fetch_url);
     
     // Use lambda that captures the promise directly (shared_ptr is safe to copy)
     // Make the lambda mutable so we can call non-const methods on the captured promise
