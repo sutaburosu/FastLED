@@ -62,12 +62,14 @@ FL_TEST_CASE("Loopback: connect and sync RPC round-trip") {
 
     // Client — connect() blocks until the server accepts, but the server
     // thread is already running acceptClients() so this won't deadlock.
-    auto client_transport = fl::make_shared<HttpStreamClient>("localhost", PORT);
+    // Use 127.0.0.1 directly instead of "localhost" to avoid DNS resolution
+    // overhead and IPv6 ambiguity on Windows (server binds to INADDR_LOOPBACK).
+    auto client_transport = fl::make_shared<HttpStreamClient>("127.0.0.1", PORT);
 
     {
         bool connected = false;
         uint32_t connect_start = fl::millis();
-        while (fl::millis() - connect_start < 5000) {
+        while (fl::millis() - connect_start < 10000) {
             if (client_transport->connect()) {
                 connected = true;
                 break;
@@ -77,7 +79,7 @@ FL_TEST_CASE("Loopback: connect and sync RPC round-trip") {
         FL_REQUIRE(connected);
     }
 
-    FL_CHECK(client_transport->isConnected());
+    FL_REQUIRE(client_transport->isConnected());
 
     // Send request
     json params = json::array();
@@ -96,7 +98,7 @@ FL_TEST_CASE("Loopback: connect and sync RPC round-trip") {
     json response;
     uint32_t start = fl::millis();
 
-    while (fl::millis() - start < 5000) {
+    while (fl::millis() - start < 10000) {
         uint32_t now = fl::millis();
         client_transport->update(now);
 
@@ -116,8 +118,19 @@ FL_TEST_CASE("Loopback: connect and sync RPC round-trip") {
     server_thread.join();
 
     FL_REQUIRE(got_response);
-    FL_CHECK_EQ(response["result"].as_int().value(), 12); // 5 + 7
-    FL_CHECK_EQ(response["id"].as_int().value(), 1);
+
+    // Verify the response is a valid JSON-RPC response
+    FL_REQUIRE(response.is_object());
+    FL_REQUIRE(response.contains("result"));
+    FL_REQUIRE(response.contains("id"));
+    FL_REQUIRE(!response.contains("error"));
+
+    auto result_int = response["result"].as_int();
+    auto id_int = response["id"].as_int();
+    FL_REQUIRE(result_int.has_value());
+    FL_REQUIRE(id_int.has_value());
+    FL_REQUIRE_EQ(result_int.value(), 12); // 5 + 7
+    FL_REQUIRE_EQ(id_int.value(), 1);
 
     // Cleanup
     client_transport->disconnect();

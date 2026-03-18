@@ -81,8 +81,10 @@ void record_assertion(
     if (is_require) {
         test_state->requires_failed++;
         test_state->failures.push_back(failure_msg);
-        // Note: Can't throw exceptions when compiled with -fno-exceptions
-        // Mark failure and continue
+        // Print the failure immediately and abort — REQUIRE means
+        // the test cannot continue safely without the assertion holding.
+        fl::printf("REQUIRE FAILED: %s\n", failure_msg.c_str());
+        _exit(1);
     } else {
         test_state->checks_failed++;
         test_state->failures.push_back(failure_msg);

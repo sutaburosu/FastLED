@@ -98,8 +98,10 @@ constexpr i64 log2_h0(i64 t) {
 }
 
 constexpr i32 log2_with_msb(u32 val, int msb) {
+    // Use multiplication instead of left shift to avoid UB when msb < FRAC
+    // (left shift of negative values is undefined behavior in C++)
     return static_cast<i32>(
-        (static_cast<i64>(msb - FRAC) << FRAC) +
+        static_cast<i64>(msb - FRAC) * static_cast<i64>(SCALE) +
         log2_h0(static_cast<i64>(log2_t(val, msb)))
     );
 }
