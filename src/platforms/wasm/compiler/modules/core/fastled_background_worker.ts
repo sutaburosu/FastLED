@@ -438,6 +438,18 @@ async function initializeFastLEDModule() {
           return `./${path}`;
         }
         return path;
+      },
+      print: (text) => {
+        postMessage({
+          type: 'stdout',
+          payload: { text }
+        });
+      },
+      printErr: (text) => {
+        postMessage({
+          type: 'stderr',
+          payload: { text }
+        });
       }
     });
 

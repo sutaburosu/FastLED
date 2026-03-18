@@ -456,6 +456,18 @@ export class FastLEDWorkerManager {
           this.handleUiElementsAdd(data.payload);
           break;
 
+        case 'stdout':
+          if (data.payload && data.payload.text) {
+            console.log(data.payload.text);
+          }
+          break;
+
+        case 'stderr':
+          if (data.payload && data.payload.text) {
+            console.warn(data.payload.text);
+          }
+          break;
+
         default:
           // Don't log for known response types
           if (!data.type.endsWith('_response')) {
