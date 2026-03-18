@@ -1528,7 +1528,7 @@ FL_TEST_CASE("BeatSynthetic - CQ bin coverage for kick drum frequencies") {
     fl::vector<fl::i16> silence(512, 0);
     FFTBins bins(16);
     FFT fft;
-    fft.run(silence, &bins, FFT_Args(512, 16, 30.0f, 4698.3f, 44100));
+    fft.run(silence, &bins, FFT_Args(512, 16, 30.0f, FFT_Args::DefaultMaxFrequency(), 44100));
 
     int bin_60Hz = bins.freqToBin(60.0f);
     int bin_100Hz = bins.freqToBin(100.0f);

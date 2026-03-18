@@ -51,14 +51,15 @@ FL_TEST_CASE("Adversarial - FFT with DC-only input produces no spectral peaks") 
     FFTBins bins(16);
     fft.run(dcSignal, &bins);
 
-    // DC should not produce significant energy in frequency bins
-    // (CQ transform starts at ~175 Hz, DC is 0 Hz)
+    // DC should not produce significant energy in frequency bins.
+    // With fmin=90 Hz, the lowest CQ bin is closer to DC than with the old
+    // fmin=174.6 Hz, so some leakage is expected. The energy should still
+    // be modest compared to an in-band sine wave (~30000+ total energy).
     float totalEnergy = 0.0f;
     for (fl::size i = 0; i < bins.raw().size(); ++i) {
         totalEnergy += bins.raw()[i];
     }
-    // Total energy should be minimal for pure DC
-    FL_CHECK_LT(totalEnergy, 1000.0f);
+    FL_CHECK_LT(totalEnergy, 5000.0f);
 }
 
 FL_TEST_CASE("Adversarial - FFT with alternating max samples") {

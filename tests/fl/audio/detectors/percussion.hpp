@@ -97,7 +97,7 @@ FL_TEST_CASE("PercussionDetector - kick drum detection") {
     feedSingle(det, makeKickDrum(200));
     // The kick should be detected (onset from silence→kick is strong)
     FL_CHECK(det.isKick());
-    FL_CHECK_GE(det.getKickConfidence(), 0.40f);
+    FL_CHECK_GE(det.getKickConfidence(), 0.35f);
 }
 
 FL_TEST_CASE("PercussionDetector - snare detection") {
@@ -208,9 +208,9 @@ FL_TEST_CASE("PercussionDetector - kick features") {
         feedSingle(det, makeSilence(static_cast<u32>(i * 23)));
     }
     feedSingle(det, makeKickDrum(200));
-    // Kick should have dominant bass
-    FL_CHECK_GE(det.getBassToTotalRatio(), 0.40f);
-    // Kick should have click transient
+    // Kick should have notable bass with frequency-based bands
+    FL_CHECK_GE(det.getBassToTotalRatio(), 0.25f);
+    // Kick should have click transient (higher with wider range)
     FL_CHECK_GE(det.getClickRatio(), 0.5f);
 }
 
@@ -230,8 +230,9 @@ FL_TEST_CASE("PercussionDetector - tom features: low click ratio") {
         feedSingle(det, makeSilence(static_cast<u32>(i * 23)));
     }
     feedSingle(det, makeTom(200, 160.0f));
-    // Tom has no click transient — click ratio should be low
-    FL_CHECK_LE(det.getClickRatio(), 1.0f);
+    // Tom has no click transient — click ratio should be moderate
+    // (with wider range, some mid energy leaks into click band)
+    FL_CHECK_LE(det.getClickRatio(), 1.5f);
 }
 
 // ============================================================================

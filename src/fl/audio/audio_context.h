@@ -41,7 +41,7 @@ public:
     // bass: 20-3688 Hz, mid: 3688-7356 Hz, treb: 7356-11025 Hz.
     BandEnergy getBandEnergy();
 
-    // Standard 16-bin FFT (174.6-4698.3 Hz).
+    // Standard 16-bin FFT (90-14080 Hz).
     // Detectors that need 16 bins should use this to share a single cached FFT.
     shared_ptr<const FFTBins> getFFT16(FFTMode mode = FFTMode::LOG_REBIN,
                                        FFTWindow window = FFTWindow::BLACKMAN_HARRIS);

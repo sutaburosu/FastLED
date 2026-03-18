@@ -5,6 +5,7 @@
 #pragma once
 
 #include "fl/audio/audio.h"
+#include "fl/audio/fft/fft.h"
 #include "fl/stl/int.h"
 #include "fl/stl/math.h"
 #include "fl/stl/math.h"
@@ -175,7 +176,8 @@ inline vector<float> generateSyntheticFFT(size numBins, float peakFrequency, u32
 /// @param fmax CQ maximum frequency
 /// @return Vector of float magnitudes (one per bin)
 inline vector<float> generateSyntheticCQFFT(size numBins, float peakFrequency,
-                                             float fmin = 174.6f, float fmax = 4698.3f) {
+                                             float fmin = FFT_Args::DefaultMinFrequency(),
+                                             float fmax = FFT_Args::DefaultMaxFrequency()) {
     vector<float> bins;
     bins.reserve(numBins);
     int bands = static_cast<int>(numBins);

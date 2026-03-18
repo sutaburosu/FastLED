@@ -111,8 +111,8 @@ class FFTBins {
     mutable fl::vector<float> mBinsRawNormalized;  // lazily computed from mBinsRaw + mNormFactors
     mutable bool mDbDirty = true;                  // invalidated when raw changes
     mutable bool mNormalizedDirty = true;           // invalidated when raw or normFactors change
-    float mFmin = 174.6f;
-    float mFmax = 4698.3f;
+    float mFmin = 90.0f;
+    float mFmax = 14080.0f;
     int mSampleRate = 44100;
     float mLinearFmin = 0.0f;
     float mLinearFmax = 0.0f;
@@ -121,8 +121,8 @@ class FFTBins {
 struct FFT_Args {
     static int DefaultSamples() { return 512; }
     static int DefaultBands() { return 16; }
-    static float DefaultMinFrequency() { return 174.6f; }
-    static float DefaultMaxFrequency() { return 4698.3f; }
+    static float DefaultMinFrequency() { return 90.0f; }
+    static float DefaultMaxFrequency() { return 14080.0f; }
     static int DefaultSampleRate() { return 44100; }
 
     int samples = DefaultSamples();

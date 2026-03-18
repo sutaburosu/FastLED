@@ -120,7 +120,7 @@ FL_TEST_CASE("AudioReactive enhanced beat detection") {
     FL_CHECK_EQ(trebleEnergy, 0.0f);
 
     // Create a bass-heavy sample (low frequency)
-    // Use 200 Hz which is within the CQ kernel range (fmin=174.6 Hz)
+    // Use 200 Hz which is within the CQ kernel range (fmin=90 Hz)
     // and 512 samples to match FFT default sample count
     fl::vector<int16_t> bassySamples;
     bassySamples.reserve(512);

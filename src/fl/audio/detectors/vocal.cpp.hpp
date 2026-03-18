@@ -22,7 +22,10 @@ VocalDetector::~VocalDetector() = default;
 
 void VocalDetector::update(shared_ptr<AudioContext> context) {
     mSampleRate = context->getSampleRate();
-    mRetainedFFT = context->getFFT(128);
+    // Pin to calibrated range — vocal formant analysis was tuned for
+    // 174.6-4698.3 Hz with 128 bins. Using wider defaults would change
+    // bin-to-frequency mapping and break feature thresholds.
+    mRetainedFFT = context->getFFT(128, 174.6f, 4698.3f);
     const FFTBins& fft = *mRetainedFFT;
     mNumBins = static_cast<int>(fft.raw().size());
 

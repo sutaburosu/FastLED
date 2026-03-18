@@ -59,7 +59,7 @@ void AudioReactive::begin(const AudioReactiveConfig& config) {
     mFrequencyBinMapper.configure(fbmConfig);
 
     // Compute pink noise compensation gains from bin centers.
-    // CQ bins span linearly from fmin to fmax (default: 174.6-4698.3 Hz).
+    // CQ bins span linearly from fmin to fmax (default: 90-14080 Hz).
     {
         const float fmin = FFT_Args::DefaultMinFrequency();
         const float fmax = FFT_Args::DefaultMaxFrequency();
@@ -256,7 +256,7 @@ void AudioReactive::mapFFTBinsToFrequencyChannels() {
         }
     }
 
-    // CQ bins span linearly from fmin to fmax (default: 174.6-4698.3 Hz)
+    // CQ bins span linearly from fmin to fmax (default: 90-14080 Hz)
     const float fmin = FFT_Args::DefaultMinFrequency();
     const float fmax = FFT_Args::DefaultMaxFrequency();
     const float deltaF = (fmax - fmin) / 16.0f;

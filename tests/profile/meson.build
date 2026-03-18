@@ -19,7 +19,8 @@ import os
 import sys
 # Use source directory passed as argument
 source_dir = sys.argv[1] if len(sys.argv) > 1 else "."
-files = glob.glob(os.path.join(source_dir, "tests/profile/*.cpp"))
+top = set(glob.glob(os.path.join(source_dir, "tests/profile/*.cpp")))
+files = sorted(top | set(glob.glob(os.path.join(source_dir, "tests/profile/**/*.cpp"), recursive=True)))
 if files:
     # Use semicolon as separator to avoid newline issues on Windows
     print(";".join(files))

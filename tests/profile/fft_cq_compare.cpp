@@ -264,8 +264,8 @@ int runBenchmark(bool jsonOutput) {
     const int SAMPLES = 512;
     const int SAMPLE_RATE = 44100;
     const int ITERATIONS = 2000;
-    const float fmin = 174.6f;
-    const float fmax = 4698.3f;
+    const float fmin = FFT_Args::DefaultMinFrequency();
+    const float fmax = FFT_Args::DefaultMaxFrequency();
     const int bands = 64;
 
     fl::vector<fl::i16> sines;

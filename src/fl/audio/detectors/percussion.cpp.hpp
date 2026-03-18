@@ -24,10 +24,10 @@ PercussionDetector::PercussionDetector()
     , mOnsetSharpness(0.0f)
     , mSubBassProxy(0.0f)
     , mZeroCrossingFactor(0.0f)
-    , mKickThreshold(0.45f)
-    , mSnareThreshold(0.40f)
-    , mHiHatThreshold(0.35f)
-    , mTomThreshold(0.40f)
+    , mKickThreshold(0.35f)
+    , mSnareThreshold(0.30f)
+    , mHiHatThreshold(0.30f)
+    , mTomThreshold(0.30f)
     , mLastKickTime(0)
     , mLastSnareTime(0)
     , mLastHiHatTime(0)
@@ -153,22 +153,30 @@ void PercussionDetector::computeFeatures(const FFTBins& fft) {
         return;
     }
 
-    // Band sums for 16-bin CQ FFT
-    // Bass: bins 0-3, Mid: bins 4-9, Treble: bins 10-15
+    // Frequency-based band boundaries (range-agnostic).
+    // Bass: fmin–300 Hz  (kick body, sub-bass)
+    // Mid:  300–2000 Hz  (snare body, tom)
+    // Treble: 2000+ Hz   (click transients, hi-hat, cymbals)
+    // Click: 1500–4500 Hz (kick beater attack, snare crack)
+    int bassCutBin = fl::max(1, fft.freqToBin(300.0f));
+    int trebleCutBin = fl::max(bassCutBin + 1, fft.freqToBin(2000.0f));
+    int clickLoBin = fl::max(bassCutBin, fft.freqToBin(1500.0f));
+    int clickHiBin = fl::min(n - 1, fft.freqToBin(4500.0f));
+
     float bassSum = 0.0f;
-    for (int i = 0; i < 4; ++i) bassSum += bins[i];
+    for (int i = 0; i <= bassCutBin; ++i) bassSum += bins[i];
 
     float midSum = 0.0f;
-    for (int i = 4; i < 10; ++i) midSum += bins[i];
+    for (int i = bassCutBin + 1; i < trebleCutBin; ++i) midSum += bins[i];
 
     float trebleSum = 0.0f;
-    for (int i = 10; i < 16; ++i) trebleSum += bins[i];
+    for (int i = trebleCutBin; i < n; ++i) trebleSum += bins[i];
 
-    // Click band: bins 10-12 (upper treble, where kick click appears)
+    // Click band: 1500–4500 Hz (kick click, snare crack)
     float clickBandSum = 0.0f;
-    for (int i = 10; i < 13; ++i) clickBandSum += bins[i];
+    for (int i = clickLoBin; i <= clickHiBin; ++i) clickBandSum += bins[i];
 
-    // Upper-mid region: bins 4-9
+    // Upper-mid for click ratio denominator
     float upperMidSum = midSum;
 
     float total = bassSum + midSum + trebleSum;
@@ -185,15 +193,19 @@ void PercussionDetector::computeFeatures(const FFTBins& fft) {
     // Mid/Treble ratio
     mMidToTreble = (trebleSum > 1e-6f) ? midSum / trebleSum : 0.0f;
 
-    // Sub-bass proxy: bin[0] / bin[4]
-    mSubBassProxy = (bins[4] > 1e-6f) ? bins[0] / bins[4] : 0.0f;
+    // Sub-bass proxy: lowest bin / first mid bin
+    int firstMidBin = bassCutBin + 1;
+    mSubBassProxy = (firstMidBin < n && bins[firstMidBin] > 1e-6f)
+                        ? bins[0] / bins[firstMidBin]
+                        : 0.0f;
 
-    // Treble flatness: geometric_mean / arithmetic_mean of bins 10-15
-    float trebleArithMean = trebleSum / 6.0f;
+    // Treble flatness: geometric_mean / arithmetic_mean of treble bins
+    int trebleBinCount = n - trebleCutBin;
+    float trebleArithMean = (trebleBinCount > 0) ? trebleSum / static_cast<float>(trebleBinCount) : 0.0f;
     if (trebleArithMean > 1e-6f) {
         float sumLog = 0.0f;
         int validCount = 0;
-        for (int i = 10; i < 16; ++i) {
+        for (int i = trebleCutBin; i < n; ++i) {
             if (bins[i] > 1e-6f) {
                 sumLog += fl::logf(bins[i]);
                 ++validCount;
@@ -211,87 +223,82 @@ void PercussionDetector::computeFeatures(const FFTBins& fft) {
 }
 
 void PercussionDetector::computeConfidences() {
-    // Feature distributions from synthetic generators through 16-bin CQ FFT:
+    // Feature distributions with frequency-based bands (90-14080 Hz, 16 CQ bins):
     //
     // Type     | bassToTotal | trebleToTotal | clickRatio | trebleFlatness | midToTreble | subBassProxy
     // ---------|-------------|---------------|------------|----------------|-------------|-------------
-    // Kick     |   0.50-0.85 |    0.05-0.20  |  0.3-1.5   |   0.7-0.9      |   1.5-4.0   |   3-15
-    // Snare    |   0.20-0.45 |    0.25-0.55  |  0.3-1.0   |   0.5-0.8      |   0.3-1.5   |   0.2-2
-    // HiHat   |   0.03-0.10 |    0.65-0.85  |  0.8-1.2   |   0.6-0.8      |   0.1-0.4   |   0.2-1
-    // Tom      |   0.85-0.97 |    0.01-0.05  |  0.05-0.15 |   0.8-0.95     |   4-8       |   15-35
+    // Kick     |   0.30-0.45 |    0.30-0.50  |  1.0-2.0   |   0.9-1.0      |   0.5-0.9   |   0.5-3
+    // Snare    |   0.10-0.25 |    0.55-0.75  |  1.5-2.5   |   0.9-1.0      |   0.2-0.5   |   0.0-0.2
+    // HiHat    |   0.03-0.10 |    0.70-0.90  |  2.5-5.0   |   0.9-1.0      |   0.1-0.2   |   0.2-1.5
+    // Tom      |   0.25-0.45 |    0.30-0.50  |  0.8-1.5   |   0.9-1.0      |   0.5-1.0   |   0.0-0.3
 
-    // Kick: bass-dominant with click transient energy
-    // Key discriminants from tom: click ratio (kick > tom), lower subBassProxy
+    // Kick: bass-dominant with high sub-bass proxy (distinguishes from tom)
+    // Key discriminants from tom: subBassProxy (kick > 0.5, tom < 0.3)
     {
-        // Bass score: peaks at 0.65 (kick range 0.50-0.85)
-        float bassScore = fl::max(0.0f, 1.0f - fl::abs(mBassToTotal - 0.65f) / 0.35f);
-        // Click presence: click ratio > 0.3 indicates kick click transient
-        float clickScore = fl::min(1.0f, mClickRatio / 1.0f);
-        // Sub-bass proxy: moderate (3-15) — not as extreme as tom (15-35)
-        float subBassScore = 0.0f;
-        if (mSubBassProxy >= 2.0f && mSubBassProxy <= 20.0f) {
-            subBassScore = 1.0f - fl::abs(mSubBassProxy - 8.0f) / 12.0f;
-            subBassScore = fl::max(0.0f, subBassScore);
-        }
+        // Bass score: peaks at 0.35 (kick range 0.25-0.50)
+        float bassScore = fl::max(0.0f, 1.0f - fl::abs(mBassToTotal - 0.35f) / 0.20f);
+        // Sub-bass proxy: kick has notable sub-bass energy (> 0.5)
+        float subBassScore = fl::min(1.0f, mSubBassProxy / 2.0f);
+        // Moderate treble (0.30-0.50 — higher than tom due to click)
+        float trebleScore = fl::max(0.0f, 1.0f - fl::abs(mTrebleToTotal - 0.40f) / 0.20f);
         // ZCF: kick has low-moderate zero crossings (~0.1-0.4)
         float zcfScore = fl::max(0.0f, 1.0f - fl::abs(mZeroCrossingFactor - 0.25f) / 0.25f);
 
-        mKickConfidence = 0.30f * bassScore + 0.30f * clickScore +
-                          0.20f * subBassScore + 0.20f * zcfScore;
+        mKickConfidence = 0.25f * bassScore + 0.35f * subBassScore +
+                          0.20f * trebleScore + 0.20f * zcfScore;
     }
 
-    // Snare: moderate bass + significant treble from noise rattles
-    // Key features: bassToTotal ~0.35-0.50, trebleToTotal ~0.35-0.55,
-    //               midToTreble ~0.25-0.50, trebleFlatness ~0.75-0.90
+    // Snare: low-moderate bass + high treble from noise rattles
     {
-        // Bass score: moderate bass (0.25-0.55) — not too high (kick), not too low (hihat)
-        float bassScore = fl::max(0.0f, 1.0f - fl::abs(mBassToTotal - 0.40f) / 0.20f);
-        // Treble presence: snare has significant treble (0.30-0.55)
-        float trebleScore = fl::max(0.0f, 1.0f - fl::abs(mTrebleToTotal - 0.45f) / 0.20f);
-        // Mid/Treble ratio: snare ~0.25-0.50 (moderate)
-        float midTrebleScore = fl::max(0.0f, 1.0f - fl::abs(mMidToTreble - 0.35f) / 0.25f);
-        // Treble flatness: high (snare noise has high flatness ~0.80-0.90)
-        float flatnessScore = fl::max(0.0f, (mTrebleFlatness - 0.70f) / 0.25f);
-        flatnessScore = fl::min(1.0f, flatnessScore);
-        // Click ratio: snare has moderate click ratio (~0.7-1.1)
-        float clickScore = fl::max(0.0f, 1.0f - fl::abs(mClickRatio - 0.9f) / 0.6f);
+        // Bass score: low bass (0.10-0.25) — lower than kick/tom
+        float bassScore = fl::max(0.0f, 1.0f - fl::abs(mBassToTotal - 0.15f) / 0.15f);
+        // Treble presence: snare has high treble (0.55-0.75)
+        float trebleScore = fl::max(0.0f, 1.0f - fl::abs(mTrebleToTotal - 0.65f) / 0.20f);
+        // Mid/Treble ratio: snare ~0.2-0.5 (moderate)
+        float midTrebleScore = fl::max(0.0f, 1.0f - fl::abs(mMidToTreble - 0.30f) / 0.25f);
+        // Very low sub-bass (< 0.2 — no body resonance)
+        float noSubBassScore = fl::max(0.0f, 1.0f - mSubBassProxy / 0.5f);
+        // ZCF: moderate (noise has many zero crossings)
+        float zcfScore = fl::max(0.0f, (mZeroCrossingFactor - 0.20f) / 0.40f);
+        zcfScore = fl::min(1.0f, zcfScore);
 
-        mSnareConfidence = 0.25f * bassScore + 0.25f * trebleScore +
-                           0.20f * midTrebleScore + 0.15f * flatnessScore +
-                           0.15f * clickScore;
+        mSnareConfidence = 0.20f * bassScore + 0.25f * trebleScore +
+                           0.15f * midTrebleScore + 0.20f * noSubBassScore +
+                           0.20f * zcfScore;
     }
 
-    // HiHat: treble-dominant with high flatness and high ZCF
+    // HiHat: treble-dominant with high ZCF
     {
-        // Treble dominance: hi-hat is mostly treble (0.65-0.85)
-        float trebleScore = fl::max(0.0f, (mTrebleToTotal - 0.50f) / 0.40f);
+        // Treble dominance: hi-hat is mostly treble (0.70-0.90)
+        float trebleScore = fl::max(0.0f, (mTrebleToTotal - 0.60f) / 0.30f);
         trebleScore = fl::min(1.0f, trebleScore);
         // No bass
         float noBassScore = fl::max(0.0f, 1.0f - mBassToTotal / 0.15f);
-        // Treble flatness: moderate-high (0.6-0.8)
-        float flatnessScore = fl::max(0.0f, 1.0f - fl::abs(mTrebleFlatness - 0.72f) / 0.30f);
+        // Very high click ratio (> 2.5 — all energy in click band)
+        float highClickScore = fl::max(0.0f, (mClickRatio - 2.0f) / 3.0f);
+        highClickScore = fl::min(1.0f, highClickScore);
         // ZCF: hi-hat has very high zero crossings (~0.5-0.8)
         float zcfScore = fl::max(0.0f, (mZeroCrossingFactor - 0.35f) / 0.45f);
         zcfScore = fl::min(1.0f, zcfScore);
 
-        mHiHatConfidence = 0.35f * trebleScore + 0.20f * noBassScore +
-                           0.25f * flatnessScore + 0.20f * zcfScore;
+        mHiHatConfidence = 0.30f * trebleScore + 0.20f * noBassScore +
+                           0.25f * highClickScore + 0.25f * zcfScore;
     }
 
-    // Tom: extreme bass dominance, NO click, very high subBassProxy, low ZCF
+    // Tom: bass with NO sub-bass, low mid-to-treble discriminates from kick
     {
-        // Very high bass (0.85-0.97)
-        float bassScore = fl::max(0.0f, (mBassToTotal - 0.80f) / 0.17f);
-        bassScore = fl::min(1.0f, bassScore);
-        // NO click: key discriminant from kick — very low click ratio (< 0.15)
-        float noClickScore = fl::max(0.0f, 1.0f - mClickRatio / 0.30f);
-        // No treble
-        float noTrebleScore = fl::max(0.0f, 1.0f - mTrebleToTotal / 0.08f);
+        // Moderate bass (0.25-0.45) — similar range to kick
+        float bassScore = fl::max(0.0f, 1.0f - fl::abs(mBassToTotal - 0.35f) / 0.20f);
+        // NO sub-bass: key discriminant from kick (tom < 0.3, kick > 0.5)
+        float noSubBassScore = fl::max(0.0f, 1.0f - mSubBassProxy / 0.5f);
+        // High mid-to-treble ratio (tom body resonance in mid)
+        float midTrebleScore = fl::max(0.0f, (mMidToTreble - 0.50f) / 0.50f);
+        midTrebleScore = fl::min(1.0f, midTrebleScore);
         // ZCF: tom has very low zero crossings (~0.05-0.15)
         float zcfScore = fl::max(0.0f, 1.0f - mZeroCrossingFactor / 0.25f);
 
-        mTomConfidence = 0.30f * bassScore + 0.25f * noClickScore +
-                         0.20f * noTrebleScore + 0.25f * zcfScore;
+        mTomConfidence = 0.25f * bassScore + 0.30f * noSubBassScore +
+                         0.20f * midTrebleScore + 0.25f * zcfScore;
     }
 
     // Clamp all to [0, 1]
@@ -302,43 +309,41 @@ void PercussionDetector::computeConfidences() {
 }
 
 void PercussionDetector::applyCrossBandRejection() {
-    // Winner-takes-all among competing types
-    // Kick vs Tom: these share bass dominance. Use click ratio as discriminant.
-    // If click ratio > 0.25, it's more kick-like; suppress tom
-    // If click ratio < 0.15, it's more tom-like; suppress kick
-    if (mBassToTotal > 0.45f) {
-        if (mClickRatio > 0.25f) {
-            // Click present → kick-like, suppress tom
+    // Winner-takes-all among competing types.
+    // With frequency-based bands (90-14080 Hz), kick and tom have similar
+    // bass/treble ratios. Use sub-bass proxy as primary discriminant.
+
+    // Kick vs Tom: both have moderate bass. Sub-bass proxy separates them.
+    // Kick has sub-bass body resonance (subBassProxy > 0.5), tom doesn't.
+    if (mBassToTotal > 0.20f) {
+        if (mSubBassProxy > 0.5f) {
+            // Sub-bass present → kick-like, suppress tom
             mTomConfidence *= 0.3f;
-        } else if (mClickRatio < 0.15f) {
-            // No click → tom-like, suppress kick
+        } else if (mSubBassProxy < 0.3f) {
+            // No sub-bass → tom-like, suppress kick
             mKickConfidence *= 0.3f;
         }
     }
 
-    // HiHat vs Snare: both have treble. Discriminate by bass content.
-    // If bass is very low (< 0.10), it's a hi-hat not a snare
-    if (mTrebleToTotal > 0.50f && mBassToTotal < 0.15f) {
+    // HiHat vs Snare: both have high treble. Discriminate by bass content.
+    if (mTrebleToTotal > 0.60f && mBassToTotal < 0.12f) {
         mSnareConfidence *= 0.3f;
     }
 
-    // Crash/broadband rejection: treble-dominant with low bass
-    // Suppress snare for crash-like spectra (low bass, high treble, moderate midToTreble)
-    if (mTrebleToTotal > 0.55f && mBassToTotal < 0.20f) {
+    // Crash/broadband rejection: very high treble with no bass
+    if (mTrebleToTotal > 0.70f && mBassToTotal < 0.10f) {
         mSnareConfidence *= 0.3f;
         mKickConfidence *= 0.2f;
         mTomConfidence *= 0.2f;
     }
 
     // Noise rejection: white noise has very low treble flatness (< 0.50)
-    // Real percussion (snare, hihat) has higher treble flatness (> 0.60)
     if (mTrebleFlatness < 0.50f && mTrebleToTotal > 0.40f) {
         mSnareConfidence *= 0.3f;
     }
 
-    // Kick has high click ratio (> 2.0) which is very different from snare (~0.9)
-    // If click ratio is very high, suppress snare (it's a kick)
-    if (mClickRatio > 2.0f && mBassToTotal > 0.30f) {
+    // Very high click ratio + high treble → hi-hat, not snare
+    if (mClickRatio > 3.0f && mTrebleToTotal > 0.60f) {
         mSnareConfidence *= 0.3f;
     }
 }

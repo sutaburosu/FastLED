@@ -23,12 +23,12 @@ BeatDetector::BeatDetector()
 BeatDetector::~BeatDetector() = default;
 
 void BeatDetector::update(shared_ptr<AudioContext> context) {
-    // Use 30 Hz min frequency so bass bins actually cover bass (20-250 Hz).
-    // Default fmin (174.6 Hz) misses bass entirely.
+    // Use 30 Hz min frequency so bass bins actually cover sub-bass (20-60 Hz).
+    // Default fmin (90 Hz) covers most bass but misses the deepest sub-bass.
     // CQ_NAIVE provides bass/treble discrimination via CQ kernels
     // (which include built-in Hamming windowing), while being faster
-    // than CQ_OCTAVE. The 16-bin / 30-4698Hz range has N_window=3,
-    // which is well-conditioned for CQ_NAIVE.
+    // than CQ_OCTAVE. The 16-bin / 30-14080Hz range has N_window=1,
+    // which is borderline for CQ_NAIVE but acceptable for beat detection.
     mRetainedFFT = context->getFFT(16, 30.0f,
                                    FFT_Args::DefaultMaxFrequency(),
                                    FFTMode::CQ_NAIVE);
