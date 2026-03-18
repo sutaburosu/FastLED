@@ -12,13 +12,44 @@ NC='\033[0m' # No Color
 PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 COMPILER_DIR="$PROJECT_ROOT/src/platforms/wasm/compiler"
 
+# Find a node_modules binary, preferring Unix name over .cmd (Windows)
+# Usage: find_bin <dir> <name>  →  sets FOUND_BIN or returns 1
+find_bin() {
+    local dir="$1" name="$2"
+    if [ -f "$dir/$name" ]; then
+        FOUND_BIN="$dir/$name"
+    elif [ -f "$dir/$name.cmd" ]; then
+        FOUND_BIN="$dir/$name.cmd"
+    else
+        return 1
+    fi
+}
+
+# Resolve eslint binary → sets ESLINT_BIN or returns 1
+find_eslint() {
+    find_bin "$PROJECT_ROOT/.cache/js-tools/node_modules/.bin" "eslint" && ESLINT_BIN="$FOUND_BIN"
+}
+
+# Resolve tsc binary → sets TSC_CMD or returns 1
+find_tsc() {
+    if find_bin "$COMPILER_DIR/node_modules/.bin" "tsc"; then
+        TSC_CMD="$FOUND_BIN"
+    elif find_bin "$PROJECT_ROOT/.cache/js-tools/node_modules/.bin" "tsc"; then
+        TSC_CMD="$FOUND_BIN"
+    elif command -v npx >/dev/null 2>&1; then
+        TSC_CMD="npx tsc"
+    else
+        return 1
+    fi
+}
+
 # Set up trap to invalidate cache on failure
 trap 'if [ $? -ne 0 ]; then cd "$PROJECT_ROOT" && uv run python ci/js_lint_cache.py failure; fi' EXIT
 
 echo -e "${BLUE}FAST FastLED TypeScript Linting (ESLint + TypeScript Type Checking - FAST!)${NC}"
 
 # Check if ESLint is installed
-if [ ! -f ".cache/js-tools/node_modules/.bin/eslint.cmd" ]; then
+if ! find_eslint; then
     echo -e "${RED}ERROR: ESLint not found. Run: uv run ci/setup-js-linting-fast.py${NC}"
     exit 1
 fi
@@ -92,7 +123,7 @@ fi
 # (ESLint resolves parser modules relative to the config file location)
 cp "../../src/platforms/wasm/compiler/.eslintrc.cjs" ".eslintrc.cjs" 2>/dev/null || true
 
-if "./node_modules/.bin/eslint.cmd" --no-eslintrc --no-inline-config -c .eslintrc.cjs "${LINT_TARGETS[@]}"; then
+if "$ESLINT_BIN" --no-eslintrc --no-inline-config -c .eslintrc.cjs "${LINT_TARGETS[@]}"; then
     echo -e "${GREEN}ESLint completed successfully${NC}"
 else
     echo -e "${RED}ERROR: ESLint failed${NC}"
@@ -104,18 +135,7 @@ fi
 echo -e "${BLUE}Running TypeScript Type Checking...${NC}"
 cd "$COMPILER_DIR"
 
-# Prefer local tsc from compiler's node_modules, then from .cache/js-tools, then global
-if [ -f "node_modules/.bin/tsc.cmd" ]; then
-    TSC_CMD="node_modules/.bin/tsc.cmd"
-elif [ -f "node_modules/.bin/tsc" ]; then
-    TSC_CMD="node_modules/.bin/tsc"
-elif [ -f "$PROJECT_ROOT/.cache/js-tools/node_modules/.bin/tsc.cmd" ]; then
-    TSC_CMD="$PROJECT_ROOT/.cache/js-tools/node_modules/.bin/tsc.cmd"
-elif [ -f "$PROJECT_ROOT/.cache/js-tools/node_modules/.bin/tsc" ]; then
-    TSC_CMD="$PROJECT_ROOT/.cache/js-tools/node_modules/.bin/tsc"
-elif command -v npx >/dev/null 2>&1; then
-    TSC_CMD="npx tsc"
-else
+if ! find_tsc; then
     echo -e "${YELLOW}TypeScript not found, skipping type checking${NC}"
     echo -e "${BLUE}To enable: cd src/platforms/wasm/compiler && npm install${NC}"
     echo -e "${GREEN}SUCCESS: Linting completed (type checking skipped)${NC}"
