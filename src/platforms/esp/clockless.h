@@ -19,6 +19,7 @@
 
 // Include ESP32 driver availability checks
 #include "platforms/esp/32/feature_flags/enabled.h"
+#include "platforms/esp/esp_version.h"
 
 // Include portable blocking clockless controller for fallback
 #include "platforms/shared/clockless_blocking.h"
@@ -28,8 +29,8 @@ namespace fl {
 // Define platform-default ClocklessController alias for ESP32
 // Multiple driver types are available (ClocklessIdf4/ClocklessIdf5, ClocklessSPI, ClocklessI2S)
 // This alias selects the preferred default for backward compatibility
-#ifdef FASTLED_ESP32_I2S
-  // I2S driver requested explicitly
+#if defined(FASTLED_ESP32_I2S) && !ESP_IDF_VERSION_6_OR_HIGHER
+  // I2S driver requested explicitly (not available on ESP-IDF 6.0+)
   template <int DATA_PIN, typename TIMING, EOrder RGB_ORDER = RGB, int XTRA0 = 0, bool FLIP = false, int WAIT_TIME = 5>
   using ClocklessController = ClocklessI2S<DATA_PIN, TIMING, RGB_ORDER, XTRA0, FLIP, WAIT_TIME>;
   #define FL_CLOCKLESS_CONTROLLER_DEFINED 1

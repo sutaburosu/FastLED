@@ -14,7 +14,9 @@
 // The I2S parallel mode driver only works on ESP32 and ESP32-S2
 // ESP32-S3: Use LCD_CAM peripheral instead (see lcd_driver_i80.h in FastLED)
 // ESP32-C3, C2, C5, C6, H2, P4: Have completely different I2S peripheral architecture (no parallel mode)
-#if defined(FL_IS_ESP32) && !defined(FL_IS_ESP_32S3) && !defined(FL_IS_ESP_32C2) && !defined(FL_IS_ESP_32C3) && !defined(FL_IS_ESP_32C5) && !defined(FL_IS_ESP_32C6) && !defined(FL_IS_ESP_32H2) && !defined(FL_IS_ESP_32P4)
+// Also disabled on ESP-IDF 6.0+ (PERIPH_I2S1_MODULE removed, needs LL API port)
+#include "platforms/esp/esp_version.h"
+#if defined(FL_IS_ESP32) && !defined(FL_IS_ESP_32S3) && !defined(FL_IS_ESP_32C2) && !defined(FL_IS_ESP_32C3) && !defined(FL_IS_ESP_32C5) && !defined(FL_IS_ESP_32C6) && !defined(FL_IS_ESP_32H2) && !defined(FL_IS_ESP_32P4) && !ESP_IDF_VERSION_6_OR_HIGHER
 
 // Compatibility for ESP-IDF 3.3: heap_caps_aligned_alloc was added in IDF 4.1
 #if defined(ESP_IDF_VERSION_MAJOR) && ESP_IDF_VERSION_MAJOR <= 3

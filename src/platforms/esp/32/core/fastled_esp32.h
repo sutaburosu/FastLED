@@ -28,10 +28,17 @@
 #endif
 
 #ifdef FASTLED_ESP32_I2S
+#include "platforms/esp/esp_version.h"
+#if ESP_IDF_VERSION_6_OR_HIGHER
+// I2S parallel driver is not yet ported to ESP-IDF 6.0+.
+// PERIPH_I2S1_MODULE was removed; the driver needs LL API migration.
+// Falling through to RMT/SPI/blocking driver instead.
+#else
 #ifndef FASTLED_INTERNAL
 #include "platforms/esp/32/drivers/i2s/clockless_i2s_esp32.h"
 #endif
-#endif
+#endif // ESP_IDF_VERSION_6_OR_HIGHER
+#endif // FASTLED_ESP32_I2S
 
 // Bulk controller implementations have been replaced by the Channel API
 // See src/fl/channels/README.md for multi-strip support
