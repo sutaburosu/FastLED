@@ -1,6 +1,12 @@
 #include "fl_unittest.h"
 #include "fl/stl/cstdlib.h"
 
+#ifdef _WIN32
+#include <process.h>
+#else
+#include <unistd.h>
+#endif
+
 namespace fl {
 namespace test {
 
