@@ -1,7 +1,7 @@
 
 #include "server_thread.h"
 
-#include "fl/stl/asio/http/stream_server.h"
+#include "fl/net/http/stream_server.h"
 #include "fl/stl/atomic.h"
 #include "fl/stl/chrono.h"
 #include "fl/stl/shared_ptr.h"
@@ -11,7 +11,7 @@
 namespace fl {
 
 struct ServerThreadData {
-    fl::shared_ptr<HttpStreamServer> mServer;
+    fl::shared_ptr<fl::net::http::HttpStreamServer> mServer;
     fl::atomic<bool> mRunning;
     fl::thread mThread;
 };
@@ -30,7 +30,7 @@ static void serverThreadFunc(fl::shared_ptr<ServerThreadData> data) {
     }
 }
 
-ServerThread::ServerThread(fl::shared_ptr<HttpStreamServer> server) {
+ServerThread::ServerThread(fl::shared_ptr<fl::net::http::HttpStreamServer> server) {
     mData = fl::make_shared<ServerThreadData>();
     mData->mServer = server;
     mData->mRunning = false;

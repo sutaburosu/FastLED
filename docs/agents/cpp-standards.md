@@ -5,6 +5,29 @@
 - **If you want to use a stdlib header like <type_traits>, look check for equivalent in `fl/type_traits.h`
 - **Vector type usage**: Use `fl::vector<T>` for dynamic arrays. The implementation is in `src/fl/stl/vector.h`.
 
+## `fl::net` Namespace Convention
+
+Files in `src/fl/net/` follow a two-level namespace pattern:
+
+- **Primary user-facing type** (if a single one exists) → lives directly in `fl::net`
+  - Example: `fl::net::OTA`
+- **Supporting types** (enums, transport types, options) → live in `fl::net::<module>` sub-namespace
+  - Example: `fl::net::ota::Service`
+- **Facade / collection modules** (no single primary type) → all types in `fl::net::<module>`
+  - Example: `fl::net::http::*`, `fl::net::ble::*`
+
+When moving a type into a sub-namespace, **drop the module prefix** from the name since the namespace already provides context:
+- `OTAService` → `fl::net::ota::Service`
+- `BleStatusInfo` → `fl::net::ble::StatusInfo`
+- `BleTransportState` → `fl::net::ble::TransportState`
+
+| File | Primary type (`fl::net`) | Sub-namespace (`fl::net::<mod>`) |
+|------|--------------------------|----------------------------------|
+| `ota.h` | `OTA` | `ota::Service` |
+| `rpc.h` | *(none — transport aliases)* | `rpc::StreamClient`, `rpc::StreamServer` |
+| `http.h` | *(none — facade)* | `http::Server`, `http::Response`, `http::fetch_get`, … |
+| `ble.h` | *(none — collection)* | `ble::TransportState`, `ble::StatusInfo`, `ble::createTransport`, … |
+
 ## API Object Pattern
 
 An **API object** is a public-facing wrapper header that lives alongside a directory of the same name containing implementation details. Users only ever `#include` the API header.

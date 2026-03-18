@@ -1,5 +1,5 @@
 // IWYU pragma: private
-// src/fl/stl/asio/ble.cpp.hpp
+// src/fl/net/ble.cpp.hpp
 //
 // Stub implementations for platforms without BLE support.
 // On ESP32 with NimBLE, the real implementation is compiled via the
@@ -8,31 +8,35 @@
 
 #pragma once
 
-#include "fl/stl/asio/ble.h"
+#include "fl/net/ble.h"
 
 #if !FL_BLE_AVAILABLE
 
 namespace fl {
+namespace net {
+namespace ble {
 
-BleTransportState* createBleTransport(const char*) {
+TransportState* createTransport(const char*) {
     return nullptr;
 }
 
-void destroyBleTransport(BleTransportState*) {
+void destroyTransport(TransportState*) {
 }
 
-BleStatusInfo queryBleStatus(const BleTransportState*) {
-    return BleStatusInfo{};
+StatusInfo queryStatus(const TransportState*) {
+    return StatusInfo{};
 }
 
 fl::pair<fl::function<fl::optional<fl::json>()>, fl::function<void(const fl::json&)>>
-getBleTransportCallbacks(BleTransportState*) {
+getTransportCallbacks(TransportState*) {
     return {
         fl::function<fl::optional<fl::json>()>([]() -> fl::optional<fl::json> { return fl::optional<fl::json>(); }),
         fl::function<void(const fl::json&)>([](const fl::json&) {})
     };
 }
 
+} // namespace ble
+} // namespace net
 } // namespace fl
 
 #endif // !FL_BLE_AVAILABLE

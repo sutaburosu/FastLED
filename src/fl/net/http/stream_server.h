@@ -1,6 +1,6 @@
 #pragma once
 
-#include "fl/stl/asio/http/stream_transport.h"
+#include "fl/net/http/stream_transport.h"
 #include "fl/stl/asio/http/native_server.h"  // IWYU pragma: keep
 #include "fl/stl/asio/http/http_parser.h"
 #include "fl/stl/string.h"
@@ -9,6 +9,8 @@
 #include "fl/stl/vector.h"
 
 namespace fl {
+namespace net {
+namespace http {
 
 /// HTTP streaming server for RPC
 /// Extends HttpStreamTransport with server-side HTTP logic
@@ -146,4 +148,6 @@ private:
     u32 mLastProcessedClientId;
 };
 
+}  // namespace http
+}  // namespace net
 }  // namespace fl

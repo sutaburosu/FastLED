@@ -5,23 +5,25 @@
 #include "fl/stl/stdint.h"
 
 namespace fl {
+namespace net {
+namespace http {
 
 // Result of a ChunkedReader::readChunk() call
 struct ChunkedReadResult {
     enum Status {
-        NO_DATA,     // No complete chunk available yet
-        DATA,        // Chunk data written to output span
-        FINAL        // Final (zero-length) chunk received, stream ended
+        CHUNKED_NO_DATA,  // No complete chunk available yet
+        CHUNKED_DATA,     // Chunk data written to output span
+        CHUNKED_FINAL     // Final (zero-length) chunk received, stream ended
     };
 
-    Status status;
-    fl::span<const u8> data;  // Subspan of caller's buffer containing the bytes read
+    Status mStatus;
+    fl::span<const u8> mData;  // Subspan of caller's buffer containing the bytes read
 
-    ChunkedReadResult() : status(NO_DATA) {}
-    ChunkedReadResult(Status s, fl::span<const u8> d) : status(s), data(d) {}
+    ChunkedReadResult() : mStatus(CHUNKED_NO_DATA) {}
+    ChunkedReadResult(Status s, fl::span<const u8> d) : mStatus(s), mData(d) {}
 
-    bool hasData() const { return status == DATA; }
-    bool isFinal() const { return status == FINAL; }
+    bool hasData() const { return mStatus == CHUNKED_DATA; }
+    bool isFinal() const { return mStatus == CHUNKED_FINAL; }
 };
 
 // ChunkedReader: Parse HTTP/1.1 chunked transfer encoding
@@ -37,7 +39,7 @@ public:
     bool hasChunk() const;
 
     // Read next chunk into caller-provided buffer.
-    // On CHUNKED_DATA, result.data is a subspan of `out` containing the bytes read.
+    // On CHUNKED_DATA, result.mData is a subspan of `out` containing the bytes read.
     // If the output span is too small, the chunk remains buffered (returns CHUNKED_NO_DATA).
     ChunkedReadResult readChunk(fl::span<u8> out);
 
@@ -55,7 +57,7 @@ private:
         READ_SIZE,      // Reading chunk size (hex + CRLF)
         READ_DATA,      // Reading chunk data
         READ_TRAILER,   // Reading trailing CRLF
-        FINAL           // Final chunk received
+        STATE_FINAL     // Final chunk received
     };
 
     State mState;
@@ -97,4 +99,6 @@ public:
     static constexpr size_t FINAL_SIZE = 5;
 };
 
+} // namespace http
+} // namespace net
 } // namespace fl

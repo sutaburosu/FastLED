@@ -1,12 +1,14 @@
 #pragma once
 
-#include "fl/stl/asio/http/stream_transport.h"
+#include "fl/net/http/stream_transport.h"
 #include "fl/stl/json.h"
 #include "fl/stl/string.h"
 #include "fl/stl/cstring.h"
 #include "fl/stl/stdio.h"
 
 namespace fl {
+namespace net {
+namespace http {
 
 // --- StreamHandle implementation ---
 
@@ -92,7 +94,7 @@ void HttpStreamTransport::parseChunkedMessages() {
             break;
         }
 
-        fl::string jsonStr(reinterpret_cast<const char*>(result.data.data()), result.data.size()); // ok reinterpret cast
+        fl::string jsonStr(reinterpret_cast<const char*>(result.mData.data()), result.mData.size()); // ok reinterpret cast
         fl::json json = fl::json::parse(jsonStr.c_str());
         if (json.is_null()) {
             continue;
@@ -451,4 +453,6 @@ void HttpStreamTransport::handleConnectionStateChange() {
     }
 }
 
+}  // namespace http
+}  // namespace net
 }  // namespace fl

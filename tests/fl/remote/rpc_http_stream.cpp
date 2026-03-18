@@ -10,13 +10,14 @@
 #include "fl/stl/vector.h"
 #include "fl/stl/asio/http/test_utils/mock_http_server.h"
 #include "fl/stl/asio/http/test_utils/mock_http_client.h"
-#include "fl/stl/asio/http/stream_transport.cpp.hpp"
+#include "fl/net/http/stream_transport.cpp.hpp"
 #include "fl/stl/asio/http/connection.cpp.hpp"
-#include "fl/stl/asio/http/chunked_encoding.cpp.hpp"
+#include "fl/net/http/chunked_encoding.cpp.hpp"
 
 FL_TEST_FILE(FL_FILEPATH) {
 
 using namespace fl;
+using namespace fl::net::http;
 
 // Helper to create JSON-RPC request
 static json createRequest(const char* method, const json& params, const json& id) {

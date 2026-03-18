@@ -9,9 +9,11 @@
 #include "fl/stl/unordered_map.h"
 #include "fl/stl/vector.h"
 #include "fl/stl/asio/http/connection.h"
-#include "fl/stl/asio/http/chunked_encoding.h"
+#include "fl/net/http/chunked_encoding.h"
 
 namespace fl {
+namespace net {
+namespace http {
 
 class HttpStreamTransport;  // IWYU pragma: keep
 
@@ -208,4 +210,6 @@ private:
     static fl::string idToString(const fl::json& id);
 };
 
+}  // namespace http
+}  // namespace net
 }  // namespace fl

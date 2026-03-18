@@ -1,7 +1,7 @@
 // IWYU pragma: private
 
 #include "platforms/wasm/js_fetch.h"
-#include "fl/stl/asio/fetch.h"  // Include for fl::response definition
+#include "fl/net/http/fetch.h"  // Include for fl::net::http::Response definition
 #include "fl/system/log.h"
 #include "fl/stl/string.h"
 #include "fl/stl/function.h"
@@ -77,7 +77,7 @@ extern "C" EMSCRIPTEN_KEEPALIVE void js_fetch_success_callback(u32 request_id, c
     auto callback_opt = getCallbackManager().takeCallback(request_id);
     if (callback_opt) {
         // Create a successful response object using unified fl::response
-        fl::response response(200, "OK");
+        fl::net::http::Response response(200, "OK");
         response.set_body(fl::string(content));
         response.set_header("content-type", "text/html"); // Default content type
         
@@ -94,7 +94,7 @@ extern "C" EMSCRIPTEN_KEEPALIVE void js_fetch_error_callback(u32 request_id, con
     auto callback_opt = getCallbackManager().takeCallback(request_id);
     if (callback_opt) {
         // Create an error response object using unified fl::response
-        fl::response response(0, "Network Error");
+        fl::net::http::Response response(0, "Network Error");
         fl::string error_content = "Fetch Error: ";
         error_content += error_message;
         response.set_body(error_content);
@@ -127,7 +127,7 @@ void WasmFetchRequest::response(const FetchResponseCallback& callback) {
     FL_WARN("HTTP fetch is not supported on non-WASM platforms (Arduino/embedded). URL: " << mUrl);
     
     // Return immediate error response using unified fl::response
-    fl::response error_response(501, "Not Implemented");
+    fl::net::http::Response error_response(501, "Not Implemented");
     error_response.set_body("HTTP fetch is only available in WASM/browser builds. This platform does not support network requests.");
     error_response.set_header("content-type", "text/plain");
     

@@ -7,7 +7,7 @@
 #include "fl/stl/string.h"
 #include "fl/stl/map.h"
 #include "fl/stl/stdint.h"
-#include "fl/stl/asio/http/chunked_encoding.h"
+#include "fl/net/http/chunked_encoding.h"
 
 namespace fl {
 
@@ -70,7 +70,7 @@ private:
     State mState;
     fl::vector<u8> mBuffer;
     fl::shared_ptr<HttpRequest> mRequest;
-    ChunkedReader mChunkedReader;  // For Transfer-Encoding: chunked
+    net::http::ChunkedReader mChunkedReader;  // For Transfer-Encoding: chunked
     size_t mContentLength;
     bool mIsChunked;
 
@@ -132,7 +132,7 @@ private:
     State mState;
     fl::vector<u8> mBuffer;
     fl::shared_ptr<HttpResponse> mResponse;
-    ChunkedReader mChunkedReader;
+    net::http::ChunkedReader mChunkedReader;
     size_t mContentLength;
     bool mIsChunked;
 

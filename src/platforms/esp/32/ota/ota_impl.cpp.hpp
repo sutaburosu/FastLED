@@ -9,7 +9,7 @@
 
 #include "platforms/ota.h"
 #include "platforms/esp/esp_version.h"
-#include "fl/ota.h"  // For OTAService enum
+#include "fl/net/ota.h"  // For OTAService enum
 
 // OTA support detection flag
 // OTA requires IDF 4.0+ for HTTP server and OTA APIs
@@ -676,7 +676,7 @@ public:
         // Initialize mDNS
         if (!initMDNS(mHostname.c_str())) {
             FL_WARN("mDNS init failed - device won't be discoverable at " << mHostname.c_str() << ".local");
-            mFailedServices |= (u8)fl::OTAService::MDNS_FAILED;
+            mFailedServices |= (u8)fl::net::ota::Service::MDNS_FAILED;
         }
 
         // Setup custom ESP-IDF OTA server (TCP listener on port 3232)
@@ -686,7 +686,7 @@ public:
         mHttpServer = startHttpServer(&mHttpContext);
         if (!mHttpServer) {
             FL_WARN("HTTP server failed - Web OTA unavailable (TCP OTA still works)");
-            mFailedServices |= (u8)fl::OTAService::HTTP_FAILED;
+            mFailedServices |= (u8)fl::net::ota::Service::HTTP_FAILED;
         }
 
         return true;
@@ -710,7 +710,7 @@ public:
         // Initialize mDNS
         if (!initMDNS(mHostname.c_str())) {
             FL_WARN("mDNS init failed - device won't be discoverable at " << mHostname.c_str() << ".local");
-            mFailedServices |= (u8)fl::OTAService::MDNS_FAILED;
+            mFailedServices |= (u8)fl::net::ota::Service::MDNS_FAILED;
         }
 
         // Setup custom ESP-IDF OTA server (TCP listener on port 3232)
@@ -720,7 +720,7 @@ public:
         mHttpServer = startHttpServer(&mHttpContext);
         if (!mHttpServer) {
             FL_WARN("HTTP server failed - Web OTA unavailable (TCP OTA still works)");
-            mFailedServices |= (u8)fl::OTAService::HTTP_FAILED;
+            mFailedServices |= (u8)fl::net::ota::Service::HTTP_FAILED;
         }
 
         return true;
@@ -1352,7 +1352,7 @@ private:
         if (result != pdPASS) {
             FL_WARN("OTA: Failed to create server task");
             mOtaRunning = false;
-            mFailedServices |= static_cast<u8>(fl::OTAService::ARDUINO_OTA_FAILED);
+            mFailedServices |= static_cast<u8>(fl::net::ota::Service::ARDUINO_OTA_FAILED);
         } else {
             FL_DBG("OTA: Custom server started (port 3232)");
         }

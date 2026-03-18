@@ -97,7 +97,7 @@
 
 #include <Arduino.h>
 #include <FastLED.h>
-#include "fl/ota.h"
+#include "fl/net/ota.h"
 #include "fl/stl/sstream.h"
 
 // ====== Configure your transport here ======
@@ -116,7 +116,7 @@ static const char* WIFI_PASS  = "MyPass";
 #define DATA_PIN 2
 CRGB leds[NUM_LEDS];
 
-fl::OTA ota;
+fl::net::OTA ota;
 
 void setup() {
   Serial.begin(115200);
@@ -145,15 +145,15 @@ void setup() {
   uint8_t failed = ota.getFailedServices();
   if (failed != 0) {
     Serial.println("\nWARNING: Some OTA services failed to initialize:");
-    if (failed & (uint8_t)fl::OTAService::MDNS_FAILED) {
+    if (failed & (uint8_t)fl::net::ota::Service::MDNS_FAILED) {
       Serial.println("  - mDNS failed: Device won't be discoverable at hostname.local");
       Serial.println("    Try accessing via IP address instead");
     }
-    if (failed & (uint8_t)fl::OTAService::HTTP_FAILED) {
+    if (failed & (uint8_t)fl::net::ota::Service::HTTP_FAILED) {
       Serial.println("  - HTTP server failed: Web OTA unavailable");
       Serial.println("    You can still use Arduino IDE OTA (port 3232)");
     }
-    if (failed & (uint8_t)fl::OTAService::ARDUINO_OTA_FAILED) {
+    if (failed & (uint8_t)fl::net::ota::Service::ARDUINO_OTA_FAILED) {
       Serial.println("  - ArduinoOTA failed: IDE OTA unavailable");
       Serial.println("    You can still use Web OTA interface");
     }
@@ -172,15 +172,15 @@ void setup() {
   uint8_t failed = ota.getFailedServices();
   if (failed != 0) {
     Serial.println("\nWARNING: Some OTA services failed to initialize:");
-    if (failed & (uint8_t)fl::OTAService::MDNS_FAILED) {
+    if (failed & (uint8_t)fl::net::ota::Service::MDNS_FAILED) {
       Serial.println("  - mDNS failed: Device won't be discoverable at hostname.local");
       Serial.println("    Try accessing via IP address instead");
     }
-    if (failed & (uint8_t)fl::OTAService::HTTP_FAILED) {
+    if (failed & (uint8_t)fl::net::ota::Service::HTTP_FAILED) {
       Serial.println("  - HTTP server failed: Web OTA unavailable");
       Serial.println("    You can still use Arduino IDE OTA (port 3232)");
     }
-    if (failed & (uint8_t)fl::OTAService::ARDUINO_OTA_FAILED) {
+    if (failed & (uint8_t)fl::net::ota::Service::ARDUINO_OTA_FAILED) {
       Serial.println("  - ArduinoOTA failed: IDE OTA unavailable");
       Serial.println("    You can still use Web OTA interface");
     }

@@ -1,7 +1,7 @@
 // examples/Validation/ValidationOta.cpp
 //
 // OTA validation implementation for ESP32.
-// Uses fl::OTA for the OTA HTTP server with Basic Auth.
+// Uses fl::net::OTA for the OTA HTTP server with Basic Auth.
 // Uses ESP-IDF native APIs for WiFi Soft AP.
 // Guarded with FL_IS_ESP32 - no-op stubs on other platforms.
 
@@ -22,7 +22,7 @@ ValidationOtaState& getOtaState() {
 
 #if defined(FL_IS_ESP32)
 
-#include "fl/ota.h"
+#include "fl/net/ota.h"
 #include "fl/stl/cstring.h"
 #include "fl/stl/unique_ptr.h"
 #include <Arduino.h>
@@ -35,7 +35,7 @@ ValidationOtaState& getOtaState() {
 // IWYU pragma: end_keep
 
 // Static handles
-static fl::unique_ptr<fl::OTA> s_ota;
+static fl::unique_ptr<fl::net::OTA> s_ota;
 static esp_netif_t* s_ota_netif_ap = nullptr;
 static bool s_ota_event_loop_initialized = false;
 static bool s_ota_wifi_initialized = false;
@@ -133,7 +133,7 @@ fl::json startOta() {
     }
 
     // Create and start OTA server
-    s_ota = fl::make_unique<fl::OTA>();
+    s_ota = fl::make_unique<fl::net::OTA>();
     if (!s_ota->begin(VALIDATION_OTA_HOSTNAME, VALIDATION_OTA_OTA_PASSWORD)) {
         response.set("success", false);
         response.set("error", "Failed to start OTA server");

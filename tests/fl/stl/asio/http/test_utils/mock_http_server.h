@@ -1,12 +1,14 @@
 #pragma once
 
-#include "fl/stl/asio/http/stream_transport.h"
+#include "fl/net/http/stream_transport.h"
 #include "fl/stl/json.h"
 #include "fl/stl/vector.h"
 #include "fl/stl/string.h"
 #include "fl/stl/map.h"
 
 namespace fl {
+namespace net {
+namespace http {
 
 /// Mock HTTP server for unit testing
 /// In-memory implementation without actual sockets
@@ -171,4 +173,6 @@ private:
     fl::map<uint32_t, ClientQueue> mClientQueues;
 };
 
+}  // namespace http
+}  // namespace net
 }  // namespace fl

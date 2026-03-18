@@ -1,4 +1,4 @@
-/// @file fl/ota.h
+/// @file fl/net/ota.h
 /// Minimal, batteries-included OTA (Over-The-Air) update system for ESP32
 ///
 /// This module provides a simple, one-liner API for enabling OTA updates on ESP32
@@ -49,9 +49,9 @@
 /// Example usage:
 /// @code
 /// #include <FastLED.h>
-/// #include "fl/ota.h"
+/// #include "fl/net/ota.h"
 ///
-/// fl::OTA ota;
+/// fl::net::OTA ota;
 ///
 /// void setup() {
 ///   // Option 1: Full Wi-Fi setup + OTA
@@ -100,14 +100,19 @@ namespace platforms {
     class IOTA;
 }
 
+namespace net {
+namespace ota {
+
 /// @brief OTA service initialization status flags
 /// @note Used with getFailedServices() to identify which services failed during initialization
-enum class OTAService : u8 {
+enum class Service : u8 {
     NONE = 0,                    ///< No failures
     MDNS_FAILED = 1 << 0,        ///< mDNS initialization failed (device not discoverable at hostname.local)
     HTTP_FAILED = 1 << 1,        ///< HTTP server failed to start (Web OTA unavailable)
     ARDUINO_OTA_FAILED = 1 << 2  ///< ArduinoOTA initialization failed (IDE OTA unavailable)
 };
+
+} // namespace ota
 
 /// @brief OTA (Over-The-Air) update manager for ESP32 platforms
 ///
@@ -195,8 +200,8 @@ public:
     bool isConnected() const;
 
     /// @brief Get bitmask of services that failed to initialize
-    /// @return Bitfield of OTAService flags indicating which services failed
-    /// @note Check specific services with: (getFailedServices() & (uint8_t)OTAService::MDNS_FAILED)
+    /// @return Bitfield of ota::Service flags indicating which services failed
+    /// @note Check specific services with: (getFailedServices() & (uint8_t)ota::Service::MDNS_FAILED)
     u8 getFailedServices() const;
 
 private:
@@ -204,5 +209,7 @@ private:
     // Using shared_ptr for proper lifetime management and lazy initialization
     fl::shared_ptr<fl::platforms::IOTA> mImpl;
 };
+
+} // namespace net
 
 }  // namespace fl

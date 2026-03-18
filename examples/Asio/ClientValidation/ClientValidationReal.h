@@ -21,7 +21,7 @@
 #undef FASTLED_STUB_MAIN_FAST_EXIT
 
 #include "fl/stl/asio/http/server.h"
-#include "fl/stl/asio/fetch.h"
+#include "fl/net/http/fetch.h"
 #include "fl/stl/async.h"
 #include <FastLED.h>
 
@@ -74,8 +74,8 @@ void updateLEDs() {
 void test_json_endpoint() {
     FL_WARN("\n=== Test 1: GET /json (Slideshow Data) ===");
 
-    fl::promise<fl::response> promise = fl::fetch_get("http://localhost:8081/json");
-    fl::result<fl::response> result = fl::await_top_level(promise);
+    fl::promise<fl::net::http::Response> promise = fl::net::http::fetch_get("http://localhost:8081/json");
+    fl::result<fl::net::http::Response> result = fl::await_top_level(promise);
 
     if (!result.ok()) {
         FL_WARN("✗ FAILED: " << result.error_message());
@@ -84,7 +84,7 @@ void test_json_endpoint() {
         return;
     }
 
-    const fl::response& resp = result.value();
+    const fl::net::http::Response& resp = result.value();
     if (resp.status() != 200) {
         FL_WARN("✗ FAILED: Status " << resp.status() << " " << resp.status_text());
         tests_failed++;
@@ -124,8 +124,8 @@ void test_json_endpoint() {
 void test_get_endpoint() {
     FL_WARN("\n=== Test 2: GET /get (Request Echo) ===");
 
-    fl::promise<fl::response> promise = fl::fetch_get("http://localhost:8081/get");
-    fl::result<fl::response> result = fl::await_top_level(promise);
+    fl::promise<fl::net::http::Response> promise = fl::net::http::fetch_get("http://localhost:8081/get");
+    fl::result<fl::net::http::Response> result = fl::await_top_level(promise);
 
     if (!result.ok()) {
         FL_WARN("✗ FAILED: " << result.error_message());
@@ -134,7 +134,7 @@ void test_get_endpoint() {
         return;
     }
 
-    const fl::response& resp = result.value();
+    const fl::net::http::Response& resp = result.value();
     if (resp.status() != 200) {
         FL_WARN("✗ FAILED: Status " << resp.status() << " " << resp.status_text());
         tests_failed++;
@@ -169,8 +169,8 @@ void test_get_endpoint() {
 void test_ping_endpoint() {
     FL_WARN("\n=== Test 3: GET /ping (Health Check) ===");
 
-    fl::promise<fl::response> promise = fl::fetch_get("http://localhost:8081/ping");
-    fl::result<fl::response> result = fl::await_top_level(promise);
+    fl::promise<fl::net::http::Response> promise = fl::net::http::fetch_get("http://localhost:8081/ping");
+    fl::result<fl::net::http::Response> result = fl::await_top_level(promise);
 
     if (!result.ok()) {
         FL_WARN("✗ FAILED: " << result.error_message());
@@ -179,7 +179,7 @@ void test_ping_endpoint() {
         return;
     }
 
-    const fl::response& resp = result.value();
+    const fl::net::http::Response& resp = result.value();
     if (resp.status() != 200) {
         FL_WARN("✗ FAILED: Status " << resp.status() << " " << resp.status_text());
         tests_failed++;

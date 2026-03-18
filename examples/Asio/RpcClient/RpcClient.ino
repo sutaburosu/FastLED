@@ -20,11 +20,12 @@
 #include <FastLED.h>
 #include "fl/remote/remote.h"
 #include "fl/remote/rpc/response_send.h"
-#include "fl/stl/asio/http/stream_client.h"
-#include "fl/stl/asio/http/stream_client.cpp.hpp"
-#include "fl/stl/asio/http/stream_transport.cpp.hpp"
+#include "fl/stl/unique_ptr.h"
+#include "fl/net/http/stream_client.h"
+#include "fl/net/http/stream_client.cpp.hpp"
+#include "fl/net/http/stream_transport.cpp.hpp"
 #include "fl/stl/asio/http/connection.cpp.hpp"
-#include "fl/stl/asio/http/chunked_encoding.cpp.hpp"
+#include "fl/net/http/chunked_encoding.cpp.hpp"
 #include "fl/stl/asio/http/http_parser.cpp.hpp"
 #include "fl/stl/asio/http/native_client.cpp.hpp"
 
@@ -38,8 +39,8 @@
 CRGB leds[NUM_LEDS];
 
 // HTTP streaming client
-fl::HttpStreamClient* transport = nullptr;
-fl::Remote* remote = nullptr;
+fl::unique_ptr<fl::net::http::HttpStreamClient> transport;
+fl::unique_ptr<fl::Remote> remote;
 
 // Request ID counter
 int requestId = 1;
@@ -82,7 +83,7 @@ void setup() {
     FastLED.show();
 
     // Create HTTP streaming client transport
-    transport = new fl::HttpStreamClient(SERVER_HOST, SERVER_PORT);  // ok bare allocation
+    transport = fl::make_unique<fl::net::http::HttpStreamClient>(SERVER_HOST, SERVER_PORT);
 
     // Configure heartbeat and timeout
     transport->setHeartbeatInterval(30000); // 30 seconds
@@ -105,7 +106,7 @@ void setup() {
     });
 
     // Create Remote with transport callbacks
-    remote = new fl::Remote(  // ok bare allocation
+    remote = fl::make_unique<fl::Remote>(
         []() { return transport->readRequest(); },
         [](const fl::json& response) { transport->writeResponse(response); }
     );

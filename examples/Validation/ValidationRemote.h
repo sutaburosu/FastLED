@@ -20,10 +20,10 @@
 
 // Forward declarations
 namespace fl {
-    class json;
-    class Remote;
-    class RxDevice;
-    struct BleTransportState;
+class json;
+class Remote;
+class RxDevice;
+namespace net { namespace ble { struct TransportState; } }
 }
 
 /// @brief Factory function type for creating RxDevice instances
@@ -92,7 +92,7 @@ public:
 private:
     fl::unique_ptr<fl::Remote> mRemote;      // Serial Remote RPC system instance
     fl::unique_ptr<fl::Remote> mBleRemote;   // BLE Remote RPC system instance (created by startBle)
-    fl::BleTransportState* mBleState = nullptr; // Opaque BLE state (heap-allocated by createBleTransport)
+    fl::net::ble::TransportState* mBleState = nullptr; // Opaque BLE state (heap-allocated by ble::createTransport)
     fl::shared_ptr<ValidationState> mState;  // Shared validation state
     bool mPendingBleStop = false;            // Deferred BLE teardown flag (set by stopBle RPC)
 

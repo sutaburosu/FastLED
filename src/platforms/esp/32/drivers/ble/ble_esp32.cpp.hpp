@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "fl/stl/asio/ble.h"
+#include "fl/net/ble.h"
 
 #if FL_BLE_AVAILABLE
 
@@ -33,12 +33,14 @@ FL_EXTERN_C_BEGIN
 FL_EXTERN_C_END
 
 namespace fl {
+namespace net {
+namespace ble {
 
 // Ring buffer size for incoming BLE writes (must be power of 2)
 static constexpr int kBleRingBufferSize = 8;
 
 /// @brief State shared between BLE callbacks and the main loop
-struct BleTransportState {
+struct TransportState {
     // Ring buffer for incoming JSON-RPC requests (written by NimBLE task, read by main loop)
     fl::string ringBuffer[kBleRingBufferSize];
     volatile int head = 0;  // Written by NimBLE task (producer)
@@ -67,10 +69,10 @@ static void fl_ble_on_sync(void);
 static void fl_ble_host_task(void *param);
 
 // ---------------------------------------------------------------------------
-// Static state pointer — set in createBleTransport, used by on_sync callback
+// Static state pointer — set in createTransport, used by on_sync callback
 // which has no void* arg parameter.
 // ---------------------------------------------------------------------------
-static BleTransportState *s_bleState = nullptr;
+static TransportState *s_bleState = nullptr; // okay static in header
 
 // ---------------------------------------------------------------------------
 // 128-bit UUIDs (NimBLE ble_uuid128_t)
@@ -98,7 +100,7 @@ static const struct ble_gatt_svc_def fl_gatt_svr_svcs[] = {
                 // RX characteristic: host writes JSON-RPC requests here
                 .uuid = &fl_ble_chr_rx_uuid.u,
                 .access_cb = fl_ble_gatt_access_cb,
-                .arg = nullptr, // patched to BleTransportState* at init
+                .arg = nullptr, // patched to TransportState* at init
                 .flags = BLE_GATT_CHR_F_WRITE | BLE_GATT_CHR_F_WRITE_NO_RSP,
                 .val_handle = nullptr, // patched at init
             },
@@ -106,7 +108,7 @@ static const struct ble_gatt_svc_def fl_gatt_svr_svcs[] = {
                 // TX characteristic: device sends JSON-RPC responses via NOTIFY
                 .uuid = &fl_ble_chr_tx_uuid.u,
                 .access_cb = fl_ble_gatt_access_cb,
-                .arg = nullptr, // patched to BleTransportState* at init
+                .arg = nullptr, // patched to TransportState* at init
                 .flags = BLE_GATT_CHR_F_NOTIFY | BLE_GATT_CHR_F_READ,
                 .val_handle = nullptr, // patched at init
             },
@@ -122,7 +124,7 @@ static const struct ble_gatt_svc_def fl_gatt_svr_svcs[] = {
 static struct ble_gatt_svc_def fl_gatt_svr_svcs_mut[2];
 static struct ble_gatt_chr_def fl_gatt_chr_defs_mut[3];
 
-static void fl_ble_patch_gatt_table(BleTransportState *state) {
+static void fl_ble_patch_gatt_table(TransportState *state) {
     // Copy service table
     fl::memcpy(fl_gatt_svr_svcs_mut, fl_gatt_svr_svcs, sizeof(fl_gatt_svr_svcs));
     // Copy characteristic table
@@ -147,7 +149,7 @@ static void fl_ble_patch_gatt_table(BleTransportState *state) {
 
 static int fl_ble_gatt_access_cb(u16 conn_handle, u16 attr_handle,
                                   struct ble_gatt_access_ctxt *ctxt, void *arg) {
-    auto *state = static_cast<BleTransportState *>(arg);
+    auto *state = static_cast<TransportState *>(arg);
     if (!state) {
         return BLE_ATT_ERR_UNLIKELY;
     }
@@ -203,10 +205,10 @@ static int fl_ble_gatt_access_cb(u16 conn_handle, u16 attr_handle,
 // GAP event callback — handles connect, disconnect, adv complete
 // ---------------------------------------------------------------------------
 
-static void fl_ble_start_advertise(BleTransportState *state);
+static void fl_ble_start_advertise(TransportState *state);
 
 static int fl_ble_gap_event_cb(struct ble_gap_event *event, void *arg) {
-    auto *state = static_cast<BleTransportState *>(arg);
+    auto *state = static_cast<TransportState *>(arg);
 
     switch (event->type) {
     case BLE_GAP_EVENT_CONNECT:
@@ -258,7 +260,7 @@ static int fl_ble_gap_event_cb(struct ble_gap_event *event, void *arg) {
 // Advertising
 // ---------------------------------------------------------------------------
 
-static void fl_ble_start_advertise(BleTransportState *state) {
+static void fl_ble_start_advertise(TransportState *state) {
     const char *name = ble_svc_gap_device_name();
 
     // Advertising packet: flags + device name (required for scanner discovery)
@@ -334,8 +336,8 @@ static void fl_ble_host_task(void *param) {
 // Public API implementation
 // ---------------------------------------------------------------------------
 
-BleTransportState* createBleTransport(const char* deviceName) {
-    auto uptr = fl::make_unique<BleTransportState>();
+TransportState* createTransport(const char* deviceName) {
+    auto uptr = fl::make_unique<TransportState>();
     auto* state = uptr.get();
 
     // Set static state pointer for on_sync callback (which has no void* arg)
@@ -387,9 +389,9 @@ BleTransportState* createBleTransport(const char* deviceName) {
     return state;
 }
 
-void destroyBleTransport(BleTransportState* state) {
+void destroyTransport(TransportState* state) {
     if (!state) return;
-    fl::unique_ptr<BleTransportState> guard(state);
+    fl::unique_ptr<TransportState> guard(state);
 
     // Stop advertising
     ble_gap_adv_stop();
@@ -410,8 +412,8 @@ void destroyBleTransport(BleTransportState* state) {
     FL_WARN("[BLE] GATT server stopped");
 }
 
-BleStatusInfo queryBleStatus(const BleTransportState* state) {
-    BleStatusInfo info;
+StatusInfo queryStatus(const TransportState* state) {
+    StatusInfo info;
     if (!state) return info;
     info.connected = state->connected;
     info.connectedCount = state->connected ? 1 : 0;
@@ -423,7 +425,7 @@ BleStatusInfo queryBleStatus(const BleTransportState* state) {
 }
 
 fl::pair<fl::function<fl::optional<fl::json>()>, fl::function<void(const fl::json&)>>
-getBleTransportCallbacks(BleTransportState* state) {
+getTransportCallbacks(TransportState* state) {
     // RequestSource: polls ring buffer for incoming JSON-RPC
     auto requestSource = [state]() -> fl::optional<fl::json> {
         if (state->tail == state->head) {
@@ -498,6 +500,8 @@ getBleTransportCallbacks(BleTransportState* state) {
     return {requestSource, responseSink};
 }
 
+} // namespace ble
+} // namespace net
 } // namespace fl
 
 #endif // FL_BLE_AVAILABLE

@@ -1,12 +1,14 @@
 #pragma once
 
-#include "fl/stl/asio/http/stream_transport.h"
+#include "fl/net/http/stream_transport.h"
 #include "fl/stl/json.h"
 #include "fl/stl/vector.h"
 #include "fl/stl/string.h"
 #include "mock_http_server.h"
 
 namespace fl {
+namespace net {
+namespace http {
 
 /// Mock HTTP client for unit testing
 /// In-memory implementation without actual sockets
@@ -137,4 +139,6 @@ private:
     uint32_t mCurrentTime;
 };
 
+}  // namespace http
+}  // namespace net
 }  // namespace fl

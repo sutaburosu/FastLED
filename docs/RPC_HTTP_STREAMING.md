@@ -68,7 +68,7 @@ This enables real-time communication between FastLED devices and web-based or de
 #include "fl/stl/asio/http/stream_server.cpp.hpp"
 #include "fl/stl/asio/http/stream_transport.cpp.hpp"
 #include "fl/stl/asio/http/connection.cpp.hpp"
-#include "fl/stl/asio/http/chunked_encoding.cpp.hpp"
+#include "fl/net/http/chunked_encoding.cpp.hpp"
 #include "fl/stl/asio/http/http_parser.cpp.hpp"
 #include "fl/stl/asio/http/native_server.cpp.hpp"
 

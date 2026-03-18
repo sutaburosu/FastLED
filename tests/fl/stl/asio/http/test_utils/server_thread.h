@@ -1,6 +1,6 @@
 #pragma once
 
-#include "fl/stl/asio/http/stream_server.h"
+#include "fl/net/http/stream_server.h"
 #include "fl/stl/shared_ptr.h"
 
 
@@ -15,7 +15,7 @@ class ServerThread {
 public:
     /// Constructor
     /// @param server Shared pointer to HttpStreamServer
-    ServerThread(fl::shared_ptr<HttpStreamServer> server);
+    ServerThread(fl::shared_ptr<fl::net::http::HttpStreamServer> server);
 
     /// Destructor - stops the server thread if running
     ~ServerThread();

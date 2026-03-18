@@ -1,11 +1,13 @@
 #pragma once
 
-#include "fl/stl/asio/http/stream_server.h"
+#include "fl/net/http/stream_server.h"
 #include "fl/stl/string.h"
 #include "fl/stl/stdint.h"
 #include "fl/system/log.h"
 #include "fl/stl/cstdio.h"
 namespace fl {
+namespace net {
+namespace http {
 
 HttpStreamServer::HttpStreamServer(u16 port, u32 heartbeatIntervalMs)
     : HttpStreamTransport("0.0.0.0", port, heartbeatIntervalMs)
@@ -298,4 +300,6 @@ void HttpStreamServer::removeClientState(u32 clientId) {
     }
 }
 
+}  // namespace http
+}  // namespace net
 }  // namespace fl

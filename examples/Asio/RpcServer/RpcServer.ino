@@ -35,11 +35,11 @@
 #include <FastLED.h>
 #include "fl/remote/remote.h"
 #include "fl/remote/rpc/response_send.h"
-#include "fl/stl/asio/http/stream_server.h"
-#include "fl/stl/asio/http/stream_server.cpp.hpp"
-#include "fl/stl/asio/http/stream_transport.cpp.hpp"
+#include "fl/net/http/stream_server.h"
+#include "fl/net/http/stream_server.cpp.hpp"
+#include "fl/net/http/stream_transport.cpp.hpp"
 #include "fl/stl/asio/http/connection.cpp.hpp"
-#include "fl/stl/asio/http/chunked_encoding.cpp.hpp"
+#include "fl/net/http/chunked_encoding.cpp.hpp"
 #include "fl/stl/asio/http/http_parser.cpp.hpp"
 #include "fl/stl/asio/http/native_server.cpp.hpp"
 
@@ -50,7 +50,7 @@
 CRGB leds[NUM_LEDS];
 
 // Static pointers to allow setup initialization
-static fl::shared_ptr<fl::HttpStreamServer>* pTransport = nullptr;
+static fl::shared_ptr<fl::net::http::HttpStreamServer>* pTransport = nullptr;
 static fl::Remote* pRemote = nullptr;
 
 void setup() {
@@ -66,7 +66,7 @@ void setup() {
     FastLED.addLeds<WS2812, DATA_PIN, GRB>(leds, NUM_LEDS);
 
     // Allocate transport and remote on heap
-    pTransport = new fl::shared_ptr<fl::HttpStreamServer>(fl::make_shared<fl::HttpStreamServer>(SERVER_PORT));  // ok bare allocation
+    pTransport = new fl::shared_ptr<fl::net::http::HttpStreamServer>(fl::make_shared<fl::net::http::HttpStreamServer>(SERVER_PORT));  // ok bare allocation
     auto& transport = *pTransport;
 
     pRemote = new fl::Remote(  // ok bare allocation

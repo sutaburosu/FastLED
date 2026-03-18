@@ -1,6 +1,6 @@
 #pragma once
 
-#include "fl/stl/asio/fetch_request.h"
+#include "fl/net/http/fetch_request.h"
 #include "fl/stl/async.h"
 #include "fl/system/log.h"
 #include "fl/stl/int.h"
@@ -61,30 +61,31 @@
 #endif
 
 namespace fl {
-namespace asio {
+namespace net {
+namespace http {
 
-FetchRequest::FetchRequest(const fl::string& url, const fetch_options& opts, fl::promise<response> prom)
-    : state(DNS_LOOKUP)
-    , promise(prom)
-    , parsed_url(url)
-    , hostname()
-    , port(80)
-    , path("/")
-    , socket_fd(-1)
-    , dns_result(nullptr)
-    , request_buffer()
-    , response_buffer()
-    , bytes_sent(0)
-    , state_start_time(fl::millis())
+FetchRequest::FetchRequest(const fl::string& url, const FetchOptions& opts, fl::promise<Response> prom)
+    : mState(DNS_LOOKUP)
+    , mPromise(prom)
+    , mParsedUrl(url)
+    , mHostname()
+    , mPort(80)
+    , mPath("/")
+    , mSocketFd(-1)
+    , mDnsResult(nullptr)
+    , mRequestBuffer()
+    , mResponseBuffer()
+    , mBytesSent(0)
+    , mStateStartTime(fl::millis())
 {
-    if (!parsed_url.isValid() || parsed_url.host().empty()) {
+    if (!mParsedUrl.isValid() || mParsedUrl.host().empty()) {
         complete_error("Invalid URL");
         return;
     }
-    hostname = fl::string(parsed_url.host().data(), parsed_url.host().size());
-    port = parsed_url.port();
-    fl::string_view p = parsed_url.path();
-    path = p.empty() ? fl::string("/") : fl::string(p.data(), p.size());
+    mHostname = fl::string(mParsedUrl.host().data(), mParsedUrl.host().size());
+    mPort = mParsedUrl.port();
+    fl::string_view p = mParsedUrl.path();
+    mPath = p.empty() ? fl::string("/") : fl::string(p.data(), p.size());
 }
 
 FetchRequest::~FetchRequest() {
@@ -92,7 +93,7 @@ FetchRequest::~FetchRequest() {
 }
 
 void FetchRequest::update() {
-    switch (state) {
+    switch (mState) {
         case DNS_LOOKUP:
             handle_dns_lookup();
             break;
@@ -116,23 +117,23 @@ void FetchRequest::handle_dns_lookup() {
     // Pump async system before DNS to keep server responsive
     fl::async_run(1000);
 
-    FL_WARN("[FETCH] Resolving hostname: " << hostname);
+    FL_WARN("[FETCH] Resolving hostname: " << mHostname);
 
     // DNS lookup (blocking 10-100ms, but acceptable)
     // Note: localhost is typically instant due to OS caching
-    dns_result = gethostbyname(hostname.c_str());
+    mDnsResult = gethostbyname(mHostname.c_str());
 
     // Pump async system after DNS to resume server pumping
     fl::async_run(1000);
 
-    if (!dns_result) {
+    if (!mDnsResult) {
         complete_error("DNS lookup failed");
         return;
     }
 
     // Create socket
-    socket_fd = socket(AF_INET, SOCK_STREAM, 0);
-    if (socket_fd < 0) {
+    mSocketFd = socket(AF_INET, SOCK_STREAM, 0);
+    if (mSocketFd < 0) {
         complete_error("Failed to create socket");
         return;
     }
@@ -140,47 +141,47 @@ void FetchRequest::handle_dns_lookup() {
     // Set non-blocking mode
 #ifdef FL_IS_WIN
     u_long mode = 1;  // 1 = non-blocking
-    ioctlsocket(socket_fd, FIONBIO, &mode);
+    ioctlsocket(mSocketFd, FIONBIO, &mode);
 #else
-    int flags = fcntl(socket_fd, F_GETFL, 0);
-    fcntl(socket_fd, F_SETFL, flags | O_NONBLOCK);
+    int flags = fcntl(mSocketFd, F_GETFL, 0);
+    fcntl(mSocketFd, F_SETFL, flags | O_NONBLOCK);
 #endif
 
     // Initiate non-blocking connect
     sockaddr_in server_addr{};
     server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(static_cast<u16>(port));
+    server_addr.sin_port = htons(static_cast<u16>(mPort));
     // Use memcpy to extract address pointer — h_addr_list[0] may be misaligned
     // on some platforms (macOS arm64 UBSan flags this)
     char *addr_ptr = nullptr;
-    fl::memcpy(&addr_ptr, dns_result->h_addr_list, sizeof(addr_ptr));
-    fl::memcpy(&server_addr.sin_addr, addr_ptr, dns_result->h_length);
+    fl::memcpy(&addr_ptr, mDnsResult->h_addr_list, sizeof(addr_ptr));
+    fl::memcpy(&server_addr.sin_addr, addr_ptr, mDnsResult->h_length);
 
-    FL_WARN("[FETCH] Waiting for connection to " << hostname << ":" << port);
+    FL_WARN("[FETCH] Waiting for connection to " << mHostname << ":" << mPort);
 
-    connect(socket_fd, (sockaddr*)&server_addr, sizeof(server_addr));
+    connect(mSocketFd, (sockaddr*)&server_addr, sizeof(server_addr));
     // connect() returns immediately with EINPROGRESS/WSAEWOULDBLOCK (expected)
 
-    state = CONNECTING;
-    state_start_time = fl::millis();
+    mState = CONNECTING;
+    mStateStartTime = fl::millis();
 }
 
 void FetchRequest::handle_connecting() {
     fd_set write_fds;
     FD_ZERO(&write_fds);
-    FD_SET(socket_fd, &write_fds);
+    FD_SET(mSocketFd, &write_fds);
 
     struct timeval timeout;
     timeout.tv_sec = 0;
     timeout.tv_usec = 0;  // Non-blocking check
 
-    int result = select(socket_fd + 1, nullptr, &write_fds, nullptr, &timeout);
+    int result = select(mSocketFd + 1, nullptr, &write_fds, nullptr, &timeout);
 
     if (result > 0) {
         // Check for connection errors
         int sock_err = 0;
         socklen_t len = sizeof(sock_err);
-        getsockopt(socket_fd, SOL_SOCKET, SO_ERROR, (char*)&sock_err, &len);
+        getsockopt(mSocketFd, SOL_SOCKET, SO_ERROR, (char*)&sock_err, &len);
 
         if (sock_err != 0) {
             complete_error("Connection failed");
@@ -188,18 +189,18 @@ void FetchRequest::handle_connecting() {
         }
 
         // Connected! Build HTTP request
-        request_buffer = "GET " + path + " HTTP/1.1\r\n";
-        request_buffer += "Host: " + hostname + "\r\n";
-        request_buffer += "Connection: close\r\n\r\n";
+        mRequestBuffer = "GET " + mPath + " HTTP/1.1\r\n";
+        mRequestBuffer += "Host: " + mHostname + "\r\n";
+        mRequestBuffer += "Connection: close\r\n\r\n";
 
-        bytes_sent = 0;
-        state = SENDING;
-        state_start_time = fl::millis();
+        mBytesSent = 0;
+        mState = SENDING;
+        mStateStartTime = fl::millis();
     } else if (result < 0) {
         complete_error("select() failed during connection");
     } else {
         // Timeout check (5 seconds)
-        if (fl::millis() - state_start_time > 5000) {
+        if (fl::millis() - mStateStartTime > 5000) {
             complete_error("Connection timeout");
         }
         // else: Not ready yet, try again on next update()
@@ -207,17 +208,17 @@ void FetchRequest::handle_connecting() {
 }
 
 void FetchRequest::handle_sending() {
-    ssize_t sent = send(socket_fd,
-                        request_buffer.c_str() + bytes_sent,
-                        request_buffer.size() - bytes_sent,
+    ssize_t sent = send(mSocketFd,
+                        mRequestBuffer.c_str() + mBytesSent,
+                        mRequestBuffer.size() - mBytesSent,
                         0);
 
     if (sent > 0) {
-        bytes_sent += sent;
-        if (bytes_sent >= request_buffer.size()) {
+        mBytesSent += sent;
+        if (mBytesSent >= mRequestBuffer.size()) {
             FL_WARN("[FETCH] Waiting for HTTP response...");
-            state = RECEIVING;
-            state_start_time = fl::millis();
+            mState = RECEIVING;
+            mStateStartTime = fl::millis();
         }
     } else if (sent < 0) {
         int err = GET_SOCKET_ERROR();
@@ -230,20 +231,20 @@ void FetchRequest::handle_sending() {
 
 void FetchRequest::handle_receiving() {
     char buffer[4096];
-    ssize_t bytes = recv(socket_fd, buffer, sizeof(buffer), 0);
+    ssize_t bytes = recv(mSocketFd, buffer, sizeof(buffer), 0);
 
     if (bytes > 0) {
-        response_buffer.append(buffer, static_cast<size_t>(bytes));
-        state_start_time = fl::millis();  // Reset timeout on data received
+        mResponseBuffer.append(buffer, static_cast<size_t>(bytes));
+        mStateStartTime = fl::millis();  // Reset timeout on data received
     } else if (bytes == 0) {
         // Connection closed - parse response and complete
-        response resp = parse_http_response(response_buffer);
+        Response resp = parse_http_response(mResponseBuffer);
         complete_success(resp);
     } else {
         int err = GET_SOCKET_ERROR();
         if (err == SOCKET_ERROR_WOULD_BLOCK) {
             // Check timeout (5 seconds)
-            if (fl::millis() - state_start_time > 5000) {
+            if (fl::millis() - mStateStartTime > 5000) {
                 complete_error("Response timeout");
             }
             // else: Not ready, try again on next update()
@@ -253,14 +254,14 @@ void FetchRequest::handle_receiving() {
     }
 }
 
-response FetchRequest::parse_http_response(const fl::string& raw) {
+Response FetchRequest::parse_http_response(const fl::string& raw) {
     const char* data = raw.c_str();
     const size_t len = raw.size();
 
     // Find end of headers (double CRLF)
     size_t header_end = raw.find("\r\n\r\n");
     if (header_end == fl::string::npos) {
-        return response(500, "Internal Server Error");
+        return Response(500, "Internal Server Error");
     }
 
     // Parse status line: "HTTP/1.1 200 OK\r\n"
@@ -268,7 +269,7 @@ response FetchRequest::parse_http_response(const fl::string& raw) {
     size_t second_space = raw.find(' ', first_space + 1);
     if (first_space == fl::string::npos || second_space == fl::string::npos ||
         first_space >= header_end || second_space >= header_end) {
-        return response(500, "Internal Server Error");
+        return Response(500, "Internal Server Error");
     }
 
     // Parse status code from digits without allocating
@@ -281,7 +282,7 @@ response FetchRequest::parse_http_response(const fl::string& raw) {
     size_t status_line_end = raw.find("\r\n");
     size_t st_len = (status_line_end != fl::string::npos ? status_line_end : header_end) - (second_space + 1);
 
-    response resp(status_code, fl::string(data + second_space + 1, st_len));
+    Response resp(status_code, fl::string(data + second_space + 1, st_len));
     resp.set_body(fl::string(data + header_end + 4, len - header_end - 4));
 
     // Parse response headers using indices into raw
@@ -324,32 +325,33 @@ response FetchRequest::parse_http_response(const fl::string& raw) {
     return resp;
 }
 
-void FetchRequest::complete_success(const response& resp) {
+void FetchRequest::complete_success(const Response& resp) {
     close_socket();
-    state = COMPLETED;
+    mState = COMPLETED;
 
-    if (promise.valid() && !promise.is_completed()) {
-        promise.complete_with_value(resp);
+    if (mPromise.valid() && !mPromise.is_completed()) {
+        mPromise.complete_with_value(resp);
     }
 }
 
 void FetchRequest::complete_error(const char* message) {
     close_socket();
-    state = FAILED;
+    mState = FAILED;
 
-    if (promise.valid() && !promise.is_completed()) {
-        promise.complete_with_error(Error(message));
+    if (mPromise.valid() && !mPromise.is_completed()) {
+        mPromise.complete_with_error(Error(message));
     }
 }
 
 void FetchRequest::close_socket() {
-    if (socket_fd >= 0) {
-        CLOSE_SOCKET(socket_fd);
-        socket_fd = -1;
+    if (mSocketFd >= 0) {
+        CLOSE_SOCKET(mSocketFd);
+        mSocketFd = -1;
     }
 }
 
-} // namespace asio
+} // namespace http
+} // namespace net
 } // namespace fl
 
 #endif // FASTLED_HAS_NETWORKING

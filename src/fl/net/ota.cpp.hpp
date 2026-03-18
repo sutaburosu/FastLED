@@ -1,10 +1,11 @@
-/// @file fl/ota.cpp
+/// @file fl/net/ota.cpp.hpp
 /// OTA (Over-The-Air) update implementation - wrapper around platform interface
 
-#include "fl/ota.h"
+#include "fl/net/ota.h"
 #include "platforms/ota.h"
 
 namespace fl {
+namespace net {
 
 // ============================================================================
 // OTA Wrapper Implementation
@@ -89,4 +90,5 @@ u8 OTA::getFailedServices() const {
     return mImpl->getFailedServices();
 }
 
+} // namespace net
 }  // namespace fl

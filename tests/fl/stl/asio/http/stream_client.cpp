@@ -1,9 +1,9 @@
 #include "test.h"
-#include "fl/stl/asio/http/stream_client.h"
-#include "fl/stl/asio/http/stream_client.cpp.hpp"
-#include "fl/stl/asio/http/stream_transport.cpp.hpp"
+#include "fl/net/http/stream_client.h"
+#include "fl/net/http/stream_client.cpp.hpp"
+#include "fl/net/http/stream_transport.cpp.hpp"
 #include "fl/stl/asio/http/connection.cpp.hpp"
-#include "fl/stl/asio/http/chunked_encoding.cpp.hpp"
+#include "fl/net/http/chunked_encoding.cpp.hpp"
 #include "fl/stl/asio/http/native_client.cpp.hpp"
 #include "fl/stl/json.h"
 #include "fl/stl/string.h"
@@ -11,6 +11,7 @@
 FL_TEST_FILE(FL_FILEPATH) {
 
 using namespace fl;
+using namespace fl::net::http;
 
 // Use unique high ports to avoid conflicts with other tests and services
 static const int kTestPort = 47301;

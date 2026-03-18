@@ -6,7 +6,7 @@
 #define FASTLED_HAS_NETWORKING
 
 #include "fl/stl/asio/http/server.h"
-#include "fl/stl/asio/fetch.h"
+#include "fl/net/http/fetch.h"
 #include "fl/system/log.h"
 #include "fl/stl/async.h"
 
@@ -53,14 +53,14 @@ int main() {
         FL_WARN("\nTest 1: GET /");
         server.update();  // Process any pending
 
-        fl::promise<fl::response> promise = fl::fetch_get("http://localhost:47801/");
-        fl::result<fl::response> result = fl::await_top_level(promise);
+        fl::promise<fl::net::http::Response> promise = fl::net::http::fetch_get("http://localhost:47801/");
+        fl::result<fl::net::http::Response> result = fl::await_top_level(promise);
 
         if (!result.ok()) {
             FL_WARN("  ✗ FAILED: " << result.error_message());
             failed++;
         } else {
-            const fl::response& response = result.value();
+            const fl::net::http::Response& response = result.value();
             if (response.status() != 200) {
                 FL_WARN("  ✗ FAILED: Status code " << response.status());
                 failed++;
@@ -81,14 +81,14 @@ int main() {
         FL_WARN("\nTest 2: GET /ping");
         server.update();
 
-        fl::promise<fl::response> promise = fl::fetch_get("http://localhost:47801/ping");
-        fl::result<fl::response> result = fl::await_top_level(promise);
+        fl::promise<fl::net::http::Response> promise = fl::net::http::fetch_get("http://localhost:47801/ping");
+        fl::result<fl::net::http::Response> result = fl::await_top_level(promise);
 
         if (!result.ok()) {
             FL_WARN("  ✗ FAILED: " << result.error_message());
             failed++;
         } else {
-            const fl::response& response = result.value();
+            const fl::net::http::Response& response = result.value();
             if (response.status() != 200) {
                 FL_WARN("  ✗ FAILED: Status code " << response.status());
                 failed++;
@@ -109,14 +109,14 @@ int main() {
         FL_WARN("\nTest 3: GET /test (JSON)");
         server.update();
 
-        fl::promise<fl::response> promise = fl::fetch_get("http://localhost:47801/test");
-        fl::result<fl::response> result = fl::await_top_level(promise);
+        fl::promise<fl::net::http::Response> promise = fl::net::http::fetch_get("http://localhost:47801/test");
+        fl::result<fl::net::http::Response> result = fl::await_top_level(promise);
 
         if (!result.ok()) {
             FL_WARN("  ✗ FAILED: " << result.error_message());
             failed++;
         } else {
-            const fl::response& response = result.value();
+            const fl::net::http::Response& response = result.value();
             if (response.status() != 200) {
                 FL_WARN("  ✗ FAILED: Status code " << response.status());
                 failed++;

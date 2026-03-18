@@ -21,13 +21,13 @@
 #include <FastLED.h>
 #include "fl/remote/remote.h"
 #include "fl/remote/rpc/response_send.h"
-#include "fl/stl/asio/http/stream_server.h"
-#include "fl/stl/asio/http/stream_client.h"
-#include "fl/stl/asio/http/stream_server.cpp.hpp"
-#include "fl/stl/asio/http/stream_client.cpp.hpp"
-#include "fl/stl/asio/http/stream_transport.cpp.hpp"
+#include "fl/net/http/stream_server.h"
+#include "fl/net/http/stream_client.h"
+#include "fl/net/http/stream_server.cpp.hpp"
+#include "fl/net/http/stream_client.cpp.hpp"
+#include "fl/net/http/stream_transport.cpp.hpp"
 #include "fl/stl/asio/http/connection.cpp.hpp"
-#include "fl/stl/asio/http/chunked_encoding.cpp.hpp"
+#include "fl/net/http/chunked_encoding.cpp.hpp"
 #include "fl/stl/asio/http/http_parser.cpp.hpp"
 #include "fl/stl/asio/http/native_server.cpp.hpp"
 #include "fl/stl/asio/http/native_client.cpp.hpp"
@@ -43,11 +43,11 @@
 CRGB leds[NUM_LEDS];
 
 // Server-side components
-fl::unique_ptr<fl::HttpStreamServer> serverTransport;
+fl::unique_ptr<fl::net::http::HttpStreamServer> serverTransport;
 fl::unique_ptr<fl::Remote> serverRemote;
 
 // Client-side components
-fl::unique_ptr<fl::HttpStreamClient> clientTransport;
+fl::unique_ptr<fl::net::http::HttpStreamClient> clientTransport;
 fl::unique_ptr<fl::Remote> clientRemote;
 
 // Server background thread (needed for same-process client+server)
@@ -119,7 +119,7 @@ void setup() {
     // ========== SERVER SETUP ==========
     Serial.println("Starting HTTP server on port 8080...");
 
-    serverTransport = fl::make_unique<fl::HttpStreamServer>(SERVER_PORT);
+    serverTransport = fl::make_unique<fl::net::http::HttpStreamServer>(SERVER_PORT);
     serverTransport->setHeartbeatInterval(30000);
     serverTransport->setTimeout(60000);
 
@@ -253,7 +253,7 @@ void setup() {
 
     Serial.println("Connecting client to server...");
 
-    clientTransport = fl::make_unique<fl::HttpStreamClient>("localhost", actualPort);
+    clientTransport = fl::make_unique<fl::net::http::HttpStreamClient>("localhost", actualPort);
     clientTransport->setHeartbeatInterval(30000);
     clientTransport->setTimeout(60000);
 

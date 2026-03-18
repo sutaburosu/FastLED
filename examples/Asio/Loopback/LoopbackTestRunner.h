@@ -22,7 +22,7 @@
 #pragma once
 
 #include <FastLED.h>
-#include "fl/stl/asio/fetch.h"
+#include "fl/net/http/fetch.h"
 #include "fl/system/log.h"
 
 class LoopbackTestRunner {
@@ -128,8 +128,8 @@ private:
         tests_run++;
 
         // Launch async HTTP request with non-blocking .then()/.catch_() callbacks
-        fl::fetch_get(url)
-            .then([this, expected, next_state](const fl::response& resp) {
+        fl::net::http::fetch_get(url)
+            .then([this, expected, next_state](const fl::net::http::Response& resp) {
                 // Success callback - validate response
                 if (resp.status() == 200 && resp.text() == expected) {
                     tests_passed++;

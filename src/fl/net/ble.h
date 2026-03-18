@@ -1,13 +1,18 @@
-// src/fl/stl/asio/ble.h
-// BLE GATT transport layer for JSON-RPC
-// Provides factory functions for creating RequestSource and ResponseSink
-// callbacks that communicate over BLE instead of serial.
-//
-// Platform-neutral header: all ESP32 BLE implementation lives in drivers/ble/ble_esp32.cpp.hpp.
-//
-// API is always visible. On platforms without BLE support, factory functions
-// return nullptr / no-op stubs.  FL_BLE_AVAILABLE is still defined for
-// compile-time feature detection when needed.
+/// @file fl/net/ble.h
+/// @brief fl::net::ble — BLE GATT transport layer for JSON-RPC
+///
+/// Provides factory functions for creating RequestSource and ResponseSink
+/// callbacks that communicate over BLE instead of serial.
+///
+/// Platform-neutral header: all ESP32 BLE implementation lives in
+/// drivers/ble/ble_esp32.cpp.hpp.
+///
+/// API is always visible. On platforms without BLE support, factory functions
+/// return nullptr / no-op stubs.  FL_BLE_AVAILABLE is still defined for
+/// compile-time feature detection when needed.
+///
+/// Follows the fl::net namespace convention: all types in fl::net::ble
+/// (collection module, no single primary class).
 
 #pragma once
 
@@ -26,6 +31,8 @@
 #endif
 
 namespace fl {
+namespace net {
+namespace ble {
 
 // GATT UUIDs for FastLED BLE service (string form, used by validation/diagnostics)
 #define FL_BLE_SERVICE_UUID "12345678-1234-1234-1234-123456789abc"
@@ -51,8 +58,8 @@ namespace fl {
     0x34, 0x12, 0x34, 0x12, 0x78, 0x56, 0x34, 0x12
 #endif // FL_BLE_AVAILABLE
 
-/// @brief Platform-neutral BLE diagnostics (returned by queryBleStatus)
-struct BleStatusInfo {
+/// @brief Platform-neutral BLE diagnostics (returned by queryStatus)
+struct StatusInfo {
     bool connected = false;
     int connectedCount = 0;
     bool txCharExists = false;
@@ -62,27 +69,29 @@ struct BleStatusInfo {
 };
 
 /// @brief Opaque BLE transport state — defined in drivers/ble/ble_esp32.cpp.hpp
-struct BleTransportState;
+struct TransportState;
 
 /// @brief Create BLE GATT server, heap-allocate transport state
 /// @param deviceName BLE advertising name (e.g., "FastLED-C6")
-/// @return Heap-allocated state pointer (caller owns, free with destroyBleTransport)
+/// @return Heap-allocated state pointer (caller owns, free with destroyTransport)
 ///         Returns nullptr on platforms without BLE support.
-BleTransportState* createBleTransport(const char* deviceName);
+TransportState* createTransport(const char* deviceName);
 
 /// @brief Deinitialize BLE stack and free heap state
-/// @param state Pointer returned by createBleTransport (safe to call with nullptr)
-void destroyBleTransport(BleTransportState* state);
+/// @param state Pointer returned by createTransport (safe to call with nullptr)
+void destroyTransport(TransportState* state);
 
 /// @brief Query BLE connection/subscription diagnostics
-/// @param state Pointer returned by createBleTransport
+/// @param state Pointer returned by createTransport
 /// @return Platform-neutral status snapshot
-BleStatusInfo queryBleStatus(const BleTransportState* state);
+StatusInfo queryStatus(const TransportState* state);
 
 /// @brief Get RequestSource and ResponseSink lambdas for fl::Remote
-/// @param state Pointer returned by createBleTransport (must outlive returned lambdas)
+/// @param state Pointer returned by createTransport (must outlive returned lambdas)
 /// @return Pair of {RequestSource, ResponseSink} ready for fl::Remote constructor
 fl::pair<fl::function<fl::optional<fl::json>()>, fl::function<void(const fl::json&)>>
-getBleTransportCallbacks(BleTransportState* state);
+getTransportCallbacks(TransportState* state);
 
+} // namespace ble
+} // namespace net
 } // namespace fl

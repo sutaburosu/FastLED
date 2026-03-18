@@ -33,7 +33,7 @@
 #include "fl/system/heap.h"
 #include <Arduino.h>
 
-#include "fl/stl/asio/ble.h"
+#include "fl/net/ble.h"
 
 // Codec headers for decodeFile RPC
 #include "fl/codec/h264.h"
@@ -1903,7 +1903,7 @@ void ValidationRemoteControl::registerFunctions(fl::shared_ptr<ValidationState> 
         fl::json response = fl::json::object();
 #if FL_BLE_AVAILABLE
         response.set("ble_active", mState->ble_server_active);
-        fl::BleStatusInfo info = fl::queryBleStatus(mBleState);
+        fl::net::ble::StatusInfo info = fl::net::ble::queryStatus(mBleState);
         response.set("connected", info.connected);
         response.set("connected_count", static_cast<int64_t>(info.connectedCount));
         response.set("tx_char_exists", info.txCharExists);
@@ -2379,12 +2379,12 @@ void ValidationRemoteControl::tick(uint32_t current_millis) {
         mBleRemote->update(current_millis);
     }
     // Deferred BLE teardown: stopBle RPC sets this flag so the response
-    // is sent (via push() above) before we call destroyBleTransport().
+    // is sent (via push() above) before we call ble::destroyTransport().
     if (mPendingBleStop) {
         mPendingBleStop = false;
 #if FL_BLE_AVAILABLE
         mBleRemote.reset();  // destroy lambdas before freeing state they capture
-        fl::destroyBleTransport(mBleState);
+        fl::net::ble::destroyTransport(mBleState);
         mBleState = nullptr;
         mState->ble_server_active = false;
         getBleState().ble_server_active = false;
@@ -2431,10 +2431,10 @@ fl::json ValidationRemoteControl::startBleRemote() {
     }
 
     // Create BLE GATT server (heap-allocates transport state)
-    mBleState = fl::createBleTransport(VALIDATION_BLE_DEVICE_NAME);
+    mBleState = fl::net::ble::createTransport(VALIDATION_BLE_DEVICE_NAME);
 
     // Get transport lambdas that capture mBleState
-    auto [source, sink] = fl::getBleTransportCallbacks(mBleState);
+    auto [source, sink] = fl::net::ble::getTransportCallbacks(mBleState);
 
     // Create BLE Remote instance with BLE transport
     mBleRemote = fl::make_unique<fl::Remote>(source, sink);

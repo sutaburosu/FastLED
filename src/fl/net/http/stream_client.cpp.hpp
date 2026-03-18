@@ -1,12 +1,14 @@
 #pragma once
 
-#include "fl/stl/asio/http/stream_client.h"
+#include "fl/net/http/stream_client.h"
 #include "fl/stl/string.h"
 #include "fl/stl/stdint.h"
 #include "fl/stl/chrono.h"
 #include "fl/stl/cstdio.h"
 #include "fl/stl/thread.h"
 namespace fl {
+namespace net {
+namespace http {
 
 HttpStreamClient::HttpStreamClient(const fl::string& host, u16 port, u32 heartbeatIntervalMs)
     : HttpStreamTransport(host, port, heartbeatIntervalMs)
@@ -203,4 +205,6 @@ bool HttpStreamClient::readHttpResponseHeader() {
     return true;
 }
 
+}  // namespace http
+}  // namespace net
 }  // namespace fl

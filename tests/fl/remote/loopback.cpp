@@ -8,13 +8,13 @@
 #include "test.h"
 
 #include "fl/remote/remote.h"
-#include "fl/stl/asio/http/stream_client.h"
-#include "fl/stl/asio/http/stream_client.cpp.hpp"
-#include "fl/stl/asio/http/stream_server.h"
-#include "fl/stl/asio/http/stream_server.cpp.hpp"
-#include "fl/stl/asio/http/stream_transport.cpp.hpp"
+#include "fl/net/http/stream_client.h"
+#include "fl/net/http/stream_client.cpp.hpp"
+#include "fl/net/http/stream_server.h"
+#include "fl/net/http/stream_server.cpp.hpp"
+#include "fl/net/http/stream_transport.cpp.hpp"
 #include "fl/stl/asio/http/connection.cpp.hpp"
-#include "fl/stl/asio/http/chunked_encoding.cpp.hpp"
+#include "fl/net/http/chunked_encoding.cpp.hpp"
 #include "fl/stl/asio/http/http_parser.cpp.hpp"
 #include "fl/stl/asio/http/native_client.cpp.hpp"
 #include "fl/stl/asio/http/native_server.cpp.hpp"
@@ -29,6 +29,7 @@
 FL_TEST_FILE(FL_FILEPATH) {
 
 using namespace fl;
+using namespace fl::net::http;
 
 FL_TEST_CASE("Loopback: connect and sync RPC round-trip") {
     // Use port 0 to let the OS assign an available ephemeral port.

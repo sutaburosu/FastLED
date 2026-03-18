@@ -5,10 +5,14 @@
 #include "fl/stl/string.h"
 #include "fl/stl/function.h"
 
-// Forward declaration - fl::response is defined in fl/fetch.h
+// Forward declaration - fl::net::http::Response is defined in fl/net/http/fetch.h
 namespace fl {
-    class response;
-    using FetchResponseCallback = fl::function<void(const response&)>;
+namespace net {
+namespace http {
+    class Response;
+}
+}
+    using FetchResponseCallback = fl::function<void(const net::http::Response&)>;
 }
 
 namespace fl {

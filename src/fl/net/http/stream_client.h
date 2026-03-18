@@ -1,11 +1,13 @@
 #pragma once
 
-#include "fl/stl/asio/http/stream_transport.h"
+#include "fl/net/http/stream_transport.h"
 #include "fl/stl/asio/http/native_client.h"  // IWYU pragma: keep
 #include "fl/stl/string.h"
 #include "fl/stl/unique_ptr.h"
 
 namespace fl {
+namespace net {
+namespace http {
 
 /// HTTP streaming client for RPC
 /// Extends HttpStreamTransport with client-side HTTP logic
@@ -75,4 +77,6 @@ private:
     u16 mPort;
 };
 
+}  // namespace http
+}  // namespace net
 }  // namespace fl

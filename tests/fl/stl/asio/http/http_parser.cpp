@@ -1,6 +1,6 @@
 #include "fl/stl/asio/http/http_parser.h"
 #include "fl/stl/asio/http/http_parser.cpp.hpp"
-#include "fl/stl/asio/http/chunked_encoding.cpp.hpp"
+#include "fl/net/http/chunked_encoding.cpp.hpp"
 
 #include "test.h"
 #include "fl/stl/cstring.h"

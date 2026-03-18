@@ -29,14 +29,14 @@
 /// Key Types You'll Learn:
 /// * fl::promise<T>        - Represents a future value of type T
 /// * fl::result<T>  - Wraps either a successful T value or an Error
-/// * fl::response          - HTTP response with status, headers, and body
-/// * fl::fetch_options      - Configuration object for HTTP requests
+/// * fl::net::http::Response          - HTTP response with status, headers, and body
+/// * fl::net::http::FetchOptions      - Configuration object for HTTP requests
 /// * fl::optional<T>       - May or may not contain a value of type T
 /// * fl::Error             - Error information with message and context
 ///
 /// NEW FETCH API STRUCTURE:
-/// * fetch_options is a pure data configuration object
-/// * fetch_get() returns fl::promise<fl::response> (not auto!)
+/// * FetchOptions is a pure data configuration object
+/// * fetch_get() returns fl::promise<fl::net::http::Response> (not auto!)
 /// * Promises can be handled with .then()/.catch_() OR await_top_level()
 /// * All async operations integrate with FastLED's engine automatically
 ///
@@ -44,17 +44,17 @@
 /// 
 /// Promise-based approach:
 /// ```cpp
-/// fl::promise<fl::response> promise = fl::fetch_get("http://example.com");
-/// promise.then([](const fl::response& response) { /* handle success */ })
+/// fl::promise<fl::net::http::Response> promise = fl::net::http::fetch_get("http://example.com");
+/// promise.then([](const fl::net::http::Response& response) { /* handle success */ })
 ///        .catch_([](const fl::Error& error) { /* handle error */ });
 /// ```
 ///
 /// Await-based approach:
 /// ```cpp
-/// fl::promise<fl::response> promise = fl::fetch_get("http://example.com");
-/// fl::result<fl::response> result = fl::await_top_level(promise);
+/// fl::promise<fl::net::http::Response> promise = fl::net::http::fetch_get("http://example.com");
+/// fl::result<fl::net::http::Response> result = fl::await_top_level(promise);
 /// if (result.ok()) {
-///     const fl::response& response = result.value();
+///     const fl::net::http::Response& response = result.value();
 ///     // Use response...
 /// }
 /// ```
@@ -70,7 +70,7 @@
 /// For other platforms:
 /// Uses mock responses for testing the API without network connectivity
 
-#include "fl/stl/asio/fetch.h"     // FastLED HTTP fetch API
+#include "fl/net/http/fetch.h"     // FastLED HTTP fetch API
 #include "fl/system/log.h"      // FastLED logging system  
 #include "fl/stl/async.h"     // FastLED async utilities (await_top_level, etc.)
 #include <FastLED.h>      // FastLED core library
@@ -109,12 +109,12 @@ void setup() {
 void test_promise_approach() {
     FL_WARN("APPROACH 1: Promise-based pattern with explicit types");
     
-    // TUTORIAL: fetch_get() returns fl::promise<fl::response> (not auto!)
+    // TUTORIAL: fetch_get() returns fl::promise<fl::net::http::Response> (not auto!)
     // The promise represents a future HTTP response that may succeed or fail
     // Chain .then() for success handling and the lambda receives a
-    // const fl::response& when the fetch succeeds. error_ will handle network device
+    // const fl::net::http::Response& when the fetch succeeds. error_ will handle network device
     // failures (no connection, DNS failure, etc, but not HTTP errors like 404, 500, etc.)
-    fl::fetch_get("http://fastled.io").then([](const fl::response& response) {
+    fl::net::http::fetch_get("http://fastled.io").then([](const fl::net::http::Response& response) {
         // TUTORIAL: Check if HTTP request was successful
         if (response.ok()) {
             FL_WARN("SUCCESS [Promise] HTTP fetch successful! Status: "
@@ -164,26 +164,26 @@ void test_promise_approach() {
 void test_await_approach() {
     FL_WARN("APPROACH 2: await_top_level pattern with explicit types");
     
-    // TUTORIAL: Create a fetch_options object to configure the HTTP request
-    // fetch_options is a data container - you can set timeout, headers, etc.
-    fl::fetch_options request_config("");  // Empty URL - will use the URL passed to fetch_get()
+    // TUTORIAL: Create a FetchOptions object to configure the HTTP request
+    // FetchOptions is a data container - you can set timeout, headers, etc.
+    fl::net::http::FetchOptions request_config("");  // Empty URL - will use the URL passed to fetch_get()
     request_config.timeout(5000)          // 5 second timeout
                   .header("User-Agent", "FastLED/Client-Tutorial");  // Custom user agent
     
-    // TUTORIAL: fetch_get() returns fl::promise<fl::response> (explicit type!)
+    // TUTORIAL: fetch_get() returns fl::promise<fl::net::http::Response> (explicit type!)
     // This promise represents the future HTTP response
-    fl::promise<fl::response> http_promise = fl::fetch_get("http://fastled.io", request_config);
+    fl::promise<fl::net::http::Response> http_promise = fl::net::http::fetch_get("http://fastled.io", request_config);
     
-    // TUTORIAL: await_top_level() returns fl::result<fl::response>
+    // TUTORIAL: await_top_level() returns fl::result<fl::net::http::Response>
     // result wraps either a successful response OR an Error - never both!
     // CRITICAL: await_top_level() blocks until completion - ONLY safe in Arduino loop()!
-    fl::result<fl::response> result = fl::await_top_level(http_promise);
+    fl::result<fl::net::http::Response> result = fl::await_top_level(http_promise);
     
     // TUTORIAL: Check if the result contains a successful response
     if (result.ok()) {
         // TUTORIAL: Extract the response from the result
-        // result.value() returns const fl::response& - the actual HTTP response
-        const fl::response& http_response = result.value();
+        // result.value() returns const fl::net::http::Response& - the actual HTTP response
+        const fl::net::http::Response& http_response = result.value();
         
         FL_WARN("SUCCESS [Await] HTTP fetch successful! Status: "
                 << http_response.status() << " " << http_response.status_text());
@@ -223,7 +223,7 @@ void test_json_response() {
     
     // TUTORIAL: Fetch a JSON API endpoint (httpbin.org provides test JSON)
     // This endpoint returns JSON with request information
-    fl::fetch_get("https://httpbin.org/json").then([](const fl::response& response) {
+    fl::net::http::fetch_get("https://httpbin.org/json").then([](const fl::net::http::Response& response) {
         if (response.ok()) {
             FL_WARN("SUCCESS [JSON Promise] HTTP fetch successful! Status: "
                     << response.status() << " " << response.status_text());
@@ -287,16 +287,16 @@ void test_json_await() {
     FL_WARN("APPROACH 4: JSON Response with await pattern");
     
     // TUTORIAL: Using await pattern with JSON responses
-    // fl::fetch_get() returns fl::promise<fl::response>
-    fl::promise<fl::response> json_promise = fl::fetch_get("https://httpbin.org/get");
+    // fl::net::http::fetch_get() returns fl::promise<fl::net::http::Response>
+    fl::promise<fl::net::http::Response> json_promise = fl::net::http::fetch_get("https://httpbin.org/get");
     
     // TUTORIAL: await_top_level() converts promise to result
-    // fl::result<fl::response> contains either response or error
-    fl::result<fl::response> result = fl::await_top_level(json_promise);
+    // fl::result<fl::net::http::Response> contains either response or error
+    fl::result<fl::net::http::Response> result = fl::await_top_level(json_promise);
     
     if (result.ok()) {
         // TUTORIAL: Extract the response from the result
-        const fl::response& http_response = result.value();
+        const fl::net::http::Response& http_response = result.value();
         
         FL_WARN("SUCCESS [JSON Await] HTTP fetch successful! Status: "
                 << http_response.status() << " " << http_response.status_text());

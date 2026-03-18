@@ -1,7 +1,7 @@
 #pragma once
 
 #include "fl/promise.h"
-#include "fl/stl/asio/fetch.h"  // Includes response class  // IWYU pragma: keep
+#include "fl/net/http/fetch.h"  // Includes response class  // IWYU pragma: keep
 #include "fl/stl/string.h"
 #include "fl/stl/url.h"
 #include "fl/stl/int.h"
@@ -10,7 +10,8 @@
 struct hostent;
 
 namespace fl {
-namespace asio {
+namespace net {
+namespace http {
 
 /// @brief Non-blocking HTTP request state machine
 ///
@@ -34,7 +35,7 @@ public:
     /// @param url URL to fetch
     /// @param opts Fetch options (method, headers, etc.)
     /// @param promise Promise to resolve when complete
-    FetchRequest(const fl::string& url, const fetch_options& opts, fl::promise<response> promise);
+    FetchRequest(const fl::string& url, const FetchOptions& opts, fl::promise<Response> promise);
 
     /// @brief Destructor - closes socket if still open
     ~FetchRequest();
@@ -46,32 +47,32 @@ public:
     void update();
 
     /// @brief Check if request is complete (success or failure)
-    bool is_done() const { return state == COMPLETED || state == FAILED; }
+    bool is_done() const { return mState == COMPLETED || mState == FAILED; }
 
     /// @brief Get current state
-    State get_state() const { return state; }
+    State get_state() const { return mState; }
 
 private:
-    State state;
-    fl::promise<response> promise;
+    State mState;
+    fl::promise<Response> mPromise;
 
     // Parsed URL
-    fl::url parsed_url;
-    fl::string hostname;
-    int port;
-    fl::string path;
+    fl::url mParsedUrl;
+    fl::string mHostname;
+    int mPort;
+    fl::string mPath;
 
     // Socket state
-    int socket_fd;
-    ::hostent* dns_result;  // Use global namespace to avoid conflict with fl::asio::hostent
+    int mSocketFd;
+    ::hostent* mDnsResult;  // Use global namespace to avoid conflict
 
     // Send/receive buffers
-    fl::string request_buffer;
-    fl::string response_buffer;
-    size_t bytes_sent;
+    fl::string mRequestBuffer;
+    fl::string mResponseBuffer;
+    size_t mBytesSent;
 
     // Timeouts
-    u32 state_start_time;
+    u32 mStateStartTime;
 
     // State handlers
     void handle_dns_lookup();
@@ -80,13 +81,14 @@ private:
     void handle_receiving();
 
     // Completion helpers
-    void complete_success(const response& resp);
+    void complete_success(const Response& resp);
     void complete_error(const char* message);
 
     // Utilities
-    response parse_http_response(const fl::string& raw);
+    Response parse_http_response(const fl::string& raw);
     void close_socket();
 };
 
-} // namespace asio
+} // namespace http
+} // namespace net
 } // namespace fl

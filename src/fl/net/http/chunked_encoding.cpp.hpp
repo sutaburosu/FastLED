@@ -1,11 +1,13 @@
 #pragma once
 
-#include "fl/stl/asio/http/chunked_encoding.h"
+#include "fl/net/http/chunked_encoding.h"
 #include "fl/stl/string.h"
 #include "fl/stl/cstdio.h"
 #include "fl/stl/cstdlib.h"
 
 namespace fl {
+namespace net {
+namespace http {
 
 // ChunkedReader implementation
 
@@ -24,7 +26,7 @@ void ChunkedReader::feed(fl::span<const u8> data) {
             if (parseChunkSize(mChunkSize)) {
                 if (mChunkSize == 0) {
                     // Final chunk (size 0)
-                    mState = FINAL;
+                    mState = STATE_FINAL;
                     return;
                 } else {
                     // Start reading chunk data
@@ -70,7 +72,7 @@ void ChunkedReader::feed(fl::span<const u8> data) {
             }
             break;
         }
-        case FINAL:
+        case STATE_FINAL:
             // No more processing
             return;
         }
@@ -84,18 +86,18 @@ bool ChunkedReader::hasChunk() const {
 ChunkedReadResult ChunkedReader::readChunk(fl::span<u8> out) {
     using Status = ChunkedReadResult::Status;
     if (mChunks.empty()) {
-        Status s = isFinal() ? Status::FINAL : Status::NO_DATA;
+        Status s = isFinal() ? Status::CHUNKED_FINAL : Status::CHUNKED_NO_DATA;
         return ChunkedReadResult(s, fl::span<const u8>());
     }
     const fl::vector<u8>& front = mChunks.front();
     if (out.size() < front.size()) {
         // Caller's buffer is too small
-        return ChunkedReadResult(Status::NO_DATA, fl::span<const u8>());
+        return ChunkedReadResult(Status::CHUNKED_NO_DATA, fl::span<const u8>());
     }
     memcpy(out.data(), front.data(), front.size());
     fl::span<const u8> written(out.data(), front.size());
     mChunks.erase(mChunks.begin());
-    return ChunkedReadResult(Status::DATA, written);
+    return ChunkedReadResult(Status::CHUNKED_DATA, written);
 }
 
 size_t ChunkedReader::nextChunkSize() const {
@@ -106,7 +108,7 @@ size_t ChunkedReader::nextChunkSize() const {
 }
 
 bool ChunkedReader::isFinal() const {
-    return mState == FINAL;
+    return mState == STATE_FINAL;
 }
 
 void ChunkedReader::reset() {
@@ -215,4 +217,6 @@ size_t ChunkedWriter::writeFinal(fl::span<u8> out) {
     return FINAL_SIZE;
 }
 
+} // namespace http
+} // namespace net
 } // namespace fl

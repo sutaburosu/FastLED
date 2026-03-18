@@ -11,11 +11,11 @@
 ///
 /// @section Simple Callback Usage
 /// @code
-/// #include "fl/net/fetch.h"
+/// #include "fl/net/http.h"
 /// 
 /// void setup() {
 ///     // Simple callback-based fetch (backward compatible)
-///     fl::fetch("http://fastled.io", [](const fl::response& resp) {
+///     fl::fetch("http://fastled.io", [](const fl::Response& resp) {
 ///         if (resp.ok()) {
 ///             FL_WARN("Success: " << resp.text());
 ///         }
@@ -25,12 +25,12 @@
 ///
 /// @section Promise Usage 
 /// @code
-/// #include "fl/net/fetch.h"
+/// #include "fl/net/http.h"
 /// 
 /// void setup() {
 ///     // JavaScript-like fetch with promises
 ///     fl::fetch_get("http://fastled.io")
-///         .then([](const fl::response& resp) {
+///         .then([](const fl::Response& resp) {
 ///             if (resp.ok()) {
 ///                 FL_WARN("Success: " << resp.text());
 ///             } else {
@@ -65,11 +65,13 @@
 #include "fl/stl/json.h"  // Add JSON support for response.json() method
 
 namespace fl {
+namespace net {
+namespace http {
 
 // Forward declarations
-class fetch_options;
+class FetchOptions;
 class FetchManager;
-class response;
+class Response;
 
 #ifdef FL_IS_WASM
 // Forward declarations for WASM-specific types (defined in platforms/wasm/js_fetch.h)
@@ -79,11 +81,11 @@ extern WasmFetch wasm_fetch;
 #endif
 
 /// HTTP response class (unified interface)
-class response {
+class Response {
 public:
-    response() : mStatusCode(200), mStatusText("OK") {}
-    response(int status_code) : mStatusCode(status_code), mStatusText(get_default_status_text(status_code)) {}
-    response(int status_code, const fl::string& status_text) 
+    Response() : mStatusCode(200), mStatusText("OK") {}
+    Response(int status_code) : mStatusCode(status_code), mStatusText(get_default_status_text(status_code)) {}
+    Response(int status_code, const fl::string& status_text)
         : mStatusCode(status_code), mStatusText(status_text) {}
     
     /// HTTP status code (like JavaScript response.status)
@@ -182,7 +184,7 @@ private:
 
 
 /// Callback type for simple fetch responses (backward compatible)
-using FetchCallback = fl::function<void(const response&)>;
+using FetchCallback = fl::function<void(const Response&)>;
 
 /// Request options (matches JavaScript fetch RequestInit)
 struct RequestOptions {
@@ -196,39 +198,39 @@ struct RequestOptions {
 };
 
 /// Fetch options builder (fluent interface)
-class fetch_options {
+class FetchOptions {
 public:
-    explicit fetch_options(const fl::string& url) : mUrl(url) {}
-    fetch_options(const fl::string& url, const RequestOptions& options) 
+    explicit FetchOptions(const fl::string& url) : mUrl(url) {}
+    FetchOptions(const fl::string& url, const RequestOptions& options)
         : mUrl(url), mOptions(options) {}
-    
+
     /// Set HTTP method
-    fetch_options& method(const fl::string& http_method) {
+    FetchOptions& method(const fl::string& http_method) {
         mOptions.method = http_method;
         return *this;
     }
-    
+
     /// Add header
-    fetch_options& header(const fl::string& name, const fl::string& value) {
+    FetchOptions& header(const fl::string& name, const fl::string& value) {
         mOptions.headers[name] = value;
         return *this;
     }
-    
+
     /// Set request body
-    fetch_options& body(const fl::string& data) {
+    FetchOptions& body(const fl::string& data) {
         mOptions.body = data;
         return *this;
     }
-    
+
     /// Set JSON body with proper content type
-    fetch_options& json(const fl::string& json_data) {
+    FetchOptions& json(const fl::string& json_data) {
         mOptions.body = json_data;
         mOptions.headers["Content-Type"] = "application/json";
         return *this;
     }
-    
+
     /// Set timeout in milliseconds
-    fetch_options& timeout(int timeout_ms) {
+    FetchOptions& timeout(int timeout_ms) {
         mOptions.timeout_ms = timeout_ms;
         return *this;
     }
@@ -253,7 +255,7 @@ class FetchManager : public async_runner {
 public:
     static FetchManager& instance();
     
-    void register_promise(const fl::promise<response>& promise);
+    void register_promise(const fl::promise<Response>& promise);
     
     // async_runner interface
     void update() override;
@@ -265,7 +267,7 @@ public:
     void cleanup_completed_promises();
     
 private:
-    fl::vector<fl::promise<response>> mActivePromises;
+    fl::vector<fl::promise<Response>> mActivePromises;
     fl::unique_ptr<FetchEngineListener> mEngineListener;
 };
 
@@ -289,28 +291,28 @@ inline void fetch(const char* url, const FetchCallback& callback) {
 // ========== Promise-Based API (JavaScript-like) ==========
 
 /// HTTP GET request
-fl::promise<response> fetch_get(const fl::string& url, const fetch_options& request = fetch_options(""));
+fl::promise<Response> fetch_get(const fl::string& url, const FetchOptions& request = FetchOptions(""));
 
 /// HTTP POST request
-fl::promise<response> fetch_post(const fl::string& url, const fetch_options& request = fetch_options(""));
+fl::promise<Response> fetch_post(const fl::string& url, const FetchOptions& request = FetchOptions(""));
 
 /// HTTP PUT request
-fl::promise<response> fetch_put(const fl::string& url, const fetch_options& request = fetch_options(""));
+fl::promise<Response> fetch_put(const fl::string& url, const FetchOptions& request = FetchOptions(""));
 
 /// HTTP DELETE request
-fl::promise<response> fetch_delete(const fl::string& url, const fetch_options& request = fetch_options(""));
+fl::promise<Response> fetch_delete(const fl::string& url, const FetchOptions& request = FetchOptions(""));
 
 /// HTTP HEAD request
-fl::promise<response> fetch_head(const fl::string& url, const fetch_options& request = fetch_options(""));
+fl::promise<Response> fetch_head(const fl::string& url, const FetchOptions& request = FetchOptions(""));
 
 /// HTTP OPTIONS request
-fl::promise<response> fetch_http_options(const fl::string& url, const fetch_options& request = fetch_options(""));
+fl::promise<Response> fetch_http_options(const fl::string& url, const FetchOptions& request = FetchOptions(""));
 
 /// HTTP PATCH request
-fl::promise<response> fetch_patch(const fl::string& url, const fetch_options& request = fetch_options(""));
+fl::promise<Response> fetch_patch(const fl::string& url, const FetchOptions& request = FetchOptions(""));
 
 /// Generic request with options (like fetch(url, options))
-fl::promise<response> fetch_request(const fl::string& url, const RequestOptions& options = RequestOptions());
+fl::promise<Response> fetch_request(const fl::string& url, const RequestOptions& options = RequestOptions());
 
 /// Legacy manual update for fetch promises (use fl::async_run() for new code)
 /// @deprecated Use fl::async_run() instead - this calls async_run() internally
@@ -320,6 +322,8 @@ void fetch_update();
 fl::size fetch_active_requests();
 
 /// Internal helper to execute a fetch request and return a promise
-fl::promise<response> execute_fetch_request(const fl::string& url, const fetch_options& request);
+fl::promise<Response> execute_fetch_request(const fl::string& url, const FetchOptions& request);
 
-} // namespace fl 
+} // namespace http
+} // namespace net
+} // namespace fl
