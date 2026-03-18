@@ -234,7 +234,8 @@ def build_library(build_dir: Path, verbose: bool = False) -> tuple[bool, bool]:
 
 def create_wrapper(example_name: str, sketch_cache_dir: Path) -> Path:
     """
-    Create a wrapper .cpp that includes the sketch .ino file.
+    Create a wrapper .cpp that includes the sketch .ino file and any
+    additional .cpp files in the example directory.
 
     Returns path to the wrapper file.
     """
@@ -244,13 +245,22 @@ def create_wrapper(example_name: str, sketch_cache_dir: Path) -> Path:
     if not ino_file.exists():
         raise FileNotFoundError(f"Example not found: {ino_file}")
 
+    # Discover additional .cpp files in the example directory (sorted for determinism)
+    extra_cpps = sorted(
+        f for f in example_dir.glob("*.cpp") if f.name != f"{example_name}.ino"
+    )
+
     wrapper_path = sketch_cache_dir / f"{example_name}_wrapper.cpp"
-    wrapper_content = f"""// Auto-generated wrapper for {example_name}.ino
-// C++20 header unit import — ~2x faster than PCH for sketch compilation.
-// The .ino's #include "FastLED.h" is a harmless no-op after this import.
-import "wasm_pch.h";
-#include "{ino_file.as_posix()}"
-"""
+    lines = [
+        f"// Auto-generated wrapper for {example_name}.ino",
+        "// C++20 header unit import — ~2x faster than PCH for sketch compilation.",
+        '// The .ino\'s #include "FastLED.h" is a harmless no-op after this import.',
+        'import "wasm_pch.h";',
+        f'#include "{ino_file.as_posix()}"',
+    ]
+    for cpp in extra_cpps:
+        lines.append(f'#include "{cpp.as_posix()}"')
+    wrapper_content = "\n".join(lines) + "\n"
 
     # Only write if content changed (preserve timestamp for incremental builds)
     if wrapper_path.exists():
@@ -535,20 +545,27 @@ def compile_sketch(
     """
     object_path = sketch_cache_dir / "sketch.o"
 
-    # Check if recompilation needed (mtime check against wrapper, .ino, and library)
+    # Check if recompilation needed (mtime check against wrapper, .ino, extra .cpp, and library)
     library_archive = build_dir / "ci" / "meson" / "wasm" / "libfastled.a"
     # Find the .ino file that the wrapper #includes
     example_name = wrapper_path.stem.replace("_wrapper", "")
-    ino_file = PROJECT_ROOT / "examples" / example_name / f"{example_name}.ino"
+    example_dir = PROJECT_ROOT / "examples" / example_name
+    ino_file = example_dir / f"{example_name}.ino"
     if object_path.exists():
         object_mtime = object_path.stat().st_mtime
         wrapper_mtime = wrapper_path.stat().st_mtime
         ino_mtime = ino_file.stat().st_mtime if ino_file.exists() else 0
         lib_mtime = library_archive.stat().st_mtime if library_archive.exists() else 0
+        # Check additional .cpp/.h files in the example directory
+        extra_mtime = 0.0
+        for ext in ("*.cpp", "*.h"):
+            for f in example_dir.glob(ext):
+                extra_mtime = max(extra_mtime, f.stat().st_mtime)
         if (
             wrapper_mtime <= object_mtime
             and ino_mtime <= object_mtime
             and lib_mtime <= object_mtime
+            and extra_mtime <= object_mtime
         ):
             print("[WASM] Sketch is up-to-date")
             return object_path
@@ -558,6 +575,7 @@ def compile_sketch(
     includes = [
         f"-I{PROJECT_ROOT / 'src'}",
         f"-I{PROJECT_ROOT / 'src' / 'platforms' / 'wasm' / 'compiler'}",
+        f"-I{example_dir}",
     ]
 
     # Header unit usage: use the .pcm BMI built by build_sketch_pch()
