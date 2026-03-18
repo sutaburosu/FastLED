@@ -15,19 +15,14 @@ void JsonUiAudioInternal::toJson(fl::json &json) const {
     if (mUrl.isValid()) {
         json.set("url", mUrl.string());
     }
-    if (!mAudioDataArray.is_null() && mAudioDataArray.is_array()) {
-        json.set("audioData", mAudioDataArray);
-    }
+    // Audio data flows one-way (JS -> C++), never echo back to JS.
+    // Echoing would create a feedback loop of growing JSON payloads.
 }
 
 void JsonUiAudioInternal::updateInternal(const fl::json &value) {
-    mAudioDataArray = fl::json();  // Clear the stored audio data
-    
     if (value.contains("audioData")) {
         fl::json audioDataArray = value["audioData"];
-        // Store the actual JSON array, not a string representation
-        mAudioDataArray = audioDataArray;
-        
+
         if (audioDataArray.is_array()) {
             for (size_t i = 0; i < audioDataArray.size(); ++i) {
                 fl::json bufferJson = audioDataArray[i];

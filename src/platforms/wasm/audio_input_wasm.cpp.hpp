@@ -125,7 +125,8 @@ void WasmAudioInput::pushSamples(const fl::i16* samples, int count, fl::u32 time
         if (mDroppedBlocks % 100 == 1) {  // Log every 100 drops
             FL_WARN("WasmAudioInput ring buffer overflow - dropped " << mDroppedBlocks << " blocks total");
         }
-        // Advance tail to drop oldest
+        // Clear valid flag on the dropped block before advancing tail
+        mRingBuffer[mTail].valid = false;
         mTail = nextIndex(mTail);
     }
 

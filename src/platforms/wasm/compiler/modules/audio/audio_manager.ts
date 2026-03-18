@@ -832,50 +832,49 @@ export class AudioManager {
   }
 
   /**
-   * Push audio samples to C++ WASM module
+   * Push audio samples to C++ WASM module via the background worker.
+   * AudioManager runs on the main thread but Module lives in the worker,
+   * so we send samples via postMessage and the worker calls Module.ccall().
    * @param {Int16Array} sampleBuffer - Audio samples (512 Int16 values)
    * @param {number} timestamp - Sample timestamp in milliseconds
    */
   pushSamplesToWasm(sampleBuffer, timestamp) {
-    // Check if Module and ccall are available
-    if (typeof Module === 'undefined' || !Module.ccall) {
+    // Send audio samples to the worker thread where Module is available
+    if (typeof window === 'undefined' || !window.fastLEDWorkerManager) {
       if (AUDIO_DEBUG.enabled && Math.random() < AUDIO_DEBUG.sampleRate) {
-        console.warn('🎵 Module.ccall not available - cannot push audio to WASM');
+        console.warn('fastLEDWorkerManager not available - cannot push audio to WASM');
+      }
+      return;
+    }
+
+    const workerManager = window.fastLEDWorkerManager;
+    if (!workerManager.isWorkerActive || !workerManager.worker) {
+      if (AUDIO_DEBUG.enabled && Math.random() < AUDIO_DEBUG.sampleRate) {
+        console.warn('Worker not active - cannot push audio to WASM');
       }
       return;
     }
 
     try {
-      // Allocate memory in WASM heap for the samples
-      const byteLength = sampleBuffer.length * 2; // 512 samples × 2 bytes per Int16
-      const ptr = Module._malloc(byteLength);
+      // Copy sampleBuffer into a plain Int16Array for transfer
+      const samples = new Int16Array(sampleBuffer);
 
-      if (!ptr) {
-        console.error('🎵 Failed to allocate WASM memory for audio samples');
-        return;
-      }
-
-      // Create a view into the WASM heap and copy the samples
-      const heap16 = new Int16Array(Module.HEAP16.buffer, ptr, sampleBuffer.length);
-      heap16.set(sampleBuffer);
-
-      // Call C++ function to push samples into ring buffer
-      Module.ccall(
-        'pushAudioSamples',           // C function name
-        null,                          // Return type (void)
-        ['number', 'number', 'number'], // Argument types
-        [ptr, sampleBuffer.length, timestamp] // Arguments: pointer, count, timestamp
-      );
-
-      // Free the allocated memory
-      Module._free(ptr);
+      // Fire-and-forget: send audio samples to worker via postMessage
+      workerManager.worker.postMessage({
+        type: 'audio_samples',
+        payload: {
+          samples: samples.buffer,
+          count: samples.length,
+          timestamp: timestamp
+        }
+      }, [samples.buffer]); // Transfer the ArrayBuffer (zero-copy)
 
       // Debug logging (very sparse to avoid console spam)
       if (AUDIO_DEBUG.enabled && Math.random() < AUDIO_DEBUG.sampleRate * 0.1) {
-        console.log(`🎵 Pushed ${sampleBuffer.length} samples to WASM @ ${timestamp}ms`);
+        console.log(`Pushed ${sampleBuffer.length} samples to worker @ ${timestamp}ms`);
       }
     } catch (error) {
-      console.error('🎵 Error pushing audio samples to WASM:', error);
+      console.error('Error sending audio samples to worker:', error);
     }
   }
 

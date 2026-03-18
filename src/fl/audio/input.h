@@ -6,6 +6,7 @@
 #include "fl/audio/audio.h"
 #include "fl/audio/mic_profiles.h"
 #include "fl/stl/compiler_control.h"
+#include "fl/system/log.h"
 #include "platforms/audio.h"
 
 #ifndef FASTLED_HAS_AUDIO_INPUT
@@ -216,6 +217,7 @@ public:
     // Read all available audio data and return as AudioSample. All AudioSamples
     // returned by this will be valid. Gain is applied to each sample.
     size_t readAll(fl::vector_inlined<AudioSample, 16> *out) {
+        static constexpr size_t kMaxReads = 64;  // Safety limit
         size_t count = 0;
         while (true) {
             AudioSample sample = read();
@@ -226,6 +228,10 @@ public:
                 out->push_back(sample);
                 count++;
             } else {
+                break;
+            }
+            if (count >= kMaxReads) {
+                FL_ERROR("AudioInput: readAll() exceeded kMaxReads");
                 break;
             }
         }

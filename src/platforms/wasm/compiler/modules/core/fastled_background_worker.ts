@@ -242,6 +242,11 @@ self.onmessage = async function(event) {
         console.log('[WORKER] handleScreenMapUpdate completed, response:', response);
         break;
 
+      case 'audio_samples':
+        handleAudioSamples(payload);
+        // Fire-and-forget, no response needed
+        break;
+
       default:
         throw new Error(`Unknown message type: ${type}`);
     }
@@ -886,6 +891,56 @@ function handleScreenMapUpdate(payload) {
   } catch (error) {
     workerLog('ERROR', 'BACKGROUND_WORKER', 'Failed to update screenmap cache', error);
     throw error;
+  }
+}
+
+/**
+ * Handles audio samples from main thread and pushes them to C++ WASM ring buffer.
+ * AudioManager runs on the main thread (needs window/document), but Module.ccall()
+ * is only available here in the worker context.
+ * @param {Object} payload - Audio samples payload
+ * @param {ArrayBuffer} payload.samples - Int16 PCM samples as ArrayBuffer
+ * @param {number} payload.count - Number of samples
+ * @param {number} payload.timestamp - Timestamp in milliseconds
+ */
+function handleAudioSamples(payload) {
+  try {
+    const Module = workerState.fastledModule;
+
+    if (!Module || !Module.ccall) {
+      return; // Module not ready yet, silently drop
+    }
+
+    const { samples, count, timestamp } = payload;
+    const sampleArray = new Int16Array(samples);
+
+    // Allocate memory in WASM heap for the samples
+    const byteLength = sampleArray.length * 2; // Int16 = 2 bytes each
+    const ptr = Module._malloc(byteLength);
+
+    if (!ptr) {
+      return;
+    }
+
+    // Copy samples into WASM heap
+    const heap16 = new Int16Array(Module.HEAP16.buffer, ptr, sampleArray.length);
+    heap16.set(sampleArray);
+
+    // Call C++ pushAudioSamples(ptr, count, timestamp)
+    Module.ccall(
+      'pushAudioSamples',
+      null,
+      ['number', 'number', 'number'],
+      [ptr, count, timestamp]
+    );
+
+    // Free the allocated memory
+    Module._free(ptr);
+  } catch (error) {
+    // Don't spam logs for audio errors - they happen frequently during init
+    if (workerState.frameCount % 600 === 0) {
+      workerLog('ERROR', 'BACKGROUND_WORKER', 'Audio sample processing error', error);
+    }
   }
 }
 

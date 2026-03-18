@@ -105,7 +105,6 @@ void setup() {
 }
 
 void loop() {
-    FL_WARN("loop()");
     const uint32_t now = millis();
     audioReactive.pump(audio, enableVibeReactive);
 
@@ -113,7 +112,6 @@ void loop() {
         fxEngine.setSpeed(timeSpeed.value());
     }
 
-    FL_WARN("fxEngine.draw()");
     fxEngine.draw(now, leds);
 
     uint8_t finalBrightness;
@@ -128,7 +126,5 @@ void loop() {
     }
 
     FastLED.setBrightness(finalBrightness);
-
-    FL_WARN("FastLED.show()");
     FastLED.show();
 }
