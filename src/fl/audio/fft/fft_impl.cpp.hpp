@@ -1092,8 +1092,6 @@ class FFTContext {
 
     // Hybrid 3-tier path
     int mHybridSplitBin = 0;      // bins < this use bass FFT
-    int mHybridNumCqOctaves = 0;
-    int mHybridNumDecim = 0;
     int mHybridSmallN = 0;        // bass FFT size (samples/8)
     float mHybridSmallFs = 0.0f;  // bass sample rate (sr/8)
     kiss_fftr_cfg mHybridSmallFft = nullptr;
