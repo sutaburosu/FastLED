@@ -17,7 +17,7 @@ def build_cpp_test_command(args: TestArgs) -> str:
     cmd_list.append("--unit")
 
     if args.clang:
-        # Note: Meson uses Zig's bundled Clang, so --clang flag still applies
+        # Note: Meson uses clang-tool-chain's Clang, so --clang flag still applies
         cmd_list.append("--clang")
 
     if args.test:

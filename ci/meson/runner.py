@@ -360,6 +360,7 @@ def _start_zccache_session(build_dir: Path) -> None:
     # Log file goes in the build directory
     build_dir.mkdir(parents=True, exist_ok=True)
     log_path = build_dir / "zccache-session.log"
+    journal_path = build_dir / "zccache-session.jsonl"
 
     try:
         result = subprocess.run(
@@ -369,6 +370,8 @@ def _start_zccache_session(build_dir: Path) -> None:
                 "--stats",
                 "--log",
                 str(log_path),
+                "--journal",
+                str(journal_path),
             ],
             capture_output=True,
             text=True,
@@ -376,14 +379,20 @@ def _start_zccache_session(build_dir: Path) -> None:
         )
         if result.returncode == 0:
             import json
+            import re
 
             output = result.stdout.strip()
             try:
                 data = json.loads(output)
                 session_id = str(data["session_id"])
             except (json.JSONDecodeError, KeyError):
-                # Fallback: output might be just the session ID number
-                session_id = output
+                # Windows paths with backslashes break json.loads.
+                # Extract session_id with regex as fallback.
+                m = re.search(r'"session_id"\s*:\s*"([^"]+)"', output)
+                if m:
+                    session_id = m.group(1)
+                else:
+                    session_id = output
             os.environ["ZCCACHE_SESSION_ID"] = session_id
             _ts_print(f"[ZCCACHE] Session {session_id} started, log: {log_path}")
     except KeyboardInterrupt as ki:

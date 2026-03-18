@@ -609,7 +609,7 @@ def detect_system_llvm_tools() -> tuple[bool, bool]:
     has_lld = False
     has_llvm_ar = False
 
-    # Check for system lld (not zig's bundled lld)
+    # Check for system lld
     # Try 'lld' first (created by workflow symlink or available by default)
     # Then try 'ld.lld' (Linux naming) as fallback
     for lld_cmd in ["lld", "ld.lld"]:
@@ -1821,19 +1821,13 @@ endian = 'little'
 
     def _run_meson_setup() -> tuple[int, str]:
         """Run meson setup and return (returncode, stdout)."""
-        # Disable zccache during Meson setup phase to avoid probe command conflicts
-        # zccache tries to detect compilers with -E flag which confuses Zig's command structure
-        # This will be unset for the actual ninja build phase
-        setup_env = env.copy()
-        setup_env["FASTLED_DISABLE_ZCCACHE"] = "1"
-
         proc = RunningProcess(
             meson_cmd,
             cwd=source_dir,
             timeout=600,
             auto_run=True,
             check=False,  # We'll check returncode manually
-            env=setup_env,
+            env=env,
             output_formatter=TimestampFormatter(),
         )
 

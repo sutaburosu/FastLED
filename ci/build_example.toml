@@ -50,12 +50,12 @@ include_flags = [
 # ================================================================================================
 # WINDOWS-SPECIFIC BUILD FLAGS
 # ================================================================================================
-# Comprehensive Windows build configuration using Zig's bundled Clang with GNU target
+# Comprehensive Windows build configuration using clang-tool-chain with GNU target
 
 # C compiler flags for Windows
 cc_flags = [
     "--target=x86_64-windows-gnu",     # Explicit target for MSYS2/MinGW compatibility
-    "-fuse-ld=lld",                       # Use Zig's bundled LLD linker
+    "-fuse-ld=lld",                       # Use LLD linker
     "-std=c17",                           # C17 standard
     "-Wall",
     "-Wextra",
@@ -83,7 +83,7 @@ link_flags = [
     # Prevent automatic library inclusion to avoid CRT collisions
     "-nodefaultlibs",                     # Don't automatically include default libraries
     
-    # Fix CRT collision between Zig/Clang and MSYS2/MinGW runtimes
+    # Fix CRT collision between Clang and MSYS2/MinGW runtimes
     # This prevents "atexit was replaced" errors from conflicting CRT implementations
     # "-rtlib=compiler-rt",               # Removed - was causing conflicts
     "-unwindlib=libunwind",               # Use Clang's libunwind (avoid MinGW unwind)
@@ -165,7 +165,7 @@ compiler_args = [
 # ARCHIVE CREATION FLAGS
 # ================================================================================================
 # Flags for creating static libraries (.a files) with deterministic builds.
-# Using Zig's unified toolchain (ziglang ar) which supports deterministic builds on all platforms.
+# Using llvm-ar from clang-tool-chain which supports deterministic builds on all platforms.
 #
 # Thin archives are ENABLED BY DEFAULT for deterministic builds.
 # Thin archives store file references (~100 bytes) instead of copying object files (can be MBs).

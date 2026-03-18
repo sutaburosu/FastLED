@@ -7,7 +7,7 @@ Wrapper script for PCH compilation that fixes dependency file generation
 and implements input-hash caching to avoid unnecessary mass rebuilds.
 
 Problem 1: When compiling a PCH with `-MD -MF`, the compiler generates a depfile
-that references a temporary .obj file in the Zig cache, not the PCH output file.
+that references a temporary .obj file in the compiler cache, not the PCH output file.
 This causes Ninja to ignore the depfile and always rebuild the PCH.
 
 Solution 1: After compilation, rewrite the depfile to reference the actual PCH
