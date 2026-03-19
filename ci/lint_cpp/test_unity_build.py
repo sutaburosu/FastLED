@@ -247,6 +247,145 @@ def _check_cpp_hpp_files(src_dir: Path, cpp_hpp_by_dir: CppHppByDir) -> list[str
     return violations
 
 
+SECTION_COMMENT_CURRENT_DIR = "// begin current directory includes"
+SECTION_COMMENT_SUB_DIR = "// begin sub directory includes"
+
+
+def _check_build_include_order(src_dir: Path) -> list[str]:
+    """
+    Check that _build.cpp.hpp files have correct include ordering and section comments.
+
+    Required structure (when both same-level AND subdir includes exist):
+
+        // begin current directory includes
+        #include "fl/channels/channel.cpp.hpp"
+        ...
+
+        // begin sub directory includes
+        #include "fl/channels/detail/_build.cpp.hpp"
+        ...
+
+    Rules:
+    1. Same-level *.cpp.hpp includes BEFORE subdirectory _build.cpp.hpp includes.
+    2. When both sections exist, require section comment markers with a blank line before each.
+    3. Files with only one kind of include do NOT need section comments.
+
+    Returns:
+        list of violation strings
+    """
+    violations: list[str] = []
+
+    include_pattern = re.compile(r'^\s*#include\s+"([^"]+\.cpp\.hpp)"', re.MULTILINE)
+
+    for build_hpp in src_dir.rglob(BUILD_HPP):
+        content = build_hpp.read_text(encoding="utf-8")
+        lines = content.splitlines()
+        namespace_path = _get_namespace_path(build_hpp, src_dir)
+        if namespace_path is None:
+            continue
+
+        includes = list(include_pattern.finditer(content))
+        if not includes:
+            continue
+
+        rel_file = build_hpp.relative_to(PROJECT_ROOT).as_posix()
+
+        # Classify includes
+        same_level_lines: list[int] = []
+        subdir_lines: list[int] = []
+
+        for match in includes:
+            included_path = match.group(1)
+            line_num = _get_line_number(content, match.start())
+
+            if included_path.endswith(BUILD_HPP):
+                subdir_lines.append(line_num)
+            else:
+                same_level_lines.append(line_num)
+
+        has_both = bool(same_level_lines) and bool(subdir_lines)
+
+        # Check ordering: all same-level must come before all subdir
+        if has_both:
+            last_same = max(same_level_lines)
+            first_subdir = min(subdir_lines)
+            if last_same > first_subdir:
+                violations.append(
+                    f"{rel_file}: Same-level .cpp.hpp includes (last at line {last_same}) "
+                    f"must come BEFORE subdirectory _build.cpp.hpp includes (first at line {first_subdir}). "
+                    f"Required order: same-level *.cpp.hpp first, then subdir/_build.cpp.hpp last."
+                )
+
+        # Check section comments (only required when both sections exist)
+        if not has_both:
+            continue
+
+        # Find section comment lines
+        current_dir_comment_line: int | None = None
+        sub_dir_comment_line: int | None = None
+        for i, line in enumerate(lines, 1):
+            stripped = line.strip()
+            if stripped == SECTION_COMMENT_CURRENT_DIR:
+                current_dir_comment_line = i
+            elif stripped == SECTION_COMMENT_SUB_DIR:
+                sub_dir_comment_line = i
+
+        first_same = min(same_level_lines)
+        first_subdir = min(subdir_lines)
+
+        # Check "// begin current directory includes" exists and is placed correctly
+        if current_dir_comment_line is None:
+            violations.append(
+                f'{rel_file}: Missing "{SECTION_COMMENT_CURRENT_DIR}" comment before '
+                f"same-level includes (first at line {first_same}). "
+                f"Add it on the line immediately before the first same-level #include."
+            )
+        else:
+            # Must be on the line immediately before the first same-level include
+            if current_dir_comment_line != first_same - 1:
+                violations.append(
+                    f'{rel_file}:{current_dir_comment_line}: "{SECTION_COMMENT_CURRENT_DIR}" '
+                    f"must be on line {first_same - 1} (immediately before first same-level include "
+                    f"at line {first_same}), not line {current_dir_comment_line}."
+                )
+            # Must have a blank line before the comment (unless it's at the very start of content)
+            if current_dir_comment_line >= 2:
+                prev_line = lines[
+                    current_dir_comment_line - 2
+                ]  # -2: 1-indexed + prev line
+                if prev_line.strip() != "" and not prev_line.strip().startswith("///"):
+                    violations.append(
+                        f'{rel_file}:{current_dir_comment_line}: "{SECTION_COMMENT_CURRENT_DIR}" '
+                        f"must have a blank line before it (line {current_dir_comment_line - 1} is not blank)."
+                    )
+
+        # Check "// begin sub directory includes" exists and is placed correctly
+        if sub_dir_comment_line is None:
+            violations.append(
+                f'{rel_file}: Missing "{SECTION_COMMENT_SUB_DIR}" comment before '
+                f"subdirectory includes (first at line {first_subdir}). "
+                f"Add it on the line immediately before the first subdirectory #include."
+            )
+        else:
+            # Must be on the line immediately before the first subdir include
+            if sub_dir_comment_line != first_subdir - 1:
+                violations.append(
+                    f'{rel_file}:{sub_dir_comment_line}: "{SECTION_COMMENT_SUB_DIR}" '
+                    f"must be on line {first_subdir - 1} (immediately before first subdirectory include "
+                    f"at line {first_subdir}), not line {sub_dir_comment_line}."
+                )
+            # Must have a blank line before the comment
+            if sub_dir_comment_line >= 2:
+                prev_line = lines[sub_dir_comment_line - 2]
+                if prev_line.strip() != "":
+                    violations.append(
+                        f'{rel_file}:{sub_dir_comment_line}: "{SECTION_COMMENT_SUB_DIR}" '
+                        f"must have a blank line before it (line {sub_dir_comment_line - 1} is not blank)."
+                    )
+
+    return violations
+
+
 def _build_include_map(src_dir: Path, all_build_hpp_files: list[Path]) -> IncludeMap:
     """
     Build a map of which _build.hpp files are included by other _build.hpp files.
@@ -521,6 +660,9 @@ def check_scanned_data(data: ScannedData) -> CheckResult:
 
     # 3. Check all .cpp.hpp files are referenced in _build.hpp
     violations.extend(_check_cpp_hpp_files(data.src_dir, data.cpp_hpp_by_dir))
+
+    # 3b. Check _build.cpp.hpp include ordering (same-level first, subdir last)
+    violations.extend(_check_build_include_order(data.src_dir))
 
     # 4. Check _build.cpp files include necessary _build.hpp files
     violations.extend(

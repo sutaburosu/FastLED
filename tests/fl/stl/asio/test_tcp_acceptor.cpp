@@ -1,8 +1,7 @@
 #ifdef FASTLED_HAS_NETWORKING
 
-#include "fl/stl/asio/error_code.cpp.hpp"
+#include "fl/stl/asio/error_code.h"
 #include "fl/stl/asio/ip/tcp.h"
-#include "fl/stl/asio/ip/tcp.cpp.hpp"
 #include "fl/stl/thread.h"
 #include "fl/stl/chrono.h"
 

@@ -5,6 +5,7 @@
 ///
 /// This file contains the main Device class for SPI communication.
 
+#include "fl/stl/limits.h"
 #include "fl/stl/stdint.h"
 #include "fl/stl/unique_ptr.h"
 #include "fl/stl/optional.h"

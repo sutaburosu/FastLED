@@ -71,6 +71,7 @@ from ci.lint_cpp.test_aggregation_checker import check as check_test_aggregation
 from ci.lint_cpp.test_aggregation_checker import (
     check_single_file as check_test_aggregation_single_file,
 )
+from ci.lint_cpp.test_cpp_hpp_includes_checker import TestCppHppIncludesChecker
 from ci.lint_cpp.test_path_structure_checker import TestPathStructureChecker
 from ci.lint_cpp.test_unity_build import check as check_unity_build
 from ci.lint_cpp.test_unity_build import (
@@ -288,6 +289,7 @@ def create_checkers(
         UnitTestChecker(),
         CtypeGlobalChecker(),  # Checks for bare C ctype/cstring functions (use fl:: variants)
         TestAggregationChecker(),  # Checks that .hpp files in excluded test dirs have parent aggregators
+        TestCppHppIncludesChecker(),  # Bans #include of *.cpp.hpp in tests (use .h headers)
     ]
 
     return checkers_by_scope

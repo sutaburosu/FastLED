@@ -6,6 +6,7 @@
 /// This file contains the Transaction class which provides a handle for
 /// asynchronous SPI operations with RAII semantics.
 
+#include "fl/stl/limits.h"
 #include "fl/stl/stdint.h"
 #include "fl/stl/unique_ptr.h"
 #include "fl/result.h"

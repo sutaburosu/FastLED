@@ -4,7 +4,6 @@
 
 #include "test.h"
 #include "fl/channels/validation.h"
-#include "fl/channels/validation.cpp.hpp"
 
 FL_TEST_FILE(FL_FILEPATH) {
 

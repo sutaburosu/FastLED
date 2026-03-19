@@ -1,5 +1,5 @@
 #include "test.h"
-#include "fl/net/http/chunked_encoding.cpp.hpp"
+#include "fl/net/http/chunked_encoding.h"
 
 FL_TEST_FILE(FL_FILEPATH) {
 

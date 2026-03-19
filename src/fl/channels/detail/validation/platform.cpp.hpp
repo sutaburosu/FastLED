@@ -11,12 +11,12 @@
 namespace fl {
 namespace validation {
 
-inline bool validateExpectedEngines() {
+bool validateExpectedEngines() {
     auto infos = channelManager().getDriverInfos();
     return !infos.empty();
 }
 
-inline void printEngineValidation() {
+void printEngineValidation() {
     auto infos = channelManager().getDriverInfos();
 
     if (infos.empty()) {

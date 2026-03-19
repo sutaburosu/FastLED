@@ -12,7 +12,7 @@
 namespace fl {
 namespace validation {
 
-inline bool testRxChannel(
+bool testRxChannel(
     fl::shared_ptr<fl::RxDevice> rx_channel,
     int pin_tx,
     int pin_rx,

@@ -3,15 +3,14 @@
 // Result formatting implementation
 
 #include "fl/channels/detail/validation/result_formatter.h"
+#include "fl/channels/validation.h"
 #include "fl/stl/sstream.h"
 #include "fl/system/log.h"
-
-// DriverTestResult is now defined in fl/channels/validation.h
 
 namespace fl {
 namespace validation {
 
-inline string formatSummaryTable(const fl::vector<fl::DriverTestResult>& driver_results) {
+string formatSummaryTable(const fl::vector<fl::DriverTestResult>& driver_results) {
     fl::sstream ss;
     ss << "\n╔════════════════════════════════════════════════════════════════╗\n";
     ss << "║ DRIVER VALIDATION SUMMARY                                      ║\n";
@@ -73,7 +72,7 @@ inline string formatSummaryTable(const fl::vector<fl::DriverTestResult>& driver_
     return ss.str();
 }
 
-inline void printSummaryTable(const fl::vector<fl::DriverTestResult>& driver_results) {
+void printSummaryTable(const fl::vector<fl::DriverTestResult>& driver_results) {
     FL_WARN(formatSummaryTable(driver_results).c_str());
 }
 

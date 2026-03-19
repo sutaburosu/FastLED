@@ -5,18 +5,15 @@
 // Note: Teensy 3.x <new.h> compatibility is handled in _build.cpp
 // which includes is_teensy.h before this header.
 
+// begin current directory includes
 #include "fl/engine_events.cpp.hpp"
 #include "fl/fastled_internal.cpp.hpp"
 #include "fl/fltest.cpp.hpp"
 #include "fl/id_tracker.cpp.hpp"
 #include "fl/leds.cpp.hpp"
 #include "fl/memfill.cpp.hpp"
-#include "fl/net/_build.cpp.hpp"
-#include "fl/remote/_build.cpp.hpp"
 #include "fl/rx_device.cpp.hpp"
 #include "fl/serial.cpp.hpp"
-#include "fl/system/_build.cpp.hpp"
-#include "fl/math/_build.cpp.hpp"
 #include "fl/spi.cpp.hpp"
 #include "fl/static_constexpr_defs.cpp.hpp"
 #include "fl/str.cpp.hpp"
@@ -25,3 +22,9 @@
 #include "fl/trace.cpp.hpp"
 #include "fl/transposition.cpp.hpp"
 #include "fl/ui.cpp.hpp"
+
+// begin sub directory includes
+#include "fl/math/_build.cpp.hpp"
+#include "fl/net/_build.cpp.hpp"
+#include "fl/remote/_build.cpp.hpp"
+#include "fl/system/_build.cpp.hpp"

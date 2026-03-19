@@ -4,7 +4,6 @@
 
 #include "test.h"
 #include "fl/channels/detail/validation/platform.h"
-#include "fl/channels/detail/validation/platform.cpp.hpp"
 #include "fl/channels/manager.h"
 #include "fl/channels/driver.h"
 

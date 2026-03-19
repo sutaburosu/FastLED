@@ -2,6 +2,7 @@
 /// @brief Unity build header for fl/stl/ directory
 /// Includes all implementation files in alphabetical order
 
+// begin current directory includes
 #include "fl/stl/allocator.cpp.hpp"
 #include "fl/stl/async.cpp.hpp"
 #include "fl/stl/bitset.cpp.hpp"
@@ -27,6 +28,8 @@
 #include "fl/stl/string_view.cpp.hpp"
 #include "fl/stl/strstream.cpp.hpp"
 #include "fl/stl/type_traits.cpp.hpp"
+
+// begin sub directory includes
 #include "fl/stl/fixed_point/_build.cpp.hpp"
 #include "fl/stl/asio/_build.cpp.hpp"
 #include "fl/stl/isr/_build.cpp.hpp"

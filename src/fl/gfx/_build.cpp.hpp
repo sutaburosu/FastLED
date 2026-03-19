@@ -3,10 +3,10 @@
 
 #pragma once
 
+// begin current directory includes
 #include "fl/gfx/blur.cpp.hpp"
 #include "fl/gfx/colorutils.cpp.hpp"
 #include "fl/gfx/corkscrew.cpp.hpp"
-#include "fl/gfx/detail/_build.cpp.hpp"
 #include "fl/gfx/downscale.cpp.hpp"
 #include "fl/gfx/ease.cpp.hpp"
 #include "fl/gfx/fill.cpp.hpp"
@@ -32,3 +32,6 @@
 #include "fl/gfx/xypath.cpp.hpp"
 #include "fl/gfx/xypath_impls.cpp.hpp"
 #include "fl/gfx/xypath_renderer.cpp.hpp"
+
+// begin sub directory includes
+#include "fl/gfx/detail/_build.cpp.hpp"

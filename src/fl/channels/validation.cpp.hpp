@@ -10,7 +10,7 @@
 
 namespace fl {
 
-inline SingleTestResult runSingleValidationTest(const SingleTestConfig& config) {
+SingleTestResult runSingleValidationTest(const SingleTestConfig& config) {
     SingleTestResult result;
     result.driver = config.driver_name;
     result.lane_count = static_cast<int>(config.lane_sizes.size());

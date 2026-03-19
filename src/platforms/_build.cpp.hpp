@@ -4,13 +4,16 @@
 /// Includes all root-level implementations and subdirectory _build.hpp files
 
 // Root directory implementations (alphabetical order)
+
+// begin current directory includes
 #include "platforms/arduino/platform_time.cpp.hpp"
 #include "platforms/compile_test.cpp.hpp"
+#include "platforms/coroutine.impl.cpp.hpp" // ok include cpp.hpp
 #include "platforms/debug_setup.cpp.hpp"
 #include "platforms/ota.cpp.hpp"
 #include "platforms/stub_main.cpp.hpp"
 
-// Subdirectory implementations (alphabetical order - one level down only)
+// begin sub directory includes
 #include "platforms/adafruit/_build.cpp.hpp"
 #include "platforms/apollo3/_build.cpp.hpp"
 #include "platforms/arduino/_build.cpp.hpp"
@@ -23,8 +26,3 @@
 #include "platforms/teensy/_build.cpp.hpp"
 #include "platforms/wasm/_build.cpp.hpp"
 #include "platforms/win/_build.cpp.hpp"
-
-// Coroutine implementations must come AFTER platform subdirectory builds because
-// they dispatch to platform-specific implementations that require macros
-// like FASTLED_STUB_IMPL (defined in stub/led_sysdefs_stub_generic.h)
-#include "platforms/coroutine.impl.cpp.hpp" // ok include cpp.hpp

@@ -7,16 +7,10 @@
 // stb_vorbis - Ogg Vorbis audio decoder v1.22
 // License: MIT or Public Domain
 // Source: https://github.com/nothings/stb
+
+// begin current directory includes
 #include "third_party/stb/stb_vorbis.cpp.hpp"
 
-// Subdirectory implementations (alphabetical order)
-
-// stb_hexwave - Bandlimited audio oscillator v0.5
-// License: MIT or Public Domain
-// Source: https://github.com/nothings/stb
+// begin sub directory includes
 #include "third_party/stb/hexwave/_build.cpp.hpp"
-
-// stb_truetype - TrueType font rasterizer v1.26
-// License: MIT or Public Domain
-// Source: https://github.com/nothings/stb
 #include "third_party/stb/truetype/_build.cpp.hpp"

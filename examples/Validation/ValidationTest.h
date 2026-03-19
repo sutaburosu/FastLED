@@ -4,6 +4,7 @@
 #pragma once
 
 #include <FastLED.h>
+#include "fl/channels/validation.h"
 #include "fl/rx_device.h"
 
 namespace fl {
@@ -99,25 +100,7 @@ struct MultiRunConfig {
         , max_errors_per_run(5) {}
 };
 
-/// @brief Driver test result tracking
-struct DriverTestResult {
-    fl::string driver_name;  ///< Driver name (e.g., "RMT", "SPI", "PARLIO")
-    int total_tests;         ///< Total test count across all chipset timings
-    int passed_tests;        ///< Passed test count across all chipset timings
-    bool skipped;            ///< True if driver was skipped (e.g., failed to set exclusive)
-
-    DriverTestResult(const char* name)
-        : driver_name(name)
-        , total_tests(0)
-        , passed_tests(0)
-        , skipped(false) {}
-
-    /// @brief Check if all tests passed
-    bool allPassed() const { return !skipped && total_tests > 0 && passed_tests == total_tests; }
-
-    /// @brief Check if any tests failed
-    bool anyFailed() const { return !skipped && total_tests > 0 && passed_tests < total_tests; }
-};
+// DriverTestResult is defined in fl/channels/validation.h (canonical definition)
 
 } // namespace fl
 

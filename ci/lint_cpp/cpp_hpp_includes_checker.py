@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 # pyright: reportUnknownMemberType=false
-"""Checker to ensure *.cpp.hpp files are only included by _build.hpp files.
+"""Checker to ensure *.cpp.hpp files are only included by _build.* files.
 
-*.cpp.hpp files are implementation files that should ONLY be included by _build.hpp files.
+*.cpp.hpp files are implementation files that should ONLY be included by _build.* files.
 Regular .h, .hpp, and .cpp files should NEVER include *.cpp.hpp files.
 This ensures proper separation between interface (.h/.hpp) and implementation (.cpp.hpp).
+
+This is a hard ban — no opt-out pragma is supported.
 """
 
 import re
@@ -17,7 +19,7 @@ SRC_ROOT = PROJECT_ROOT / "src"
 
 
 class CppHppIncludesChecker(FileContentChecker):
-    """Checker class to ensure *.cpp.hpp files are only included by _build.hpp files."""
+    """Checker class to ensure *.cpp.hpp files are only included by _build.* files. No opt-out."""
 
     def __init__(self) -> None:
         self.violations: dict[str, list[tuple[int, str]]] = {}
@@ -53,9 +55,6 @@ class CppHppIncludesChecker(FileContentChecker):
             r'#\s*include\s+[<"]([^>"]+\.cpp\.hpp)[>"]'
         )
 
-        # Pattern to match opt-out pragma (without the // prefix since we split it off)
-        opt_out_pattern = re.compile(r"\s*ok\s+include\s+cpp\.hpp")
-
         for line_number, line in enumerate(file_content.lines, 1):
             stripped = line.strip()
 
@@ -74,23 +73,17 @@ class CppHppIncludesChecker(FileContentChecker):
             if stripped.startswith("//"):
                 continue
 
-            # Split line to separate code from inline comments
-            code_part = line.split("//")[0]
-            comment_part = line.split("//", 1)[1] if "//" in line else ""
-
             # Check for *.cpp.hpp includes in code portion
+            code_part = line.split("//")[0]
+
             match = cpp_hpp_include_pattern.search(code_part)
             if match:
-                # Check if line has opt-out pragma
-                if opt_out_pattern.search(comment_part):
-                    continue  # Skip this violation due to opt-out
-
                 included_file = match.group(1)
                 violations.append(
                     (
                         line_number,
-                        f"{line.strip()} - *.cpp.hpp files should ONLY be included by _build.hpp files. "
-                        f"Found include of '{included_file}' in non-build file. "
+                        f"{stripped} - *.cpp.hpp files should ONLY be included by _build.* files "
+                        f"(hard ban, no opt-out). Found include of '{included_file}' in non-build file. "
                         f"Move this include to the appropriate _build.hpp file.",
                     )
                 )

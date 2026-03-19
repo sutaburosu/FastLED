@@ -5,7 +5,6 @@
 #include "test.h"
 #include "fl/channels/validation.h"
 #include "fl/channels/detail/validation/result_formatter.h"
-#include "fl/channels/detail/validation/result_formatter.cpp.hpp"
 
 using namespace fl;
 
