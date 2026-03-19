@@ -915,7 +915,7 @@ static void vpass_rowmajor_impl(
     RGB_T *zero_row = scratch + (R + 1) * w;
 
     // Zero all: first R buffers (top-boundary padding) + zero_row.
-    __builtin_memset(scratch, 0, (R + 2) * w * sizeof(RGB_T));
+    FL_BUILTIN_MEMSET(scratch, 0, (R + 2) * w * sizeof(RGB_T));
 
     for (int y = 0; y < h; ++y) {
         RGB_T *out_row = pixels + y * w;
@@ -1027,8 +1027,8 @@ template <int R, typename RGB_T, typename acc_t, bool ApplyAlpha, typename Alpha
 static void vpass_full(RGB_T *pixels, int w, int h, RGB_T *scratch, AlphaT alpha) {
 #if defined(FL_IS_AVR)
     // AVR: column-by-column with per-channel noinline + O3.
-    __builtin_memset(scratch, 0, R * sizeof(RGB_T));
-    __builtin_memset(scratch + R + h, 0, R * sizeof(RGB_T));
+    FL_BUILTIN_MEMSET(scratch, 0, R * sizeof(RGB_T));
+    FL_BUILTIN_MEMSET(scratch + R + h, 0, R * sizeof(RGB_T));
 
     for (int x = 0; x < w; ++x) {
         // Linearize column into padded region.
@@ -1110,8 +1110,8 @@ void blurGaussianImpl(Canvas<RGB_T> &canvas, AlphaT alpha) {
     // ── Horizontal pass ──────────────────────────────────────────────
     if (hRadius > 0) {
         // Zero the fixed padding regions once (reused for every row).
-        __builtin_memset(pad, 0, hRadius * sizeof(RGB_T));
-        __builtin_memset(pad + hRadius + w, 0, hRadius * sizeof(RGB_T));
+        FL_BUILTIN_MEMSET(pad, 0, hRadius * sizeof(RGB_T));
+        FL_BUILTIN_MEMSET(pad + hRadius + w, 0, hRadius * sizeof(RGB_T));
 
         for (int y = 0; y < h; ++y) {
             RGB_T *row = pixels + y * w;

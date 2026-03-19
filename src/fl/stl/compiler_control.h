@@ -52,6 +52,8 @@
   // C++14/17 extension warnings (for compatibility when using SIMD intrinsic headers)
   #define FL_DISABLE_WARNING_C14_EXTENSIONS FL_DISABLE_WARNING(c++14-extensions)
   #define FL_DISABLE_WARNING_C17_EXTENSIONS FL_DISABLE_WARNING(c++17-extensions)
+  // Clang doesn't have class-memaccess warning, use no-op
+  #define FL_DISABLE_WARNING_CLASS_MEMACCESS
 #elif defined(FL_IS_GCC) && FL_GCC_VERSION >= 406
   // GCC doesn't have global-constructors warning, use no-op
   #define FL_DISABLE_WARNING_GLOBAL_CONSTRUCTORS
@@ -95,6 +97,12 @@
   // GCC doesn't have C++14/17 extension warnings, use no-op
   #define FL_DISABLE_WARNING_C14_EXTENSIONS
   #define FL_DISABLE_WARNING_C17_EXTENSIONS
+  // GCC 8+: -Wclass-memaccess warns when memset/memcpy used on non-trivial types
+  #if FL_GCC_VERSION >= 800
+    #define FL_DISABLE_WARNING_CLASS_MEMACCESS FL_DISABLE_WARNING(class-memaccess)
+  #else
+    #define FL_DISABLE_WARNING_CLASS_MEMACCESS
+  #endif
   // GCC 7+: 'register' deprecated in C++11, removed in C++17 (-Wregister)
   #if FL_GCC_VERSION >= 700
     #define FL_DISABLE_WARNING_DEPRECATED_REGISTER FL_DISABLE_WARNING(register)
@@ -120,6 +128,8 @@
   // Other compilers don't have C++14/17 extension warnings, use no-op
   #define FL_DISABLE_WARNING_C14_EXTENSIONS
   #define FL_DISABLE_WARNING_C17_EXTENSIONS
+  // Other compilers don't have class-memaccess warning, use no-op
+  #define FL_DISABLE_WARNING_CLASS_MEMACCESS
 #endif
 
 // END WARNING SPECIFIC MACROS THAT MAY NOT BE UNIVERSAL.
@@ -752,7 +762,23 @@ FL_DISABLE_WARNING_POP
 // Optimization: __builtin_memcpy is a compiler intrinsic that always lowers to
 // optimal load/store instructions at the call site. Unlike fl::memcpy (a
 // cross-TU call requiring LTO to inline), this guarantees zero call overhead.
-#define FL_BUILTIN_MEMCPY(dest, src, n) __builtin_memcpy(dest, src, n)
+#define FL_BUILTIN_MEMCPY(dest, src, n)                                        \
+  FL_DISABLE_WARNING_PUSH                                                      \
+  FL_DISABLE_WARNING_CLASS_MEMACCESS                                           \
+  __builtin_memcpy(dest, src, n)                                               \
+  FL_DISABLE_WARNING_POP
+
+// ============================================================================
+// Compiler intrinsic memset (warning-suppressed)
+// ============================================================================
+// __builtin_memset on non-trivial types (e.g. CRGB) triggers -Wclass-memaccess
+// on GCC. This is safe when the type is trivially copyable / POD-like, which
+// CRGB and CRGB16 are in practice.
+#define FL_BUILTIN_MEMSET(dest, val, n)                                        \
+    FL_DISABLE_WARNING_PUSH                                                    \
+    FL_DISABLE_WARNING_CLASS_MEMACCESS                                         \
+    __builtin_memset(dest, val, n)                                             \
+    FL_DISABLE_WARNING_POP
 
 // ============================================================================
 // Register keyword compatibility (formerly fl/register.h)
