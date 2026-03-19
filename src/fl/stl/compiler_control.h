@@ -757,16 +757,27 @@ FL_DISABLE_WARNING_POP
 #endif
 
 // ============================================================================
-// Compiler intrinsic memcpy
+// Compiler intrinsic memcpy (warning-suppressed)
 // ============================================================================
-// Optimization: __builtin_memcpy is a compiler intrinsic that always lowers to
-// optimal load/store instructions at the call site. Unlike fl::memcpy (a
-// cross-TU call requiring LTO to inline), this guarantees zero call overhead.
-#define FL_BUILTIN_MEMCPY(dest, src, n)                                        \
-  FL_DISABLE_WARNING_PUSH                                                      \
-  FL_DISABLE_WARNING_CLASS_MEMACCESS                                           \
-  __builtin_memcpy(dest, src, n)                                               \
-  FL_DISABLE_WARNING_POP
+// __builtin_memcpy is a compiler intrinsic that always lowers to optimal
+// load/store instructions at the call site. Unlike fl::memcpy (a cross-TU
+// call requiring LTO to inline), this guarantees zero call overhead.
+//
+// Wrapped in always_inline functions instead of pragma-based macros to avoid
+// _Pragma placement errors on newer GCC (e.g. GCC 13+ in ESP-IDF v5.5).
+// The void* parameters naturally suppress -Wclass-memaccess by erasing the
+// source type at the call site.
+#if defined(FL_IS_GCC) || defined(FL_IS_CLANG)
+__attribute__((always_inline))
+static inline void *_fl_builtin_memcpy(void *dest, const void *src,
+                                       __SIZE_TYPE__ n) {
+    return __builtin_memcpy(dest, src, n);
+}
+#define FL_BUILTIN_MEMCPY(dest, src, n) _fl_builtin_memcpy(dest, src, n)
+#else
+// MSVC 2019+ recognizes __builtin_memcpy as an intrinsic; no pragma needed
+#define FL_BUILTIN_MEMCPY(dest, src, n) __builtin_memcpy(dest, src, n)
+#endif
 
 // ============================================================================
 // Compiler intrinsic memset (warning-suppressed)
@@ -774,11 +785,16 @@ FL_DISABLE_WARNING_POP
 // __builtin_memset on non-trivial types (e.g. CRGB) triggers -Wclass-memaccess
 // on GCC. This is safe when the type is trivially copyable / POD-like, which
 // CRGB and CRGB16 are in practice.
-#define FL_BUILTIN_MEMSET(dest, val, n)                                        \
-    FL_DISABLE_WARNING_PUSH                                                    \
-    FL_DISABLE_WARNING_CLASS_MEMACCESS                                         \
-    __builtin_memset(dest, val, n)                                             \
-    FL_DISABLE_WARNING_POP
+#if defined(FL_IS_GCC) || defined(FL_IS_CLANG)
+__attribute__((always_inline))
+static inline void *_fl_builtin_memset(void *dest, int val, __SIZE_TYPE__ n) {
+    return __builtin_memset(dest, val, n);
+}
+#define FL_BUILTIN_MEMSET(dest, val, n) _fl_builtin_memset(dest, val, n)
+#else
+// MSVC 2019+ recognizes __builtin_memset as an intrinsic; no pragma needed
+#define FL_BUILTIN_MEMSET(dest, val, n) __builtin_memset(dest, val, n)
+#endif
 
 // ============================================================================
 // Register keyword compatibility (formerly fl/register.h)

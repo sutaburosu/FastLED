@@ -171,8 +171,6 @@ bool Rmt5PeripheralESPImpl::createTxChannel(const Rmt5ChannelConfig& config,
     // NOTE: Removed gpio_reset_pin() call - ESP-IDF rmt_new_tx_channel() handles GPIO configuration
     // gpio_reset_pin() was interfering with GPIO matrix routing when both TX and RX are active
 
-    gpio_num_t gpio = static_cast<gpio_num_t>(config.gpio_num);
-
     // Delegate to ESP-IDF
     FL_LOG_RMT("RMT5_PERIPH: Creating TX channel on GPIO " << config.gpio_num);
 

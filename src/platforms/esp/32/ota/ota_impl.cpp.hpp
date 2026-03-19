@@ -637,9 +637,9 @@ class ESP32OTA : public IOTA {
 public:
     ESP32OTA()
         : mApFallbackEnabled(false)
+        , mWifiConnected(false)
         , mHttpServer(nullptr)
         , mFailedServices(0)
-        , mWifiConnected(false)
     {
         mHttpContext.password = nullptr;
         mHttpContext.progress_cb = &mProgressCb;
@@ -1267,7 +1267,6 @@ private:
             }
 
             // Check if password is required
-            const char* response_msg;
             if (self->mPassword.length() > 0) {
                 // Generate nonce and send AUTH challenge
                 char nonce[65];

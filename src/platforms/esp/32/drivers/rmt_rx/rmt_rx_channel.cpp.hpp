@@ -149,9 +149,6 @@ inline bool isGapPulse(RmtSymbol symbol, const ChipsetTiming4Phase &timing,
     u32 duration0_ns = ticksToNs(rmt_sym.duration0, ns_per_tick);
     u32 duration1_ns = ticksToNs(rmt_sym.duration1, ns_per_tick);
 
-    // Reset threshold (convert microseconds to nanoseconds)
-    u32 reset_min_ns = timing.reset_min_us * 1000;
-
     // Gap pulse characteristics:
     // - Long LOW duration (longer than normal bit LOW timing)
     // - Shorter than reset threshold (not a frame reset)
@@ -475,7 +472,6 @@ decodeRmtSymbols(const ChipsetTiming4Phase &timing, u32 resolution_hz,
     }
 
     size_t symbols_processed = symbols.size() - start_index;
-    size_t valid_symbols = symbols_processed - error_count;
     FL_LOG_RX(
         "decodeRmtSymbols: decoded "
         << bytes_decoded << " bytes from " << symbols_processed << " symbols, "
