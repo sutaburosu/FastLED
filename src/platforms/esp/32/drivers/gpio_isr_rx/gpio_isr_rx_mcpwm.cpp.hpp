@@ -51,7 +51,7 @@ FL_EXTERN_C_BEGIN
 #include "esp_attr.h"
 #include "esp_err.h"
 #include "esp_intr_alloc.h"  // For esp_intr_alloc, intr_handle_t
-#include "soc/gpio_reg.h"  // For GPIO_IN_REG, GPIO_IN1_REG
+#include "soc/gpio_reg.h"  // For GPIO_IN_REG (and GPIO_IN1_REG on chips with >32 GPIOs)
 #include "soc/interrupts.h"  // For ETS_GPIO_INTR_SOURCE
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -456,8 +456,15 @@ public:
             }
 
             // Set GPIO register address and bit mask for fast ISR
+#ifdef GPIO_IN1_REG
+            // Chips with >32 GPIOs (ESP32, ESP32-S2) have a second input register
             mIsrContext.gpio_in_reg_addr = (mPin < 32) ? GPIO_IN_REG : GPIO_IN1_REG;
             u8 pin_bit = (mPin < 32) ? mPin : (mPin - 32);
+#else
+            // Chips with <=32 GPIOs (ESP32-H2, ESP32-C3, ESP32-C6) only have GPIO_IN_REG
+            mIsrContext.gpio_in_reg_addr = GPIO_IN_REG;
+            u8 pin_bit = mPin;
+#endif
             mIsrContext.gpio_bit_mask = (1U << pin_bit);
 
             // Initialize MCPWM timer
