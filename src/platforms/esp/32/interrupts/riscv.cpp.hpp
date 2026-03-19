@@ -15,12 +15,16 @@
 
 #if defined(FL_IS_ESP32) && (defined(FL_IS_ESP_32C3) || defined(FL_IS_ESP_32C6))
 
+#include "platforms/esp/esp_version.h"
+
 #include "platforms/esp/32/interrupts/riscv.hpp"
 #include "esp_err.h"
 #include "esp_intr_alloc.h"
 #include "esp_log.h"
 // IWYU pragma: begin_keep
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
 #include "driver/rmt_tx.h"
+#endif
 // IWYU pragma: end_keep
 // IWYU pragma: begin_keep
 #include "soc/soc.h"
