@@ -14,6 +14,7 @@ from typing import Any
 
 from ci.lint_cpp.arduino_macro_usage_checker import ArduinoMacroUsageChecker
 from ci.lint_cpp.attribute_checker import AttributeChecker
+from ci.lint_cpp.banned_define_checker import BannedDefineChecker
 from ci.lint_cpp.banned_headers_checker import (
     BANNED_HEADERS_COMMON,
     BANNED_HEADERS_CORE,
@@ -54,6 +55,7 @@ from ci.lint_cpp.no_using_namespace_fl_in_headers import UsingNamespaceFlChecker
 from ci.lint_cpp.numeric_limit_macros_checker import NumericLimitMacroChecker
 from ci.lint_cpp.pch_file_checker import check as check_pch_files
 from ci.lint_cpp.platform_includes_checker import PlatformIncludesChecker
+from ci.lint_cpp.pragma_once_checker import PragmaOnceChecker
 from ci.lint_cpp.reinterpret_cast_checker import ReinterpretCastChecker
 from ci.lint_cpp.relative_include_checker import RelativeIncludeChecker
 from ci.lint_cpp.serial_printf_checker import SerialPrintfChecker
@@ -180,6 +182,7 @@ def create_checkers(
         BareAllocationChecker(),  # Checks for bare new/delete/malloc/free — use fl::unique_ptr/fl::shared_ptr
         SleepForChecker(),  # Checks for sleep_for() — bypasses async runner, use fl::yield/fl::async_run
         ThreadLocalKeywordChecker(),  # Checks for thread_local keyword — use fl::SingletonThreadLocal<T>::instance()
+        BannedDefineChecker(),  # Checks for wrong #if patterns (e.g., #if ESP32 → #ifdef ESP32)
         # Note: Private libc++ headers checking is now integrated into BannedHeadersChecker
         # Note: _build.hpp hierarchy checking is now integrated into test_unity_build.py
     ]
@@ -196,6 +199,7 @@ def create_checkers(
         StdintTypeChecker(),  # Covers all src/ (excludes third_party/ internally)
         CtypeGlobalChecker(),  # Checks for global-scope ctype functions (use fl:: variants)
         SimdIntrinsicsChecker(),  # Checks for direct platform SIMD intrinsics — use fl::simd
+        PragmaOnceChecker(),  # Checks headers have #pragma once, .cpp files don't
     ]
 
     # Platforms-specific checkers
