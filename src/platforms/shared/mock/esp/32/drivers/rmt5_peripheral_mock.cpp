@@ -15,11 +15,7 @@
 #include "fl/stl/singleton.h"
 #include "fl/stl/unordered_map.h"
 
-#ifdef FL_IS_WIN
-#include <malloc.h>  // ok include - For _aligned_malloc/_aligned_free on Windows
-#else
-#include <stdlib.h>  // For aligned_alloc on POSIX
-#endif
+#include "fl/stl/cstdlib.h"
 
 #ifdef ARDUINO
 #include "fl/system/arduino.h"
@@ -472,11 +468,7 @@ u8* Rmt5PeripheralMockImpl::allocateDmaBuffer(size_t size) {
     size_t aligned_size = (size + alignment - 1) & ~(alignment - 1);
 
     // Allocate aligned memory
-    #ifdef FL_IS_WIN
-    u8* buffer = static_cast<u8*>(_aligned_malloc(aligned_size, alignment));
-    #else
-    u8* buffer = static_cast<u8*>(aligned_alloc(alignment, aligned_size));
-    #endif
+    u8* buffer = static_cast<u8*>(fl::aligned_alloc(alignment, aligned_size));
 
     if (buffer == nullptr) {
         FL_WARN("Rmt5PeripheralMock: Failed to allocate DMA buffer ("
@@ -493,11 +485,7 @@ void Rmt5PeripheralMockImpl::freeDmaBuffer(u8* buffer) {
         return;  // Safe no-op
     }
 
-    #ifdef FL_IS_WIN
-    _aligned_free(buffer);
-    #else
-    fl::free(buffer);
-    #endif
+    fl::aligned_free(buffer);
 
     FL_DBG("RMT5_MOCK: Freed DMA buffer");
 }

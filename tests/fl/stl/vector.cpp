@@ -12,7 +12,7 @@
 #include "fl/stl/move.h"
 #include "fl/stl/type_traits.h"
 #include "fl/stl/compiler_control.h"
-#include "stdlib.h"
+#include "fl/stl/cstdlib.h"
 
 FL_TEST_FILE(FL_FILEPATH) {
 
@@ -217,7 +217,7 @@ FL_TEST_CASE("fl::FixedVector construction and destruction") {
         fl::vector_inlined<TestObject, 20> vec;
         size_t checked_size = 0;
         for (int i = 0; i < 1000; ++i) {
-            int random_value = rand() % 4;
+            int random_value = fl::rand() % 4;
 
             switch (random_value) {
                 case 0:

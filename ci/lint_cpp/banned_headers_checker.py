@@ -72,6 +72,8 @@ BANNED_HEADERS_COMMON = [
     "stdint.h",
     "stddef.h",
     "cstddef",  # this certainly fails
+    "stdlib.h",  # Ban C stdlib.h - use fl/stl/cstdlib.h instead
+    "malloc.h",  # Ban malloc.h - use fl/stl/cstdlib.h (fl::aligned_alloc) instead
     "string.h",  # Ban C string.h - use fl/str.h instead
     "type_traits",  # this certainly fails
     "new",  # Ban <new> except for placement new in inplacenew.h
@@ -135,6 +137,8 @@ HEADER_RECOMMENDATIONS = {
     "stdint.h": "fl/stl/stdint.h",
     "stddef.h": "fl/stl/stddef.h or fl/stl/cstddef.h",
     "cstddef": "fl/stl/cstddef.h",
+    "stdlib.h": "fl/stl/cstdlib.h (provides fl::aligned_alloc, fl::strtol, fl::atoi, etc.)",
+    "malloc.h": "fl/stl/cstdlib.h (provides fl::aligned_alloc / fl::aligned_free)",
     "string.h": "fl/str.h (or use extern declarations for memset/memcpy if only C functions needed)",
     "type_traits": "fl/stl/type_traits.h",
     "new": "Use stack allocation or custom allocators (placement new allowed in inplacenew.h)",
@@ -316,7 +320,65 @@ EXCEPTION_RULES: dict[str, list[HeaderException]] = {
     "stdlib.h": [
         HeaderException(
             "fl/stl/str.cpp", "C string implementation (malloc, free, etc.)"
-        )
+        ),
+        HeaderException(
+            "fl/stl/cstdlib.cpp.hpp",
+            "C stdlib wrapper (aligned_alloc/aligned_free implementation)",
+        ),
+        HeaderException(
+            "fl/stl/cstring.cpp.hpp",
+            "C string wrapper (memcpy, strlen, etc. implementation)",
+        ),
+        HeaderException(
+            "fl/stl/detail/string_holder.cpp.hpp",
+            "String holder implementation requiring malloc/free",
+        ),
+        HeaderException(
+            "fl/stl/malloc.cpp.hpp",
+            "fl::malloc/fl::free/fl::realloc implementation",
+        ),
+        HeaderException(
+            "fl/stl/undef.h",
+            "Macro-reset header must include stdlib.h to undefine abs/min/max macros",
+        ),
+        HeaderException(
+            "platforms/arm/teensy/coroutine_teensy.impl.hpp",
+            "Teensy coroutine needs malloc/free for stack allocation",
+        ),
+        HeaderException(
+            "platforms/shared/mock/esp/32/drivers/spi_peripheral_mock.cpp.hpp",
+            "SPI mock needs aligned_alloc for DMA buffer simulation",
+        ),
+        HeaderException(
+            "platforms/shared/ui/json/json_console.cpp.hpp",
+            "JSON console uses atoi/strtol from stdlib",
+        ),
+        HeaderException(
+            "third_party/libhelix_mp3/real/buffers.hpp",
+            "Third-party MP3 decoder library (cannot modify)",
+        ),
+        HeaderException(
+            "third_party/stb/truetype/stb_truetype.cpp.hpp",
+            "Third-party STB TrueType library (cannot modify)",
+        ),
+    ],
+    "malloc.h": [
+        HeaderException(
+            "fl/stl/cstdlib.cpp.hpp",
+            "Windows _aligned_malloc / _aligned_free implementation",
+        ),
+        HeaderException(
+            "fl/stl/alloca.h",
+            "alloca() fallback on compilers without VLA (e.g. Clang/MSVC)",
+        ),
+        HeaderException(
+            "platforms/shared/mock/esp/32/drivers/spi_peripheral_mock.cpp.hpp",
+            "SPI mock needs _aligned_malloc for DMA buffer simulation on Windows",
+        ),
+        HeaderException(
+            "third_party/stb/stb_vorbis.cpp.hpp",
+            "Third-party STB Vorbis library (false positive in changelog comment)",
+        ),
     ],
     # Math operations
     "math.h": [

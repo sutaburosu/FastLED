@@ -6,6 +6,7 @@
 #include "fl/stl/atomic.h"
 #include "fl/stl/int.h"
 #include "fl/stl/align.h"
+#include "fl/stl/cstdlib.h"
 
 
 namespace fl {
@@ -111,6 +112,18 @@ struct FL_ALIGNAS(control_block_alignment<T>::value) InlinedControlBlock : publi
 
     InlinedControlBlock()
         : ControlBlockBase(true), object_constructed(false) {}
+
+    // Aligned operator new/delete: when T has alignment > default new alignment
+    // (e.g. FL_ALIGNAS(64)), plain `new` won't honour it on pre-C++17 compilers.
+    // GCC emits -Waligned-new in that case.  These overrides route through
+    // fl::aligned_alloc / fl::aligned_free so the block is always properly aligned.
+    static void* operator new(fl::size_t size) {
+        constexpr fl::size_t align = control_block_alignment<T>::value;
+        return fl::aligned_alloc(align, size);
+    }
+    static void operator delete(void* ptr) {
+        fl::aligned_free(ptr);
+    }
 
     // Get pointer to the inline object storage
     T* get_object() {

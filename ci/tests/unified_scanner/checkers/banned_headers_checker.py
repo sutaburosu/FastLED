@@ -52,6 +52,8 @@ class BannedHeadersChecker(BaseChecker):
         "stdint.h",
         "stddef.h",
         "cstddef",
+        "stdlib.h",  # Ban C stdlib.h - use fl/stl/cstdlib.h instead
+        "malloc.h",  # Ban malloc.h - use fl/stl/cstdlib.h instead
         "string.h",  # Ban C string.h - use fl/str.h instead
         "type_traits",
         "new",  # Ban <new> except for placement new in inplacenew.h
@@ -101,6 +103,8 @@ class BannedHeadersChecker(BaseChecker):
         "stdint.h": "fl/stl/stdint.h",
         "stddef.h": "fl/stl/stddef.h",
         "cstddef": "fl/stl/stddef.h",
+        "stdlib.h": "fl/stl/cstdlib.h (provides fl::aligned_alloc, fl::strtol, fl::atoi, etc.)",
+        "malloc.h": "fl/stl/cstdlib.h (provides fl::aligned_alloc / fl::aligned_free)",
         "string.h": "fl/str.h (or use extern declarations for memset/memcpy if only C functions needed)",
         "type_traits": "fl/stl/type_traits.h",
         "new": "Use stack allocation or custom allocators (placement new allowed in inplacenew.h)",
@@ -236,6 +240,31 @@ class BannedHeadersChecker(BaseChecker):
                 if banned_header in {"string.h", "stdlib.h"}:
                     return True
 
+            # Allow stdlib.h and malloc.h in cstdlib.cpp.hpp for aligned_alloc implementation
+            if "cstdlib.cpp.hpp" in file_path_str:
+                if banned_header in {"stdlib.h", "malloc.h", "cstdlib"}:
+                    return True
+
+            # Allow stdlib.h in string_holder.cpp.hpp for malloc/free
+            if "string_holder.cpp.hpp" in file_path_str:
+                if banned_header == "stdlib.h":
+                    return True
+
+            # Allow stdlib.h in malloc.cpp.hpp for fl::malloc/fl::free implementation
+            if "malloc.cpp.hpp" in file_path_str:
+                if banned_header == "stdlib.h":
+                    return True
+
+            # Allow stdlib.h in undef.h for macro cleanup (abs/min/max from stdlib)
+            if "undef.h" in file_path_str:
+                if banned_header == "stdlib.h":
+                    return True
+
+            # Allow malloc.h in alloca.h for alloca() fallback
+            if "alloca.h" in file_path_str:
+                if banned_header == "malloc.h":
+                    return True
+
         # Platform-specific headers need Arduino.h
         if "/platforms/" in file_path_normalized:
             if banned_header == "Arduino.h":
@@ -258,6 +287,21 @@ class BannedHeadersChecker(BaseChecker):
                     "thread",
                     "iostream",
                 }:
+                    return True
+
+            # Mock drivers need stdlib.h/malloc.h for aligned allocation simulation
+            if "/mock/" in file_path_normalized:
+                if banned_header in {"stdlib.h", "malloc.h"}:
+                    return True
+
+            # Teensy coroutine needs stdlib.h for malloc/free
+            if "coroutine_teensy" in file_path_str:
+                if banned_header == "stdlib.h":
+                    return True
+
+            # JSON console uses atoi/strtol from stdlib
+            if "json_console" in file_path_str:
+                if banned_header == "stdlib.h":
                     return True
 
             # WASM platform implementations need stdlib headers for I/O and threading
@@ -285,6 +329,16 @@ class BannedHeadersChecker(BaseChecker):
             # Espressif LED strip library code needs C library headers
             if "/led_strip/" in file_path_normalized:
                 if banned_header in {"string.h", "stdlib.h"}:
+                    return True
+
+            # STB libraries need stdlib.h/malloc.h (third-party, cannot modify)
+            if "/stb/" in file_path_normalized:
+                if banned_header in {"stdlib.h", "malloc.h"}:
+                    return True
+
+            # libhelix MP3 decoder needs stdlib.h (third-party, cannot modify)
+            if "/libhelix_mp3/" in file_path_normalized:
+                if banned_header == "stdlib.h":
                     return True
 
         return False

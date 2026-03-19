@@ -1,13 +1,44 @@
 #include "fl/stl/cstdlib.h"
 #include "fl/stl/cstring.h"
+#include "platforms/is_platform.h"  // IWYU pragma: keep
 
-#ifdef FL_IS_STUB
-    // IWYU pragma: begin_keep
-    #include <cstdlib>  // ok header
-    // IWYU pragma: end_keep
+// IWYU pragma: begin_keep
+#include <stdlib.h>  // ok include
+#if defined(FL_IS_WIN)
+#include <malloc.h>  // ok include  — _aligned_malloc / _aligned_free
 #endif
+#ifdef FL_IS_STUB
+    #include <cstdlib>  // ok include
+#endif
+// IWYU pragma: end_keep
 
 namespace fl {
+
+// ============================================================================
+// fl::aligned_alloc / fl::aligned_free
+// ============================================================================
+
+void *aligned_alloc(fl::size_t alignment, fl::size_t size) {
+#if defined(FL_IS_AVR) || defined(FL_IS_ESP8266)
+    (void)alignment;
+    return ::malloc(size);
+#elif defined(FL_IS_WIN)
+    return ::_aligned_malloc(size, alignment);
+#else
+    fl::size_t aligned_size = (size + alignment - 1) & ~(alignment - 1);
+    return ::aligned_alloc(alignment, aligned_size);
+#endif
+}
+
+void aligned_free(void *ptr) {
+#if defined(FL_IS_AVR) || defined(FL_IS_ESP8266)
+    ::free(ptr);
+#elif defined(FL_IS_WIN)
+    ::_aligned_free(ptr);
+#else
+    ::free(ptr);
+#endif
+}
 
 // Helper function to check if a character is a digit in the given base
 static bool isDigitInBase(char c, int base) {
@@ -402,6 +433,10 @@ void qsort(void* base, size_t nmemb, size_t size, qsort_compare_fn compar) {
 
     char* arr = static_cast<char*>(base);
     detail::qsort_impl(arr, nmemb, size, compar);
+}
+
+u32 rand() {
+    return static_cast<u32>(::rand());
 }
 
 // Get the value of an environment variable
