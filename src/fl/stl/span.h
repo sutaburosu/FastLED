@@ -93,10 +93,11 @@ template <typename T> class span<T, dynamic_extent> {
     span() : mData(nullptr), mSize(0) {}
     span(T *data, fl::size size) : mData(data), mSize(size) {}
 
-    // ======= INITIALIZER LIST CONSTRUCTOR (C++26-style, P2447R6) =======
-    // Only compiles for span<const T> since initializer_list::begin() returns const T*
-    span(fl::initializer_list<value_type> init)
-        : mData(init.begin()), mSize(init.size()) {}
+    // ======= INITIALIZER LIST CONSTRUCTOR DELETED =======
+    // P2447R6 (C++26) adds span(initializer_list<T>) but the backing array is
+    // always a temporary, so storing a span from a braced-init-list is UB unless
+    // consumed in the same expression.  Deleted to prevent dangling references.
+    span(fl::initializer_list<value_type> init) = delete;
 
     // ======= CONTAINER CONSTRUCTORS =======
     // Simple constructors that work for all cases

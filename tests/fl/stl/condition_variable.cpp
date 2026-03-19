@@ -10,8 +10,8 @@
 #include "fl/stl/new.h"
 #include "fl/stl/type_traits.h"
 #include "fl/stl/utility.h"
-#include "mutex_stub_stl.h"
-#include "thread_stub_stl.h"
+#include "platforms/stub/mutex_stub_stl.h"
+#include "platforms/stub/thread_stub_stl.h"
 #include "fl/stl/vector.h"
 
 FL_TEST_FILE(FL_FILEPATH) {

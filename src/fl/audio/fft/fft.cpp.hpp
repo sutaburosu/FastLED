@@ -6,6 +6,7 @@
 #include "fl/stl/int.h"
 #include "fl/stl/shared_ptr.h"  // For shared_ptr
 #include "fl/stl/singleton.h"
+#include "fl/stl/mutex.h"
 
 namespace fl {
 
@@ -194,49 +195,64 @@ template <> struct Hash<FFT_Args> {
     }
 };
 
-struct FFT::HashMap : public HashMapLru<FFT_Args, fl::shared_ptr<FFTImpl>> {
-    HashMap(fl::size max_size)
-        : fl::HashMapLru<FFT_Args, fl::shared_ptr<FFTImpl>>(max_size) {}
+struct FFT::FFTImplCache {
+    static constexpr fl::size kDefaultMaxSize = 10;
+    using LruMap = HashMapLru<FFT_Args, fl::shared_ptr<FFTImpl>>;
+
+    FFTImplCache() : mMap(kDefaultMaxSize) {}
+
+    fl::shared_ptr<FFTImpl> get_or_create(const FFT_Args &args) {
+        fl::lock_guard<fl::mutex> lock(mMutex);
+        fl::shared_ptr<FFTImpl> *val = mMap.find_value(args);
+        if (val) {
+            return *val;
+        }
+        fl::shared_ptr<FFTImpl> fft = fl::make_shared<FFTImpl>(args);
+        mMap[args] = fft;
+        return fft;
+    }
+
+    void clear() {
+        fl::lock_guard<fl::mutex> lock(mMutex);
+        mMap.clear();
+    }
+
+    fl::size size() {
+        fl::lock_guard<fl::mutex> lock(mMutex);
+        return mMap.size();
+    }
+
+    void setMaxSize(fl::size max_size) {
+        fl::lock_guard<fl::mutex> lock(mMutex);
+        mMap.setMaxSize(max_size);
+    }
+
+private:
+    fl::mutex mMutex;
+    LruMap mMap;
 };
 
-FFT::FFT() { mMap = fl::make_unique<HashMap>(8); };
-
-FFT::~FFT() = default;
-
-FFT::FFT(const FFT &other) {
-    // copy the map
-    mMap = fl::make_unique<HashMap>(*other.mMap);
-}
-
-FFT &FFT::operator=(const FFT &other) {
-    mMap = fl::make_unique<HashMap>(*other.mMap);
-    return *this;
+FFT::FFTImplCache &FFT::globalCache() {
+    // Global LRU cache with max 10 entries — shared by all FFT instances.
+    // This avoids regenerating expensive CQ kernels when AudioContext is
+    // recreated (each FFTImpl with 128 CQ bins takes ~850ms to initialize).
+    return fl::Singleton<FFTImplCache>::instance();
 }
 
 void FFT::run(const span<const fl::i16> &sample, FFTBins *out,
               const FFT_Args &args) {
     FFT_Args args2 = args;
     args2.samples = sample.size();
-    get_or_create(args2).run(sample, out);
+    // Fetch cached impl (thread-safe), then run FFT outside the lock.
+    fl::shared_ptr<FFTImpl> impl = globalCache().get_or_create(args2);
+    impl->run(sample, out);
 }
 
-void FFT::clear() { mMap->clear(); }
+void FFT::clear() { globalCache().clear(); }
 
-fl::size FFT::size() const { return mMap->size(); }
+fl::size FFT::size() const { return globalCache().size(); }
 
-void FFT::setFFTCacheSize(fl::size size) { mMap->setMaxSize(size); }
-
-FFTImpl &FFT::get_or_create(const FFT_Args &args) {
-    fl::shared_ptr<FFTImpl> *val = mMap->find_value(args);
-    if (val) {
-        // we have it.
-        return **val;
-    }
-    // else we have to make a new one.
-    fl::shared_ptr<FFTImpl> fft = fl::make_shared<FFTImpl>(args);
-    (*mMap)[args] = fft;
-    return *fft;
-}
+void FFT::setFFTCacheSize(fl::size size) { globalCache().setMaxSize(size); }
 
 void FFT_Args::resolveModeEnums(FFTMode &mode, FFTWindow &window, int bands,
                                 int samples, float fmin, float fmax) {

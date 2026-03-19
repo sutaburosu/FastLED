@@ -1,17 +1,8 @@
+#include "common.hpp"
+
+FL_TEST_CASE("TIMING: beat start") { timing_start("beat"); }
+
 // Unit tests for BeatDetector
-
-#include "test.h"
-#include "fl/audio/audio.h"
-#include "fl/audio/audio_context.h"
-#include "fl/audio/fft/fft.h"
-#include "fl/audio/detectors/beat.h"
-#include "../test_helpers.h"
-#include "fl/stl/vector.h"
-#include "fl/stl/math.h"
-#include "fl/stl/shared_ptr.h"
-#include "fl/stl/math.h"
-
-using namespace fl;
 using fl::audio::test::makeSample;
 using fl::audio::test::makeSilence;
 
@@ -1548,3 +1539,5 @@ FL_TEST_CASE("BeatSynthetic - CQ bin coverage for kick drum frequencies") {
     FL_CHECK_LE(bin_120Hz, 7);
     FL_CHECK_LE(bin_200Hz, 7);
 }
+
+FL_TEST_CASE("TIMING: beat end") { timing_end("beat"); }

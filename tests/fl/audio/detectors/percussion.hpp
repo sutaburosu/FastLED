@@ -1,16 +1,8 @@
+#include "common.hpp"
+
+FL_TEST_CASE("TIMING: percussion start") { timing_start("percussion"); }
+
 // Unit tests for PercussionDetector - multi-feature spectral classification
-
-#include "test.h"
-#include "fl/audio/audio.h"
-#include "fl/audio/audio_context.h"
-#include "fl/audio/detectors/percussion.h"
-#include "../test_helpers.h"
-#include "fl/stl/vector.h"
-#include "fl/stl/math.h"
-#include "fl/stl/shared_ptr.h"
-#include "fl/stl/cstring.h"
-
-using namespace fl;
 using fl::audio::test::makeKickDrum;
 using fl::audio::test::makeSnare;
 using fl::audio::test::makeHiHat;
@@ -289,3 +281,5 @@ FL_TEST_CASE("PercussionDetector - confidence always in 0-1 range") {
     FL_CHECK_GE(det.getTomConfidence(), 0.0f);
     FL_CHECK_LE(det.getTomConfidence(), 1.0f);
 }
+
+FL_TEST_CASE("TIMING: percussion end") { timing_end("percussion"); }

@@ -1,19 +1,10 @@
+// ok standalone // ok cpp include
+#include "common.hpp"
+
+FL_TEST_CASE("TIMING: vocal_real_audio start") { timing_start("vocal_real_audio"); }
+
 // Integration tests for VocalDetector using real-audio OGG fixtures
 // Tests detection accuracy on real instrument stems and mixes at various levels
-
-#include "test.h"
-#include "fl/audio/audio.h"
-#include "fl/audio/audio_context.h"
-#include "fl/audio/detectors/vocal.h"
-#include "fl/codec/vorbis.h"
-#include "fl/stl/detail/file_handle.h"
-#include "fl/stl/detail/file_io.h"
-#include "fl/stl/math.h"
-#include "fl/stl/scope_exit.h"
-#include "fl/stl/shared_ptr.h"
-#include "fl/stl/vector.h"
-
-using namespace fl;
 using Diag = fl::VocalDetectorDiagnostics;
 
 namespace test_vocal_real_audio {
@@ -456,3 +447,5 @@ FL_TEST_CASE("VocalDetector real-audio - voice stem decodes cleanly") {
     FL_MESSAGE("voice_male RMS: " << rms);
     FL_CHECK_GT(rms, 100.0f); // Should be well above noise floor
 }
+
+FL_TEST_CASE("TIMING: vocal_real_audio end") { timing_end("vocal_real_audio"); }

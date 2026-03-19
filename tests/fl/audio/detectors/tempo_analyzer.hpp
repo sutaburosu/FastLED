@@ -1,17 +1,8 @@
+#include "common.hpp"
+
+FL_TEST_CASE("TIMING: tempo_analyzer start") { timing_start("tempo_analyzer"); }
+
 // Unit tests for TempoAnalyzer
-
-#include "test.h"
-#include "fl/audio/audio.h"
-#include "fl/audio/audio_context.h"
-#include "fl/audio/detectors/tempo_analyzer.h"
-#include "../test_helpers.h"
-#include "fl/stl/vector.h"
-#include "fl/stl/math.h"
-#include "fl/stl/shared_ptr.h"
-#include "fl/stl/cstring.h"
-#include "fl/stl/math.h"
-
-using namespace fl;
 using fl::audio::test::makeSample;
 using fl::audio::test::makeSilence;
 
@@ -308,3 +299,5 @@ FL_TEST_CASE("TempoAnalyzer - isStable becomes true with consistent tempo") {
     // After 30 consistent beats, stability should be > 0
     FL_CHECK_GT(analyzer.getStability(), 0.0f);
 }
+
+FL_TEST_CASE("TIMING: tempo_analyzer end") { timing_end("tempo_analyzer"); }

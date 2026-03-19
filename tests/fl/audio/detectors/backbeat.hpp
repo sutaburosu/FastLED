@@ -1,23 +1,8 @@
+#include "common.hpp"
 
-#include "fl/audio/detectors/backbeat.h"
-#include "fl/audio/detectors/beat.h"
-#include "fl/audio/detectors/downbeat.h"
-#include "fl/audio/audio_context.h"
-#include "fl/stl/math.h"
-#include "fl/stl/new.h"
-#include "test.h"
-#include "fl/audio/audio.h"
-#include "fl/stl/int.h"
-#include "fl/stl/math.h"
-#include "fl/stl/span.h"
-#include "fl/stl/allocator.h"
-#include "fl/stl/cstring.h"
-#include "fl/stl/function.h"
-#include "fl/stl/move.h"
-#include "fl/stl/shared_ptr.h"
-#include "fl/stl/vector.h"
+FL_TEST_CASE("TIMING: backbeat start") { timing_start("backbeat"); }
 
-using namespace fl;
+// Unit tests for BackbeatDetector
 
 FL_TEST_CASE("BackbeatDetector - Basic initialization") {
     // Test construction with own BeatDetector
@@ -208,3 +193,5 @@ FL_TEST_CASE("BackbeatDetector - Multiple update cycles") {
     // Should not crash with multiple updates
     FL_CHECK(true);  // Smoke test passed
 }
+
+FL_TEST_CASE("TIMING: backbeat end") { timing_end("backbeat"); }

@@ -19,9 +19,8 @@ uv = find_program('uv')
 # makes clang (especially on Windows) treat the same header as two different
 # files, breaking #pragma once across PCH boundaries.
 test_abs_include_args = [
-  '-I' + meson.project_source_root() / 'src',
-  '-I' + meson.project_source_root() / 'tests',
-  '-I' + meson.project_source_root() / 'src/platforms/stub',
+  '-I' + meson.project_source_root(),  # For test includes.
+  '-I' + meson.project_source_root() / 'src',  # for library.
 ]
 
 # Build precompiled header from test_pch.h (contains FastLED.h, doctest + common headers)

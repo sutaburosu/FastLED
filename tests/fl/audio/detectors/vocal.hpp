@@ -1,17 +1,8 @@
+#include "common.hpp"
+
+FL_TEST_CASE("TIMING: vocal start") { timing_start("vocal"); }
+
 // Unit tests for VocalDetector
-
-#include "test.h"
-#include "fl/audio/audio.h"
-#include "fl/audio/audio_context.h"
-#include "fl/audio/detectors/vocal.h"
-#include "../test_helpers.h"
-#include "fl/stl/vector.h"
-#include "fl/stl/math.h"
-#include "fl/stl/shared_ptr.h"
-#include "fl/stl/cstring.h"
-#include "fl/stl/math.h"
-
-using namespace fl;
 using Diag = fl::VocalDetectorDiagnostics;
 using fl::audio::test::makeSample;
 using fl::audio::test::makeMultiHarmonic;
@@ -819,10 +810,12 @@ struct FeatureSnapshot {
 inline FeatureSnapshot runSignal(AudioSample (*gen)(fl::u32), int frames = 15) {
     VocalDetector det;
     det.setSampleRate(44100);
-    for (int i = 0; i < frames; ++i) {
-        auto sample = gen(i * 12);
-        auto ctx = fl::make_shared<AudioContext>(sample);
-        ctx->setSampleRate(44100);
+    auto ctx = fl::make_shared<AudioContext>(gen(0));
+    ctx->setSampleRate(44100);
+    ctx->getFFT(128);
+    det.update(ctx);
+    for (int i = 1; i < frames; ++i) {
+        ctx->setSample(gen(i * 12));
         ctx->getFFT(128);
         det.update(ctx);
     }
@@ -847,10 +840,12 @@ inline FeatureSnapshot runSignal(AudioSample (*gen)(fl::u32), int frames = 15) {
 inline FeatureSnapshot runMix(float ratio, int frames = 20) {
     VocalDetector det;
     det.setSampleRate(44100);
-    for (int i = 0; i < frames; ++i) {
-        auto sample = makeVocalInFullMix(ratio, i * 12);
-        auto ctx = fl::make_shared<AudioContext>(sample);
-        ctx->setSampleRate(44100);
+    auto ctx = fl::make_shared<AudioContext>(makeVocalInFullMix(ratio, 0));
+    ctx->setSampleRate(44100);
+    ctx->getFFT(128);
+    det.update(ctx);
+    for (int i = 1; i < frames; ++i) {
+        ctx->setSample(makeVocalInFullMix(ratio, i * 12));
         ctx->getFFT(128);
         det.update(ctx);
     }
@@ -875,10 +870,12 @@ inline FeatureSnapshot runMix(float ratio, int frames = 20) {
 inline FeatureSnapshot runFullBandMix(float ratio, int frames = 20) {
     VocalDetector det;
     det.setSampleRate(44100);
-    for (int i = 0; i < frames; ++i) {
-        auto sample = makeFullBandMix(ratio, i * 12);
-        auto ctx = fl::make_shared<AudioContext>(sample);
-        ctx->setSampleRate(44100);
+    auto ctx = fl::make_shared<AudioContext>(makeFullBandMix(ratio, 0));
+    ctx->setSampleRate(44100);
+    ctx->getFFT(128);
+    det.update(ctx);
+    for (int i = 1; i < frames; ++i) {
+        ctx->setSample(makeFullBandMix(ratio, i * 12));
         ctx->getFFT(128);
         det.update(ctx);
     }
@@ -1456,4 +1453,6 @@ FL_TEST_CASE("VocalDetector degenerate - full-band variance separation >= 0.05")
     // Catches variance boost gain changes
     FL_CHECK_GE(confGap, 0.05f);
 }
+
+FL_TEST_CASE("TIMING: vocal end") { timing_end("vocal"); }
 

@@ -1,6 +1,5 @@
 #pragma once
 
-#include "fl/stl/unique_ptr.h"
 #include "fl/stl/span.h"
 #include "fl/stl/vector.h"
 #include "fl/stl/math.h"
@@ -154,29 +153,29 @@ struct FFT_Args {
 
 class FFT {
   public:
-    FFT();
-    ~FFT();
+    FFT() = default;
+    ~FFT() = default;
 
     FFT(FFT &&) = default;
     FFT &operator=(FFT &&) = default;
-    FFT(const FFT & other);
-    FFT &operator=(const FFT & other);
+    FFT(const FFT &) = default;
+    FFT &operator=(const FFT &) = default;
 
-            void run(const span<const i16> &sample, FFTBins *out,
+    void run(const span<const i16> &sample, FFTBins *out,
              const FFT_Args &args = FFT_Args());
 
     void clear();
     fl::size size() const;
 
-    // FFT's are expensive to create, so we cache them. This sets the size of
-    // the cache. The default is 8.
-    void setFFTCacheSize(fl::size size);
+    // FFT kernels are expensive to create, so they are stored in a global
+    // LRU cache shared by all AudioContext instances. This sets the max
+    // number of cached FFTImpl entries (default 10).
+    static void setFFTCacheSize(fl::size size);
 
   private:
-    // Get the FFTImpl for the given arguments.
-    FFTImpl &get_or_create(const FFT_Args &args);
-    struct HashMap;
-    scoped_ptr<HashMap> mMap;
+    struct FFTImplCache;
+    // Global LRU kernel cache — shared across all FFT / AudioContext instances.
+    static FFTImplCache &globalCache();
 };
 
 }; // namespace fl

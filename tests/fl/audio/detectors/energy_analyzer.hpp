@@ -1,16 +1,8 @@
+#include "common.hpp"
+
+FL_TEST_CASE("TIMING: energy_analyzer start") { timing_start("energy_analyzer"); }
+
 // Unit tests for EnergyAnalyzer
-
-#include "test.h"
-#include "fl/audio/audio.h"
-#include "fl/audio/audio_context.h"
-#include "fl/audio/detectors/energy_analyzer.h"
-#include "../test_helpers.h"
-#include "fl/stl/vector.h"
-#include "fl/stl/math.h"
-#include "fl/stl/shared_ptr.h"
-#include "fl/stl/math.h"
-
-using namespace fl;
 using fl::audio::test::makeSample;
 using fl::audio::test::makeSilence;
 
@@ -183,3 +175,5 @@ FL_TEST_CASE("EnergyAnalyzer - peak decay over time") {
     // Peak should have decayed significantly
     FL_CHECK_LT(finalPeak, initialPeak);
 }
+
+FL_TEST_CASE("TIMING: energy_analyzer end") { timing_end("energy_analyzer"); }

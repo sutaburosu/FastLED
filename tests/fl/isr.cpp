@@ -11,7 +11,7 @@
 #include "fl/stl/atomic.h"
 #include "fl/stl/thread.h"
 #include "test.h"
-#include "isr_stub.hpp"
+#include "platforms/stub/isr_stub.hpp"
 
 FL_TEST_FILE(FL_FILEPATH) {
 

@@ -6,7 +6,7 @@
 #include "fl/stl/utility.h"
 #include "test.h"
 #include "fl/stl/move.h"
-#include "mutex_stub_stl.h"
+#include "platforms/stub/mutex_stub_stl.h"
 
 FL_TEST_FILE(FL_FILEPATH) {
 

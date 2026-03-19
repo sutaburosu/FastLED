@@ -233,7 +233,6 @@ private:
     AudioReactiveConfig mConfig;
     
     // FFT processing
-    FFT mFFT;
     FFTBins mFFTBins;
     
     // Audio data  

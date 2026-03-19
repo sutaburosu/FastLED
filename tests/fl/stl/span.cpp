@@ -128,50 +128,8 @@ FL_TEST_CASE("fl::span non-template function conversions work") {
     }
 }
 
-FL_TEST_CASE("fl::span initializer_list construction (P2447R6)") {
-    FL_SUBCASE("direct construction from initializer_list") {
-        fl::span<const int> s({1, 2, 3});
-        FL_CHECK(s.size() == 3);
-        FL_CHECK(s[0] == 1);
-        FL_CHECK(s[1] == 2);
-        FL_CHECK(s[2] == 3);
-    }
-
-    FL_SUBCASE("implicit conversion in function parameter") {
-        auto sum = [](fl::span<const int> data) -> int {
-            int total = 0;
-            for (const auto& item : data) {
-                total += item;
-            }
-            return total;
-        };
-
-        FL_CHECK(sum({10, 20, 30}) == 60);
-        FL_CHECK(sum({}) == 0);
-        FL_CHECK(sum({42}) == 42);
-    }
-
-    FL_SUBCASE("range-based for loop") {
-        fl::span<const int> s({5, 10, 15});
-        int total = 0;
-        for (int v : s) {
-            total += v;
-        }
-        FL_CHECK(total == 30);
-    }
-
-    FL_SUBCASE("single element") {
-        fl::span<const int> s({99});
-        FL_CHECK(s.size() == 1);
-        FL_CHECK(s[0] == 99);
-    }
-
-    FL_SUBCASE("empty initializer_list") {
-        fl::span<const int> s({});
-        FL_CHECK(s.size() == 0);
-        FL_CHECK(s.empty());
-    }
-}
+// P2447R6 initializer_list constructor is deleted because the backing array
+// is always a temporary, making stored spans dangle.  See span.h.
 
 FL_TEST_CASE("fl::span limitations - template argument deduction") {
     // This test documents what DOESN'T work due to C++ language limitations

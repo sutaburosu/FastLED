@@ -1,20 +1,9 @@
+// ok standalone // ok cpp include
+#include "common.hpp"
+
+FL_TEST_CASE("TIMING: downbeat_synthetic start") { timing_start("downbeat_synthetic"); }
+
 // Unit tests for DownbeatDetector with synthetic data validation
-
-#include "fl/audio/audio_context.h"
-#include "fl/audio/detectors/beat.h"
-#include "fl/audio/detectors/downbeat.h"
-#include "fl/stl/new.h"
-#include "test.h"
-#include "fl/audio/audio.h"
-#include "fl/stl/math.h"
-#include "fl/stl/span.h"
-#include "fl/stl/math.h"
-#include "fl/stl/shared_ptr.h"
-#include "fl/stl/int.h"
-#include "fl/stl/vector.h"
-#include "fl/stl/strstream.h"
-
-using namespace fl;
 
 namespace test_downbeat_synthetic {
 
@@ -738,3 +727,5 @@ FL_TEST_CASE("DownbeatDetector - No time-skipping comparison") {
     // This test is for diagnostics only - always passes
     FL_CHECK(true);
 }
+
+FL_TEST_CASE("TIMING: downbeat_synthetic end") { timing_end("downbeat_synthetic"); }

@@ -10,7 +10,7 @@
 #include "fl/stl/type_traits.h"
 #include "fl/stl/utility.h"
 #include "ratio"
-#include "thread_stub_stl.h"
+#include "platforms/stub/thread_stub_stl.h"
 #include "fl/stl/vector.h"
 
 FL_TEST_FILE(FL_FILEPATH) {

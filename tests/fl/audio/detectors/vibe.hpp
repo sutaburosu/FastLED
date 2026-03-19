@@ -1,14 +1,8 @@
+#include "common.hpp"
+
+FL_TEST_CASE("TIMING: vibe start") { timing_start("vibe"); }
+
 // Unit tests for VibeDetector — self-normalizing audio analysis
-
-#include "test.h"
-#include "fl/audio/audio.h"
-#include "fl/audio/audio_context.h"
-#include "fl/audio/detectors/vibe.h"
-#include "../test_helpers.h"
-#include "fl/stl/math.h"
-#include "fl/stl/shared_ptr.h"
-
-using namespace fl;
 using fl::audio::test::makeSample;
 using fl::audio::test::makeSilence;
 
@@ -1012,3 +1006,5 @@ FL_TEST_CASE("ADVERSARIAL - phase-coherent sweep across all 3 bands tracks smoot
     FL_CHECK_LT(midNormDelta, 0.30f);
     FL_CHECK_LT(trebNormDelta, 0.30f);
 }
+
+FL_TEST_CASE("TIMING: vibe end") { timing_end("vibe"); }

@@ -1,12 +1,8 @@
+#include "common.hpp"
+
+FL_TEST_CASE("TIMING: frequency_bands start") { timing_start("frequency_bands"); }
+
 // Unit tests for FrequencyBands — 3-band frequency detector with tone sweep validation
-
-#include "fl/audio/detectors/frequency_bands.h"
-#include "fl/audio/audio_context.h"
-#include "fl/stl/math.h"
-#include "fl/stl/shared_ptr.h"
-#include "../test_helpers.h"
-
-using namespace fl;
 using fl::audio::test::makeSample;
 
 // ============================================================================
@@ -208,3 +204,5 @@ FL_TEST_CASE("FrequencyBands - tone sweep normalized levels track smoothly") {
     FL_CHECK_LT(midMaxDelta, 0.5f);
     FL_CHECK_LT(trebMaxDelta, 0.5f);
 }
+
+FL_TEST_CASE("TIMING: frequency_bands end") { timing_end("frequency_bands"); }

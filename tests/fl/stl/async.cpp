@@ -15,8 +15,8 @@
 #include "fl/stl/utility.h"
 #include "fl/stl/atomic.h"
 #include "fl/system/delay.h"
-#include "mutex_stub_stl.h"
-#include "thread_stub_stl.h"
+#include "platforms/stub/mutex_stub_stl.h"
+#include "platforms/stub/thread_stub_stl.h"
 #include "fl/stl/vector.h"
 #include "platforms/stub/coroutine_stub.h"  // for cleanup_coroutine_threads(), register_background_thread()
 #include "platforms/coroutine_runtime.h"  // for is_shutdown_requested()
