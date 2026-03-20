@@ -471,6 +471,7 @@ fastled_pch = custom_target('fastled_pch',
     uv_prog, 'run', 'python',
     meson.project_source_root() / 'ci/compile_pch.py',
     cpp_compiler.cmd_array(),
+    '-c',                            # Suppress linker step (MinGW driver adds link job without -c)
     '-x', 'c++-header',
     '@INPUT@',
     '-o', '@OUTPUT@',

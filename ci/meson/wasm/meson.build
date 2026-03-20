@@ -56,6 +56,7 @@ wasm_pch = custom_target('wasm_pch',
   command: [
     uv_prog, 'run', 'python', compile_pch_script,
     'clang-tool-chain-emcc',
+    '-c',                          # Suppress linker step (safety: prevent spurious .pch in src tree)
     '-x', 'c++-header',
     '@INPUT@',
     '-o', '@OUTPUT@',

@@ -36,6 +36,7 @@ test_pch = custom_target('test_pch',
     uv, 'run', 'python',
     meson.project_source_root() / 'ci/compile_pch.py',
     cpp_compiler.cmd_array(),
+    '-c',                          # Suppress linker step (MinGW driver adds link job without -c)
     '-x', 'c++-header',           # Treat input as C++ header
     '-include-pch', fastled_pch_dir / 'FastLED.h.pch',  # Chain: embed fastled PCH
     '@INPUT@',                     # test_pch.h

@@ -12,6 +12,7 @@ build/
 out/
 emscripten/
 *.o
+*.pch
 
 # Profile test results
 profile_*_results.json
