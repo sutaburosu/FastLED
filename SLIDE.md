@@ -257,7 +257,7 @@ Visual suggestion: Split-screen screenshot of Chrome DevTools + C++ source
 Human: "Add a rainbow animation with brightness control"
    ↓
 AI Agent:
-  1. Reads examples/AGENTS.md for .ino standards
+  1. Reads agents/examples.md for .ino standards
   2. Generates RainbowBrightness.ino
   3. Compiles to WASM (4 seconds)
   4. Observes runtime behavior
@@ -571,7 +571,7 @@ Error: Invalid parameter
 ```
 User: Create a police strobe effect (red/blue alternating)
 
-AI: [Reads examples/AGENTS.md]
+AI: [Reads agents/examples.md]
     [Generates PoliceStrobe.ino]
 
 Compilation: SUCCESS (3.8 sec)

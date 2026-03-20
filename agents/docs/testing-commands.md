@@ -22,7 +22,7 @@ ninja -C builddir                   # WRONG - use bash scripts
 clang++ main.cpp -o main            # WRONG - use bash scripts
 ```
 
-**Exceptions:** Runtime debugging (e.g., `lldb .build/runner.exe`) and compiler feature testing are allowed. See `docs/agents/build-system.md` for details.
+**Exceptions:** Runtime debugging (e.g., `lldb .build/runner.exe`) and compiler feature testing are allowed. See `agents/docs/build-system.md` for details.
 
 ## Test Timeouts and Hang Detection
 
@@ -71,7 +71,7 @@ rm -rf .build/meson-quick                  # WRONG - use --clean instead
 rm -rf .build && bash test                 # WRONG - use bash test --clean
 ```
 
-**The build system is self-healing and revalidates automatically. Manual cache deletion is highly discouraged.** See `docs/agents/build-system.md` for details.
+**The build system is self-healing and revalidates automatically. Manual cache deletion is highly discouraged.** See `agents/docs/build-system.md` for details.
 
 ## Performance: Never Disable Fingerprint Caching
 
@@ -89,7 +89,7 @@ bash test --clean                            # Clean rebuild, preserves fingerpr
 
 **Rationale**: Fingerprint caching tracks file changes and skips rebuilding unchanged files. Disabling it forces full rebuilds every time, which is unnecessary and extremely slow. If you suspect cache issues, use `--clean` instead.
 
-**LAST RESORT ONLY**: Only use `--no-fingerprint` if you have concrete evidence that fingerprint caching itself is broken (not just a stale build). This should be extremely rare. See `docs/agents/build-system.md` for details.
+**LAST RESORT ONLY**: Only use `--no-fingerprint` if you have concrete evidence that fingerprint caching itself is broken (not just a stale build). This should be extremely rare. See `agents/docs/build-system.md` for details.
 
 ## Docker Testing (Linux Environment)
 Run tests inside a Docker container for consistent Linux environment with ASAN/LSAN sanitizers:

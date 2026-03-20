@@ -156,6 +156,6 @@ To see hook execution in detail:
 
 ### Related Documentation
 
-- `docs/agents/build-system.md` - Build system standards
+- `agents/docs/build-system.md` - Build system standards
 - `CLAUDE.md` - Core agent rules
-- `docs/agents/testing-commands.md` - Testing commands
+- `agents/docs/testing-commands.md` - Testing commands

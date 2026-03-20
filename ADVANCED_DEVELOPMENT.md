@@ -19,7 +19,7 @@ Yes, we have step through debugging with FastLED using LLDB.
 
 **Note:** FastLED includes built-in crash handlers that automatically provide excellent stack traces with function names, line numbers, and full call stacks. For most debugging needs, the automatic crash output is sufficient. Use LLDB when you need breakpoints, variable inspection, or step-through debugging.
 
-See `docs/agents/lldb-debugging.md` for detailed LLDB usage guide.
+See `agents/docs/lldb-debugging.md` for detailed LLDB usage guide.
 
 ![image](https://github.com/user-attachments/assets/c1246803-df4b-4583-8c11-8243c084afc5)
 

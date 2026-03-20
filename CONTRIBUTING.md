@@ -222,7 +222,7 @@ This setup provides the **best of both worlds**:
 - **Cross-platform compatibility**: Works on Linux, macOS, Windows
 - **Advanced features**: Python scripting, data formatters, modern C++ support
 
-For detailed LLDB usage, see `docs/agents/lldb-debugging.md`.
+For detailed LLDB usage, see `agents/docs/lldb-debugging.md`.
 
 #### Debug Build Configuration
 The FastLED test system automatically uses optimal debug settings:

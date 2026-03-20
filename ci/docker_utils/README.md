@@ -630,4 +630,4 @@ For complete details on the CI/CD Docker system:
 - `ci/docker_utils/Dockerfile.base` - Base image Dockerfile (used by both systems)
 - `ci/docker_utils/build.sh` - Multi-board build script (used by CI/CD)
 - `ci/boards.py` - Platform configurations (used by both systems)
-- `ci/AGENTS.md` - CI/build system documentation
+- `agents/ci.md` - CI/build system documentation

@@ -6,11 +6,11 @@
 
 | Topic | Read |
 |-------|------|
-| Build commands and restrictions | `docs/agents/build-system.md` |
-| Python coding standards | `docs/agents/python-standards.md` |
-| Testing commands | `docs/agents/testing-commands.md` |
-| MCP server tools | `docs/agents/mcp-tools.md` |
-| Debugging strategies | `docs/agents/debugging.md` |
+| Build commands and restrictions | `agents/docs/build-system.md` |
+| Python coding standards | `agents/docs/python-standards.md` |
+| Testing commands | `agents/docs/testing-commands.md` |
+| MCP server tools | `agents/docs/mcp-tools.md` |
+| Debugging strategies | `agents/docs/debugging.md` |
 
 **This file contains only CI-directory-specific guidelines.**
 
@@ -232,4 +232,4 @@ Use leading space for git-bash compatibility:
 ---
 
 ## Memory Refresh Rule
-**🚨 ALL AGENTS: Read relevant docs/agents/*.md files before concluding CI/build work to refresh memory about current build system rules and requirements.**
+**🚨 ALL AGENTS: Read relevant agents/docs/*.md files before concluding CI/build work to refresh memory about current build system rules and requirements.**

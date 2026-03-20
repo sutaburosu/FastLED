@@ -190,6 +190,6 @@ uv run test.py <function> --cpp --build-mode release --build
 ## See Also
 
 - `CLAUDE.md` - Performance Profiling & Optimization section
-- `ci/AGENTS.md` - Profiling workflow for AI agents
-- `tests/AGENTS.md` - Profile test conventions
+- `agents/ci.md` - Profiling workflow for AI agents
+- `agents/tests.md` - Profile test conventions
 - `ci/profile/` - Profiling infrastructure scripts

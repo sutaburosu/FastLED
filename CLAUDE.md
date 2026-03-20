@@ -6,31 +6,31 @@
 
 | Task | Read |
 |------|------|
-| Writing/editing C++ code | `docs/agents/cpp-standards.md` |
-| Creating an API wrapper type | `docs/agents/cpp-standards.md` → "API Object Pattern" |
-| Writing/editing Python code | `docs/agents/python-standards.md` |
-| Editing meson.build files | `docs/agents/build-system.md` |
-| Running tests, Docker, WASM, QEMU | `docs/agents/testing-commands.md` |
-| Hardware validation / `bash validate` | `docs/agents/hardware-validation.md` |
-| Debugging a C++ crash | `docs/agents/debugging.md` |
-| Creating a new C++ linter | `docs/agents/linter-architecture.md` |
+| Writing/editing C++ code | `agents/docs/cpp-standards.md` |
+| Creating an API wrapper type | `agents/docs/cpp-standards.md` → "API Object Pattern" |
+| Writing/editing Python code | `agents/docs/python-standards.md` |
+| Editing meson.build files | `agents/docs/build-system.md` |
+| Running tests, Docker, WASM, QEMU | `agents/docs/testing-commands.md` |
+| Hardware validation / `bash validate` | `agents/docs/hardware-validation.md` |
+| Debugging a C++ crash | `agents/docs/debugging.md` |
+| Creating a new C++ linter | `agents/docs/linter-architecture.md` |
 
 **By what directory you're in:**
 
 | Directory | Read |
 |-----------|------|
-| `src/`, `tests/` C++ files | `docs/agents/cpp-standards.md` |
-| `ci/` Python files | `docs/agents/python-standards.md`, `ci/AGENTS.md` |
-| `tests/` | `tests/AGENTS.md` |
-| `examples/` .ino files | `examples/AGENTS.md` |
-| `meson.build` (any) | `docs/agents/build-system.md` |
+| `src/`, `tests/` C++ files | `agents/docs/cpp-standards.md` |
+| `ci/` Python files | `agents/docs/python-standards.md`, `agents/ci.md` |
+| `tests/` | `agents/tests.md` |
+| `examples/` .ino files | `agents/examples.md` |
+| `meson.build` (any) | `agents/docs/build-system.md` |
 
 **Also see directory-specific guidelines:**
-- **CI/Build Tasks**: `ci/AGENTS.md` - Python build system, compilation, MCP server tools
-- **Testing**: `tests/AGENTS.md` - Unit tests, test execution, validation requirements, **test simplicity principles**
-- **Examples**: `examples/AGENTS.md` - Arduino sketch compilation, .ino file rules
+- **CI/Build Tasks**: `agents/ci.md` - Python build system, compilation, MCP server tools
+- **Testing**: `agents/tests.md` - Unit tests, test execution, validation requirements, **test simplicity principles**
+- **Examples**: `agents/examples.md` - Arduino sketch compilation, .ino file rules
 
-**When writing/updating tests, follow the Test Simplicity Principle in `tests/AGENTS.md`:**
+**When writing/updating tests, follow the Test Simplicity Principle in `agents/tests.md`:**
 - Keep tests as simple as possible
 - Avoid mocks and helper classes unless absolutely necessary
 - One focused test is better than many complex ones
@@ -352,13 +352,13 @@ uv run test.py profile_sincos16 --cpp --build-mode release --build
     - **When to use override**: Compiler feature testing, debugging build system issues, or when clang-tool-chain wrappers don't provide needed functionality
     - Rationale: clang-tool-chain wrappers ensure consistent compiler versions; override allows flexibility for legitimate use cases
   - Rationale: FastLED build system handles configuration, caching, dependencies, and platform-specific setup
-  - See: `docs/agents/build-system.md` for details
+  - See: `agents/docs/build-system.md` for details
 - **NEVER manually delete build caches**: Do NOT use `rm -rf .build/` or delete build directories
   - Use: `bash test --clean`, `bash compile --clean` instead of manual deletion
   - Never use: `rm -rf .build/meson-quick`, `rm -rf .build && bash test`
   - Rationale: Build system is self-healing and has special cache invalidation code
   - **HIGHLY DISCOURAGED**: The build system will revalidate and self-heal on its own
-  - See: `docs/agents/build-system.md` for details
+  - See: `agents/docs/build-system.md` for details
 - **NEVER disable fingerprint caching (unless directly requested)**: Do NOT use `--no-fingerprint` flag
   - Use: `bash test --clean` if you suspect cache issues
   - Never use: `--no-fingerprint` (makes builds 10-100x slower)
@@ -367,9 +367,9 @@ uv run test.py profile_sincos16 --cpp --build-mode release --build
     - User explicitly requests it (e.g., "run with --no-fingerprint")
     - You have concrete evidence fingerprint caching itself is broken (extremely rare)
   - When user requests it, use override: `FL_AGENT_ALLOW_ALL_CMDS=1 bash test --no-fingerprint`
-  - See: `docs/agents/build-system.md` for details
+  - See: `agents/docs/build-system.md` for details
 - **Platform compilation timeout**: Use minimum 15 minute timeout for platform builds (e.g., `bash compile --docker esp32s3`)
-- **NEVER disable zccache**: Do NOT set `ZCCACHE_DISABLE=1` or disable zccache in any way (see `docs/agents/build-system.md`)
+- **NEVER disable zccache**: Do NOT set `ZCCACHE_DISABLE=1` or disable zccache in any way (see `agents/docs/build-system.md`)
 
 ### Override Mechanism for Forbidden Commands
 
@@ -418,3 +418,56 @@ FL_AGENT_ALLOW_ALL_CMDS=1 rm -rf .build/meson-quick
 
 ### Memory Refresh Rule
 **ALL AGENTS: Read the relevant AGENTS.md file before concluding work to refresh memory about current project rules and requirements.**
+
+## Workflow Orchestration
+
+### 1. Plan Mode Default
+- Enter plan mode for ANY non-trivial task (3+ steps or architectural decisions)
+- If something goes sideways, STOP and re-plan immediately — don't keep pushing
+- Use plan mode for verification steps, not just building
+- Write detailed specs upfront to reduce ambiguity
+
+### 2. Subagent Strategy
+- Use subagents liberally to keep main context window clean
+- Offload research, exploration, and parallel analysis to subagents
+- For complex problems, throw more compute at it via subagents
+- One task per subagent for focused execution
+
+### 3. Self-Improvement Loop
+- After ANY correction from the user: update `agents/tasks/lessons.md` with the pattern
+- Write rules for yourself that prevent the same mistake
+- Ruthlessly iterate on these lessons until mistake rate drops
+- Review lessons at session start for relevant project
+
+### 4. Verification Before Done
+- Never mark a task complete without proving it works
+- Diff behavior between main and your changes when relevant
+- Ask yourself: "Would a staff engineer approve this?"
+- Run tests, check logs, demonstrate correctness
+
+### 5. Demand Elegance (Balanced)
+- For non-trivial changes: pause and ask "is there a more elegant way?"
+- If a fix feels hacky: "Knowing everything I know now, implement the elegant solution"
+- Skip this for simple, obvious fixes — don't over-engineer
+- Challenge your own work before presenting it
+
+### 6. Autonomous Bug Fixing
+- When given a bug report: just fix it. Don't ask for hand-holding
+- Point at logs, errors, failing tests — then resolve them
+- Zero context switching required from the user
+- Go fix failing CI tests without being told how
+
+## Task Management
+
+1. **Plan First**: Write plan to `agents/tasks/todo.md` with checkable items
+2. **Verify Plan**: Check in before starting implementation
+3. **Track Progress**: Mark items complete as you go
+4. **Explain Changes**: High-level summary at each step
+5. **Document Results**: Add review section to `agents/tasks/todo.md`
+6. **Capture Lessons**: Update `agents/tasks/lessons.md` after corrections
+
+## Core Principles
+
+- **Simplicity First**: Make every change as simple as possible. Impact minimal code.
+- **No Laziness**: Find root causes. No temporary fixes. Senior developer standards.
+- **Minimal Impact**: Changes should only touch what's necessary. Avoid introducing bugs.

@@ -6,11 +6,11 @@
 
 | Topic | Read |
 |-------|------|
-| C++ coding standards | `docs/agents/cpp-standards.md` |
-| Build commands | `docs/agents/build-system.md` |
-| Testing commands | `docs/agents/testing-commands.md` |
-| Debugging strategies | `docs/agents/debugging.md` |
-| LLDB debugging guide | `docs/agents/lldb-debugging.md` |
+| C++ coding standards | `agents/docs/cpp-standards.md` |
+| Build commands | `agents/docs/build-system.md` |
+| Testing commands | `agents/docs/testing-commands.md` |
+| Debugging strategies | `agents/docs/debugging.md` |
+| LLDB debugging guide | `agents/docs/lldb-debugging.md` |
 
 **This file contains only example-directory-specific guidelines.**
 
@@ -273,4 +273,4 @@ uv run ci/wasm_compile.py examples/wasm --quick
 ---
 
 ## Memory Refresh Rule
-**🚨 ALL AGENTS: Read docs/agents/cpp-standards.md and relevant docs/agents/*.md files before concluding example work to refresh memory about .ino file creation rules and example coding standards.**
+**🚨 ALL AGENTS: Read agents/docs/cpp-standards.md and relevant agents/docs/*.md files before concluding example work to refresh memory about .ino file creation rules and example coding standards.**

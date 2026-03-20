@@ -321,4 +321,4 @@ uv run python examples/Asio/Client/test_server.py
 - **ClientValidation.ino** - Automated test suite for fetch API
 - **Server.ino** - HTTP server tutorial
 - **src/fl/fetch.h** - Fetch API source code
-- **docs/agents/cpp-standards.md** - C++ coding standards
+- **agents/docs/cpp-standards.md** - C++ coding standards

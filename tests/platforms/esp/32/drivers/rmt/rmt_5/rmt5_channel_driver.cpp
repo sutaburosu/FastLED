@@ -13,7 +13,7 @@
 /// - Simple, focused tests (one behavior per test)
 /// - Direct API usage (no complex helper abstractions)
 /// - Observable behavior testing (not internal state inspection)
-/// - See tests/AGENTS.md for Test Simplicity Principle
+/// - See agents/tests.md for Test Simplicity Principle
 
 #ifdef FASTLED_STUB_IMPL  // Mock tests only run on stub platform
 

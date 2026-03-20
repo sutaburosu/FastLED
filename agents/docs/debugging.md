@@ -93,4 +93,4 @@ This systematic approach often reveals null pointers, uninitialized variables, b
 
 **LLDB commands:** `run`, `bt`, `bt all`, `frame select <n>`, `print <var>`, `frame variable`, `register read`
 
-**Note:** LLDB is included in the `clang-tool-chain` package. For detailed LLDB usage, see `docs/agents/lldb-debugging.md`.
+**Note:** LLDB is included in the `clang-tool-chain` package. For detailed LLDB usage, see `agents/docs/lldb-debugging.md`.

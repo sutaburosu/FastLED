@@ -6,12 +6,12 @@
 
 | Topic | Read |
 |-------|------|
-| Test commands and execution | `docs/agents/testing-commands.md` |
-| Build system restrictions | `docs/agents/build-system.md` |
-| C++ coding standards | `docs/agents/cpp-standards.md` |
-| MCP server tools | `docs/agents/mcp-tools.md` |
-| Debugging strategies | `docs/agents/debugging.md` |
-| LLDB debugging guide | `docs/agents/lldb-debugging.md` |
+| Test commands and execution | `agents/docs/testing-commands.md` |
+| Build system restrictions | `agents/docs/build-system.md` |
+| C++ coding standards | `agents/docs/cpp-standards.md` |
+| MCP server tools | `agents/docs/mcp-tools.md` |
+| Debugging strategies | `agents/docs/debugging.md` |
+| LLDB debugging guide | `agents/docs/lldb-debugging.md` |
 
 **This file contains only test-directory-specific conventions.**
 
@@ -461,4 +461,4 @@ TEST_CASE("UCS7604 - feature test") {
 ---
 
 ## Memory Refresh Rule
-**🚨 ALL AGENTS: Read docs/agents/testing-commands.md and relevant docs/agents/*.md files before concluding testing work to refresh memory about test execution requirements and validation rules.**
+**🚨 ALL AGENTS: Read agents/docs/testing-commands.md and relevant agents/docs/*.md files before concluding testing work to refresh memory about test execution requirements and validation rules.**
