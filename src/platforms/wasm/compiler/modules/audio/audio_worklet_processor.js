@@ -36,6 +36,12 @@ class FastLEDAudioProcessor extends AudioWorkletProcessor {
           this.bufferSize = data.bufferSize || 512;
           this.initialized = true;
           break;
+        case 'start':
+          this.initialized = true;
+          break;
+        case 'stop':
+          this.initialized = false;
+          break;
         case 'config':
           // Handle configuration updates
           if (data.bufferSize) this.bufferSize = data.bufferSize;

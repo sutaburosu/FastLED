@@ -175,20 +175,17 @@ void JsonUiManager::updateUiComponents(const char* jsonStr) {
 
 
 void JsonUiManager::executeUiUpdates(const fl::json &doc) {
-    
+
     if (doc.is_object()) {
-        
+
         // Iterate through all keys in the JSON object
         for (auto key : doc.keys()) {
             const char* id_or_name = key.c_str();
-            
-            //FL_WARN("*** Checking for component with ID: " << idStr);
-            
+
             auto component = findUiComponent(id_or_name);
             if (component) {
                 const fl::json v = doc[key.c_str()];
                 component->updateInternal(v);
-                //FL_WARN("*** Updated component with ID " << idStr);
             } else {
                 FL_ERROR("could not find component with ID or name: " << id_or_name);
             }

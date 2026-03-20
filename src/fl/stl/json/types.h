@@ -16,6 +16,7 @@
 #include "fl/stl/cstddef.h"
 #include "fl/stl/move.h"
 #include "fl/stl/strstream.h"
+#include "fl/stl/span.h"
 #include "fl/stl/type_traits.h"
 #include "fl/system/log.h"
 #include "fl/promise.h" // For Error type
@@ -636,6 +637,10 @@ struct SizeVisitor {
     void operator()(const fl::string&) { result = 0; }
 };
 
+// Forward declarations for copy_to visitors (defined after json_value)
+template<typename T> struct NumericExtractVisitor;
+template<typename T> struct CopyToVisitor;
+
 // The JSON node
 struct json_value {
     // Forward declarations for nested iterator classes
@@ -958,60 +963,12 @@ struct json_value {
         return visitor.result;
     }
     
-    fl::optional<json_array> as_array() {
-        auto ptr = data.ptr<json_array>();
-        if (ptr) return fl::optional<json_array>(*ptr);
-        
-        // Handle specialized array types by converting them to regular json_array
-        if (data.is<fl::vector<i16>>()) {
-            auto audioPtr = data.ptr<fl::vector<i16>>();
-            json_array result;
-            for (const auto& item : *audioPtr) {
-                result.push_back(fl::make_shared<json_value>(static_cast<i64>(item)));
-            }
-            return fl::optional<json_array>(result);
-        }
-        
-        if (data.is<fl::vector<u8>>()) {
-            auto bytePtr = data.ptr<fl::vector<u8>>();
-            json_array result;
-            for (const auto& item : *bytePtr) {
-                result.push_back(fl::make_shared<json_value>(static_cast<i64>(item)));
-            }
-            return fl::optional<json_array>(result);
-        }
-        
-        if (data.is<fl::vector<float>>()) {
-            auto floatPtr = data.ptr<fl::vector<float>>();
-            json_array result;
-            for (const auto& item : *floatPtr) {
-                result.push_back(fl::make_shared<json_value>(item));  // Use float directly
-            }
-            return fl::optional<json_array>(result);
-        }
-        
-        return fl::nullopt;
-    }
-    
-    fl::optional<json_object> as_object() {
-        auto ptr = data.ptr<json_object>();
-        return ptr ? fl::optional<json_object>(*ptr) : fl::nullopt;
-    }
-    
-    fl::optional<fl::vector<i16>> as_audio() {
-        auto ptr = data.ptr<fl::vector<i16>>();
-        return ptr ? fl::optional<fl::vector<i16>>(*ptr) : fl::nullopt;
-    }
-    
-    fl::optional<fl::vector<u8>> as_bytes() {
-        auto ptr = data.ptr<fl::vector<u8>>();
-        return ptr ? fl::optional<fl::vector<u8>>(*ptr) : fl::nullopt;
-    }
-    
-    fl::optional<fl::vector<float>> as_floats() {
-        auto ptr = data.ptr<fl::vector<float>>();
-        return ptr ? fl::optional<fl::vector<float>>(*ptr) : fl::nullopt;
-    }
+    // Zero-copy pointer accessors (non-const)
+    json_array*           as_array()   { return data.ptr<json_array>(); }
+    json_object*          as_object()  { return data.ptr<json_object>(); }
+    fl::vector<i16>*      as_audio()   { return data.ptr<fl::vector<i16>>(); }
+    fl::vector<u8>*       as_bytes()   { return data.ptr<fl::vector<u8>>(); }
+    fl::vector<float>*    as_floats()  { return data.ptr<fl::vector<float>>(); }
 
     // Const overloads
     fl::optional<bool> as_bool() const {
@@ -1075,10 +1032,17 @@ struct json_value {
         return visitor.result;
     }
     
-    fl::optional<json_array> as_array() const {
+    // Zero-copy pointer accessors (const)
+    const json_array*           as_array()   const { return data.ptr<json_array>(); }
+    const json_object*          as_object()  const { return data.ptr<json_object>(); }
+    const fl::vector<i16>*      as_audio()   const { return data.ptr<fl::vector<i16>>(); }
+    const fl::vector<u8>*       as_bytes()   const { return data.ptr<fl::vector<u8>>(); }
+    const fl::vector<float>*    as_floats()  const { return data.ptr<fl::vector<float>>(); }
+
+    // Explicit copy methods - use when you need an owned copy or packed-array conversion
+    fl::optional<json_array> clone_array() const {
         auto ptr = data.ptr<json_array>();
         if (ptr) return fl::optional<json_array>(*ptr);
-        
         // Handle specialized array types by converting them to regular json_array
         if (data.is<fl::vector<i16>>()) {
             auto audioPtr = data.ptr<fl::vector<i16>>();
@@ -1088,7 +1052,6 @@ struct json_value {
             }
             return fl::optional<json_array>(result);
         }
-        
         if (data.is<fl::vector<u8>>()) {
             auto bytePtr = data.ptr<fl::vector<u8>>();
             json_array result;
@@ -1097,39 +1060,43 @@ struct json_value {
             }
             return fl::optional<json_array>(result);
         }
-        
         if (data.is<fl::vector<float>>()) {
             auto floatPtr = data.ptr<fl::vector<float>>();
             json_array result;
             for (const auto& item : *floatPtr) {
-                result.push_back(fl::make_shared<json_value>(item));  // Use float directly
+                result.push_back(fl::make_shared<json_value>(item));
             }
             return fl::optional<json_array>(result);
         }
-        
         return fl::nullopt;
     }
-    
-    fl::optional<json_object> as_object() const {
+    fl::optional<json_object> clone_object() const {
         auto ptr = data.ptr<json_object>();
         return ptr ? fl::optional<json_object>(*ptr) : fl::nullopt;
     }
-    
-    fl::optional<fl::vector<i16>> as_audio() const {
+    fl::optional<fl::vector<i16>> clone_audio() const {
         auto ptr = data.ptr<fl::vector<i16>>();
         return ptr ? fl::optional<fl::vector<i16>>(*ptr) : fl::nullopt;
     }
-    
-    fl::optional<fl::vector<u8>> as_bytes() const {
+    fl::optional<fl::vector<u8>> clone_bytes() const {
         auto ptr = data.ptr<fl::vector<u8>>();
         return ptr ? fl::optional<fl::vector<u8>>(*ptr) : fl::nullopt;
     }
-    
-    fl::optional<fl::vector<float>> as_floats() const {
+    fl::optional<fl::vector<float>> clone_floats() const {
         auto ptr = data.ptr<fl::vector<float>>();
         return ptr ? fl::optional<fl::vector<float>>(*ptr) : fl::nullopt;
     }
-    
+
+    // Copy packed-array elements into a caller-owned span with type conversion.
+    // Returns number of elements copied (min of array size and span size).
+    // Returns 0 if this value is not a numeric array.
+    template<typename T>
+    size_t copy_to(fl::span<T> out) const {
+        CopyToVisitor<T> visitor(out);
+        data.visit(visitor);
+        return visitor.result;
+    }
+
     // Generic getter template method
     template<typename T>
     fl::optional<T> get() const {
@@ -1381,11 +1348,11 @@ struct json_value {
         }
         // For packed arrays, we need to convert them to regular arrays first
         // This is needed for compatibility with existing code that expects json_array
-        if (data.is<fl::vector<i16>>() || 
-            data.is<fl::vector<u8>>() || 
+        if (data.is<fl::vector<i16>>() ||
+            data.is<fl::vector<u8>>() ||
             data.is<fl::vector<float>>()) {
-            // Convert to regular json_array
-            auto arr = as_array();
+            // Convert to regular json_array (needs a copy/conversion)
+            auto arr = clone_array();
             if (arr) {
                 data = fl::move(*arr);
                 auto ptr = data.ptr<json_array>();
@@ -1609,6 +1576,75 @@ struct json_value {
 
 // Function to get a reference to a static null json_value
 json_value& get_null_json_value();
+
+// Visitor to extract a numeric value from a single json_value element
+template<typename T>
+struct NumericExtractVisitor {
+    T result = T(0);
+
+    template<typename U>
+    void accept(const U& value) { (*this)(value); }
+
+    void operator()(const i64& v)    { result = static_cast<T>(v); }
+    void operator()(const float& v)  { result = static_cast<T>(v); }
+    void operator()(const bool& v)   { result = static_cast<T>(v ? 1 : 0); }
+    // Non-numeric types → zero
+    void operator()(const fl::nullptr_t&) {}
+    void operator()(const fl::string&) {}
+    void operator()(const json_array&) {}
+    void operator()(const json_object&) {}
+    void operator()(const fl::vector<u8>&) {}
+    void operator()(const fl::vector<i16>&) {}
+    void operator()(const fl::vector<float>&) {}
+};
+
+// Visitor to copy array elements into a span<T> with type conversion
+template<typename T>
+struct CopyToVisitor {
+    fl::span<T> dst;
+    size_t result;
+
+    explicit CopyToVisitor(fl::span<T> d) : dst(d), result(0) {}
+
+    template<typename U>
+    void accept(const U& value) { (*this)(value); }
+
+    // Packed vectors: element-wise static_cast
+    void operator()(const fl::vector<u8>& v)    { copy_vec(v); }
+    void operator()(const fl::vector<i16>& v)   { copy_vec(v); }
+    void operator()(const fl::vector<float>& v) { copy_vec(v); }
+
+    // Generic json_array: visitor-based per-element extraction
+    void operator()(const json_array& arr) {
+        size_t n = (arr.size() < dst.size()) ? arr.size() : dst.size();
+        for (size_t i = 0; i < n; ++i) {
+            const auto& elem = arr[i];
+            if (!elem) { dst[i] = T(0); continue; }
+            NumericExtractVisitor<T> nv;
+            elem->data.visit(nv);
+            dst[i] = nv.result;
+        }
+        result = n;
+    }
+
+    // Non-array types: nothing to copy
+    void operator()(const fl::nullptr_t&) {}
+    void operator()(const bool&) {}
+    void operator()(const i64&) {}
+    void operator()(const float&) {}
+    void operator()(const fl::string&) {}
+    void operator()(const json_object&) {}
+
+private:
+    template<typename ElemT>
+    void copy_vec(const fl::vector<ElemT>& vec) {
+        size_t n = (vec.size() < dst.size()) ? vec.size() : dst.size();
+        for (size_t i = 0; i < n; ++i) {
+            dst[i] = static_cast<T>(vec[i]);
+        }
+        result = n;
+    }
+};
 
 // Main json class that provides a more fluid and user-friendly interface
 

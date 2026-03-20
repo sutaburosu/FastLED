@@ -345,6 +345,15 @@ The system will automatically fall back to ScriptProcessor.`);
         },
       });
 
+      // Send init config to worklet processor
+      this.workletNode.port.postMessage({
+        type: 'init',
+        data: {
+          sampleRate: this.audioContext.sampleRate,
+          bufferSize: 512,
+        },
+      });
+
       // Set up message handling from the worklet
       this.workletNode.port.onmessage = (event) => {
         this.handleWorkletMessage(event.data);
@@ -931,6 +940,9 @@ export class AudioManager {
     // Set up microphone capture handler
     this.setupMicrophoneHandler(micButton, controlDiv);
 
+    // Set up drag-and-drop handler
+    this.setupDragAndDropHandler(controlDiv, audioInput);
+
     // Add components to the container
     controlDiv.appendChild(buttonContainer);
     controlDiv.appendChild(audioInput);
@@ -1081,6 +1093,61 @@ export class AudioManager {
           // Show error to user
           this.showAudioError(controlDiv, 'Failed to load audio file. Please try again.');
         }
+      }
+    });
+  }
+
+  /**
+   * Set up drag-and-drop handler for audio files on the control container
+   * @param {HTMLElement} controlDiv - The control container (drop target)
+   * @param {HTMLInputElement} audioInput - The hidden file input element
+   */
+  setupDragAndDropHandler(controlDiv, audioInput) {
+    controlDiv.addEventListener('dragover', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      controlDiv.classList.add('audio-drag-over');
+    });
+
+    controlDiv.addEventListener('dragleave', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      controlDiv.classList.remove('audio-drag-over');
+    });
+
+    controlDiv.addEventListener('drop', async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      controlDiv.classList.remove('audio-drag-over');
+
+      const files = event.dataTransfer?.files;
+      if (!files || files.length === 0) return;
+
+      const file = files[0];
+      if (!file.type.startsWith('audio/')) {
+        console.warn('Dropped file is not an audio file:', file.type);
+        this.showAudioError(controlDiv, 'Please drop an audio file (MP3, WAV, etc.).');
+        return;
+      }
+
+      console.log(`🎵 Audio file dropped: ${file.name} (${file.type}, ${file.size} bytes)`);
+
+      try {
+        const url = URL.createObjectURL(file);
+
+        // Clean up previous audio context
+        await this.cleanupPreviousAudioContext(audioInput.id);
+        await new Promise((resolve) => { setTimeout(resolve, 100); });
+
+        // Set up audio playback
+        const audio = this.createOrUpdateAudioElement(controlDiv);
+        await this.configureAudioPlayback(audio, url, controlDiv);
+        this.updateAudioProcessingIndicator(controlDiv);
+
+        console.log('🎵 Drag-and-drop audio load complete');
+      } catch (error) {
+        console.error('🎵 Error loading dropped audio file:', error);
+        this.showAudioError(controlDiv, 'Failed to load dropped audio file.');
       }
     });
   }

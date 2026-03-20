@@ -284,11 +284,27 @@ public:
         if (!mValue) return fl::nullopt;
         return mValue->as_string(); 
     }
-    fl::optional<json_array> as_array() const { return mValue ? mValue->as_array() : fl::nullopt; }
-    fl::optional<json_object> as_object() const { return mValue ? mValue->as_object() : fl::nullopt; }
-    fl::optional<fl::vector<i16>> as_audio() const { return mValue ? mValue->as_audio() : fl::nullopt; }
-    fl::optional<fl::vector<u8>> as_bytes() const { return mValue ? mValue->as_bytes() : fl::nullopt; }
-    fl::optional<fl::vector<float>> as_floats() const { return mValue ? mValue->as_floats() : fl::nullopt; }
+    // Zero-copy pointer accessors
+    const json_array*        as_array()   const { return mValue ? mValue->as_array() : nullptr; }
+    const json_object*       as_object()  const { return mValue ? mValue->as_object() : nullptr; }
+    const fl::vector<i16>*   as_audio()   const { return mValue ? mValue->as_audio() : nullptr; }
+    const fl::vector<u8>*    as_bytes()   const { return mValue ? mValue->as_bytes() : nullptr; }
+    const fl::vector<float>* as_floats()  const { return mValue ? mValue->as_floats() : nullptr; }
+
+    // Explicit copy methods - use when you need an owned copy or packed-array conversion
+    fl::optional<json_array>        clone_array()  const { return mValue ? mValue->clone_array() : fl::nullopt; }
+    fl::optional<json_object>       clone_object() const { return mValue ? mValue->clone_object() : fl::nullopt; }
+    fl::optional<fl::vector<i16>>   clone_audio()  const { return mValue ? mValue->clone_audio() : fl::nullopt; }
+    fl::optional<fl::vector<u8>>    clone_bytes()  const { return mValue ? mValue->clone_bytes() : fl::nullopt; }
+    fl::optional<fl::vector<float>> clone_floats() const { return mValue ? mValue->clone_floats() : fl::nullopt; }
+
+    // Copy packed-array elements into a caller-owned span with type conversion.
+    // Returns number of elements copied (min of array size and span size).
+    // Returns 0 if not a numeric array or json is null.
+    template<typename T>
+    size_t copy_to(fl::span<T> out) const {
+        return mValue ? mValue->copy_to(out) : 0;
+    }
 
     // NEW ERGONOMIC API: try_as<T>() - Explicit optional handling
     // Use when you need to explicitly handle conversion failure
@@ -345,37 +361,41 @@ private:
         return mValue->as_string();
     }
     
-    // Array type
+    // Array type - clone_array() provides packed-array conversion for try_as
     template<typename T>
     typename fl::enable_if<fl::is_same<T, json_array>::value, fl::optional<T>>::type
     as_impl() const {
-        return mValue->as_array();
+        return mValue->clone_array();
     }
-    
+
     // Object type
     template<typename T>
     typename fl::enable_if<fl::is_same<T, json_object>::value, fl::optional<T>>::type
     as_impl() const {
-        return mValue->as_object();
+        auto ptr = mValue->as_object();
+        return ptr ? fl::optional<T>(*ptr) : fl::nullopt;
     }
-    
+
     // Specialized vector types
     template<typename T>
     typename fl::enable_if<fl::is_same<T, fl::vector<i16>>::value, fl::optional<T>>::type
     as_impl() const {
-        return mValue->as_audio();
+        auto ptr = mValue->as_audio();
+        return ptr ? fl::optional<T>(*ptr) : fl::nullopt;
     }
-    
+
     template<typename T>
     typename fl::enable_if<fl::is_same<T, fl::vector<u8>>::value, fl::optional<T>>::type
     as_impl() const {
-        return mValue->as_bytes();
+        auto ptr = mValue->as_bytes();
+        return ptr ? fl::optional<T>(*ptr) : fl::nullopt;
     }
-    
+
     template<typename T>
     typename fl::enable_if<fl::is_same<T, fl::vector<float>>::value, fl::optional<T>>::type
     as_impl() const {
-        return mValue->as_floats();
+        auto ptr = mValue->as_floats();
+        return ptr ? fl::optional<T>(*ptr) : fl::nullopt;
     }
 
     // Helper methods for getting default values for each type
@@ -506,27 +526,25 @@ public:
             mValue = fl::make_shared<json_value>(json_array{});
         }
         // If we're indexing into a specialized array, convert it to regular json_array first
-        if (mValue->data.is<fl::vector<i16>>() || 
-            mValue->data.is<fl::vector<u8>>() || 
+        if (mValue->data.is<fl::vector<i16>>() ||
+            mValue->data.is<fl::vector<u8>>() ||
             mValue->data.is<fl::vector<float>>()) {
-            // Convert to regular json_array
-            auto arr = mValue->as_array();
+            // Convert to regular json_array (needs a copy/conversion)
+            auto arr = mValue->clone_array();
             if (arr) {
                 mValue = fl::make_shared<json_value>(fl::move(*arr));
             }
         }
-        // Get the shared_ptr directly from the json_array to maintain reference semantics
-        if (mValue->data.is<json_array>()) {
-            auto arr = mValue->as_array();
-            if (arr) {
-                // Ensure the array is large enough
-                if (idx >= arr->size()) {
-                    for (size_t i = arr->size(); i <= idx; i++) {
-                        arr->push_back(fl::make_shared<json_value>(nullptr));
-                    }
+        // Get pointer directly to avoid copying - fixes silent mutation bug
+        auto arrPtr = mValue->as_array();
+        if (arrPtr) {
+            // Ensure the array is large enough
+            if (idx >= arrPtr->size()) {
+                for (size_t i = arrPtr->size(); i <= idx; i++) {
+                    arrPtr->push_back(fl::make_shared<json_value>(nullptr));
                 }
-                return json((*arr)[idx]);
             }
+            return json((*arrPtr)[idx]);
         }
         return json(nullptr);
     }
@@ -535,23 +553,21 @@ public:
         if (!mValue) {
             return json(nullptr);
         }
-        // Handle regular json_array
-        if (mValue->data.is<json_array>()) {
-            auto arr = mValue->as_array();
-            if (arr && idx < arr->size()) {
-                return json((*arr)[idx]);
+        // Handle regular json_array - zero-copy pointer access
+        auto arrPtr = mValue->as_array();
+        if (arrPtr) {
+            if (idx < arrPtr->size()) {
+                return json((*arrPtr)[idx]);
             }
+            return json(nullptr);
         }
-        // For specialized arrays, we need to convert them to regular arrays first
-        // This is needed for compatibility with existing code that expects json_array
-        if (mValue->data.is<fl::vector<i16>>() || 
-            mValue->data.is<fl::vector<u8>>() || 
-            mValue->data.is<fl::vector<float>>()) {
-            // Convert to regular json_array
-            auto arr = mValue->as_array();
-            if (arr && idx < arr->size()) {
-                return json((*arr)[idx]);
-            }
+        // For packed arrays, extract element directly without converting the whole array
+        if (auto p = mValue->data.ptr<fl::vector<i16>>()) {
+            if (idx < p->size()) return json(static_cast<i64>((*p)[idx]));
+        } else if (auto p = mValue->data.ptr<fl::vector<u8>>()) {
+            if (idx < p->size()) return json(static_cast<i64>((*p)[idx]));
+        } else if (auto p = mValue->data.ptr<fl::vector<float>>()) {
+            if (idx < p->size()) return json((*p)[idx]);
         }
         return json(nullptr);
     }
@@ -579,9 +595,14 @@ public:
         if (!mValue || !mValue->is_object()) {
             return json(nullptr);
         }
-        auto obj = mValue->as_object();
-        if (obj && obj->find(key) != obj->end()) {
-            return json((*obj)[key]);
+        // Use ptr<> directly to avoid copying the entire map via as_object().
+        // The variant stores json_object (not const), so use ptr<json_object>().
+        // The const overload of ptr<T>() returns const T*, which is what we want.
+        auto objPtr = mValue->data.ptr<json_object>();
+        if (!objPtr) return json(nullptr);
+        auto it = objPtr->find(key);
+        if (it != objPtr->end()) {
+            return json(it->second);
         }
         return json(nullptr);
     }
@@ -712,12 +733,12 @@ public:
             mValue = fl::make_shared<json_value>(json_array{});
         }
         // If we're pushing to a packed array, convert it to regular json_array first
-        if (mValue->is_array() && 
-            (mValue->data.is<fl::vector<i16>>() || 
-             mValue->data.is<fl::vector<u8>>() || 
+        if (mValue->is_array() &&
+            (mValue->data.is<fl::vector<i16>>() ||
+             mValue->data.is<fl::vector<u8>>() ||
              mValue->data.is<fl::vector<float>>())) {
-            // Convert to regular json_array
-            auto arr = mValue->as_array();
+            // Convert to regular json_array (needs a copy/conversion)
+            auto arr = mValue->clone_array();
             if (arr) {
                 mValue = fl::make_shared<json_value>(fl::move(*arr));
             }

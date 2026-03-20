@@ -141,14 +141,14 @@ bool ScreenMap::ParseJson(const char *jsonStrScreenMap,
         return false;
     }
     
-    auto jsonMapOpt = mapObj.as_object();
-    if (!jsonMapOpt || jsonMapOpt->empty()) {
+    auto jsonMapPtr = mapObj.as_object();
+    if (!jsonMapPtr || jsonMapPtr->empty()) {
         *err = "Failed to parse map from JSON or map is empty";
         FL_WARN("Failed to parse map from JSON or map is empty");
         return false;
     }
-    
-    auto& jsonMap = *jsonMapOpt;
+
+    auto& jsonMap = *jsonMapPtr;
 
     
     for (const auto& kv : jsonMap) {

@@ -137,7 +137,12 @@ const workerState = {
   // C++ calls js_notify_screenmap_update() → handleScreenMapUpdate() → cache update
   // Zero polling overhead - completely event-driven
   // Dictionary format: { "0": {strips: {...}, absMin: [...], absMax: [...]}, "1": {...} }
-  screenMaps: {}
+  screenMaps: {},
+
+  // Audio sample queue - samples buffered here from onmessage, flushed to WASM at frame start
+  audioSampleQueue: [],
+  audioSampleBufferedOnce: false,
+  audioSampleFlushedOnce: false
 };
 
 /**
@@ -904,43 +909,66 @@ function handleScreenMapUpdate(payload) {
  * @param {number} payload.timestamp - Timestamp in milliseconds
  */
 function handleAudioSamples(payload) {
-  try {
-    const Module = workerState.fastledModule;
+  // Buffer audio samples instead of pushing to WASM immediately.
+  // Samples are flushed to WASM at the start of each frame in executeFrameLoop()
+  // to avoid JSPI interference when calling Module.ccall between frames.
+  workerState.audioSampleQueue.push(payload);
 
-    if (!Module || !Module.ccall) {
-      return; // Module not ready yet, silently drop
+  if (!workerState.audioSampleBufferedOnce) {
+    workerState.audioSampleBufferedOnce = true;
+    workerLog('LOG', 'BACKGROUND_WORKER', 'First audio sample buffered (will flush at next frame start)');
+  }
+}
+
+/**
+ * Flushes buffered audio samples to the WASM ring buffer.
+ * Called at the start of each frame in executeFrameLoop(), before externLoop(),
+ * so that Module.ccall happens in the same execution context as the frame loop.
+ */
+function flushAudioSamplesToWasm() {
+  const Module = workerState.fastledModule;
+  if (!Module || !Module.ccall || workerState.audioSampleQueue.length === 0) {
+    return;
+  }
+
+  const queue = workerState.audioSampleQueue;
+  workerState.audioSampleQueue = [];
+
+  for (const payload of queue) {
+    try {
+      const { samples, count, timestamp } = payload;
+      const sampleArray = new Int16Array(samples);
+
+      // Allocate memory in WASM heap for the samples
+      const byteLength = sampleArray.length * 2; // Int16 = 2 bytes each
+      const ptr = Module._malloc(byteLength);
+
+      if (!ptr) {
+        continue;
+      }
+
+      // Copy samples into WASM heap using HEAPU8 (always available)
+      const sampleBytes = new Uint8Array(sampleArray.buffer, sampleArray.byteOffset, byteLength);
+      Module.HEAPU8.set(sampleBytes, ptr);
+
+      // Call C++ pushAudioSamples(ptr, count, timestamp)
+      Module.ccall(
+        'pushAudioSamples',
+        null,
+        ['number', 'number', 'number'],
+        [ptr, count, timestamp]
+      );
+
+      // Free the allocated memory
+      Module._free(ptr);
+    } catch (error) {
+      console.error('Error pushing audio sample to WASM:', error);
     }
+  }
 
-    const { samples, count, timestamp } = payload;
-    const sampleArray = new Int16Array(samples);
-
-    // Allocate memory in WASM heap for the samples
-    const byteLength = sampleArray.length * 2; // Int16 = 2 bytes each
-    const ptr = Module._malloc(byteLength);
-
-    if (!ptr) {
-      return;
-    }
-
-    // Copy samples into WASM heap
-    const heap16 = new Int16Array(Module.HEAP16.buffer, ptr, sampleArray.length);
-    heap16.set(sampleArray);
-
-    // Call C++ pushAudioSamples(ptr, count, timestamp)
-    Module.ccall(
-      'pushAudioSamples',
-      null,
-      ['number', 'number', 'number'],
-      [ptr, count, timestamp]
-    );
-
-    // Free the allocated memory
-    Module._free(ptr);
-  } catch (error) {
-    // Don't spam logs for audio errors - they happen frequently during init
-    if (workerState.frameCount % 600 === 0) {
-      workerLog('ERROR', 'BACKGROUND_WORKER', 'Audio sample processing error', error);
-    }
+  if (!workerState.audioSampleFlushedOnce) {
+    workerState.audioSampleFlushedOnce = true;
+    workerLog('LOG', 'BACKGROUND_WORKER', 'First audio sample flushed to WASM');
   }
 }
 
@@ -985,6 +1013,11 @@ async function executeFrameLoop(currentTime) {
 
   try {
     workerState.frameCount++;
+
+    // Flush buffered audio samples to WASM BEFORE running C++ loop.
+    // This ensures Module.ccall('pushAudioSamples') happens in the same
+    // execution context as externLoop(), avoiding JSPI interference.
+    flushAudioSamplesToWasm();
 
     // Call FastLED loop function synchronously (Asyncify removed - worker thread allows blocking)
     if (!workerState.externFunctions) {

@@ -106,6 +106,7 @@ void setup() {
 
 void loop() {
     const uint32_t now = millis();
+
     audioReactive.pump(audio, enableVibeReactive);
 
     if (!enableVibeReactive.value()) {
