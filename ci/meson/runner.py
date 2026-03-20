@@ -716,7 +716,25 @@ def run_meson_build_and_test(
                                 ]
                             )
 
-                            if returncode == 1 and not has_doctest_output:
+                            has_watchdog_timeout = (
+                                "internal timeout watchdog triggered" in stdout_lower
+                            )
+
+                            if (
+                                returncode == 1
+                                and has_watchdog_timeout
+                                and not has_doctest_output
+                            ):
+                                test_name = test_path.stem
+                                _ts_print(
+                                    f"[MESON] ⚠️  {test_name}: Test killed by internal timeout watchdog (exceeded time limit)",
+                                    file=sys.stderr,
+                                )
+                                _ts_print(
+                                    f"[MESON] 💡 This is a timeout, not a crash. Consider adding to slow_tests in tests/meson.build",
+                                    file=sys.stderr,
+                                )
+                            elif returncode == 1 and not has_doctest_output:
                                 test_name = test_path.stem
                                 _ts_print(
                                     f"[MESON] ⚠️  {test_name}: Test failed during initialization (before doctest ran)",
@@ -1386,9 +1404,25 @@ def run_meson_build_and_test(
                         ]
                     )
 
+                    has_watchdog_timeout = (
+                        "internal timeout watchdog triggered" in stdout_lower
+                    )
+
                     if returncode == 1 and not proc.stdout.strip():
                         # No output at all - immediate crash
                         print_error(f"[MESON] ⚠️  No output - possible crash at startup")
+                    elif (
+                        returncode == 1
+                        and has_watchdog_timeout
+                        and not has_doctest_output
+                    ):
+                        # Watchdog killed the process before doctest ran
+                        print_error(
+                            f"[MESON] ⚠️  Test killed by internal timeout watchdog (exceeded time limit)"
+                        )
+                        print_error(
+                            f"[MESON] 💡 This is a timeout, not a crash. Consider adding to slow_tests in tests/meson.build"
+                        )
                     elif returncode == 1 and not has_doctest_output:
                         # Has output but no doctest execution - initialization failure
                         print_error(

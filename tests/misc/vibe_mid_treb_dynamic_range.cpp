@@ -1,5 +1,5 @@
 // Repro for GitHub issue #2193 comment 4019752955:
-// VibeDetector mid/treble relative levels stuck at 1.00
+// Vibe mid/treble relative levels stuck at 1.00
 //
 // The bug: For continuous signals (mid/treble in real music), the EMA-based
 // normalization chain (mImm → mAvg → mLongAvg) converges, so

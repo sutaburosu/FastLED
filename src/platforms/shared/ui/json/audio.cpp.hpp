@@ -35,7 +35,7 @@ JsonAudioImpl::JsonAudioImpl(const fl::string &name, const fl::url& url) {
     addJsonUiComponent(fl::weak_ptr<JsonUiInternal>(mInternal));
 }
 
-JsonAudioImpl::JsonAudioImpl(const fl::string &name, const fl::AudioConfig& config) {
+JsonAudioImpl::JsonAudioImpl(const fl::string &name, const fl::audio::Config& config) {
     // JSON UI gets audio from browser, so config is ignored
     FL_UNUSED(config);
     mInternal = fl::make_shared<JsonUiAudioInternal>(name);
@@ -69,8 +69,8 @@ JsonAudioImpl::Updater::~Updater() { fl::EngineEvents::removeListener(this); }
 
 void JsonAudioImpl::Updater::onPlatformPreLoop2() {}
 
-AudioSample JsonAudioImpl::next() {
-    AudioSampleImplPtr out;
+audio::Sample JsonAudioImpl::next() {
+    audio::SampleImplPtr out;
     if (mInternal->audioSamples().empty()) {
         // FASTLED_WARN("No audio samples available");
         return out;
@@ -80,7 +80,7 @@ AudioSample JsonAudioImpl::next() {
     out = mInternal->audioSamples().front();
     mInternal->audioSamples().erase(mInternal->audioSamples().begin());
     // FASTLED_WARN("Returning audio sample of size " << out->pcm().size());
-    return AudioSample(out);
+    return audio::Sample(out);
 }
 
 bool JsonAudioImpl::hasNext() { return !mInternal->audioSamples().empty(); }

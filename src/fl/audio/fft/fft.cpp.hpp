@@ -9,6 +9,8 @@
 #include "fl/stl/mutex.h"
 
 namespace fl {
+namespace audio {
+namespace fft {
 
 // Recycles fl::vector<float> buffers to avoid repeated allocation.
 // Vectors returned to the pool retain their capacity for reuse.
@@ -47,7 +49,7 @@ class FloatVectorPool {
     fl::vector<fl::vector<float>> mPool;
 };
 
-void FFTBins::clear() {
+void Bins::clear() {
     mBinsRaw.clear();
     mBinsLinear.clear();
     mNormFactors.clear();
@@ -55,11 +57,11 @@ void FFTBins::clear() {
     mDbDirty = true;
 }
 
-fl::size FFTBins::bands() const { return mBands; }
+fl::size Bins::bands() const { return mBands; }
 
-fl::span<const float> FFTBins::raw() const { return mBinsRaw; }
+fl::span<const float> Bins::raw() const { return mBinsRaw; }
 
-fl::span<const float> FFTBins::db() const {
+fl::span<const float> Bins::db() const {
     if (!mDbDirty) {
         return mBinsDb;
     }
@@ -75,7 +77,7 @@ fl::span<const float> FFTBins::db() const {
     return mBinsDb;
 }
 
-fl::span<const float> FFTBins::rawNormalized() const {
+fl::span<const float> Bins::rawNormalized() const {
     if (!mNormalizedDirty) {
         return mBinsRawNormalized;
     }
@@ -91,21 +93,21 @@ fl::span<const float> FFTBins::rawNormalized() const {
     return mBinsRawNormalized;
 }
 
-fl::span<const float> FFTBins::linear() const { return mBinsLinear; }
-float FFTBins::linearFmin() const { return mLinearFmin; }
-float FFTBins::linearFmax() const { return mLinearFmax; }
-float FFTBins::fmin() const { return mFmin; }
-float FFTBins::fmax() const { return mFmax; }
-int FFTBins::sampleRate() const { return mSampleRate; }
+fl::span<const float> Bins::linear() const { return mBinsLinear; }
+float Bins::linearFmin() const { return mLinearFmin; }
+float Bins::linearFmax() const { return mLinearFmax; }
+float Bins::fmin() const { return mFmin; }
+float Bins::fmax() const { return mFmax; }
+int Bins::sampleRate() const { return mSampleRate; }
 
-float FFTBins::binToFreq(int i) const {
+float Bins::binToFreq(int i) const {
     int nbands = static_cast<int>(mBinsRaw.size());
     if (nbands <= 1) return mFmin;
     float m = fl::logf(mFmax / mFmin);
     return mFmin * fl::expf(m * static_cast<float>(i) / static_cast<float>(nbands - 1));
 }
 
-int FFTBins::freqToBin(float freq) const {
+int Bins::freqToBin(float freq) const {
     int nbands = static_cast<int>(mBinsRaw.size());
     if (nbands <= 1) return 0;
     if (freq <= mFmin) return 0;
@@ -118,13 +120,13 @@ int FFTBins::freqToBin(float freq) const {
     return result;
 }
 
-float FFTBins::binBoundary(int i) const {
+float Bins::binBoundary(int i) const {
     float f_i = binToFreq(i);
     float f_next = binToFreq(i + 1);
     return fl::sqrtf(f_i * f_next);
 }
 
-fl::vector<float>& FFTBins::raw_mut() {
+fl::vector<float>& Bins::raw_mut() {
     if (mBinsRaw.capacity() == 0) {
         mBinsRaw = pool().acquire(mBands);
     }
@@ -133,25 +135,25 @@ fl::vector<float>& FFTBins::raw_mut() {
     return mBinsRaw;
 }
 
-fl::vector<float>& FFTBins::linear_mut() {
+fl::vector<float>& Bins::linear_mut() {
     if (mBinsLinear.capacity() == 0) {
         mBinsLinear = pool().acquire(mBands);
     }
     return mBinsLinear;
 }
 
-void FFTBins::setParams(float fmin, float fmax, int sampleRate) {
+void Bins::setParams(float fmin, float fmax, int sampleRate) {
     mFmin = fmin;
     mFmax = fmax;
     mSampleRate = sampleRate;
 }
 
-void FFTBins::setLinearParams(float linearFmin, float linearFmax) {
+void Bins::setLinearParams(float linearFmin, float linearFmax) {
     mLinearFmin = linearFmin;
     mLinearFmax = linearFmax;
 }
 
-void FFTBins::setNormFactors(const fl::vector<float>& factors) {
+void Bins::setNormFactors(const fl::vector<float>& factors) {
     if (mNormFactors.capacity() == 0) {
         mNormFactors = pool().acquire(mBands);
     }
@@ -162,14 +164,14 @@ void FFTBins::setNormFactors(const fl::vector<float>& factors) {
     mNormalizedDirty = true;
 }
 
-FloatVectorPool& FFTBins::pool() {
+FloatVectorPool& Bins::pool() {
     return Singleton<FloatVectorPool>::instance();
 }
 
-FFTBins::FFTBins(fl::size n)
+Bins::Bins(fl::size n)
     : mBands(n) {}
 
-FFTBins::~FFTBins() {
+Bins::~Bins() {
     auto& p = pool();
     p.releaseIfNotEmpty(fl::move(mBinsRaw));
     p.releaseIfNotEmpty(fl::move(mBinsLinear));
@@ -178,8 +180,12 @@ FFTBins::~FFTBins() {
     p.releaseIfNotEmpty(fl::move(mBinsRawNormalized));
 }
 
-template <> struct Hash<FFT_Args> {
-    fl::u32 operator()(const FFT_Args &key) const noexcept {
+} // namespace fft
+} // namespace audio
+
+// Hash specialization must be in fl:: namespace where Hash is defined
+template <> struct Hash<audio::fft::Args> {
+    fl::u32 operator()(const audio::fft::Args &key) const noexcept {
         // Hash fields individually to avoid padding-byte issues
         fl::u32 h = 0;
         h ^= MurmurHash3_x86_32(&key.samples, sizeof(key.samples));
@@ -195,19 +201,22 @@ template <> struct Hash<FFT_Args> {
     }
 };
 
-struct FFT::FFTImplCache {
+namespace audio {
+namespace fft {
+
+struct FFT::ImplCache {
     static constexpr fl::size kDefaultMaxSize = 10;
-    using LruMap = HashMapLru<FFT_Args, fl::shared_ptr<FFTImpl>>;
+    using LruMap = HashMapLru<Args, fl::shared_ptr<Impl>>;
 
-    FFTImplCache() : mMap(kDefaultMaxSize) {}
+    ImplCache() : mMap(kDefaultMaxSize) {}
 
-    fl::shared_ptr<FFTImpl> get_or_create(const FFT_Args &args) {
+    fl::shared_ptr<Impl> get_or_create(const Args &args) {
         fl::lock_guard<fl::mutex> lock(mMutex);
-        fl::shared_ptr<FFTImpl> *val = mMap.find_value(args);
+        fl::shared_ptr<Impl> *val = mMap.find_value(args);
         if (val) {
             return *val;
         }
-        fl::shared_ptr<FFTImpl> fft = fl::make_shared<FFTImpl>(args);
+        fl::shared_ptr<Impl> fft = fl::make_shared<Impl>(args);
         mMap[args] = fft;
         return fft;
     }
@@ -232,19 +241,19 @@ private:
     LruMap mMap;
 };
 
-FFT::FFTImplCache &FFT::globalCache() {
+FFT::ImplCache &FFT::globalCache() {
     // Global LRU cache with max 10 entries — shared by all FFT instances.
     // This avoids regenerating expensive CQ kernels when AudioContext is
-    // recreated (each FFTImpl with 128 CQ bins takes ~850ms to initialize).
-    return fl::Singleton<FFTImplCache>::instance();
+    // recreated (each Impl with 128 CQ bins takes ~850ms to initialize).
+    return fl::Singleton<ImplCache>::instance();
 }
 
-void FFT::run(const span<const fl::i16> &sample, FFTBins *out,
-              const FFT_Args &args) {
-    FFT_Args args2 = args;
+void FFT::run(const span<const fl::i16> &sample, Bins *out,
+              const Args &args) {
+    Args args2 = args;
     args2.samples = sample.size();
     // Fetch cached impl (thread-safe), then run FFT outside the lock.
-    fl::shared_ptr<FFTImpl> impl = globalCache().get_or_create(args2);
+    fl::shared_ptr<Impl> impl = globalCache().get_or_create(args2);
     impl->run(sample, out);
 }
 
@@ -254,51 +263,51 @@ fl::size FFT::size() const { return globalCache().size(); }
 
 void FFT::setFFTCacheSize(fl::size size) { globalCache().setMaxSize(size); }
 
-void FFT_Args::resolveModeEnums(FFTMode &mode, FFTWindow &window, int bands,
+void Args::resolveModeEnums(Mode &mode, Window &window, int bands,
                                 int samples, float fmin, float fmax) {
     // Resolve mode first
-    if (mode == FFTMode::AUTO) {
+    if (mode == Mode::AUTO) {
         if (bands <= 32) {
-            mode = FFTMode::LOG_REBIN;
+            mode = Mode::LOG_REBIN;
         } else {
             // Check kernel conditioning: N_window = N * fmin / fmax.
             // When >= 2, CQ_NAIVE (single FFT + kernels) works well.
             // When < 2, kernels degenerate and we need octave-wise CQT.
             int winMin = static_cast<int>(
                 static_cast<float>(samples) * fmin / fmax);
-            mode = (winMin >= 2) ? FFTMode::CQ_NAIVE : FFTMode::CQ_OCTAVE;
+            mode = (winMin >= 2) ? Mode::CQ_NAIVE : Mode::CQ_OCTAVE;
         }
     }
 
     // Resolve window based on resolved mode
-    if (window == FFTWindow::AUTO) {
+    if (window == Window::AUTO) {
         switch (mode) {
-        case FFTMode::LOG_REBIN:
-        case FFTMode::CQ_HYBRID:
-            // These paths apply time-domain windowing before FFT.
+        case Mode::LOG_REBIN:
+        case Mode::CQ_HYBRID:
+            // These paths apply time-domain windowing before fft::FFT.
             // BLACKMAN_HARRIS: -92 dB sidelobe rejection (vs -31 dB HANNING).
             // Sidelobes produce only mag=0-1 quantization noise, ensuring
             // distant output bins have near-zero energy (≤2) for pure tones.
             // Main lobe is 8 FFT bins wide (~690 Hz at 512/44100), so
             // output bins narrower than ~130 Hz may see main lobe leakage
             // at distance 3+ — a fundamental resolution limit.
-            window = FFTWindow::BLACKMAN_HARRIS;
+            window = Window::BLACKMAN_HARRIS;
             break;
-        case FFTMode::CQ_NAIVE:
-        case FFTMode::CQ_OCTAVE:
+        case Mode::CQ_NAIVE:
+        case Mode::CQ_OCTAVE:
             // CQ kernels already apply Hamming windowing in frequency domain.
             // No time-domain window is applied on these paths, so this is
             // cosmetic. HANNING is the lighter/cheaper default.
-            window = FFTWindow::HANNING;
+            window = Window::HANNING;
             break;
         default:
-            window = FFTWindow::BLACKMAN_HARRIS;
+            window = Window::BLACKMAN_HARRIS;
             break;
         }
     }
 }
 
-bool FFT_Args::operator==(const FFT_Args &other) const {
+bool Args::operator==(const Args &other) const {
     FL_DISABLE_WARNING_PUSH
     FL_DISABLE_WARNING(float-equal);
 
@@ -310,4 +319,6 @@ bool FFT_Args::operator==(const FFT_Args &other) const {
     FL_DISABLE_WARNING_POP
 }
 
+} // namespace fft
+} // namespace audio
 } // namespace fl

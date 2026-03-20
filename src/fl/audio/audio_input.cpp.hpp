@@ -75,31 +75,32 @@
 // IWYU pragma: end_keep
 
 namespace fl {
+namespace audio {
 
 #if FASTLED_USES_TEENSY_AUDIO_INPUT
 // Use Teensy audio implementation
-fl::shared_ptr<IAudioInput> platform_create_audio_input(const AudioConfig &config, fl::string *error_message) {
+fl::shared_ptr<IInput> platform_create_audio_input(const Config &config, fl::string *error_message) {
     return teensy_create_audio_input(config, error_message);
 }
 #elif FASTLED_USES_ARDUINO_AUDIO_INPUT
 // Use Arduino audio implementation
-fl::shared_ptr<IAudioInput> platform_create_audio_input(const AudioConfig &config, fl::string *error_message) {
+fl::shared_ptr<IInput> platform_create_audio_input(const Config &config, fl::string *error_message) {
     return arduino_create_audio_input(config, error_message);
 }
 #elif FASTLED_USES_ESP32_AUDIO_INPUT
 // ESP32 native implementation
-fl::shared_ptr<IAudioInput> platform_create_audio_input(const AudioConfig &config, fl::string *error_message) {
+fl::shared_ptr<IInput> platform_create_audio_input(const Config &config, fl::string *error_message) {
     return esp32_create_audio_input(config, error_message);
 }
 #elif FASTLED_USES_WASM_AUDIO_INPUT
 // WASM implementation - audio comes from JavaScript
-fl::shared_ptr<IAudioInput> platform_create_audio_input(const AudioConfig &config, fl::string *error_message) {
+fl::shared_ptr<IInput> platform_create_audio_input(const Config &config, fl::string *error_message) {
     return wasm_create_audio_input(config, error_message);
 }
 #else
 // Weak default implementation - no audio support
 FL_LINK_WEAK
-fl::shared_ptr<IAudioInput> platform_create_audio_input(const AudioConfig &config, fl::string *error_message) {
+fl::shared_ptr<IInput> platform_create_audio_input(const Config &config, fl::string *error_message) {
     if (error_message) {
         *error_message = "AudioInput not supported on this platform.";
     }
@@ -108,8 +109,8 @@ fl::shared_ptr<IAudioInput> platform_create_audio_input(const AudioConfig &confi
 #endif
 
 // Static method delegates to free function
-fl::shared_ptr<IAudioInput>
-IAudioInput::create(const AudioConfig &config, fl::string *error_message) {
+fl::shared_ptr<IInput>
+IInput::create(const Config &config, fl::string *error_message) {
     auto input = platform_create_audio_input(config, error_message);
     if (input) {
         input->setGain(config.getGain());
@@ -117,4 +118,5 @@ IAudioInput::create(const AudioConfig &config, fl::string *error_message) {
     return input;
 }
 
+} // namespace audio
 }  // namespace fl

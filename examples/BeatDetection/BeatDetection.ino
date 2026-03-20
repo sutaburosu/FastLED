@@ -2,7 +2,7 @@
 /// @brief   Simple real-time beat detection with LED visualization
 /// @example BeatDetection.ino
 ///
-/// Demonstrates beat detection using the AudioProcessor facade.
+/// Demonstrates beat detection using the Processor facade.
 /// Visualizes beats and tempo on an LED strip - flashes on beat detection.
 
 #include <FastLED.h>
@@ -27,7 +27,7 @@ fl::CRGB leds[NUM_LEDS];
 fl::UIAudio audio("Audio Input");
 
 // Audio processor with beat detection
-fl::AudioProcessor audioProcessor;
+fl::audio::Processor audioProcessor;
 
 // Beat detection state
 float currentBPM = 0.0f;
@@ -90,7 +90,7 @@ void setup() {
 
 void loop() {
     // Get audio sample
-    fl::AudioSample sample = audio.next();
+    fl::audio::Sample sample = audio.next();
 
     if (sample.isValid()) {
         // Process audio through the audio processor

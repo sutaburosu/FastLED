@@ -614,7 +614,7 @@ FL_TEST_CASE("MPEG1 audio extraction") {
         int audio_frames_received = 0;
         int total_audio_samples = 0;
 
-        config.audioCallback = [&](const fl::AudioSample& sample) {
+        config.audioCallback = [&](const fl::audio::Sample& sample) {
             audio_frames_received++;
             total_audio_samples += sample.size();
 
@@ -664,7 +664,7 @@ FL_TEST_CASE("MPEG1 audio extraction") {
         config.skipAudio = true;  // Disable audio
 
         int audio_frames_received = 0;
-        config.audioCallback = [&](const fl::AudioSample& sample) {
+        config.audioCallback = [&](const fl::audio::Sample& sample) {
             (void)sample;
             audio_frames_received++;
         };
@@ -727,7 +727,7 @@ FL_TEST_CASE("MPEG1 audio extraction") {
 
         // Set audio callback after initialization
         int audio_frames_received = 0;
-        decoder->setAudioCallback([&](const fl::AudioSample& sample) {
+        decoder->setAudioCallback([&](const fl::audio::Sample& sample) {
             (void)sample;
             audio_frames_received++;
         });
@@ -763,7 +763,7 @@ FL_TEST_CASE("MPEG1 audio extraction") {
         int video_frames_decoded = 0;
         int total_audio_samples = 0;
 
-        config.audioCallback = [&](const fl::AudioSample& sample) {
+        config.audioCallback = [&](const fl::audio::Sample& sample) {
             audio_frames_received++;
             total_audio_samples += sample.size();
 

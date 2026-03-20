@@ -1,7 +1,7 @@
 // ok standalone
 // Audio Detector Performance Profile Test
 //
-// Profiles all audio detectors to identify performance bottlenecks.
+// Profiles all audio detector to identify performance bottlenecks.
 // Runs as a standalone executable (NOT part of unit test suite) to ensure
 // consistent CPU utilization for accurate measurements.
 //
@@ -22,14 +22,14 @@ namespace fl {
 
 // Pre-warm function: Prime the FFT cache before profiling
 // This simulates real-world usage where FFT is computed first,
-// then all detectors reuse the cached result.
+// then all detector reuse the cached result.
 void prewarmFFTCache(int sampleRate = 16000) {
-    // Create a temporary processor with all FFT-dependent detectors
+    // Create a temporary processor with all FFT-dependent detector
     // to populate the FFT cache for this sample rate/config
-    fl::AudioProcessor warmup;
+    fl::audio::Processor warmup;
     warmup.setSampleRate(sampleRate);
 
-    // Register all callbacks to activate detectors
+    // Register all callbacks to activate detector
     warmup.onEnergy([](float) {});
     warmup.onFrequencyBands([](float, float, float) {});  // ← Triggers FFT caching
     warmup.onBeat([]() {});
@@ -37,14 +37,14 @@ void prewarmFFTCache(int sampleRate = 16000) {
     warmup.onPitch([](float) {});
     warmup.onVocal([](fl::u8) {});
     warmup.onTransient([]() {});
-    warmup.onVibeLevels([](const fl::VibeLevels&) {});
+    warmup.onVibeLevels([](const fl::audio::detector::VibeLevels&) {});
 
     // Generate and process a few samples to warm the cache
     SynthAudioGenerator gen(sampleRate);
     for (int i = 0; i < 20; i++) {
         warmup.update(gen.generateSample());
     }
-    // warmup goes out of scope, cache persists in AudioProcessor instances
+    // warmup goes out of scope, cache persists in Processor instances
 }
 
 // Synthetic audio sample generator for consistent testing
@@ -54,8 +54,8 @@ public:
         : mSampleRate(sampleRate), mPhase(0) {}
 
     // Generate a complex audio signal: mix of sine waves
-    // This creates interesting spectral content for detectors
-    AudioSample generateSample() {
+    // This creates interesting spectral content for detector
+    Sample generateSample() {
         const int bufferSize = mSampleRate / 100;  // 10ms at 16kHz = 160 samples
         fl::vector<fl::i16> pcm(bufferSize);
 
@@ -81,7 +81,7 @@ public:
         }
 
         mPhase += bufferSize;
-        return AudioSample(fl::span<const fl::i16>(pcm.data(), pcm.size()), 0);
+        return Sample(fl::span<const fl::i16>(pcm.data(), pcm.size()), 0);
     }
 
 private:
@@ -111,7 +111,7 @@ struct DetectorResult {
 // Profiler measuring detector costs with SHARED FFT context
 // This measures ACTUAL detector overhead by using differential measurement:
 // cost(A+B) - cost(A) = overhead of B
-// All detectors share the same AudioContext and FFT cache.
+// All detector share the same Context and FFT cache.
 int runProfiler(bool jsonOutput) {
     const int ITERATIONS = 500;
     const int SAMPLE_RATE = 16000;
@@ -120,12 +120,12 @@ int runProfiler(bool jsonOutput) {
     SynthAudioGenerator baselineGen(SAMPLE_RATE);
 
     // Strategy: Measure baseline, then incremental costs
-    // by adding detectors one at a time to the SAME processor
+    // by adding detector one at a time to the SAME processor
     // This ensures FFT is cached and shared across all measurements
 
     // Create a SINGLE processor to measure incremental costs
-    // All measurements use the SAME AudioContext and FFT cache
-    fl::AudioProcessor processor;
+    // All measurements use the SAME Context and FFT cache
+    fl::audio::Processor processor;
     processor.setSampleRate(SAMPLE_RATE);
 
     // ===== BASELINE: Energy Analyzer Only =====
@@ -148,7 +148,7 @@ int runProfiler(bool jsonOutput) {
         results.push_back({"EnergyAnalyzer (BASELINE)", baselineTotal_us, ITERATIONS});
     }
 
-    // ===== Add BeatDetector (differential measurement) =====
+    // ===== Add Beat (differential measurement) =====
     {
         processor.onBeat([]() {});
 
@@ -159,7 +159,7 @@ int runProfiler(bool jsonOutput) {
         fl::u32 t1 = fl::micros();
         fl::u32 deltaUs = (t1 - t0) - baselineTotal_us;
 
-        results.push_back({"+ BeatDetector (overhead)", deltaUs, ITERATIONS});
+        results.push_back({"+ Beat (overhead)", deltaUs, ITERATIONS});
     }
 
     // ===== Add TempoAnalyzer (differential) =====
@@ -177,7 +177,7 @@ int runProfiler(bool jsonOutput) {
         results.push_back({"+ TempoAnalyzer (overhead)", deltaUs, ITERATIONS});
     }
 
-    // ===== Add TransientDetector (differential) =====
+    // ===== Add Transient (differential) =====
     {
         processor.onTransient([]() {});
 
@@ -189,7 +189,7 @@ int runProfiler(bool jsonOutput) {
         fl::u32 total = t1 - t0;
         fl::u32 deltaUs = total - baselineTotal_us;
 
-        results.push_back({"+ TransientDetector (overhead)", deltaUs, ITERATIONS});
+        results.push_back({"+ Transient (overhead)", deltaUs, ITERATIONS});
     }
 
     // ===== Add FrequencyBands (differential - this triggers FFT) =====
@@ -219,7 +219,7 @@ int runProfiler(bool jsonOutput) {
         fl::u32 total = t1 - t0;
         fl::u32 deltaUs = total - baselineTotal_us;
 
-        results.push_back({"+ PitchDetector (reuses FFT)", deltaUs, ITERATIONS});
+        results.push_back({"+ Pitch (reuses FFT)", deltaUs, ITERATIONS});
     }
 
     // ===== Add Vocal Detector (differential) =====
@@ -234,12 +234,12 @@ int runProfiler(bool jsonOutput) {
         fl::u32 total = t1 - t0;
         fl::u32 deltaUs = total - baselineTotal_us;
 
-        results.push_back({"+ VocalDetector (reuses FFT)", deltaUs, ITERATIONS});
+        results.push_back({"+ Vocal (reuses FFT)", deltaUs, ITERATIONS});
     }
 
     // ===== Add Vibe Detector (differential) =====
     {
-        processor.onVibeLevels([](const fl::VibeLevels&) {});
+        processor.onVibeLevels([](const fl::audio::detector::VibeLevels&) {});
 
         fl::u32 t0 = fl::micros();
         for (int i = 0; i < ITERATIONS; i++) {
@@ -249,7 +249,7 @@ int runProfiler(bool jsonOutput) {
         fl::u32 total = t1 - t0;
         fl::u32 deltaUs = total - baselineTotal_us;
 
-        results.push_back({"+ VibeDetector (reuses FFT)", deltaUs, ITERATIONS});
+        results.push_back({"+ Vibe (reuses FFT)", deltaUs, ITERATIONS});
     }
 
     double baseline = results[0].usPerCall();
@@ -273,7 +273,7 @@ int runProfiler(bool jsonOutput) {
         fl::printf("\n");
 
         fl::printf("DETECTOR INCREMENTAL COST ANALYSIS\n");
-        fl::printf("(All measurements use SHARED AudioContext - FFT is cached, not replicated)\n");
+        fl::printf("(All measurements use SHARED Context - FFT is cached, not replicated)\n");
         fl::printf("───────────────────────────────────────────────────────────────────────────────\n");
         fl::printf("%-35s %12s    %10s\n",
                    "Detector", "Added Cost", "Cumulative");
@@ -298,44 +298,44 @@ int runProfiler(bool jsonOutput) {
 
         fl::printf("Summary (Shared FFT Context):\n");
         fl::printf("  Baseline (EnergyAnalyzer):          %.2f µs/call\n", baseline);
-        fl::printf("  + Non-FFT detectors (3):           ~%.2f µs/call\n",
+        fl::printf("  + Non-FFT detector (3):           ~%.2f µs/call\n",
                    results[1].usPerCall() + results[2].usPerCall() + results[3].usPerCall());
         fl::printf("  + FrequencyBands (with FFT):        %.2f µs/call (FFT amortized)\n",
                    results[4].usPerCall());
-        fl::printf("  + Additional FFT-using detectors:   ~%.2f µs/call (low cost, reuse FFT)\n",
+        fl::printf("  + Additional FFT-using detector:   ~%.2f µs/call (low cost, reuse FFT)\n",
                    results[5].usPerCall() + results[6].usPerCall() + results[7].usPerCall());
         fl::printf("  ──────────────────────────────────────\n");
-        fl::printf("  Total with all detectors:           %.2f µs/call\n", cumulativeUs);
+        fl::printf("  Total with all detector:           %.2f µs/call\n", cumulativeUs);
         fl::printf("\n");
 
         // Performance assessment
         double allDetectorsUs = results.back().usPerCall();
         if (allDetectorsUs > 50.0) {
             fl::printf("⚠️  PERFORMANCE WARNING:\n");
-            fl::printf("  Time/call with all detectors: %.2f µs (exceeds safe threshold of 50µs)\n",
+            fl::printf("  Time/call with all detector: %.2f µs (exceeds safe threshold of 50µs)\n",
                       allDetectorsUs);
             fl::printf("  This may cause real-time processing latency.\n");
         } else if (allDetectorsUs > 10.0) {
             fl::printf("⚠️  PERFORMANCE NOTE:\n");
-            fl::printf("  Time/call with all detectors: %.2f µs (acceptable but monitor closely)\n",
+            fl::printf("  Time/call with all detector: %.2f µs (acceptable but monitor closely)\n",
                       allDetectorsUs);
         } else {
             fl::printf("✅ Excellent performance:\n");
-            fl::printf("  Time/call with all detectors: %.2f µs (well within real-time budget)\n",
+            fl::printf("  Time/call with all detector: %.2f µs (well within real-time budget)\n",
                       allDetectorsUs);
         }
 
         fl::printf("\nDetector Descriptions:\n");
         fl::printf("  • EnergyAnalyzer     - RMS and peak level analysis\n");
         fl::printf("  • FrequencyBands     - Bass/mid/treble (shared cached FFT in context)\n");
-        fl::printf("  • BeatDetector       - Beat onset and phase detection\n");
+        fl::printf("  • Beat       - Beat onset and phase detection\n");
         fl::printf("  • TempoAnalyzer      - BPM and tempo stability analysis\n");
-        fl::printf("  • PitchDetector      - Fundamental frequency estimation\n");
-        fl::printf("  • VocalDetector      - Human voice presence detection\n");
-        fl::printf("  • TransientDetector  - Attack transient detection\n");
-        fl::printf("  • VibeDetector       - Audio-reactive level normalization\n");
+        fl::printf("  • Pitch      - Fundamental frequency estimation\n");
+        fl::printf("  • Vocal      - Human voice presence detection\n");
+        fl::printf("  • Transient  - Attack transient detection\n");
+        fl::printf("  • Vibe       - Audio-reactive level normalization\n");
         fl::printf("\nMethodology (Differential Measurement):\n");
-        fl::printf("  ✓ Single AudioProcessor with shared AudioContext\n");
+        fl::printf("  ✓ Single Processor with shared Context\n");
         fl::printf("  ✓ FFT cache persists across all measurements\n");
         fl::printf("  ✓ Cost = Total(A+B) - Total(A) shows PURE overhead of B\n");
         fl::printf("  ✓ Results show true detector cost with FFT shared/cached\n");
@@ -343,7 +343,7 @@ int runProfiler(bool jsonOutput) {
         fl::printf("\nKey Insight:\n");
         fl::printf("  • FrequencyBands cost = FFT (~54µs) + band analysis (~18µs)\n");
         fl::printf("  • Pitch/Vocal/Vibe cost much less when FFT already cached\n");
-        fl::printf("  • Non-FFT detectors (Beat/Tempo/Transient) are cheap (~6-7µs each)\n");
+        fl::printf("  • Non-FFT detector (Beat/Tempo/Transient) are cheap (~6-7µs each)\n");
         fl::printf("\nUsing in Your Code:\n");
         fl::printf("  call prewarmFFTCache(sampleRate) once at startup\n");
         fl::printf("  then subsequent update() calls reuse cached FFT results\n");

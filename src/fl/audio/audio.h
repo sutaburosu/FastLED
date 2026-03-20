@@ -8,30 +8,30 @@
 #include "fl/stl/int.h"
 
 namespace fl {
-class FFTBins;  // Forward declaration
-class AudioProcessor;  // Forward declaration
+namespace audio {
+namespace fft { class Bins; }  // Forward declaration in correct namespace
+class Processor;  // Forward declaration
 
-class AudioSampleImpl;
+class SampleImpl;
 
-FASTLED_SHARED_PTR(AudioSampleImpl);
+FASTLED_SHARED_PTR(SampleImpl);
 
-// AudioSample is a wrapper around AudioSampleImpl, hiding the reference
+// Sample is a wrapper around SampleImpl, hiding the reference
 // counting so that the api object can be simple and have standard object
 // semantics.
-class AudioSample {
+class Sample {
   public:
     using VectorPCM = fl::vector<fl::i16>;
     using const_iterator = VectorPCM::const_iterator;
-    AudioSample() {}
-    AudioSample(const AudioSample &other) : mImpl(other.mImpl) {}
-    AudioSample(AudioSampleImplPtr impl) : mImpl(impl) {}
-    ~AudioSample();
+    Sample() {}
+    Sample(const Sample &other) : mImpl(other.mImpl) {}
+    Sample(SampleImplPtr impl) : mImpl(impl) {}
+    ~Sample();
 
     // Constructor that takes raw audio data and handles pooling internally
-    AudioSample(fl::span<const fl::i16> span, fl::u32 timestamp = 0);
+    Sample(fl::span<const fl::i16> span, fl::u32 timestamp = 0);
 
-
-    AudioSample &operator=(const AudioSample &other);
+    Sample &operator=(const Sample &other);
     bool isValid() const { return mImpl != nullptr; }
 
     fl::size size() const;
@@ -43,15 +43,15 @@ class AudioSample {
     float rms() const;
     fl::u32 timestamp() const;  // Timestamp when sample became valid (millis)
 
-    void fft(FFTBins *out) const;
+    void fft(fft::Bins *out) const;
 
     const_iterator begin() const { return pcm().begin(); }
     const_iterator end() const { return pcm().end(); }
     const fl::i16 &at(fl::size i) const;
     const fl::i16 &operator[](fl::size i) const;
     operator bool() const { return isValid(); }
-    bool operator==(const AudioSample &other) const;
-    bool operator!=(const AudioSample &other) const;
+    bool operator==(const Sample &other) const;
+    bool operator!=(const Sample &other) const;
 
     /// Apply a digital gain multiplier to all PCM samples in-place.
     /// Clamps to i16 range to prevent overflow.
@@ -59,7 +59,7 @@ class AudioSample {
 
   private:
     static const VectorPCM &empty();
-    AudioSampleImplPtr mImpl;
+    SampleImplPtr mImpl;
 };
 
 // Sound level meter is a persistant measuring class that will auto-tune the
@@ -109,10 +109,10 @@ class SoundLevelMeter {
 };
 
 // Implementation details.
-class AudioSampleImpl {
+class SampleImpl {
   public:
     using VectorPCM = fl::vector<fl::i16>;
-    ~AudioSampleImpl() {}
+    ~SampleImpl() {}
     // template <typename It> void assign(It begin, It end) {
     //     assign(begin, end, 0);  // Default timestamp to 0
     // }
@@ -159,8 +159,8 @@ class AudioSampleImpl {
     // Returns: RMS value (computed lazily on first access)
     float rms() const {
         if (!mRmsComputed) {
-            const_cast<AudioSampleImpl*>(this)->initRms();
-            const_cast<AudioSampleImpl*>(this)->mRmsComputed = true;
+            const_cast<SampleImpl*>(this)->initRms();
+            const_cast<SampleImpl*>(this)->mRmsComputed = true;
         }
         return mRms;
     }
@@ -201,4 +201,5 @@ class AudioSampleImpl {
     mutable bool mRmsComputed = false;  // Track if RMS has been computed
 };
 
+} // namespace audio
 } // namespace fl

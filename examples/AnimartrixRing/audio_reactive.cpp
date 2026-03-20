@@ -1,6 +1,6 @@
 // audio_reactive.cpp
 #include "audio_reactive.h"
-#include "fl/audio/detectors/vibe.h"
+#include "fl/audio/detector/vibe.h"
 
 void AudioReactive::begin(fl::UIAudio &audio) {
     auto input = audio.audioInput();
@@ -9,7 +9,7 @@ void AudioReactive::begin(fl::UIAudio &audio) {
         autoPump = true;
     }
     if (!processor) {
-        processor = fl::make_shared<fl::AudioProcessor>();
+        processor = fl::make_shared<fl::audio::Processor>();
     }
 }
 
@@ -20,7 +20,7 @@ void AudioReactive::connectToEngine(fl::FxEngine &fxEngine,
                                     fl::UISlider &timeSpeed) {
     processor->onVibeLevels(
         [&fxEngine, &enableVibe, &speedMultiplier, &baseSpeed,
-         &timeSpeed](const fl::VibeLevels &vibe) {
+         &timeSpeed](const fl::audio::detector::VibeLevels &vibe) {
             if (enableVibe.value()) {
                 float bassBoost = (vibe.bass - 1.0f) * speedMultiplier.value();
                 float speed = baseSpeed.value() + bassBoost;
@@ -33,7 +33,7 @@ void AudioReactive::connectToEngine(fl::FxEngine &fxEngine,
 void AudioReactive::pump(fl::UIAudio &audio, fl::UICheckbox &enableVibe) {
     if (autoPump)
         return;
-    fl::AudioSample sample = audio.next();
+    fl::audio::Sample sample = audio.next();
     if (!sample.isValid())
         return;
     sampleCount++;

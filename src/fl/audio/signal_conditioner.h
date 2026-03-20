@@ -5,6 +5,7 @@
 #include "fl/stl/span.h"
 
 namespace fl {
+namespace audio {
 
 /// Configuration for signal conditioning pipeline
 struct SignalConditionerConfig {
@@ -46,8 +47,8 @@ struct SignalConditionerConfig {
 /// config.noiseGateOpenThreshold = 500;
 /// conditioner.configure(config);
 ///
-/// AudioSample rawSample = ...;  // From I2S microphone
-/// AudioSample cleanSample = conditioner.processSample(rawSample);
+/// Sample rawSample = ...;  // From I2S microphone
+/// Sample cleanSample = conditioner.processSample(rawSample);
 /// @endcode
 class SignalConditioner {
 public:
@@ -61,7 +62,7 @@ public:
     /// Process a raw audio sample through the conditioning pipeline
     /// @param sample Raw audio sample from microphone/I2S
     /// @return Cleaned audio sample (DC-removed, spike-filtered, gated)
-    AudioSample processSample(const AudioSample& sample);
+    Sample processSample(const Sample& sample);
 
     /// Reset internal state (DC estimate, noise gate state)
     void reset();
@@ -112,4 +113,5 @@ private:
     vector<i16> mOutputBuffer;
 };
 
+} // namespace audio
 } // namespace fl

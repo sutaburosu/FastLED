@@ -1,6 +1,6 @@
 /// @file test_helpers.h
 /// @brief Shared helper functions for audio tests
-/// Common utilities for creating test signals and AudioSample objects
+/// Common utilities for creating test signals and audio::Sample objects
 
 #pragma once
 
@@ -15,18 +15,18 @@
 namespace fl {
 namespace test {
 
-/// Create an AudioSample from a vector of samples
-inline AudioSample createSample(const vector<i16>& samples, u32 timestamp = 0) {
-    AudioSampleImplPtr impl = fl::make_shared<AudioSampleImpl>();
+/// Create an audio::Sample from a vector of samples
+inline audio::Sample createSample(const vector<i16>& samples, u32 timestamp = 0) {
+    audio::SampleImplPtr impl = fl::make_shared<audio::SampleImpl>();
     impl->assign(samples.begin(), samples.end(), timestamp);
-    return AudioSample(impl);
+    return audio::Sample(impl);
 }
 
-/// Create an AudioSample from a span of samples
-inline AudioSample createSample(span<const i16> samples, u32 timestamp = 0) {
-    AudioSampleImplPtr impl = fl::make_shared<AudioSampleImpl>();
+/// Create an audio::Sample from a span of samples
+inline audio::Sample createSample(span<const i16> samples, u32 timestamp = 0) {
+    audio::SampleImplPtr impl = fl::make_shared<audio::SampleImpl>();
     impl->assign(samples.begin(), samples.end(), timestamp);
-    return AudioSample(impl);
+    return audio::Sample(impl);
 }
 
 /// Generate a sine wave signal
@@ -46,8 +46,8 @@ inline vector<i16> generateTone(size count, float frequency, float sampleRate, i
     return generateSineWave(count, frequency, sampleRate, amplitude);
 }
 
-/// Generate a sine wave and create an AudioSample in one step
-inline AudioSample makeSample(float frequency, u32 timestamp,
+/// Generate a sine wave and create an audio::Sample in one step
+inline audio::Sample makeSample(float frequency, u32 timestamp,
                                float amplitude = 16000.0f,
                                size count = 512,
                                float sampleRate = 44100.0f) {
@@ -57,13 +57,13 @@ inline AudioSample makeSample(float frequency, u32 timestamp,
 }
 
 /// Generate a constant amplitude signal (for level testing)
-inline AudioSample makeSample(i16 amplitude, u32 timestamp, size count = 512) {
+inline audio::Sample makeSample(i16 amplitude, u32 timestamp, size count = 512) {
     vector<i16> data(count, amplitude);
     return createSample(data, timestamp);
 }
 
 /// Generate silence
-inline AudioSample makeSilence(u32 timestamp, size count = 512) {
+inline audio::Sample makeSilence(u32 timestamp, size count = 512) {
     return makeSample(static_cast<i16>(0), timestamp, count);
 }
 

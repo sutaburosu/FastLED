@@ -110,21 +110,21 @@ private:
 // - Teensy_I2S_Audio::read() accumulates 4 blocks → 512 mono samples
 //   - Left/Right mode: 4 blocks from selected channel
 //   - Both mode: 4 pairs of L/R blocks, downmixed to mono (L+R)/2
-class Teensy_I2S_Audio : public IAudioInput {
+class Teensy_I2S_Audio : public audio::IInput {
 public:
     static constexpr int BLOCKS_TO_ACCUMULATE = 4;  // 4 * 128 = 512 mono samples
     static constexpr int TARGET_BUFFER_SIZE = AUDIO_BLOCK_SAMPLES * BLOCKS_TO_ACCUMULATE;
 
-    Teensy_I2S_Audio(const AudioConfigI2S& config);
+    Teensy_I2S_Audio(const audio::ConfigI2S& config);
     ~Teensy_I2S_Audio() override;
 
     void start() override;
     void stop() override;
     bool error(fl::string* msg = nullptr) override;
-    AudioSample read() override;
+    audio::Sample read() override;
 
 private:
-    AudioConfigI2S mConfig;
+    audio::ConfigI2S mConfig;
     bool mHasError;
     fl::string mErrorMessage;
     u64 mTotalSamplesRead;
@@ -149,8 +149,8 @@ private:
 #endif // TEENSY_AUDIO_LIBRARY_AVAILABLE
 
 // Platform-specific audio input creation function for Teensy
-fl::shared_ptr<IAudioInput> teensy_create_audio_input(
-    const AudioConfig& config,
+fl::shared_ptr<audio::IInput> teensy_create_audio_input(
+    const audio::Config& config,
     fl::string* error_message
 );
 

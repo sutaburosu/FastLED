@@ -5,17 +5,21 @@
 #include "fl/stl/math.h"
 
 namespace fl {
+namespace audio {
 
-class FFTImpl;
-class AudioSample;  // IWYU pragma: keep
+class Sample;  // Forward declare in fl::audio (correct namespace)
+
+namespace fft {
+
+class Impl;
 class FloatVectorPool;
 
 // Time-domain window function applied before FFT.
-//   AUTO           — Selects best window based on FFTMode (see resolveArgs)
+//   AUTO           — Selects best window based on Mode (see resolveArgs)
 //   NONE           — No windowing (rectangular window)
 //   HANNING        — Classic cosine window, -31 dB sidelobe rejection
 //   BLACKMAN_HARRIS — 4-term window, -92 dB sidelobe rejection
-enum class FFTWindow {
+enum class Window {
     AUTO,
     NONE,
     HANNING,
@@ -28,7 +32,7 @@ enum class FFTWindow {
 //   CQ_NAIVE     — Single FFT + CQ kernels (no input window)
 //   CQ_OCTAVE    — Octave-wise Constant-Q Transform (~1-5ms on ESP32-S3)
 //   CQ_HYBRID    — LOG_REBIN for upper freqs + CQ_OCTAVE decimation for bass
-enum class FFTMode {
+enum class Mode {
     AUTO,
     LOG_REBIN,
     CQ_NAIVE,
@@ -36,18 +40,17 @@ enum class FFTMode {
     CQ_HYBRID  // If you aren't sure just use this.
 };
 
-class FFTBins {
-    friend class FFTContext;
-    friend class AudioContext;
+class Bins {
+    friend class Context;
 
   public:
-    FFTBins(fl::size n);
-    ~FFTBins();
+    Bins(fl::size n);
+    ~Bins();
 
-    FFTBins(const FFTBins &) = default;
-    FFTBins &operator=(const FFTBins &) = default;
-    FFTBins(FFTBins &&) noexcept = default;
-    FFTBins &operator=(FFTBins &&) noexcept = default;
+    Bins(const Bins &) = default;
+    Bins &operator=(const Bins &) = default;
+    Bins(Bins &&) noexcept = default;
+    Bins &operator=(Bins &&) noexcept = default;
 
     void clear();
 
@@ -74,7 +77,7 @@ class FFTBins {
     float linearFmin() const;
     float linearFmax() const;
 
-    // CQ parameters (set by FFTImpl after populating bins)
+    // CQ parameters (set by Impl after populating bins)
     float fmin() const;
     float fmax() const;
     int sampleRate() const;
@@ -91,7 +94,7 @@ class FFTBins {
   private:
     static FloatVectorPool& pool();
 
-    // Mutable accessors for FFTContext (the only writer).
+    // Mutable accessors for Context (the only writer).
     // raw_mut() invalidates derived caches (db, normalized).
     fl::vector<float>& raw_mut();
     fl::vector<float>& linear_mut();
@@ -117,7 +120,7 @@ class FFTBins {
     float mLinearFmax = 0.0f;
 };
 
-struct FFT_Args {
+struct Args {
     static int DefaultSamples() { return 512; }
     static int DefaultBands() { return 16; }
     static float DefaultMinFrequency() { return 90.0f; }
@@ -129,26 +132,26 @@ struct FFT_Args {
     float fmin = DefaultMinFrequency();
     float fmax = DefaultMaxFrequency();
     int sample_rate = DefaultSampleRate();
-    FFTMode mode = FFTMode::AUTO;
-    FFTWindow window = FFTWindow::AUTO;
+    Mode mode = Mode::AUTO;
+    Window window = Window::AUTO;
 
-    FFT_Args(int samples = DefaultSamples(), int bands = DefaultBands(),
+    Args(int samples = DefaultSamples(), int bands = DefaultBands(),
              float fmin = DefaultMinFrequency(),
              float fmax = DefaultMaxFrequency(),
              int sample_rate = DefaultSampleRate(),
-             FFTMode mode = FFTMode::AUTO,
-             FFTWindow window = FFTWindow::AUTO)
+             Mode mode = Mode::AUTO,
+             Window window = Window::AUTO)
         : samples(samples), bands(bands), fmin(fmin), fmax(fmax),
           sample_rate(sample_rate), mode(mode), window(window) {}
 
     // Resolve AUTO values for mode and window in-place.
     // Mode is resolved first; window depends on the resolved mode.
     // Takes bins (band count), samples, fmin, fmax as context.
-    static void resolveModeEnums(FFTMode &mode, FFTWindow &window, int bands,
+    static void resolveModeEnums(Mode &mode, Window &window, int bands,
                                  int samples, float fmin, float fmax);
 
-    bool operator==(const FFT_Args &other) const ;
-    bool operator!=(const FFT_Args &other) const { return !(*this == other); }
+    bool operator==(const Args &other) const ;
+    bool operator!=(const Args &other) const { return !(*this == other); }
 };
 
 class FFT {
@@ -161,21 +164,24 @@ class FFT {
     FFT(const FFT &) = default;
     FFT &operator=(const FFT &) = default;
 
-    void run(const span<const i16> &sample, FFTBins *out,
-             const FFT_Args &args = FFT_Args());
+    void run(const span<const i16> &sample, Bins *out,
+             const Args &args = Args());
 
     void clear();
     fl::size size() const;
 
     // FFT kernels are expensive to create, so they are stored in a global
     // LRU cache shared by all AudioContext instances. This sets the max
-    // number of cached FFTImpl entries (default 10).
+    // number of cached Impl entries (default 10).
     static void setFFTCacheSize(fl::size size);
 
   private:
-    struct FFTImplCache;
+    struct ImplCache;
     // Global LRU kernel cache — shared across all FFT / AudioContext instances.
-    static FFTImplCache &globalCache();
+    static ImplCache &globalCache();
 };
 
+} // namespace fft
+
+} // namespace audio
 }; // namespace fl

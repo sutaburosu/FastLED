@@ -21,7 +21,7 @@ template <typename Key, typename Value, fl::size N> class unsorted_map_fixed;  /
 template <typename Key, typename Value, typename Less, typename Allocator> class flat_map;  // Forward declaration from fl/stl/flat_map.h
 template <typename T, fl::size Extent> class span;  // Forward declaration from fl/stl/span.h (no default arg to avoid redefinition)  // IWYU pragma: keep
 template <typename T1, typename T2> struct pair;  // Forward declaration from fl/stl/pair.h
-class FFTBins;  // Forward declaration from fl/audio/fft/fft.h
+namespace audio { namespace fft { class Bins; } }  // Forward declaration
 template <fl::u32 N> class bitset_fixed;
 class bitset_dynamic;  // IWYU pragma: keep
 template <fl::u32 N> class bitset_inlined;  // IWYU pragma: keep
@@ -54,8 +54,8 @@ class sstream {
     sstream &operator<<(const Tile2x2_u8 &subpixel);
     sstream &operator<<(const Tile2x2_u8_wrap &tile);  // New overload for wrapped tiles
 
-    // FFTBins support - implemented in strstream.cpp.hpp
-    sstream &operator<<(const FFTBins &bins);
+    // Bins support - implemented in strstream.cpp.hpp
+    sstream &operator<<(const audio::fft::Bins &bins);
 
     // vec2<T> support - format as (x,y)
     template<typename T>
@@ -426,7 +426,7 @@ class sstream_noop {
     sstream_noop &operator<<(const sstream &) { return *this; }
     sstream_noop &operator<<(const Tile2x2_u8 &) { return *this; }
     sstream_noop &operator<<(const Tile2x2_u8_wrap &) { return *this; }
-    sstream_noop &operator<<(const FFTBins &) { return *this; }
+    sstream_noop &operator<<(const audio::fft::Bins &) { return *this; }
 
     // Vector support
     template<typename T>

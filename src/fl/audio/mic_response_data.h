@@ -14,6 +14,7 @@
 #include "fastled_progmem.h"
 
 namespace fl {
+namespace audio {
 
 // ============================================================================
 // PROGMEM float reader — portable across AVR and non-AVR platforms
@@ -326,4 +327,5 @@ inline void computePinkNoiseGains(const float* binCenters, int numBins, float* o
     }
 }
 
+} // namespace audio
 } // namespace fl

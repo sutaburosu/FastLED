@@ -32,11 +32,11 @@ int string::strcmp(const string& a, const string& b) {
     return fl::strcmp(a.c_str(), b.c_str());
 }
 
-string &string::append(const FFTBins &str) {
-    append("\n FFTImpl Bins:\n  ");
+string &string::append(const audio::fft::Bins &str) {
+    append("\n Impl Bins:\n  ");
     append(str.raw());
     append("\n");
-    append(" FFTImpl Bins DB:\n  ");
+    append(" Impl Bins DB:\n  ");
     append(str.db());
     append("\n");
     return *this;

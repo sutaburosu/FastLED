@@ -5,6 +5,7 @@
 #include "fl/stl/math.h"
 
 namespace fl {
+namespace audio {
 
 AutoGain::AutoGain() {
     configure(AutoGainConfig{});
@@ -73,7 +74,7 @@ void AutoGain::reset() {
     mStats.samplesProcessed = 0;
 }
 
-AudioSample AutoGain::process(const AudioSample& sample) {
+Sample AutoGain::process(const Sample& sample) {
     // Pass through if disabled
     if (!mConfig.enabled) {
         return sample;
@@ -81,7 +82,7 @@ AudioSample AutoGain::process(const AudioSample& sample) {
 
     // Return empty sample if input is invalid or empty
     if (!sample.isValid() || sample.size() == 0) {
-        return AudioSample();  // Return invalid sample
+        return Sample();  // Return invalid sample
     }
 
     // Calculate input RMS
@@ -137,10 +138,10 @@ AudioSample AutoGain::process(const AudioSample& sample) {
     mStats.samplesProcessed += sample.size();
     mStats.integrator = mIntegrator;
 
-    // Create new AudioSample from amplified PCM
-    AudioSampleImplPtr impl = fl::make_shared<AudioSampleImpl>();
+    // Create new Sample from amplified PCM
+    SampleImplPtr impl = fl::make_shared<SampleImpl>();
     impl->assign(mOutputBuffer.begin(), mOutputBuffer.end(), sample.timestamp());
-    return AudioSample(impl);
+    return Sample(impl);
 }
 
 float AutoGain::computeTargetGain() {
@@ -210,4 +211,5 @@ void AutoGain::applyGain(const vector<i16>& input, float gain, vector<i16>& outp
     }
 }
 
+} // namespace audio
 } // namespace fl

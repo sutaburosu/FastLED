@@ -95,14 +95,14 @@ struct BenchResult {
     }
 };
 
-static BenchResult benchMode(FFTMode mode, const char *name,
+static BenchResult benchMode(Mode mode, const char *name,
                              fl::span<const fl::i16> signal, int bands,
                              float fmin, float fmax, int sampleRate,
                              int iterations) {
-    FFT_Args args(static_cast<int>(signal.size()), bands, fmin, fmax,
+    Args args(static_cast<int>(signal.size()), bands, fmin, fmax,
                   sampleRate, mode);
-    FFTImpl fft(args);
-    FFTBins out(bands);
+    Impl fft(args);
+    Bins out(bands);
 
     for (int i = 0; i < 10; i++) {
         fft.run(signal, &out);
@@ -157,13 +157,13 @@ struct AccuracyResult {
     float leakage;
 };
 
-static void runAccuracyTest(FFTMode mode, const char *modeName,
+static void runAccuracyTest(Mode mode, const char *modeName,
                             int samples, int bands, float fmin, float fmax,
                             int sampleRate, const float *testFreqs, int nFreqs,
                             fl::vector<AccuracyResult> &results) {
-    FFT_Args args(samples, bands, fmin, fmax, sampleRate, mode);
-    FFTImpl fft(args);
-    FFTBins out(bands);
+    Args args(samples, bands, fmin, fmax, sampleRate, mode);
+    Impl fft(args);
+    Bins out(bands);
     fl::vector<fl::i16> signal;
 
     for (int f = 0; f < nFreqs; f++) {
@@ -189,15 +189,15 @@ static void runAccuracyTest(FFTMode mode, const char *modeName,
 }
 
 struct ModeEntry {
-    FFTMode mode;
+    Mode mode;
     const char *label;
 };
 
 static const ModeEntry MODES[] = {
-    {FFTMode::LOG_REBIN, "LOG_REB"},
-    {FFTMode::CQ_NAIVE, "NAIVE"},
-    {FFTMode::CQ_HYBRID, "HYBRID"},
-    {FFTMode::CQ_OCTAVE, "OCTAVE"},
+    {Mode::LOG_REBIN, "LOG_REB"},
+    {Mode::CQ_NAIVE, "NAIVE"},
+    {Mode::CQ_HYBRID, "HYBRID"},
+    {Mode::CQ_OCTAVE, "OCTAVE"},
 };
 static const int NUM_MODES = 4;
 
@@ -264,8 +264,8 @@ int runBenchmark(bool jsonOutput) {
     const int SAMPLES = 512;
     const int SAMPLE_RATE = 44100;
     const int ITERATIONS = 2000;
-    const float fmin = FFT_Args::DefaultMinFrequency();
-    const float fmax = FFT_Args::DefaultMaxFrequency();
+    const float fmin = Args::DefaultMinFrequency();
+    const float fmax = Args::DefaultMaxFrequency();
     const int bands = 64;
 
     fl::vector<fl::i16> sines;
@@ -279,7 +279,7 @@ int runBenchmark(bool jsonOutput) {
         fl::span<const fl::i16> signals[] = {sines, white, pink};
         const char *names[] = {"sines", "white", "pink"};
         for (int s = 0; s < 3; s++) {
-            BenchResult r = benchMode(FFTMode::CQ_HYBRID, names[s], signals[s],
+            BenchResult r = benchMode(Mode::CQ_HYBRID, names[s], signals[s],
                                       bands, fmin, fmax, SAMPLE_RATE,
                                       ITERATIONS);
             ProfileResultBuilder::print_result(
@@ -315,13 +315,13 @@ int runBenchmark(bool jsonOutput) {
 
         // Head-to-head: LOG_REBIN vs HYBRID in same timing window
         {
-            FFT_Args argsLR(SAMPLES, bands, fmin, fmax, SAMPLE_RATE,
-                            FFTMode::LOG_REBIN);
-            FFT_Args argsHY(SAMPLES, bands, fmin, fmax, SAMPLE_RATE,
-                            FFTMode::CQ_HYBRID);
-            FFTImpl fftLR(argsLR);
-            FFTImpl fftHY(argsHY);
-            FFTBins outLR(bands), outHY(bands);
+            Args argsLR(SAMPLES, bands, fmin, fmax, SAMPLE_RATE,
+                            Mode::LOG_REBIN);
+            Args argsHY(SAMPLES, bands, fmin, fmax, SAMPLE_RATE,
+                            Mode::CQ_HYBRID);
+            Impl fftLR(argsLR);
+            Impl fftHY(argsHY);
+            Bins outLR(bands), outHY(bands);
 
             // Warm-up
             for (int i = 0; i < 20; i++) {

@@ -5,6 +5,7 @@
 #include "fl/stl/vector.h"
 
 namespace fl {
+namespace audio {
 
 /// AGC preset selection — derived from WLED Sound Reactive's proven approach.
 /// Normal/Vivid/Lazy control how quickly the AGC adapts to source-level changes.
@@ -77,8 +78,8 @@ struct AutoGainConfig {
 /// config.preset = AGCPreset_Vivid;  // Faster response
 /// agc.configure(config);
 ///
-/// AudioSample sample = ...;
-/// AudioSample amplified = agc.process(sample);
+/// Sample sample = ...;
+/// Sample amplified = agc.process(sample);
 /// @endcode
 class AutoGain {
 public:
@@ -92,7 +93,7 @@ public:
     /// Process audio sample with automatic gain adjustment
     /// @param sample Input audio sample
     /// @return Gain-adjusted audio sample
-    AudioSample process(const AudioSample& sample);
+    Sample process(const Sample& sample);
 
     /// Reset internal state
     void reset();
@@ -159,4 +160,5 @@ private:
     vector<i16> mOutputBuffer;
 };
 
+} // namespace audio
 } // namespace fl

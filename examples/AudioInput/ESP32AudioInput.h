@@ -34,9 +34,9 @@
 // Platform name for serial output
 #define PLATFORM_NAME "ESP32 I2S Audio FastLED Example"
 
-// Create platform-specific AudioConfig
-inline fl::AudioConfig createAudioConfig() {
-    return fl::AudioConfig::CreateInmp441(I2S_WS_PIN, I2S_SD_PIN, I2S_CLK_PIN, I2S_CHANNEL);
+// Create platform-specific Config
+inline fl::audio::Config createAudioConfig() {
+    return fl::audio::Config::CreateInmp441(I2S_WS_PIN, I2S_SD_PIN, I2S_CLK_PIN, I2S_CHANNEL);
 }
 
 // Print platform-specific setup information

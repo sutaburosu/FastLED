@@ -46,6 +46,7 @@
 #include "fl/stl/shared_ptr.h"
 
 namespace fl {
+namespace audio {
 
 // Forward declarations
 class ISynthOscillator;
@@ -157,4 +158,5 @@ public:
     virtual ISynthEnginePtr getEngine() const = 0;
 };
 
+} // namespace audio
 } // namespace fl

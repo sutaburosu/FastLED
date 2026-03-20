@@ -96,7 +96,7 @@ public:
 
     // Decode the next audio frame from the stream
     // Returns true if a frame was decoded, false if end of stream or error
-    bool decodeNextFrame(AudioSample* outSample);
+    bool decodeNextFrame(audio::Sample* outSample);
 
     // Get current stream position in bytes
     fl::size getPosition() const;
@@ -148,8 +148,8 @@ public:
     static VorbisInfo parseVorbisInfo(fl::span<const fl::u8> data,
                                        fl::string* errorMessage = nullptr);
 
-    // Decode entire file to AudioSample vector (convenience function)
-    static fl::vector<AudioSample> decodeAll(fl::span<const fl::u8> data,
+    // Decode entire file to audio::Sample vector (convenience function)
+    static fl::vector<audio::Sample> decodeAll(fl::span<const fl::u8> data,
                                               fl::string* errorMessage = nullptr);
 };
 

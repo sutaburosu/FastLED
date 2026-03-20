@@ -33,11 +33,11 @@ namespace fl {
 
 #if FASTLED_ESP32_I2S_SUPPORTED
 
-class I2S_Audio : public IAudioInput {
+class I2S_Audio : public audio::IInput {
   public:
     using I2SContext = esp_i2s::I2SContext;
 
-    I2S_Audio(const AudioConfigI2S &config)
+    I2S_Audio(const audio::ConfigI2S &config)
         : mStdConfig(config), mHasError(false), mTotalSamplesRead(0) {}
 
     ~I2S_Audio() {}
@@ -69,10 +69,10 @@ class I2S_Audio : public IAudioInput {
         return mHasError;
     }
 
-    AudioSample read() override {
+    audio::Sample read() override {
         if (!mI2sContextOpt) {
             FL_WARN("I2S channel is not initialized");
-            return AudioSample();  // Invalid sample
+            return audio::Sample();  // Invalid sample
         }
 
         esp_i2s::audio_sample_t buf[I2S_AUDIO_BUFFER_LEN];
@@ -81,7 +81,7 @@ class I2S_Audio : public IAudioInput {
         int samples_read = static_cast<int>(samples_read_size);
         
         if (samples_read <= 0) {
-            return AudioSample();  // Invalid sample
+            return audio::Sample();  // Invalid sample
         }
         
         // Calculate timestamp based on sample rate and total samples read
@@ -92,12 +92,12 @@ class I2S_Audio : public IAudioInput {
 
         fl::span<const i16> data(buf, samples_read);
         
-        // Create AudioSample with pooled AudioSampleImpl (pooling handled internally)
-        return AudioSample(data, timestamp_ms);
+        // Create audio::Sample with pooled audio::SampleImpl (pooling handled internally)
+        return audio::Sample(data, timestamp_ms);
     }
 
   private:
-    AudioConfigI2S mStdConfig;
+    audio::ConfigI2S mStdConfig;
     bool mHasError;
     fl::string mErrorMessage;
     fl::optional<I2SContext> mI2sContextOpt;

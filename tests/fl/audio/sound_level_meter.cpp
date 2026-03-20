@@ -1,4 +1,4 @@
-// Unit tests for SoundLevelMeter
+// Unit tests for audio::SoundLevelMeter
 // ok standalone
 
 #include "test.h"
@@ -10,16 +10,16 @@ FL_TEST_FILE(FL_FILEPATH) {
 
 using namespace fl;
 
-FL_TEST_CASE("SoundLevelMeter - silence gives very negative dBFS") {
-    SoundLevelMeter meter;
+FL_TEST_CASE("audio::SoundLevelMeter - silence gives very negative dBFS") {
+    audio::SoundLevelMeter meter;
     fl::vector<fl::i16> silence(512, 0);
     meter.processBlock(silence.data(), silence.size());
     // Silence should give -infinity or very negative dBFS
     FL_CHECK_LT(meter.getDBFS(), -60.0);
 }
 
-FL_TEST_CASE("SoundLevelMeter - full scale signal near 0 dBFS") {
-    SoundLevelMeter meter;
+FL_TEST_CASE("audio::SoundLevelMeter - full scale signal near 0 dBFS") {
+    audio::SoundLevelMeter meter;
     // Full-scale square wave (alternating ±32767)
     fl::vector<fl::i16> fullScale;
     fullScale.reserve(512);
@@ -31,8 +31,8 @@ FL_TEST_CASE("SoundLevelMeter - full scale signal near 0 dBFS") {
     FL_CHECK_GT(meter.getDBFS(), -3.0);
 }
 
-FL_TEST_CASE("SoundLevelMeter - SPL calibration") {
-    SoundLevelMeter meter(33.0, 0.0);
+FL_TEST_CASE("audio::SoundLevelMeter - SPL calibration") {
+    audio::SoundLevelMeter meter(33.0, 0.0);
     // Process a quiet signal to establish floor
     fl::vector<fl::i16> quiet(512, 100);
     meter.processBlock(quiet.data(), quiet.size());
@@ -41,8 +41,8 @@ FL_TEST_CASE("SoundLevelMeter - SPL calibration") {
     FL_CHECK_GT(spl, 0.0);
 }
 
-FL_TEST_CASE("SoundLevelMeter - resetFloor clears state") {
-    SoundLevelMeter meter;
+FL_TEST_CASE("audio::SoundLevelMeter - resetFloor clears state") {
+    audio::SoundLevelMeter meter;
     fl::vector<fl::i16> signal;
     signal.reserve(512);
     for (int i = 0; i < 512; ++i) {
@@ -58,8 +58,8 @@ FL_TEST_CASE("SoundLevelMeter - resetFloor clears state") {
     FL_CHECK_GT(spl2, 0.0);
 }
 
-FL_TEST_CASE("SoundLevelMeter - setFloorSPL changes calibration") {
-    SoundLevelMeter meter(33.0, 0.0);
+FL_TEST_CASE("audio::SoundLevelMeter - setFloorSPL changes calibration") {
+    audio::SoundLevelMeter meter(33.0, 0.0);
     fl::vector<fl::i16> signal;
     signal.reserve(512);
     for (int i = 0; i < 512; ++i) {
@@ -74,8 +74,8 @@ FL_TEST_CASE("SoundLevelMeter - setFloorSPL changes calibration") {
     FL_CHECK_NE(spl1, spl2);
 }
 
-FL_TEST_CASE("SoundLevelMeter - span overload works") {
-    SoundLevelMeter meter;
+FL_TEST_CASE("audio::SoundLevelMeter - span overload works") {
+    audio::SoundLevelMeter meter;
     fl::vector<fl::i16> signal;
     signal.reserve(512);
     for (int i = 0; i < 512; ++i) {

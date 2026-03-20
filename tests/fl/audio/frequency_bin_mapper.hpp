@@ -13,8 +13,8 @@ namespace {
 
 } // anonymous namespace
 
-FL_TEST_CASE("FrequencyBinMapper - Default 16-bin configuration") {
-    FrequencyBinMapper mapper;
+FL_TEST_CASE("audio::FrequencyBinMapper - Default 16-bin configuration") {
+    audio::FrequencyBinMapper mapper;
 
     // Verify default configuration
     const auto& config = mapper.getConfig();
@@ -29,27 +29,27 @@ FL_TEST_CASE("FrequencyBinMapper - Default 16-bin configuration") {
     FL_CHECK_EQ(mapper.getNumBins(), 16u);
 }
 
-FL_TEST_CASE("FrequencyBinMapper - 32-bin configuration") {
-    FrequencyBinMapperConfig config;
-    config.mode = FrequencyBinMode::Bins32;
+FL_TEST_CASE("audio::FrequencyBinMapper - 32-bin configuration") {
+    audio::FrequencyBinMapperConfig config;
+    config.mode = audio::FrequencyBinMode::Bins32;
     config.sampleRate = 44100;
     config.fftBinCount = 512;
 
-    FrequencyBinMapper mapper(config);
+    audio::FrequencyBinMapper mapper(config);
 
     FL_CHECK_EQ(mapper.getNumBins(), 32u);
     FL_CHECK_EQ(mapper.getConfig().sampleRate, 44100u);
     FL_CHECK_EQ(mapper.getConfig().fftBinCount, 512u);
 }
 
-FL_TEST_CASE("FrequencyBinMapper - Logarithmic bin boundaries") {
-    FrequencyBinMapperConfig config;
-    config.mode = FrequencyBinMode::Bins16;
+FL_TEST_CASE("audio::FrequencyBinMapper - Logarithmic bin boundaries") {
+    audio::FrequencyBinMapperConfig config;
+    config.mode = audio::FrequencyBinMode::Bins16;
     config.minFrequency = 20.0f;
     config.maxFrequency = 16000.0f;
     config.useLogSpacing = true;
 
-    FrequencyBinMapper mapper(config);
+    audio::FrequencyBinMapper mapper(config);
 
     // Verify logarithmic spacing (each bin should have roughly constant log width)
     float prevLogWidth = 0.0f;
@@ -81,14 +81,14 @@ FL_TEST_CASE("FrequencyBinMapper - Logarithmic bin boundaries") {
     FL_CHECK_GT(lastRange.maxFreq, 5000.0f);
 }
 
-FL_TEST_CASE("FrequencyBinMapper - Linear bin boundaries") {
-    FrequencyBinMapperConfig config;
-    config.mode = FrequencyBinMode::Bins16;
+FL_TEST_CASE("audio::FrequencyBinMapper - Linear bin boundaries") {
+    audio::FrequencyBinMapperConfig config;
+    config.mode = audio::FrequencyBinMode::Bins16;
     config.minFrequency = 0.0f;
     config.maxFrequency = 8000.0f;
     config.useLogSpacing = false;
 
-    FrequencyBinMapper mapper(config);
+    audio::FrequencyBinMapper mapper(config);
 
     // Verify linear spacing (all bins should have equal width)
     float expectedWidth = 8000.0f / 16.0f;  // 500 Hz per bin
@@ -103,15 +103,15 @@ FL_TEST_CASE("FrequencyBinMapper - Linear bin boundaries") {
     }
 }
 
-FL_TEST_CASE("FrequencyBinMapper - Bass frequency mapping") {
-    FrequencyBinMapperConfig config;
-    config.mode = FrequencyBinMode::Bins16;
+FL_TEST_CASE("audio::FrequencyBinMapper - Bass frequency mapping") {
+    audio::FrequencyBinMapperConfig config;
+    config.mode = audio::FrequencyBinMode::Bins16;
     config.sampleRate = 22050;
     config.fftBinCount = 256;
 
-    FrequencyBinMapper mapper(config);
+    audio::FrequencyBinMapper mapper(config);
 
-    // Generate FFT with bass peak (50 Hz)
+    // Generate audio::fft::FFT with bass peak (50 Hz)
     vector<float> fftBins = generateSyntheticFFT(256, 50.0f, 22050);
 
     // Map to frequency bins
@@ -128,15 +128,15 @@ FL_TEST_CASE("FrequencyBinMapper - Bass frequency mapping") {
     FL_CHECK(bassEnergy > 0.0f);
 }
 
-FL_TEST_CASE("FrequencyBinMapper - Mid frequency mapping") {
-    FrequencyBinMapperConfig config;
-    config.mode = FrequencyBinMode::Bins16;
+FL_TEST_CASE("audio::FrequencyBinMapper - Mid frequency mapping") {
+    audio::FrequencyBinMapperConfig config;
+    config.mode = audio::FrequencyBinMode::Bins16;
     config.sampleRate = 22050;
     config.fftBinCount = 256;
 
-    FrequencyBinMapper mapper(config);
+    audio::FrequencyBinMapper mapper(config);
 
-    // Generate FFT with mid peak (500 Hz)
+    // Generate audio::fft::FFT with mid peak (500 Hz)
     vector<float> fftBins = generateSyntheticFFT(256, 500.0f, 22050);
 
     // Map to frequency bins
@@ -153,15 +153,15 @@ FL_TEST_CASE("FrequencyBinMapper - Mid frequency mapping") {
     FL_CHECK(midEnergy > 0.0f);
 }
 
-FL_TEST_CASE("FrequencyBinMapper - Treble frequency mapping") {
-    FrequencyBinMapperConfig config;
-    config.mode = FrequencyBinMode::Bins16;
+FL_TEST_CASE("audio::FrequencyBinMapper - Treble frequency mapping") {
+    audio::FrequencyBinMapperConfig config;
+    config.mode = audio::FrequencyBinMode::Bins16;
     config.sampleRate = 22050;
     config.fftBinCount = 256;
 
-    FrequencyBinMapper mapper(config);
+    audio::FrequencyBinMapper mapper(config);
 
-    // Generate FFT with treble peak (8000 Hz)
+    // Generate audio::fft::FFT with treble peak (8000 Hz)
     vector<float> fftBins = generateSyntheticFFT(256, 8000.0f, 22050);
 
     // Map to frequency bins
@@ -178,10 +178,10 @@ FL_TEST_CASE("FrequencyBinMapper - Treble frequency mapping") {
     FL_CHECK(trebleEnergy > 0.0f);
 }
 
-FL_TEST_CASE("FrequencyBinMapper - Uniform FFT bins") {
-    FrequencyBinMapper mapper;
+FL_TEST_CASE("audio::FrequencyBinMapper - Uniform audio::fft::FFT bins") {
+    audio::FrequencyBinMapper mapper;
 
-    // Generate uniform FFT (white noise spectrum)
+    // Generate uniform audio::fft::FFT (white noise spectrum)
     vector<float> fftBins(256, 100.0f);  // All bins equal magnitude
 
     // Map to frequency bins
@@ -209,10 +209,10 @@ FL_TEST_CASE("FrequencyBinMapper - Uniform FFT bins") {
     }
 }
 
-FL_TEST_CASE("FrequencyBinMapper - Empty FFT bins") {
-    FrequencyBinMapper mapper;
+FL_TEST_CASE("audio::FrequencyBinMapper - Empty audio::fft::FFT bins") {
+    audio::FrequencyBinMapper mapper;
 
-    // Generate empty FFT (silence)
+    // Generate empty audio::fft::FFT (silence)
     vector<float> fftBins(256, 0.0f);
 
     // Map to frequency bins
@@ -230,8 +230,8 @@ FL_TEST_CASE("FrequencyBinMapper - Empty FFT bins") {
     FL_CHECK_EQ(mapper.getTrebleEnergy(freqBins), 0.0f);
 }
 
-FL_TEST_CASE("FrequencyBinMapper - Statistics tracking") {
-    FrequencyBinMapper mapper;
+FL_TEST_CASE("audio::FrequencyBinMapper - Statistics tracking") {
+    audio::FrequencyBinMapper mapper;
 
     // Initial stats should be zero
     const auto& stats1 = mapper.getStats();
@@ -259,17 +259,17 @@ FL_TEST_CASE("FrequencyBinMapper - Statistics tracking") {
     FL_CHECK_EQ(stats3.binMappingCount, 2u);
 }
 
-FL_TEST_CASE("FrequencyBinMapper - 32-bin mode mapping") {
-    FrequencyBinMapperConfig config;
-    config.mode = FrequencyBinMode::Bins32;
+FL_TEST_CASE("audio::FrequencyBinMapper - 32-bin mode mapping") {
+    audio::FrequencyBinMapperConfig config;
+    config.mode = audio::FrequencyBinMode::Bins32;
     config.sampleRate = 22050;
-    config.fftBinCount = 512;  // Larger FFT for higher resolution
+    config.fftBinCount = 512;  // Larger audio::fft::FFT for higher resolution
 
-    FrequencyBinMapper mapper(config);
+    audio::FrequencyBinMapper mapper(config);
 
     FL_CHECK_EQ(mapper.getNumBins(), 32u);
 
-    // Generate FFT
+    // Generate audio::fft::FFT
     vector<float> fftBins(512, 10.0f);
 
     // Map to 32 bins
@@ -282,15 +282,15 @@ FL_TEST_CASE("FrequencyBinMapper - 32-bin mode mapping") {
     }
 }
 
-FL_TEST_CASE("FrequencyBinMapper - Reconfiguration") {
-    FrequencyBinMapper mapper;
+FL_TEST_CASE("audio::FrequencyBinMapper - Reconfiguration") {
+    audio::FrequencyBinMapper mapper;
 
     // Start with 16 bins
     FL_CHECK_EQ(mapper.getNumBins(), 16u);
 
     // Reconfigure to 32 bins
-    FrequencyBinMapperConfig config;
-    config.mode = FrequencyBinMode::Bins32;
+    audio::FrequencyBinMapperConfig config;
+    config.mode = audio::FrequencyBinMode::Bins32;
     config.fftBinCount = 512;
     mapper.configure(config);
 
@@ -302,8 +302,8 @@ FL_TEST_CASE("FrequencyBinMapper - Reconfiguration") {
     FL_CHECK_EQ(stats.binMappingCount, 0u);
 }
 
-FL_TEST_CASE("FrequencyBinMapper - Bin boundary coverage") {
-    FrequencyBinMapper mapper;
+FL_TEST_CASE("audio::FrequencyBinMapper - Bin boundary coverage") {
+    audio::FrequencyBinMapper mapper;
 
     // Verify all 16 bins have valid frequency ranges
     for (size i = 0; i < 16; ++i) {
@@ -328,14 +328,14 @@ FL_TEST_CASE("FrequencyBinMapper - Bin boundary coverage") {
 }
 
 // FBM-1: Log Spacing - First Bin Narrower Than Last (Hz width)
-FL_TEST_CASE("FrequencyBinMapper - log spacing first bin narrower than last") {
-    FrequencyBinMapperConfig config;
-    config.mode = FrequencyBinMode::Bins16;
+FL_TEST_CASE("audio::FrequencyBinMapper - log spacing first bin narrower than last") {
+    audio::FrequencyBinMapperConfig config;
+    config.mode = audio::FrequencyBinMode::Bins16;
     config.minFrequency = 20.0f;
     config.maxFrequency = 16000.0f;
     config.useLogSpacing = true;
 
-    FrequencyBinMapper mapper(config);
+    audio::FrequencyBinMapper mapper(config);
 
     auto firstRange = mapper.getBinFrequencyRange(0);
     auto lastRange = mapper.getBinFrequencyRange(15);
@@ -353,16 +353,16 @@ FL_TEST_CASE("FrequencyBinMapper - log spacing first bin narrower than last") {
 }
 
 // FBM-2: Single-Bin Peak Isolation
-FL_TEST_CASE("FrequencyBinMapper - single bin peak isolation") {
-    FrequencyBinMapperConfig config;
-    config.mode = FrequencyBinMode::Bins16;
+FL_TEST_CASE("audio::FrequencyBinMapper - single bin peak isolation") {
+    audio::FrequencyBinMapperConfig config;
+    config.mode = audio::FrequencyBinMode::Bins16;
     config.sampleRate = 22050;
     config.fftBinCount = 256;
     config.useLogSpacing = true;
 
-    FrequencyBinMapper mapper(config);
+    audio::FrequencyBinMapper mapper(config);
 
-    // Place energy in exactly one FFT bin (bin 50 of 256)
+    // Place energy in exactly one audio::fft::FFT bin (bin 50 of 256)
     vector<float> fftBins(256, 0.0f);
     fftBins[50] = 1000.0f;
 
@@ -375,37 +375,37 @@ FL_TEST_CASE("FrequencyBinMapper - single bin peak isolation") {
         if (freqBins[i] > 0.0f) nonZeroCount++;
     }
 
-    // Single FFT bin should map to exactly one output bin
+    // Single audio::fft::FFT bin should map to exactly one output bin
     FL_CHECK_EQ(nonZeroCount, 1);
 }
 
 // FBM-3: Sample Rate Change Affects Mapping
-FL_TEST_CASE("FrequencyBinMapper - sample rate affects mapping") {
-    // Same FFT data, different sample rates -> different output
+FL_TEST_CASE("audio::FrequencyBinMapper - sample rate affects mapping") {
+    // Same audio::fft::FFT data, different sample rates -> different output
     vector<float> fftBins(256, 0.0f);
     fftBins[50] = 1000.0f; // Energy at bin 50
 
     // Config 1: sampleRate = 22050
-    FrequencyBinMapperConfig config1;
-    config1.mode = FrequencyBinMode::Bins16;
+    audio::FrequencyBinMapperConfig config1;
+    config1.mode = audio::FrequencyBinMode::Bins16;
     config1.sampleRate = 22050;
     config1.fftBinCount = 256;
-    FrequencyBinMapper mapper1(config1);
+    audio::FrequencyBinMapper mapper1(config1);
 
     vector<float> output1(16, 0.0f);
     mapper1.mapBins(fftBins, output1);
 
     // Config 2: sampleRate = 44100 (doubled)
-    FrequencyBinMapperConfig config2;
-    config2.mode = FrequencyBinMode::Bins16;
+    audio::FrequencyBinMapperConfig config2;
+    config2.mode = audio::FrequencyBinMode::Bins16;
     config2.sampleRate = 44100;
     config2.fftBinCount = 256;
-    FrequencyBinMapper mapper2(config2);
+    audio::FrequencyBinMapper mapper2(config2);
 
     vector<float> output2(16, 0.0f);
     mapper2.mapBins(fftBins, output2);
 
-    // Same FFT bin 50 corresponds to different frequencies at different sample rates:
+    // Same audio::fft::FFT bin 50 corresponds to different frequencies at different sample rates:
     // At 22050 Hz: bin 50 = 50 * 22050 / 512 = ~2153 Hz
     // At 44100 Hz: bin 50 = 50 * 44100 / 512 = ~4307 Hz
     // These should map to different output bins
@@ -420,8 +420,8 @@ FL_TEST_CASE("FrequencyBinMapper - sample rate affects mapping") {
 }
 
 // TEMPORARILY COMMENTED OUT FOR DEBUGGING
-// FL_TEST_CASE("FrequencyBinMapper - Small output buffer handling") {
-//     FrequencyBinMapper mapper;
+// FL_TEST_CASE("audio::FrequencyBinMapper - Small output buffer handling") {
+//     audio::FrequencyBinMapper mapper;
 //
 //     vector<float> fftBins(256, 100.0f);
 //
@@ -435,8 +435,8 @@ FL_TEST_CASE("FrequencyBinMapper - sample rate affects mapping") {
 //     FL_CHECK_EQ(smallBuffer.size(), 8u);  // Buffer size unchanged
 // }
 
-FL_TEST_CASE("FrequencyBinMapper - Bass/mid/treble separation") {
-    FrequencyBinMapper mapper;
+FL_TEST_CASE("audio::FrequencyBinMapper - Bass/mid/treble separation") {
+    audio::FrequencyBinMapper mapper;
 
     // Verify bass range (bins 0-1)
     auto bassRange0 = mapper.getBinFrequencyRange(0);
@@ -460,34 +460,34 @@ FL_TEST_CASE("FrequencyBinMapper - Bass/mid/treble separation") {
     FL_CHECK(trebleRange15.maxFreq <= 16000.0f);  // Treble should be 2000-16000 Hz
 }
 
-// Integration tests with SpectralEqualizer
+// Integration tests with audio::SpectralEqualizer
 
-FL_TEST_CASE("FrequencyBinMapper + SpectralEqualizer - Basic integration") {
-    // Setup FFT
-    FFT fft;
-    FFT_Args fftArgs(512, 16, 20.0f, 16000.0f, 22050);
+FL_TEST_CASE("audio::FrequencyBinMapper + audio::SpectralEqualizer - Basic integration") {
+    // Setup audio::fft::FFT
+    audio::fft::FFT fft;
+    audio::fft::Args fftArgs(512, 16, 20.0f, 16000.0f, 22050);
 
     // Setup frequency bin mapper
-    FrequencyBinMapperConfig mapperConfig;
-    mapperConfig.mode = FrequencyBinMode::Bins16;
+    audio::FrequencyBinMapperConfig mapperConfig;
+    mapperConfig.mode = audio::FrequencyBinMode::Bins16;
     mapperConfig.sampleRate = 22050;
     mapperConfig.fftBinCount = 256;  // 512 / 2
-    FrequencyBinMapper mapper(mapperConfig);
+    audio::FrequencyBinMapper mapper(mapperConfig);
 
     // Setup spectral equalizer (flat curve)
-    SpectralEqualizerConfig eqConfig;
-    eqConfig.curve = EqualizationCurve::Flat;
+    audio::SpectralEqualizerConfig eqConfig;
+    eqConfig.curve = audio::EqualizationCurve::Flat;
     eqConfig.numBands = 16;
-    SpectralEqualizer eq(eqConfig);
+    audio::SpectralEqualizer eq(eqConfig);
 
     // Generate test audio (1kHz tone)
     vector<i16> audioSamples = generateTone(512, 1000.0f, 22050.0f, 10000);
 
-    // Run FFT
-    FFTBins fftBins(16);
+    // Run audio::fft::FFT
+    audio::fft::Bins fftBins(16);
     fft.run(audioSamples, &fftBins, fftArgs);
 
-    // Map FFT bins to frequency channels
+    // Map audio::fft::FFT bins to frequency channels
     vector<float> frequencyBins(16);
     mapper.mapBins(fftBins.raw(), frequencyBins);
 
@@ -511,23 +511,23 @@ FL_TEST_CASE("FrequencyBinMapper + SpectralEqualizer - Basic integration") {
     }
 }
 
-FL_TEST_CASE("FrequencyBinMapper + SpectralEqualizer - A-weighting integration") {
-    // Setup FFT
-    FFT fft;
-    FFT_Args fftArgs(512, 16, 20.0f, 16000.0f, 22050);
+FL_TEST_CASE("audio::FrequencyBinMapper + audio::SpectralEqualizer - A-weighting integration") {
+    // Setup audio::fft::FFT
+    audio::fft::FFT fft;
+    audio::fft::Args fftArgs(512, 16, 20.0f, 16000.0f, 22050);
 
     // Setup frequency bin mapper
-    FrequencyBinMapperConfig mapperConfig;
-    mapperConfig.mode = FrequencyBinMode::Bins16;
+    audio::FrequencyBinMapperConfig mapperConfig;
+    mapperConfig.mode = audio::FrequencyBinMode::Bins16;
     mapperConfig.sampleRate = 22050;
     mapperConfig.fftBinCount = 256;
-    FrequencyBinMapper mapper(mapperConfig);
+    audio::FrequencyBinMapper mapper(mapperConfig);
 
     // Setup spectral equalizer with A-weighting
-    SpectralEqualizerConfig eqConfig;
-    eqConfig.curve = EqualizationCurve::AWeighting;
+    audio::SpectralEqualizerConfig eqConfig;
+    eqConfig.curve = audio::EqualizationCurve::AWeighting;
     eqConfig.numBands = 16;
-    SpectralEqualizer eq(eqConfig);
+    audio::SpectralEqualizer eq(eqConfig);
 
     // Generate test audio with multiple tones
     vector<i16> audioSamples(512, 0);
@@ -544,8 +544,8 @@ FL_TEST_CASE("FrequencyBinMapper + SpectralEqualizer - A-weighting integration")
         audioSamples[i] = static_cast<i16>(mixed);
     }
 
-    // Run FFT
-    FFTBins fftBins(16);
+    // Run audio::fft::FFT
+    audio::fft::Bins fftBins(16);
     fft.run(audioSamples, &fftBins, fftArgs);
 
     // Map to frequency bins
@@ -572,29 +572,29 @@ FL_TEST_CASE("FrequencyBinMapper + SpectralEqualizer - A-weighting integration")
     }
 }
 
-FL_TEST_CASE("FrequencyBinMapper + SpectralEqualizer - 32-bin mode") {
-    // Setup FFT for higher resolution
-    FFT fft;
-    FFT_Args fftArgs(1024, 32, 20.0f, 16000.0f, 44100);
+FL_TEST_CASE("audio::FrequencyBinMapper + audio::SpectralEqualizer - 32-bin mode") {
+    // Setup audio::fft::FFT for higher resolution
+    audio::fft::FFT fft;
+    audio::fft::Args fftArgs(1024, 32, 20.0f, 16000.0f, 44100);
 
     // Setup frequency bin mapper (32 bins)
-    FrequencyBinMapperConfig mapperConfig;
-    mapperConfig.mode = FrequencyBinMode::Bins32;
+    audio::FrequencyBinMapperConfig mapperConfig;
+    mapperConfig.mode = audio::FrequencyBinMode::Bins32;
     mapperConfig.sampleRate = 44100;
     mapperConfig.fftBinCount = 512;  // 1024 / 2
-    FrequencyBinMapper mapper(mapperConfig);
+    audio::FrequencyBinMapper mapper(mapperConfig);
 
     // Setup spectral equalizer (32 bins with A-weighting)
-    SpectralEqualizerConfig eqConfig;
-    eqConfig.curve = EqualizationCurve::AWeighting;
+    audio::SpectralEqualizerConfig eqConfig;
+    eqConfig.curve = audio::EqualizationCurve::AWeighting;
     eqConfig.numBands = 32;
-    SpectralEqualizer eq(eqConfig);
+    audio::SpectralEqualizer eq(eqConfig);
 
     // Generate test audio
     vector<i16> audioSamples = generateTone(1024, 2000.0f, 44100.0f, 15000);
 
-    // Run FFT
-    FFTBins fftBins(32);
+    // Run audio::fft::FFT
+    audio::fft::Bins fftBins(32);
     fft.run(audioSamples, &fftBins, fftArgs);
 
     // Map to frequency bins
@@ -618,27 +618,27 @@ FL_TEST_CASE("FrequencyBinMapper + SpectralEqualizer - 32-bin mode") {
     FL_CHECK(allProcessed);
 }
 
-FL_TEST_CASE("FrequencyBinMapper + SpectralEqualizer - Complete pipeline") {
+FL_TEST_CASE("audio::FrequencyBinMapper + audio::SpectralEqualizer - Complete pipeline") {
     // This test demonstrates a complete Phase 2 processing pipeline:
-    // Audio -> FFT -> FrequencyBinMapper -> SpectralEqualizer -> Analysis
+    // Audio -> audio::fft::FFT -> audio::FrequencyBinMapper -> audio::SpectralEqualizer -> Analysis
 
     // Setup components
-    FFT fft;
-    FFT_Args fftArgs(512, 16, 20.0f, 16000.0f, 22050);
+    audio::fft::FFT fft;
+    audio::fft::Args fftArgs(512, 16, 20.0f, 16000.0f, 22050);
 
-    FrequencyBinMapperConfig mapperConfig;
-    mapperConfig.mode = FrequencyBinMode::Bins16;
+    audio::FrequencyBinMapperConfig mapperConfig;
+    mapperConfig.mode = audio::FrequencyBinMode::Bins16;
     mapperConfig.sampleRate = 22050;
     mapperConfig.fftBinCount = 256;
     mapperConfig.useLogSpacing = true;  // Logarithmic spacing
-    FrequencyBinMapper mapper(mapperConfig);
+    audio::FrequencyBinMapper mapper(mapperConfig);
 
-    SpectralEqualizerConfig eqConfig;
-    eqConfig.curve = EqualizationCurve::AWeighting;
+    audio::SpectralEqualizerConfig eqConfig;
+    eqConfig.curve = audio::EqualizationCurve::AWeighting;
     eqConfig.numBands = 16;
     eqConfig.applyMakeupGain = true;
     eqConfig.makeupGainTarget = 0.8f;
-    SpectralEqualizer eq(eqConfig);
+    audio::SpectralEqualizer eq(eqConfig);
 
     // Generate rich audio content (multi-band)
     vector<i16> audioSamples(512, 0);
@@ -650,8 +650,8 @@ FL_TEST_CASE("FrequencyBinMapper + SpectralEqualizer - Complete pipeline") {
         audioSamples[i] = static_cast<i16>(sample);
     }
 
-    // Stage 1: FFT
-    FFTBins fftBins(16);
+    // Stage 1: audio::fft::FFT
+    audio::fft::Bins fftBins(16);
     fft.run(audioSamples, &fftBins, fftArgs);
 
     // Stage 2: Frequency bin mapping

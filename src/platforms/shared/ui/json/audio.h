@@ -28,12 +28,12 @@ class JsonAudioImpl {
   public:
     JsonAudioImpl(const fl::string &name);
     JsonAudioImpl(const fl::string &name, const fl::url& url);
-    JsonAudioImpl(const fl::string &name, const fl::AudioConfig& config);
+    JsonAudioImpl(const fl::string &name, const fl::audio::Config& config);
     ~JsonAudioImpl();
     JsonAudioImpl &Group(const fl::string &name);
 
     const fl::string &name() const;
-    AudioSample next();
+    audio::Sample next();
     bool hasNext();
     fl::string groupName() const;
     
@@ -41,7 +41,7 @@ class JsonAudioImpl {
     void setGroup(const fl::string &groupName);
 
     // Stub: no underlying audio input for JSON UI
-    fl::shared_ptr<IAudioInput> audioInput() { return nullptr; }
+    fl::shared_ptr<audio::IInput> audioInput() { return nullptr; }
 
     int id() const {
       return mInternal->id();

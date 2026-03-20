@@ -111,7 +111,7 @@ public:
     void end();
     bool isReady() const { return mDecoder.isOpen(); }
     bool hasError(fl::string* msg = nullptr) const;
-    bool decodeNextFrame(AudioSample* outSample);
+    bool decodeNextFrame(audio::Sample* outSample);
     fl::size getPosition() const { return mPosition; }
     void reset();
     VorbisInfo getInfo() const { return mDecoder.getInfo(); }
@@ -187,7 +187,7 @@ bool VorbisDecoderImpl::hasError(fl::string* msg) const {
     return false;
 }
 
-bool VorbisDecoderImpl::decodeNextFrame(AudioSample* outSample) {
+bool VorbisDecoderImpl::decodeNextFrame(audio::Sample* outSample) {
     if (!mDecoder.isOpen() || mEndOfStream) {
         return false;
     }
@@ -224,9 +224,9 @@ bool VorbisDecoderImpl::decodeNextFrame(AudioSample* outSample) {
             fl::i32 right = mPcmBuffer[i * 2 + 1];
             mono.push_back(static_cast<fl::i16>((left + right) / 2));
         }
-        *outSample = AudioSample(mono);
+        *outSample = audio::Sample(mono);
     } else {
-        *outSample = AudioSample(fl::span<const fl::i16>(mPcmBuffer.data(), samplesDecoded));
+        *outSample = audio::Sample(fl::span<const fl::i16>(mPcmBuffer.data(), samplesDecoded));
     }
 
     return true;
@@ -248,7 +248,7 @@ bool VorbisDecoder::begin(fl::filebuf_ptr stream) { return mImpl->begin(stream);
 void VorbisDecoder::end() { mImpl->end(); }
 bool VorbisDecoder::isReady() const { return mImpl->isReady(); }
 bool VorbisDecoder::hasError(fl::string* msg) const { return mImpl->hasError(msg); }
-bool VorbisDecoder::decodeNextFrame(AudioSample* outSample) { return mImpl->decodeNextFrame(outSample); }
+bool VorbisDecoder::decodeNextFrame(audio::Sample* outSample) { return mImpl->decodeNextFrame(outSample); }
 fl::size VorbisDecoder::getPosition() const { return mImpl->getPosition(); }
 void VorbisDecoder::reset() { mImpl->reset(); }
 VorbisInfo VorbisDecoder::getInfo() const { return mImpl->getInfo(); }
@@ -272,8 +272,8 @@ VorbisInfo Vorbis::parseVorbisInfo(fl::span<const fl::u8> data, fl::string* erro
     return decoder.getInfo();
 }
 
-fl::vector<AudioSample> Vorbis::decodeAll(fl::span<const fl::u8> data, fl::string* errorMessage) {
-    fl::vector<AudioSample> samples;
+fl::vector<audio::Sample> Vorbis::decodeAll(fl::span<const fl::u8> data, fl::string* errorMessage) {
+    fl::vector<audio::Sample> samples;
 
     StbVorbisDecoder decoder;
     if (!decoder.openMemory(data)) {
@@ -302,9 +302,9 @@ fl::vector<AudioSample> Vorbis::decodeAll(fl::span<const fl::u8> data, fl::strin
                 fl::i32 right = buffer[i * 2 + 1];
                 mono.push_back(static_cast<fl::i16>((left + right) / 2));
             }
-            samples.push_back(AudioSample(mono));
+            samples.push_back(audio::Sample(mono));
         } else {
-            samples.push_back(AudioSample(fl::span<const fl::i16>(buffer.data(), samplesDecoded)));
+            samples.push_back(audio::Sample(fl::span<const fl::i16>(buffer.data(), samplesDecoded)));
         }
     }
 

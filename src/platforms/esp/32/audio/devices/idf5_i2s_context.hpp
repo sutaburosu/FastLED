@@ -29,8 +29,8 @@ struct I2SContext {
     i2s_std_config_t std_config;
 };
 
-I2SContext make_context(const AudioConfigI2S &config) {
-    auto detect_slot_mode = [](AudioChannel value) -> i2s_slot_mode_t {
+I2SContext make_context(const audio::ConfigI2S &config) {
+    auto detect_slot_mode = [](audio::Channel value) -> i2s_slot_mode_t {
         switch (value) {
         case Left:
             return I2S_SLOT_MODE_MONO;
@@ -43,7 +43,7 @@ I2SContext make_context(const AudioConfigI2S &config) {
         return I2S_SLOT_MODE_STEREO;
     };
 
-    auto detect_slot_mask = [](AudioChannel value) -> i2s_std_slot_mask_t {
+    auto detect_slot_mask = [](audio::Channel value) -> i2s_std_slot_mask_t {
         switch (value) {
         case Left:
             return I2S_STD_SLOT_LEFT;
@@ -117,7 +117,7 @@ I2SContext make_context(const AudioConfigI2S &config) {
     return out;
 }
 
-I2SContext i2s_audio_init(const AudioConfigI2S &config) {
+I2SContext i2s_audio_init(const audio::ConfigI2S &config) {
     I2SContext ctx = make_context(config);
 
     // Create I2S channel configuration with DMA buffer settings

@@ -21,7 +21,7 @@
 using fl::i16;
 
 // Global audio source (initialized in setup)
-fl::shared_ptr<fl::IAudioInput> audioSource;
+fl::shared_ptr<fl::audio::IInput> audioSource;
 
 void setup() {
     Serial.begin(115200);
@@ -37,12 +37,12 @@ void setup() {
     delay(PLATFORM_INIT_DELAY_MS);
 
     // Create platform-specific audio configuration
-    fl::AudioConfig config = createAudioConfig();
+    fl::audio::Config config = createAudioConfig();
 
     // Initialize I2S Audio
     Serial.println("Initializing audio input...");
     fl::string errorMsg;
-    audioSource = fl::IAudioInput::create(config, &errorMsg);
+    audioSource = fl::audio::IInput::create(config, &errorMsg);
 
     if (!audioSource) {
         Serial.print("Failed to create audio source: ");
@@ -89,7 +89,7 @@ void loop() {
     }
 
     // Read audio data
-    fl::AudioSample sample = audioSource->read();
+    fl::audio::Sample sample = audioSource->read();
 
     if (sample.isValid()) {
         EVERY_N_MILLIS(100) {

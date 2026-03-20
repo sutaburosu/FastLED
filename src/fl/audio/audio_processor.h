@@ -6,7 +6,7 @@
 #include "fl/audio/audio.h"  // IWYU pragma: keep
 #include "fl/audio/audio_context.h"  // IWYU pragma: keep
 #include "fl/audio/audio_detector.h"  // IWYU pragma: keep
-#include "fl/audio/detectors/vibe.h"  // IWYU pragma: keep - VibeLevels used in public callback API
+#include "fl/audio/detector/vibe.h"  // IWYU pragma: keep - detector::VibeLevels used in public callback API
 #include "fl/audio/mic_profiles.h"
 #include "fl/audio/signal_conditioner.h"
 #include "fl/audio/noise_floor_tracker.h"
@@ -18,22 +18,25 @@
 class CFastLED;
 
 namespace fl {
+namespace audio {
 
-class IAudioInput;
+class IInput;
 
-class BeatDetector;
+// Forward declarations of detector types (defined in fl::audio::detector)
+namespace detector {
+class Beat;
 class FrequencyBands;
 class EnergyAnalyzer;
 class TempoAnalyzer;
-class TransientDetector;
-class SilenceDetector;
+class Transient;
+class Silence;
 class DynamicsAnalyzer;
-class PitchDetector;
-class NoteDetector;
-class DownbeatDetector;
-class BackbeatDetector;
-class VocalDetector;
-class PercussionDetector;
+class Pitch;
+class Note;
+class Downbeat;
+class Backbeat;
+class Vocal;
+class Percussion;
 enum class PercussionType : u8;
 class ChordDetector;
 struct Chord;
@@ -48,15 +51,16 @@ struct Drop;
 class EqualizerDetector;
 struct Equalizer;
 struct EqualizerConfig;
-class VibeDetector;
+class Vibe;
+} // namespace detector
 
-class AudioProcessor {
+class Processor {
 public:
-    AudioProcessor();
-    ~AudioProcessor();
+    Processor();
+    ~Processor();
 
     // ----- Main Update -----
-    void update(const AudioSample& sample);
+    void update(const Sample& sample);
 
     // ----- Beat Detection Events -----
     void onBeat(function<void()> callback);
@@ -76,8 +80,8 @@ public:
     void onTreble(function<void(float level)> callback);
     void onFrequencyBands(function<void(float bass, float mid, float treble)> callback);
 
-    // ----- Equalizer Events (WLED-style, all 0.0-1.0) -----
-    void onEqualizer(function<void(const Equalizer&)> callback);
+    // ----- detector::Equalizer Events (WLED-style, all 0.0-1.0) -----
+    void onEqualizer(function<void(const detector::Equalizer&)> callback);
 
     // ----- Energy/Level Events -----
     void onEnergy(function<void(float rms)> callback);
@@ -129,42 +133,42 @@ public:
     void onVocalConfidence(function<void(float confidence)> callback);
 
     // ----- Percussion Detection Events -----
-    void onPercussion(function<void(PercussionType type)> callback);
+    void onPercussion(function<void(detector::PercussionType type)> callback);
     void onKick(function<void()> callback);
     void onSnare(function<void()> callback);
     void onHiHat(function<void()> callback);
     void onTom(function<void()> callback);
 
-    // ----- Chord Detection Events -----
-    void onChord(function<void(const Chord& chord)> callback);
-    void onChordChange(function<void(const Chord& chord)> callback);
+    // ----- detector::Chord Detection Events -----
+    void onChord(function<void(const detector::Chord& chord)> callback);
+    void onChordChange(function<void(const detector::Chord& chord)> callback);
     void onChordEnd(function<void()> callback);
 
-    // ----- Key Detection Events -----
-    void onKey(function<void(const Key& key)> callback);
-    void onKeyChange(function<void(const Key& key)> callback);
+    // ----- detector::Key Detection Events -----
+    void onKey(function<void(const detector::Key& key)> callback);
+    void onKeyChange(function<void(const detector::Key& key)> callback);
     void onKeyEnd(function<void()> callback);
 
-    // ----- Mood Analysis Events -----
-    void onMood(function<void(const Mood& mood)> callback);
-    void onMoodChange(function<void(const Mood& mood)> callback);
+    // ----- detector::Mood Analysis Events -----
+    void onMood(function<void(const detector::Mood& mood)> callback);
+    void onMoodChange(function<void(const detector::Mood& mood)> callback);
     void onValenceArousal(function<void(float valence, float arousal)> callback);
 
-    // ----- Buildup Detection Events -----
+    // ----- detector::Buildup Detection Events -----
     void onBuildupStart(function<void()> callback);
     void onBuildupProgress(function<void(float progress)> callback);
     void onBuildupPeak(function<void()> callback);
     void onBuildupEnd(function<void()> callback);
-    void onBuildup(function<void(const Buildup&)> callback);
+    void onBuildup(function<void(const detector::Buildup&)> callback);
 
-    // ----- Drop Detection Events -----
+    // ----- detector::Drop Detection Events -----
     void onDrop(function<void()> callback);
-    void onDropEvent(function<void(const Drop&)> callback);
+    void onDropEvent(function<void(const detector::Drop&)> callback);
     void onDropImpact(function<void(float impact)> callback);
 
     // ----- Vibe Audio-Reactive Events -----
     // Comprehensive self-normalizing levels, spikes, and raw values
-    void onVibeLevels(function<void(const VibeLevels&)> callback);
+    void onVibeLevels(function<void(const detector::VibeLevels&)> callback);
     void onVibeBassSpike(function<void()> callback);
     void onVibeMidSpike(function<void()> callback);
     void onVibeTrebSpike(function<void()> callback);
@@ -212,11 +216,11 @@ public:
     float getTempoConfidence();
     float getTempoBPM();
 
-    // Buildup Detection
+    // detector::Buildup Detection
     float getBuildupIntensity();
     float getBuildupProgress();
 
-    // Drop Detection
+    // detector::Drop Detection
     float getDropImpact();
 
     // Percussion Detection
@@ -239,13 +243,13 @@ public:
     float getBackbeatConfidence();
     float getBackbeatStrength();
 
-    // Chord Detection
+    // detector::Chord Detection
     float getChordConfidence();
 
-    // Key Detection
+    // detector::Key Detection
     float getKeyConfidence();
 
-    // Mood Analysis
+    // detector::Mood Analysis
     float getMoodArousal();
     float getMoodValence();  // -1.0 to 1.0
 
@@ -262,7 +266,7 @@ public:
     bool isVibeMidSpike();    // True when mid > mid_att
     bool isVibeTrebSpike();   // True when treb > treb_att
 
-    // Equalizer (WLED-style, all 0.0-1.0)
+    // detector::Equalizer (WLED-style, all 0.0-1.0)
     float getEqBass();
     float getEqMid();
     float getEqTreble();
@@ -273,20 +277,20 @@ public:
     float getEqAutoGain();
     bool getEqIsSilence();
 
-    // Equalizer P2: peak detection and dB mapping
+    // detector::Equalizer P2: peak detection and dB mapping
     float getEqDominantFreqHz();     ///< Frequency of strongest bin (Hz)
     float getEqDominantMagnitude();  ///< Magnitude of strongest bin (0.0-1.0)
     float getEqVolumeDb();           ///< Volume in approximate dB
 
     // ----- Configuration -----
     /// Set the sample rate for all frequency-based calculations.
-    /// This propagates to AudioContext and all detectors.
+    /// This propagates to Context and all detector.
     /// Default is 44100 Hz. Common values: 16000, 22050, 44100.
     void setSampleRate(int sampleRate);
     int getSampleRate() const;
 
     // ----- Gain Control -----
-    /// Set a simple digital gain multiplier applied to each sample before detectors.
+    /// Set a simple digital gain multiplier applied to each sample before detector.
     /// Default: 1.0 (no change). Values > 1.0 amplify, < 1.0 attenuate.
     void setGain(float gain);
     float getGain() const;
@@ -300,7 +304,7 @@ public:
     // ----- Microphone Profile -----
     /// Set microphone correction profile for frequency response compensation.
     /// This is a property of the physical microphone hardware.
-    /// Propagates to EqualizerDetector as pink noise correction gains.
+    /// Propagates to detector::EqualizerDetector as pink noise correction gains.
     void setMicProfile(MicProfile profile);
     MicProfile getMicProfile() const { return mMicProfile; }
 
@@ -309,15 +313,15 @@ public:
     /// Configure noise floor tracker
     void configureNoiseFloorTracker(const NoiseFloorTrackerConfig& config);
     /// Configure equalizer detector tuning parameters
-    void configureEqualizer(const EqualizerConfig& config);
+    void configureEqualizer(const detector::EqualizerConfig& config);
 
     /// Access signal conditioning statistics
     const SignalConditioner::Stats& getSignalConditionerStats() const { return mSignalConditioner.getStats(); }
     const NoiseFloorTracker::Stats& getNoiseFloorStats() const { return mNoiseFloorTracker.getStats(); }
 
     // ----- State Access -----
-    shared_ptr<AudioContext> getContext() const { return mContext; }
-    const AudioSample& getSample() const;
+    shared_ptr<Context> getContext() const { return mContext; }
+    const Sample& getSample() const;
     void reset();
 
 private:
@@ -328,65 +332,66 @@ private:
     MicProfile mMicProfile = MicProfile::None;
     SignalConditioner mSignalConditioner;
     NoiseFloorTracker mNoiseFloorTracker;
-    shared_ptr<AudioContext> mContext;
+    shared_ptr<Context> mContext;
 
     // Active detector registry for two-phase update loop
-    vector<shared_ptr<AudioDetector>> mActiveDetectors;
-    void registerDetector(shared_ptr<AudioDetector> detector);
+    vector<shared_ptr<Detector>> mActiveDetectors;
+    void registerDetector(shared_ptr<Detector> detector);
 
     // Lazy detector storage
-    shared_ptr<BeatDetector> mBeatDetector;
-    shared_ptr<FrequencyBands> mFrequencyBands;
-    shared_ptr<EnergyAnalyzer> mEnergyAnalyzer;
-    shared_ptr<TempoAnalyzer> mTempoAnalyzer;
-    shared_ptr<TransientDetector> mTransientDetector;
-    shared_ptr<SilenceDetector> mSilenceDetector;
-    shared_ptr<DynamicsAnalyzer> mDynamicsAnalyzer;
-    shared_ptr<PitchDetector> mPitchDetector;
-    shared_ptr<NoteDetector> mNoteDetector;
-    shared_ptr<DownbeatDetector> mDownbeatDetector;
-    shared_ptr<BackbeatDetector> mBackbeatDetector;
-    shared_ptr<VocalDetector> mVocalDetector;
-    shared_ptr<PercussionDetector> mPercussionDetector;
-    shared_ptr<ChordDetector> mChordDetector;
-    shared_ptr<KeyDetector> mKeyDetector;
-    shared_ptr<MoodAnalyzer> mMoodAnalyzer;
-    shared_ptr<BuildupDetector> mBuildupDetector;
-    shared_ptr<DropDetector> mDropDetector;
-    shared_ptr<EqualizerDetector> mEqualizerDetector;
-    shared_ptr<VibeDetector> mVibeDetector;
+    shared_ptr<detector::Beat> mBeatDetector;
+    shared_ptr<detector::FrequencyBands> mFrequencyBands;
+    shared_ptr<detector::EnergyAnalyzer> mEnergyAnalyzer;
+    shared_ptr<detector::TempoAnalyzer> mTempoAnalyzer;
+    shared_ptr<detector::Transient> mTransientDetector;
+    shared_ptr<detector::Silence> mSilenceDetector;
+    shared_ptr<detector::DynamicsAnalyzer> mDynamicsAnalyzer;
+    shared_ptr<detector::Pitch> mPitchDetector;
+    shared_ptr<detector::Note> mNoteDetector;
+    shared_ptr<detector::Downbeat> mDownbeatDetector;
+    shared_ptr<detector::Backbeat> mBackbeatDetector;
+    shared_ptr<detector::Vocal> mVocalDetector;
+    shared_ptr<detector::Percussion> mPercussionDetector;
+    shared_ptr<detector::ChordDetector> mChordDetector;
+    shared_ptr<detector::KeyDetector> mKeyDetector;
+    shared_ptr<detector::MoodAnalyzer> mMoodAnalyzer;
+    shared_ptr<detector::BuildupDetector> mBuildupDetector;
+    shared_ptr<detector::DropDetector> mDropDetector;
+    shared_ptr<detector::EqualizerDetector> mEqualizerDetector;
+    shared_ptr<detector::Vibe> mVibeDetector;
 
     // Lazy creation helpers
-    shared_ptr<BeatDetector> getBeatDetector();
-    shared_ptr<FrequencyBands> getFrequencyBands();
-    shared_ptr<EnergyAnalyzer> getEnergyAnalyzer();
-    shared_ptr<TempoAnalyzer> getTempoAnalyzer();
-    shared_ptr<TransientDetector> getTransientDetector();
-    shared_ptr<SilenceDetector> getSilenceDetector();
-    shared_ptr<DynamicsAnalyzer> getDynamicsAnalyzer();
-    shared_ptr<PitchDetector> getPitchDetector();
-    shared_ptr<NoteDetector> getNoteDetector();
-    shared_ptr<DownbeatDetector> getDownbeatDetector();
-    shared_ptr<BackbeatDetector> getBackbeatDetector();
-    shared_ptr<VocalDetector> getVocalDetector();
-    shared_ptr<PercussionDetector> getPercussionDetector();
-    shared_ptr<ChordDetector> getChordDetector();
-    shared_ptr<KeyDetector> getKeyDetector();
-    shared_ptr<MoodAnalyzer> getMoodAnalyzer();
-    shared_ptr<BuildupDetector> getBuildupDetector();
-    shared_ptr<DropDetector> getDropDetector();
-    shared_ptr<EqualizerDetector> getEqualizerDetector();
-    shared_ptr<VibeDetector> getVibeDetector();
+    shared_ptr<detector::Beat> getBeatDetector();
+    shared_ptr<detector::FrequencyBands> getFrequencyBands();
+    shared_ptr<detector::EnergyAnalyzer> getEnergyAnalyzer();
+    shared_ptr<detector::TempoAnalyzer> getTempoAnalyzer();
+    shared_ptr<detector::Transient> getTransientDetector();
+    shared_ptr<detector::Silence> getSilenceDetector();
+    shared_ptr<detector::DynamicsAnalyzer> getDynamicsAnalyzer();
+    shared_ptr<detector::Pitch> getPitchDetector();
+    shared_ptr<detector::Note> getNoteDetector();
+    shared_ptr<detector::Downbeat> getDownbeatDetector();
+    shared_ptr<detector::Backbeat> getBackbeatDetector();
+    shared_ptr<detector::Vocal> getVocalDetector();
+    shared_ptr<detector::Percussion> getPercussionDetector();
+    shared_ptr<detector::ChordDetector> getChordDetector();
+    shared_ptr<detector::KeyDetector> getKeyDetector();
+    shared_ptr<detector::MoodAnalyzer> getMoodAnalyzer();
+    shared_ptr<detector::BuildupDetector> getBuildupDetector();
+    shared_ptr<detector::DropDetector> getDropDetector();
+    shared_ptr<detector::EqualizerDetector> getEqualizerDetector();
+    shared_ptr<detector::Vibe> getVibeDetector();
 
-    // Auto-pump support (used by CFastLED::add(AudioConfig))
+    // Auto-pump support (used by CFastLED::add(Config))
     fl::task mAutoTask;
-    fl::shared_ptr<IAudioInput> mAudioInput;
+    fl::shared_ptr<IInput> mAudioInput;
 
-    static fl::shared_ptr<AudioProcessor> createWithAutoInput(
-        fl::shared_ptr<IAudioInput> input);
+    static fl::shared_ptr<Processor> createWithAutoInput(
+        fl::shared_ptr<IInput> input);
     friend class ::CFastLED;
 };
 
+} // namespace audio
 } // namespace fl
 
 #endif // FL_AUDIO_AUDIO_PROCESSOR_H

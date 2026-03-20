@@ -1,5 +1,5 @@
 /// @file frequency_bin_mapper.cpp.hpp
-/// @brief Implementation of FrequencyBinMapper for FFT bin to frequency channel mapping
+/// @brief Implementation of FrequencyBinMapper for fft::FFT bin to frequency channel mapping
 
 #include "fl/audio/frequency_bin_mapper.h"
 #include "fl/stl/math.h"
@@ -7,6 +7,7 @@
 #include "fl/stl/compiler_control.h"
 
 namespace fl {
+namespace audio {
 
 FrequencyBinMapper::FrequencyBinMapper() {
     configure(FrequencyBinMapperConfig());
@@ -27,7 +28,7 @@ void FrequencyBinMapper::configure(const FrequencyBinMapperConfig& config) {
     // Calculate frequency boundaries for output bins
     calculateBinBoundaries();
 
-    // Calculate FFT bin to frequency bin mappings
+    // Calculate fft::FFT bin to frequency bin mappings
     calculateBinMappings();
 }
 
@@ -76,20 +77,20 @@ void FrequencyBinMapper::calculateBinMappings() {
     mBinMappings.clear();
     mBinMappings.reserve(numBins);
 
-    // For each output frequency bin, determine which FFT bins contribute
+    // For each output frequency bin, determine which fft::FFT bins contribute
     for (size i = 0; i < numBins; ++i) {
         float minFreq = mBinFrequencies[i];
         float maxFreq = mBinFrequencies[i + 1];
 
-        // Convert frequencies to FFT bin indices
+        // Convert frequencies to fft::FFT bin indices
         float startBinFloat = frequencyToFFTBin(minFreq);
         float endBinFloat = frequencyToFFTBin(maxFreq);
 
-        // Round to integer FFT bin indices
+        // Round to integer fft::FFT bin indices
         u32 startBin = static_cast<u32>(startBinFloat);
         u32 endBin = static_cast<u32>(fl::ceilf(endBinFloat));
 
-        // Clamp to valid FFT bin range
+        // Clamp to valid fft::FFT bin range
         if (startBin >= mConfig.fftBinCount) {
             startBin = mConfig.fftBinCount - 1;
         }
@@ -97,7 +98,7 @@ void FrequencyBinMapper::calculateBinMappings() {
             endBin = mConfig.fftBinCount;
         }
 
-        // Ensure at least one FFT bin per output bin
+        // Ensure at least one fft::FFT bin per output bin
         if (endBin <= startBin) {
             endBin = startBin + 1;
         }
@@ -110,8 +111,8 @@ void FrequencyBinMapper::calculateBinMappings() {
 }
 
 float FrequencyBinMapper::frequencyToFFTBin(float frequency) const {
-    // FFT bin index = (frequency / sampleRate) * fftSize
-    // fftSize = fftBinCount * 2 (FFT produces fftSize/2 bins)
+    // fft::FFT bin index = (frequency / sampleRate) * fftSize
+    // fftSize = fftBinCount * 2 (fft::FFT produces fftSize/2 bins)
     const float fftSize = static_cast<float>(mConfig.fftBinCount) * 2.0f;
     return (frequency / static_cast<float>(mConfig.sampleRate)) * fftSize;
 }
@@ -130,14 +131,14 @@ void FrequencyBinMapper::mapBins(span<const float> fftBins, span<float> outputBi
     float maxMag = 0.0f;
     u32 fftBinsUsed = 0;
 
-    // Map FFT bins to frequency bins by averaging
+    // Map fft::FFT bins to frequency bins by averaging
     for (size i = 0; i < numBins; ++i) {
         const BinMapping& mapping = mBinMappings[i];
 
         float sum = 0.0f;
         u32 count = 0;
 
-        // Average FFT bins in this range
+        // Average fft::FFT bins in this range
         for (u32 j = mapping.startBin; j < mapping.endBin && j < fftBins.size(); ++j) {
             sum += fftBins[j];
             ++count;
@@ -213,4 +214,5 @@ FrequencyBinMapper::FrequencyRange FrequencyBinMapper::getBinFrequencyRange(size
     return range;
 }
 
+} // namespace audio
 } // namespace fl

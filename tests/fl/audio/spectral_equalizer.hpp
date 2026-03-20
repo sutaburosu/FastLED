@@ -22,12 +22,12 @@ static float calculateAverage(span<const float> bins) {
 
 } // anonymous namespace
 
-FL_TEST_CASE("SpectralEqualizer - Default flat configuration") {
-    SpectralEqualizer eq;
+FL_TEST_CASE("audio::SpectralEqualizer - Default flat configuration") {
+    audio::SpectralEqualizer eq;
 
     // Verify default configuration
     const auto& config = eq.getConfig();
-    FL_CHECK(config.curve == EqualizationCurve::Flat);
+    FL_CHECK(config.curve == audio::EqualizationCurve::Flat);
     FL_CHECK_EQ(config.numBands, 16u);
     FL_CHECK_FALSE(config.applyMakeupGain);
     FL_CHECK_FALSE(config.enableCompression);
@@ -40,12 +40,12 @@ FL_TEST_CASE("SpectralEqualizer - Default flat configuration") {
     }
 }
 
-FL_TEST_CASE("SpectralEqualizer - Flat curve (no EQ)") {
-    SpectralEqualizerConfig config;
-    config.curve = EqualizationCurve::Flat;
+FL_TEST_CASE("audio::SpectralEqualizer - Flat curve (no EQ)") {
+    audio::SpectralEqualizerConfig config;
+    config.curve = audio::EqualizationCurve::Flat;
     config.numBands = 16;
 
-    SpectralEqualizer eq(config);
+    audio::SpectralEqualizer eq(config);
 
     // Generate input bins
     vector<float> inputBins = generateUniformBins(16, 100.0f);
@@ -67,12 +67,12 @@ FL_TEST_CASE("SpectralEqualizer - Flat curve (no EQ)") {
     FL_CHECK_EQ(stats.lastMakeupGain, 1.0f);
 }
 
-FL_TEST_CASE("SpectralEqualizer - A-weighting curve (16 bands)") {
-    SpectralEqualizerConfig config;
-    config.curve = EqualizationCurve::AWeighting;
+FL_TEST_CASE("audio::SpectralEqualizer - A-weighting curve (16 bands)") {
+    audio::SpectralEqualizerConfig config;
+    config.curve = audio::EqualizationCurve::AWeighting;
     config.numBands = 16;
 
-    SpectralEqualizer eq(config);
+    audio::SpectralEqualizer eq(config);
 
     // Verify A-weighting gains are not flat
     auto gains = eq.getGains();
@@ -101,12 +101,12 @@ FL_TEST_CASE("SpectralEqualizer - A-weighting curve (16 bands)") {
     FL_CHECK(outputMid > inputMid);
 }
 
-FL_TEST_CASE("SpectralEqualizer - A-weighting curve (32 bands)") {
-    SpectralEqualizerConfig config;
-    config.curve = EqualizationCurve::AWeighting;
+FL_TEST_CASE("audio::SpectralEqualizer - A-weighting curve (32 bands)") {
+    audio::SpectralEqualizerConfig config;
+    config.curve = audio::EqualizationCurve::AWeighting;
     config.numBands = 32;
 
-    SpectralEqualizer eq(config);
+    audio::SpectralEqualizer eq(config);
 
     // Verify gains array is correct size
     auto gains = eq.getGains();
@@ -123,8 +123,8 @@ FL_TEST_CASE("SpectralEqualizer - A-weighting curve (32 bands)") {
     FL_CHECK(hasVariation);
 }
 
-FL_TEST_CASE("SpectralEqualizer - Custom gains") {
-    SpectralEqualizer eq;
+FL_TEST_CASE("audio::SpectralEqualizer - Custom gains") {
+    audio::SpectralEqualizer eq;
 
     // Set custom gains (boost first half, attenuate second half)
     vector<float> customGains(16);
@@ -138,7 +138,7 @@ FL_TEST_CASE("SpectralEqualizer - Custom gains") {
     eq.setCustomGains(customGains);
 
     // Verify curve switched to Custom
-    FL_CHECK(eq.getConfig().curve == EqualizationCurve::Custom);
+    FL_CHECK(eq.getConfig().curve == audio::EqualizationCurve::Custom);
 
     // Verify gains were applied
     auto gains = eq.getGains();
@@ -163,9 +163,9 @@ FL_TEST_CASE("SpectralEqualizer - Custom gains") {
     }
 }
 
-FL_TEST_CASE("SpectralEqualizer - Makeup gain") {
-    SpectralEqualizerConfig config;
-    config.curve = EqualizationCurve::Custom;
+FL_TEST_CASE("audio::SpectralEqualizer - Makeup gain") {
+    audio::SpectralEqualizerConfig config;
+    config.curve = audio::EqualizationCurve::Custom;
     config.numBands = 16;
     config.applyMakeupGain = true;
     config.makeupGainTarget = 1.0f;  // Maintain original level
@@ -173,7 +173,7 @@ FL_TEST_CASE("SpectralEqualizer - Makeup gain") {
     // Set custom gains that reduce overall level
     config.customGains.resize(16, 0.5f);  // Reduce all bins by 50%
 
-    SpectralEqualizer eq(config);
+    audio::SpectralEqualizer eq(config);
 
     // Apply to uniform input
     vector<float> inputBins = generateUniformBins(16, 100.0f);
@@ -191,14 +191,14 @@ FL_TEST_CASE("SpectralEqualizer - Makeup gain") {
     FL_CHECK(stats.lastMakeupGain > 1.0f);  // Gain was increased
 }
 
-FL_TEST_CASE("SpectralEqualizer - Compression") {
-    SpectralEqualizerConfig config;
+FL_TEST_CASE("audio::SpectralEqualizer - Compression") {
+    audio::SpectralEqualizerConfig config;
     config.numBands = 16;
     config.enableCompression = true;
     config.compressionThreshold = 50.0f;
     config.compressionRatio = 2.0f;
 
-    SpectralEqualizer eq(config);
+    audio::SpectralEqualizer eq(config);
 
     // Generate input with both quiet and loud signals
     vector<float> inputBins(16);
@@ -224,8 +224,8 @@ FL_TEST_CASE("SpectralEqualizer - Compression") {
     }
 }
 
-FL_TEST_CASE("SpectralEqualizer - Statistics tracking") {
-    SpectralEqualizer eq;
+FL_TEST_CASE("audio::SpectralEqualizer - Statistics tracking") {
+    audio::SpectralEqualizer eq;
 
     // Initial stats should be zero
     const auto& stats1 = eq.getStats();
@@ -251,8 +251,8 @@ FL_TEST_CASE("SpectralEqualizer - Statistics tracking") {
     FL_CHECK_EQ(stats3.applicationsCount, 0u);
 }
 
-FL_TEST_CASE("SpectralEqualizer - Zero input handling") {
-    SpectralEqualizer eq;
+FL_TEST_CASE("audio::SpectralEqualizer - Zero input handling") {
+    audio::SpectralEqualizer eq;
 
     // All zeros
     vector<float> inputBins(16, 0.0f);
@@ -272,19 +272,19 @@ FL_TEST_CASE("SpectralEqualizer - Zero input handling") {
     FL_CHECK_EQ(stats.avgInputLevel, 0.0f);
 }
 
-FL_TEST_CASE("SpectralEqualizer - Reconfiguration") {
-    SpectralEqualizer eq;
+FL_TEST_CASE("audio::SpectralEqualizer - Reconfiguration") {
+    audio::SpectralEqualizer eq;
 
     // Start with flat curve
-    FL_CHECK(eq.getConfig().curve == EqualizationCurve::Flat);
+    FL_CHECK(eq.getConfig().curve == audio::EqualizationCurve::Flat);
 
     // Reconfigure to A-weighting
-    SpectralEqualizerConfig config;
-    config.curve = EqualizationCurve::AWeighting;
+    audio::SpectralEqualizerConfig config;
+    config.curve = audio::EqualizationCurve::AWeighting;
     config.numBands = 16;
     eq.configure(config);
 
-    FL_CHECK(eq.getConfig().curve == EqualizationCurve::AWeighting);
+    FL_CHECK(eq.getConfig().curve == audio::EqualizationCurve::AWeighting);
 
     // Verify gains changed
     auto gains = eq.getGains();
@@ -302,11 +302,11 @@ FL_TEST_CASE("SpectralEqualizer - Reconfiguration") {
     FL_CHECK_EQ(stats.applicationsCount, 0u);
 }
 
-FL_TEST_CASE("SpectralEqualizer - Input size mismatch") {
-    SpectralEqualizerConfig config;
+FL_TEST_CASE("audio::SpectralEqualizer - Input size mismatch") {
+    audio::SpectralEqualizerConfig config;
     config.numBands = 16;
 
-    SpectralEqualizer eq(config);
+    audio::SpectralEqualizer eq(config);
 
     // Provide wrong size input (8 bins instead of 16)
     vector<float> inputBins = generateUniformBins(8, 100.0f);
@@ -320,8 +320,8 @@ FL_TEST_CASE("SpectralEqualizer - Input size mismatch") {
     FL_CHECK_EQ(stats.applicationsCount, 0u);
 }
 
-FL_TEST_CASE("SpectralEqualizer - Output buffer too small") {
-    SpectralEqualizer eq;
+FL_TEST_CASE("audio::SpectralEqualizer - Output buffer too small") {
+    audio::SpectralEqualizer eq;
 
     vector<float> inputBins = generateUniformBins(16, 100.0f);
 
@@ -336,8 +336,8 @@ FL_TEST_CASE("SpectralEqualizer - Output buffer too small") {
     FL_CHECK_EQ(stats.applicationsCount, 0u);
 }
 
-FL_TEST_CASE("SpectralEqualizer - Custom gains size mismatch") {
-    SpectralEqualizer eq;
+FL_TEST_CASE("audio::SpectralEqualizer - Custom gains size mismatch") {
+    audio::SpectralEqualizer eq;
 
     // Try to set custom gains with wrong size
     vector<float> badGains(8, 2.0f);  // Only 8 gains, need 16
@@ -345,15 +345,15 @@ FL_TEST_CASE("SpectralEqualizer - Custom gains size mismatch") {
     eq.setCustomGains(badGains);
 
     // Should remain on flat curve (warning logged)
-    FL_CHECK(eq.getConfig().curve == EqualizationCurve::Flat);
+    FL_CHECK(eq.getConfig().curve == audio::EqualizationCurve::Flat);
 }
 
-FL_TEST_CASE("SpectralEqualizer - Gain frequency response") {
-    SpectralEqualizerConfig config;
-    config.curve = EqualizationCurve::AWeighting;
+FL_TEST_CASE("audio::SpectralEqualizer - Gain frequency response") {
+    audio::SpectralEqualizerConfig config;
+    config.curve = audio::EqualizationCurve::AWeighting;
     config.numBands = 16;
 
-    SpectralEqualizer eq(config);
+    audio::SpectralEqualizer eq(config);
 
     // Generate input with energy in specific bands
     vector<float> inputBins(16, 0.0f);
@@ -369,15 +369,15 @@ FL_TEST_CASE("SpectralEqualizer - Gain frequency response") {
     FL_CHECK(outputBins[6] > outputBins[14]);
 }
 
-FL_TEST_CASE("SpectralEqualizer - Makeup gain clamping") {
-    SpectralEqualizerConfig config;
+FL_TEST_CASE("audio::SpectralEqualizer - Makeup gain clamping") {
+    audio::SpectralEqualizerConfig config;
     config.numBands = 16;
     config.applyMakeupGain = true;
     config.makeupGainTarget = 1.0f;
     config.customGains.resize(16, 0.01f);  // Very low gains (would need 100x makeup)
-    config.curve = EqualizationCurve::Custom;
+    config.curve = audio::EqualizationCurve::Custom;
 
-    SpectralEqualizer eq(config);
+    audio::SpectralEqualizer eq(config);
 
     vector<float> inputBins = generateUniformBins(16, 100.0f);
     vector<float> outputBins(16);
@@ -388,16 +388,16 @@ FL_TEST_CASE("SpectralEqualizer - Makeup gain clamping") {
     FL_CHECK(stats.lastMakeupGain <= 10.0f);
 }
 
-FL_TEST_CASE("SpectralEqualizer - Compression with various ratios") {
+FL_TEST_CASE("audio::SpectralEqualizer - Compression with various ratios") {
     // Test 2:1 compression
     {
-        SpectralEqualizerConfig config;
+        audio::SpectralEqualizerConfig config;
         config.numBands = 16;
         config.enableCompression = true;
         config.compressionThreshold = 50.0f;
         config.compressionRatio = 2.0f;
 
-        SpectralEqualizer eq(config);
+        audio::SpectralEqualizer eq(config);
 
         vector<float> inputBins(16, 100.0f);  // 50 dB over threshold
         vector<float> outputBins(16);
@@ -409,13 +409,13 @@ FL_TEST_CASE("SpectralEqualizer - Compression with various ratios") {
 
     // Test 4:1 compression (more aggressive)
     {
-        SpectralEqualizerConfig config;
+        audio::SpectralEqualizerConfig config;
         config.numBands = 16;
         config.enableCompression = true;
         config.compressionThreshold = 50.0f;
         config.compressionRatio = 4.0f;
 
-        SpectralEqualizer eq(config);
+        audio::SpectralEqualizer eq(config);
 
         vector<float> inputBins(16, 100.0f);  // 50 dB over threshold
         vector<float> outputBins(16);
@@ -426,12 +426,12 @@ FL_TEST_CASE("SpectralEqualizer - Compression with various ratios") {
     }
 }
 
-FL_TEST_CASE("SpectralEqualizer - A-weighting unsupported band count") {
-    SpectralEqualizerConfig config;
-    config.curve = EqualizationCurve::AWeighting;
+FL_TEST_CASE("audio::SpectralEqualizer - A-weighting unsupported band count") {
+    audio::SpectralEqualizerConfig config;
+    config.curve = audio::EqualizationCurve::AWeighting;
     config.numBands = 24;  // Not 16 or 32
 
-    SpectralEqualizer eq(config);
+    audio::SpectralEqualizer eq(config);
 
     // Should fall back to flat gains
     auto gains = eq.getGains();
@@ -444,14 +444,14 @@ FL_TEST_CASE("SpectralEqualizer - A-weighting unsupported band count") {
 // Tone sweep tests: verify gain curve shape via swept peak
 // ============================================================================
 
-FL_TEST_CASE("SpectralEqualizer - swept peak follows A-weighting curve") {
+FL_TEST_CASE("audio::SpectralEqualizer - swept peak follows A-weighting curve") {
     // Sweep a single-bin peak across all 16 bins and verify that the
     // A-weighting output matches the expected gain curve: low at bass,
     // peak at mid (~bins 6-7), rolloff at treble.
-    SpectralEqualizerConfig config;
-    config.curve = EqualizationCurve::AWeighting;
+    audio::SpectralEqualizerConfig config;
+    config.curve = audio::EqualizationCurve::AWeighting;
     config.numBands = 16;
-    SpectralEqualizer eq(config);
+    audio::SpectralEqualizer eq(config);
 
     float outputPeaks[16];
     for (int peakBin = 0; peakBin < 16; ++peakBin) {
@@ -495,12 +495,12 @@ FL_TEST_CASE("SpectralEqualizer - swept peak follows A-weighting curve") {
     FL_CHECK_LT(maxDelta, 30.0f);
 }
 
-FL_TEST_CASE("SpectralEqualizer - flat curve swept peak has no jitter") {
+FL_TEST_CASE("audio::SpectralEqualizer - flat curve swept peak has no jitter") {
     // With flat EQ, all output peaks should be identical (gain = 1.0).
-    SpectralEqualizerConfig config;
-    config.curve = EqualizationCurve::Flat;
+    audio::SpectralEqualizerConfig config;
+    config.curve = audio::EqualizationCurve::Flat;
     config.numBands = 16;
-    SpectralEqualizer eq(config);
+    audio::SpectralEqualizer eq(config);
 
     for (int peakBin = 0; peakBin < 16; ++peakBin) {
         vector<float> inputBins(16, 0.0f);
@@ -514,12 +514,12 @@ FL_TEST_CASE("SpectralEqualizer - flat curve swept peak has no jitter") {
     }
 }
 
-FL_TEST_CASE("SpectralEqualizer - A-weighting 32-band swept peak is smooth") {
+FL_TEST_CASE("audio::SpectralEqualizer - A-weighting 32-band swept peak is smooth") {
     // Same sweep test but with 32 bands — gain curve should be even smoother
-    SpectralEqualizerConfig config;
-    config.curve = EqualizationCurve::AWeighting;
+    audio::SpectralEqualizerConfig config;
+    config.curve = audio::EqualizationCurve::AWeighting;
     config.numBands = 32;
-    SpectralEqualizer eq(config);
+    audio::SpectralEqualizer eq(config);
 
     float outputPeaks[32];
     for (int peakBin = 0; peakBin < 32; ++peakBin) {

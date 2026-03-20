@@ -5,6 +5,7 @@
 #include "fl/stl/span.h"
 
 namespace fl {
+namespace audio {
 
 /// Frequency bin mode - controls number of output bins
 enum class FrequencyBinMode {
@@ -57,7 +58,7 @@ struct FrequencyBinMapperConfig {
 /// mapper.configure(config);
 ///
 /// // Map FFT output to frequency bins
-/// FFTBins fftOutput = ...;  // From FFT
+/// Bins fftOutput = ...;  // From FFT
 /// vector<float> frequencyBins(16);
 /// mapper.mapBins(fftOutput.raw(), frequencyBins);
 ///
@@ -164,4 +165,5 @@ private:
     static constexpr size TREBLE_BIN_END = 16; // Bins 14-15 (exclusive end)
 };
 
+} // namespace audio
 } // namespace fl

@@ -12,7 +12,7 @@
 #include "fl/channels/driver.h"  // for IChannelDriver
 #include "fl/system/delay.h"  // for delayMicroseconds
 #include "fl/system/log.h"  // for FL_WARN
-#include "fl/audio/input.h"  // for IAudioInput
+#include "fl/audio/input.h"  // for IInput
 #include "fl/ui.h"  // for UIAudio
 #include "fl/stl/assert.h"  // for FL_ASSERT
 #include "hsv2rgb.h"  // for CRGB
@@ -123,7 +123,7 @@ CLEDController &CFastLED::addLeds(CLEDController *pLed,
 
 fl::vector<fl::ChannelPtr> CFastLED::mChannels;
 #if SKETCH_HAS_LOTS_OF_MEMORY
-fl::vector<fl::shared_ptr<fl::AudioProcessor>> CFastLED::mAudioProcessors;
+fl::vector<fl::shared_ptr<fl::audio::Processor>> CFastLED::mAudioProcessors;
 #endif
 
 void CFastLED::add(fl::ChannelPtr channel) {
@@ -687,57 +687,57 @@ fl::ChannelEvents& CFastLED::channelEvents() {
 // Audio Input Integration
 // ============================================================================
 
-fl::shared_ptr<fl::AudioProcessor> CFastLED::add(const fl::AudioConfig& config) {
+fl::shared_ptr<fl::audio::Processor> CFastLED::add(const fl::audio::Config& config) {
 #if SKETCH_HAS_LOTS_OF_MEMORY && FASTLED_HAS_AUDIO_INPUT
     fl::string errorMsg;
-    auto input = fl::IAudioInput::create(config, &errorMsg);
+    auto input = fl::audio::IInput::create(config, &errorMsg);
     if (!input) {
         FL_WARN("Failed to create audio input: " << errorMsg);
         return nullptr;
     }
     input->start();
-    auto processor = fl::AudioProcessor::createWithAutoInput(fl::move(input));
-    if (config.getMicProfile() != fl::MicProfile::None) {
+    auto processor = fl::audio::Processor::createWithAutoInput(fl::move(input));
+    if (config.getMicProfile() != fl::audio::MicProfile::None) {
         processor->setMicProfile(config.getMicProfile());
     }
     mAudioProcessors.push_back(processor);
     return processor;
 #elif SKETCH_HAS_LOTS_OF_MEMORY
     (void)config;
-    auto processor = fl::make_shared<fl::AudioProcessor>();
+    auto processor = fl::make_shared<fl::audio::Processor>();
     mAudioProcessors.push_back(processor);
     return processor;
 #else
     (void)config;
-    return fl::make_shared<fl::AudioProcessor>();
+    return fl::make_shared<fl::audio::Processor>();
 #endif
 }
 
-fl::shared_ptr<fl::AudioProcessor> CFastLED::add(fl::shared_ptr<fl::IAudioInput> input) {
+fl::shared_ptr<fl::audio::Processor> CFastLED::add(fl::shared_ptr<fl::audio::IInput> input) {
 #if SKETCH_HAS_LOTS_OF_MEMORY
     if (!input) {
         FL_WARN("Cannot add null audio input");
         return nullptr;
     }
     input->start();
-    auto processor = fl::AudioProcessor::createWithAutoInput(fl::move(input));
+    auto processor = fl::audio::Processor::createWithAutoInput(fl::move(input));
     mAudioProcessors.push_back(processor);
     return processor;
 #else
     (void)input;
-    return fl::make_shared<fl::AudioProcessor>();
+    return fl::make_shared<fl::audio::Processor>();
 #endif
 }
 
-fl::shared_ptr<fl::AudioProcessor> CFastLED::add(fl::UIAudio& uiAudio) {
+fl::shared_ptr<fl::audio::Processor> CFastLED::add(fl::UIAudio& uiAudio) {
     return add(uiAudio.audioInput());
 }
 
-fl::shared_ptr<fl::AudioProcessor> fl::addUIAudioProcessor(fl::UIAudio& audio) {
+fl::shared_ptr<fl::audio::Processor> fl::addUIAudioProcessor(fl::UIAudio& audio) {
     return CFastLED::add(audio);
 }
 
-void CFastLED::remove(fl::shared_ptr<fl::AudioProcessor> processor) {
+void CFastLED::remove(fl::shared_ptr<fl::audio::Processor> processor) {
 #if SKETCH_HAS_LOTS_OF_MEMORY
     if (!processor) {
         return;

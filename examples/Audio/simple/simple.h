@@ -81,7 +81,7 @@ fl::CRGB leds[NUM_LEDS / 4]; // Downscaled buffer
 fl::XYMap ledsXY(WIDTH / 2, HEIGHT / 2,
              IS_SERPINTINE); // Framebuffer is regular rectangle LED matrix.
 
-fl::FFTBins fftOut(WIDTH); // 2x width due to super sampling.
+fl::audio::fft::Bins fftOut(WIDTH); // 2x width due to super sampling.
 
 // CRGB framebuffer[NUM_LEDS];
 // CRGB framebuffer[WIDTH_2X * HEIGHT_2X];  // 2x super sampling.
@@ -93,7 +93,7 @@ int x = 0;
 int y = 0;
 bool triggered = false;
 
-fl::SoundLevelMeter soundLevelMeter(.0, 0.0);
+fl::audio::SoundLevelMeter soundLevelMeter(.0, 0.0);
 
 // Pitch detection engine
 fl::SoundToMIDI pitchConfig;
@@ -195,7 +195,7 @@ void loop() {
 
     bool do_frame = doFrame();
 
-    while (fl::AudioSample sample = audio.next()) {
+    while (fl::audio::Sample sample = audio.next()) {
         if (!do_frame) {
             continue;
         }

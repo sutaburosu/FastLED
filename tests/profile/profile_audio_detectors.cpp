@@ -1,6 +1,6 @@
 // Audio Detector Performance Profiling Test
 //
-// Profiles all audio detectors to identify performance outliers.
+// Profiles all audio detector to identify performance outliers.
 // Compares each detector against EnergyAnalyzer (baseline).
 //
 // Usage:
@@ -8,8 +8,8 @@
 //   ./profile_audio_detectors.exe report      # Output human-readable report
 //
 // This test is useful for:
-// - Catching performance regressions in audio detectors
-// - Identifying which detectors are significantly slower
+// - Catching performance regressions in audio detector
+// - Identifying which detector are significantly slower
 // - Comparing relative performance before/after optimizations
 
 #include "fl/audio/audio_processor.h"
@@ -31,8 +31,8 @@ public:
         : mSampleRate(sampleRate), mPhase(0) {}
 
     // Generate a complex audio signal: mix of sine waves
-    // This creates interesting spectral content for detectors
-    AudioSample generateSample() {
+    // This creates interesting spectral content for detector
+    Sample generateSample() {
         const int bufferSize = mSampleRate / 100;  // 10ms at 16kHz = 160 samples
         fl::vector<fl::i16> pcm(bufferSize);
 
@@ -58,7 +58,7 @@ public:
         }
 
         mPhase += bufferSize;
-        return AudioSample(fl::span<const fl::i16>(pcm.data(), pcm.size()), 0);
+        return Sample(fl::span<const fl::i16>(pcm.data(), pcm.size()), 0);
     }
 
 private:
@@ -94,25 +94,25 @@ int runProfiler(bool jsonOutput) {
     fl::vector<DetectorBenchmark> benchmarks;
     SynthAudioGenerator audioGen(SAMPLE_RATE);
 
-    // Create audio processor (which owns all detectors)
-    fl::AudioProcessor processor;
+    // Create audio processor (which owns all detector)
+    fl::audio::Processor processor;
     processor.setSampleRate(SAMPLE_RATE);
 
-    // Register some callbacks to ensure detectors are active
-    // (Lazy detectors don't update if no callbacks are registered)
+    // Register some callbacks to ensure detector are active
+    // (Lazy detector don't update if no callbacks are registered)
     processor.onEnergy([](float) {});              // EnergyAnalyzer (BASELINE)
     processor.onFrequencyBands([](float, float, float) {});  // FrequencyBands
-    processor.onBeat([]() {});                      // BeatDetector
+    processor.onBeat([]() {});                      // Beat
     processor.onTempo([](float) {});                // TempoAnalyzer
-    processor.onPitch([](float) {});                // PitchDetector
-    processor.onVocal([](fl::u8) {});               // VocalDetector
+    processor.onPitch([](float) {});                // Pitch
+    processor.onVocal([](fl::u8) {});               // Vocal
     processor.onMood([](const fl::Mood&) {});       // MoodAnalyzer
-    processor.onTransient([]() {});                 // TransientDetector
-    processor.onVibeLevels([](const fl::VibeLevels&) {});  // VibeDetector
+    processor.onTransient([]() {});                 // Transient
+    processor.onVibeLevels([](const fl::audio::detector::VibeLevels&) {});  // Vibe
 
     // Warm-up (JIT/caching)
     for (int i = 0; i < 10; i++) {
-        fl::AudioSample sample = audioGen.generateSample();
+        fl::audio::Sample sample = audioGen.generateSample();
         processor.update(sample);
     }
 
@@ -120,7 +120,7 @@ int runProfiler(bool jsonOutput) {
     auto t0 = clock::now();
 
     for (int i = 0; i < ITERATIONS; i++) {
-        fl::AudioSample sample = audioGen.generateSample();
+        fl::audio::Sample sample = audioGen.generateSample();
         processor.update(sample);
     }
 
@@ -129,9 +129,9 @@ int runProfiler(bool jsonOutput) {
         fl::chrono::duration_cast<fl::chrono::nanoseconds>(t1 - t0).count();
 
     // For now, report combined time
-    // (Detailed per-detector timing would require instrumenting AudioProcessor)
+    // (Detailed per-detector timing would require instrumenting Processor)
     DetectorBenchmark overall;
-    overall.name = "AudioProcessor (all detectors)";
+    overall.name = "Processor (all detector)";
     overall.totalTimeNs = totalTimeNs;
     overall.iterations = ITERATIONS;
     benchmarks.push_back(overall);
@@ -186,7 +186,7 @@ int runProfiler(bool jsonOutput) {
         }
 
         if (!performanceWarning) {
-            fl::printf("✅ All detectors performing within acceptable limits\n");
+            fl::printf("✅ All detector performing within acceptable limits\n");
         }
         fl::printf("\n");
     }

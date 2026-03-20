@@ -1,15 +1,12 @@
-// Combined audio detector tests — one test binary for all audio detectors
+// Combined audio detector tests — one test binary for all audio detector
 // ok standalone // ok cpp include
-
-#include "detectors/common.hpp"
-
-#include "detectors/backbeat.hpp"
-#include "detectors/beat.hpp"
-#include "detectors/downbeat_synthetic.hpp"
-#include "detectors/energy_analyzer.hpp"
-#include "detectors/frequency_bands.hpp"
-#include "detectors/vibe.hpp"
-#include "detectors/percussion.hpp"
-#include "detectors/tempo_analyzer.hpp"
-#include "detectors/vocal.hpp"
-#include "detectors/vocal_real_audio.hpp"
+#include "detector/backbeat.hpp"
+#include "detector/beat.hpp"
+#include "detector/downbeat_synthetic.hpp"
+#include "detector/energy_analyzer.hpp"
+#include "detector/frequency_bands.hpp"
+#include "detector/vibe.hpp"
+#include "detector/percussion.hpp"
+#include "detector/tempo_analyzer.hpp"
+#include "detector/vocal.hpp"
+#include "detector/vocal_real_audio.hpp"

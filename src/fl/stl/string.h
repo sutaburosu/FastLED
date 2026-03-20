@@ -72,7 +72,7 @@ template <typename Key, typename Hash, typename KeyEqual> class HashSet;
 
 class XYMap;
 
-class FFTBins;
+namespace audio { namespace fft { class Bins; } }  // Forward declaration
 struct CRGB;
 
 } // namespace fl
@@ -2903,7 +2903,7 @@ class string : public StrN<FASTLED_STR_INLINED_SIZE> {
         return *this;
     }
 
-    string &append(const FFTBins &str);
+    string &append(const audio::fft::Bins &str);
 
     string &append(const XYMap &map);
 

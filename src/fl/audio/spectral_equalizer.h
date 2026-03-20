@@ -5,6 +5,7 @@
 #include "fl/stl/span.h"
 
 namespace fl {
+namespace audio {
 
 /// Equalization curve type
 enum class EqualizationCurve {
@@ -170,4 +171,5 @@ private:
     };
 };
 
+} // namespace audio
 } // namespace fl

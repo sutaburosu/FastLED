@@ -3,6 +3,7 @@
 #include "fl/stl/int.h"
 
 namespace fl {
+namespace audio {
 
 /// Configuration for noise floor tracking
 struct NoiseFloorTrackerConfig {
@@ -58,7 +59,7 @@ struct NoiseFloorTrackerConfig {
 /// config.hysteresisMargin = 100.0f;
 /// tracker.configure(config);
 ///
-/// AudioSample sample = ...;
+/// Sample sample = ...;
 /// float rms = sample.rms();
 /// tracker.update(rms);
 ///
@@ -134,4 +135,5 @@ private:
     static constexpr u32 BELOW_FLOOR_THRESHOLD = 10;
 };
 
+} // namespace audio
 } // namespace fl

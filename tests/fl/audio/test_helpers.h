@@ -27,8 +27,8 @@ namespace test {
 /// @param amplitude Peak amplitude (default: 16000 for typical test signal)
 /// @param count Number of samples (default: 512)
 /// @param sampleRate Sample rate in Hz (default: 44100)
-/// @return AudioSample containing the generated sine wave
-inline AudioSample makeSample(float freq, fl::u32 timestamp, float amplitude = 16000.0f,
+/// @return Sample containing the generated sine wave
+inline Sample makeSample(float freq, fl::u32 timestamp, float amplitude = 16000.0f,
                               int count = 512, float sampleRate = 44100.0f) {
     fl::vector<fl::i16> data;
     data.reserve(count);
@@ -36,43 +36,43 @@ inline AudioSample makeSample(float freq, fl::u32 timestamp, float amplitude = 1
         float phase = 2.0f * FL_M_PI * freq * i / sampleRate;
         data.push_back(static_cast<fl::i16>(amplitude * fl::sinf(phase)));
     }
-    return AudioSample(data, timestamp);
+    return Sample(data, timestamp);
 }
 
 /// Generate a silence audio sample (all zeros)
 /// @param timestamp Sample timestamp in milliseconds
 /// @param count Number of samples (default: 512)
-/// @return AudioSample containing silence
-inline AudioSample makeSilence(fl::u32 timestamp, int count = 512) {
+/// @return Sample containing silence
+inline Sample makeSilence(fl::u32 timestamp, int count = 512) {
     fl::vector<fl::i16> data(count, 0);
-    return AudioSample(data, timestamp);
+    return Sample(data, timestamp);
 }
 
 /// Generate a DC offset audio sample (constant value)
 /// @param dcValue Constant DC value for all samples
 /// @param timestamp Sample timestamp in milliseconds
 /// @param count Number of samples (default: 512)
-/// @return AudioSample containing DC offset
-inline AudioSample makeDC(fl::i16 dcValue, fl::u32 timestamp, int count = 512) {
+/// @return Sample containing DC offset
+inline Sample makeDC(fl::i16 dcValue, fl::u32 timestamp, int count = 512) {
     fl::vector<fl::i16> data(count, dcValue);
-    return AudioSample(data, timestamp);
+    return Sample(data, timestamp);
 }
 
 /// Generate a maximum amplitude audio sample (saturated signal)
 /// @param timestamp Sample timestamp in milliseconds
 /// @param count Number of samples (default: 512)
-/// @return AudioSample with maximum i16 amplitude
-inline AudioSample makeMaxAmplitude(fl::u32 timestamp, int count = 512) {
+/// @return Sample with maximum i16 amplitude
+inline Sample makeMaxAmplitude(fl::u32 timestamp, int count = 512) {
     fl::vector<fl::i16> data(count, 32767);
-    return AudioSample(data, timestamp);
+    return Sample(data, timestamp);
 }
 
 /// Generate audio sample from PCM data
 /// @param pcm Vector of PCM samples
 /// @param timestamp Sample timestamp in milliseconds (default: 0)
-/// @return AudioSample wrapping the PCM data
-inline AudioSample makeSample(const vector<i16> &pcm, u32 timestamp = 0) {
-    return AudioSample(pcm, timestamp);
+/// @return Sample wrapping the PCM data
+inline Sample makeSample(const vector<i16> &pcm, u32 timestamp = 0) {
+    return Sample(pcm, timestamp);
 }
 
 // ============================================================================
@@ -176,8 +176,8 @@ inline vector<float> generateSyntheticFFT(size numBins, float peakFrequency, u32
 /// @param fmax CQ maximum frequency
 /// @return Vector of float magnitudes (one per bin)
 inline vector<float> generateSyntheticCQFFT(size numBins, float peakFrequency,
-                                             float fmin = FFT_Args::DefaultMinFrequency(),
-                                             float fmax = FFT_Args::DefaultMaxFrequency()) {
+                                             float fmin = fft::Args::DefaultMinFrequency(),
+                                             float fmax = fft::Args::DefaultMaxFrequency()) {
     vector<float> bins;
     bins.reserve(numBins);
     int bands = static_cast<int>(numBins);
@@ -206,7 +206,7 @@ inline vector<float> generateUniformBins(size count, float magnitude) {
 
 /// Generate a multi-harmonic signal (fundamental + overtones with geometric decay)
 /// Useful for testing harmonic-rich signals that aren't voice (e.g., instruments)
-inline AudioSample makeMultiHarmonic(float f0, int numHarmonics, float decay,
+inline Sample makeMultiHarmonic(float f0, int numHarmonics, float decay,
                                       u32 timestamp, float amplitude = 16000.0f,
                                       int count = 512, float sampleRate = 44100.0f) {
     fl::vector<fl::i16> data(count, 0);
@@ -219,12 +219,12 @@ inline AudioSample makeMultiHarmonic(float f0, int numHarmonics, float decay,
             data[i] += static_cast<fl::i16>(harmonicAmp * fl::sinf(phase));
         }
     }
-    return AudioSample(data, timestamp);
+    return Sample(data, timestamp);
 }
 
 /// Generate a synthetic vowel using additive synthesis with Gaussian formant envelopes
 /// Simplest physically-motivated voice model: harmonic series with 1/h rolloff shaped by two resonance peaks
-inline AudioSample makeSyntheticVowel(float f0, float f1Freq, float f2Freq,
+inline Sample makeSyntheticVowel(float f0, float f1Freq, float f2Freq,
                                        u32 timestamp, float amplitude = 16000.0f,
                                        int count = 512, float sampleRate = 44100.0f) {
     fl::vector<fl::i16> data(count, 0);
@@ -247,13 +247,13 @@ inline AudioSample makeSyntheticVowel(float f0, float f1Freq, float f2Freq,
             data[i] += static_cast<fl::i16>(harmonicAmp * fl::sinf(phase));
         }
     }
-    return AudioSample(data, timestamp);
+    return Sample(data, timestamp);
 }
 
 /// Generate a jittered vowel: synthetic vowel with per-period amplitude and timing jitter
 /// Simulates real vocal cord irregularity — higher envelope jitter and lower autocorrelation
 /// than clean synthetic vowels
-inline AudioSample makeJitteredVowel(float f0, float f1Freq, float f2Freq,
+inline Sample makeJitteredVowel(float f0, float f1Freq, float f2Freq,
                                       u32 timestamp, float amplitude = 16000.0f,
                                       int count = 512, float sampleRate = 44100.0f) {
     fl::vector<fl::i16> data(count, 0);
@@ -291,12 +291,12 @@ inline AudioSample makeJitteredVowel(float f0, float f1Freq, float f2Freq,
         float sample = static_cast<float>(data[i]) * currentJitter;
         data[i] = static_cast<fl::i16>(fl::clamp(sample, -32768.0f, 32767.0f));
     }
-    return AudioSample(data, timestamp);
+    return Sample(data, timestamp);
 }
 
 /// Generate a guitar string decay: harmonic series with 1/h^2 rolloff and exponential decay
 /// Very periodic waveform — low envelope jitter, high autocorrelation, low ZC CV
-inline AudioSample makeGuitarStringDecay(float f0, u32 timestamp,
+inline Sample makeGuitarStringDecay(float f0, u32 timestamp,
                                           float amplitude = 16000.0f,
                                           int count = 512, float sampleRate = 44100.0f) {
     fl::vector<fl::i16> data(count, 0);
@@ -316,11 +316,11 @@ inline AudioSample makeGuitarStringDecay(float f0, u32 timestamp,
             data[i] += static_cast<fl::i16>(fl::clamp(sample, -32768.0f, 32767.0f));
         }
     }
-    return AudioSample(data, timestamp);
+    return Sample(data, timestamp);
 }
 
 /// Generate deterministic white noise using fl::fl_random with fixed seed
-inline AudioSample makeWhiteNoise(u32 timestamp, float amplitude = 16000.0f,
+inline Sample makeWhiteNoise(u32 timestamp, float amplitude = 16000.0f,
                                    int count = 512) {
     fl::fl_random rng(12345); // Deterministic seed for reproducible tests
     fl::vector<fl::i16> data;
@@ -330,12 +330,12 @@ inline AudioSample makeWhiteNoise(u32 timestamp, float amplitude = 16000.0f,
         float sample = (static_cast<float>(rng.random16()) / 32767.5f) - 1.0f;
         data.push_back(static_cast<fl::i16>(amplitude * sample));
     }
-    return AudioSample(data, timestamp);
+    return Sample(data, timestamp);
 }
 
 /// Generate a linear frequency sweep (chirp) with phase accumulation
 /// Tests that a sweeping tone doesn't trigger vocal detection
-inline AudioSample makeChirp(float startFreq, float endFreq, u32 timestamp,
+inline Sample makeChirp(float startFreq, float endFreq, u32 timestamp,
                               float amplitude = 16000.0f, int count = 512,
                               float sampleRate = 44100.0f) {
     fl::vector<fl::i16> data;
@@ -347,7 +347,7 @@ inline AudioSample makeChirp(float startFreq, float endFreq, u32 timestamp,
         phase += 2.0f * FL_M_PI * freq / sampleRate;
         data.push_back(static_cast<fl::i16>(amplitude * fl::sinf(phase)));
     }
-    return AudioSample(data, timestamp);
+    return Sample(data, timestamp);
 }
 
 // ============================================================================
@@ -356,7 +356,7 @@ inline AudioSample makeChirp(float startFreq, float endFreq, u32 timestamp,
 
 /// Generate a synthetic kick drum: 60Hz body + 120Hz harmonic (30ms decay) + click transient
 /// The click uses multiple high-frequency sines sustained long enough for CQ FFT to resolve
-inline AudioSample makeKickDrum(fl::u32 timestamp, float amplitude = 16000.0f,
+inline Sample makeKickDrum(fl::u32 timestamp, float amplitude = 16000.0f,
                                  int count = 512, float sampleRate = 44100.0f) {
     fl::vector<fl::i16> data(count, 0);
     for (int i = 0; i < count; ++i) {
@@ -379,12 +379,12 @@ inline AudioSample makeKickDrum(fl::u32 timestamp, float amplitude = 16000.0f,
         if (sample < -32768.0f) sample = -32768.0f;
         data[i] = static_cast<fl::i16>(sample);
     }
-    return AudioSample(data, timestamp);
+    return Sample(data, timestamp);
 }
 
 /// Generate a synthetic snare: 250Hz body (25ms decay) + high-frequency noise (50ms decay)
 /// Produces moderate bass + significant treble energy from noise rattles
-inline AudioSample makeSnare(fl::u32 timestamp, float amplitude = 16000.0f,
+inline Sample makeSnare(fl::u32 timestamp, float amplitude = 16000.0f,
                               int count = 512, float sampleRate = 44100.0f) {
     fl::fl_random rng(42); // Deterministic seed
     fl::vector<fl::i16> data(count, 0);
@@ -412,12 +412,12 @@ inline AudioSample makeSnare(fl::u32 timestamp, float amplitude = 16000.0f,
         if (sample < -32768.0f) sample = -32768.0f;
         data[i] = static_cast<fl::i16>(sample);
     }
-    return AudioSample(data, timestamp);
+    return Sample(data, timestamp);
 }
 
 /// Generate a synthetic hi-hat: high-pass shaped white noise
 /// @param open If true, use 80ms decay (open hi-hat); if false, use 5ms decay (closed)
-inline AudioSample makeHiHat(fl::u32 timestamp, bool open = false, float amplitude = 16000.0f,
+inline Sample makeHiHat(fl::u32 timestamp, bool open = false, float amplitude = 16000.0f,
                               int count = 512, float sampleRate = 44100.0f) {
     fl::fl_random rng(99); // Deterministic seed
     float decayTime = open ? 0.080f : 0.005f;
@@ -436,12 +436,12 @@ inline AudioSample makeHiHat(fl::u32 timestamp, bool open = false, float amplitu
         if (highPassed < -32768.0f) highPassed = -32768.0f;
         data[i] = static_cast<fl::i16>(highPassed);
     }
-    return AudioSample(data, timestamp);
+    return Sample(data, timestamp);
 }
 
 /// Generate a synthetic tom drum: single sine at tuning frequency, 60ms decay, NO click
 /// Discriminated from kick by absence of click transient
-inline AudioSample makeTom(fl::u32 timestamp, float tuningHz = 160.0f, float amplitude = 16000.0f,
+inline Sample makeTom(fl::u32 timestamp, float tuningHz = 160.0f, float amplitude = 16000.0f,
                             int count = 512, float sampleRate = 44100.0f) {
     fl::vector<fl::i16> data(count, 0);
     for (int i = 0; i < count; ++i) {
@@ -452,12 +452,12 @@ inline AudioSample makeTom(fl::u32 timestamp, float tuningHz = 160.0f, float amp
         if (sample < -32768.0f) sample = -32768.0f;
         data[i] = static_cast<fl::i16>(sample);
     }
-    return AudioSample(data, timestamp);
+    return Sample(data, timestamp);
 }
 
 /// Generate a synthetic crash cymbal: broadband noise with 80ms decay
 /// All treble bins have similar energy (high flatness)
-inline AudioSample makeCrashCymbal(fl::u32 timestamp, float amplitude = 16000.0f,
+inline Sample makeCrashCymbal(fl::u32 timestamp, float amplitude = 16000.0f,
                                     int count = 512, float sampleRate = 44100.0f) {
     fl::fl_random rng(77); // Deterministic seed
     fl::vector<fl::i16> data(count, 0);
@@ -470,7 +470,7 @@ inline AudioSample makeCrashCymbal(fl::u32 timestamp, float amplitude = 16000.0f
         if (sample < -32768.0f) sample = -32768.0f;
         data[i] = static_cast<fl::i16>(sample);
     }
-    return AudioSample(data, timestamp);
+    return Sample(data, timestamp);
 }
 
 // ============================================================================
@@ -491,7 +491,7 @@ inline AudioSample makeCrashCymbal(fl::u32 timestamp, float amplitude = 16000.0f
 /// body as three Gaussian resonances at ~300Hz, ~800Hz, ~1500Hz. These create
 /// energy peaks in both F1 (250-900Hz) and F2 (1000-3000Hz) vocal formant bands,
 /// producing formant ratio ~0.5-0.7 (matching real guitar recordings).
-inline AudioSample makeAcousticGuitar(float f0, fl::u32 timestamp,
+inline Sample makeAcousticGuitar(float f0, fl::u32 timestamp,
                                        float amplitude = 16000.0f,
                                        int count = 512, float sampleRate = 44100.0f) {
     fl::vector<fl::i16> data(count, 0);
@@ -521,7 +521,7 @@ inline AudioSample makeAcousticGuitar(float f0, fl::u32 timestamp,
             data[i] += static_cast<fl::i16>(harmonicAmp * fl::sinf(phase));
         }
     }
-    return AudioSample(data, timestamp);
+    return Sample(data, timestamp);
 }
 
 /// Full-band music mix: acoustic guitar + kick + snare + hi-hat + optional voice.
@@ -533,7 +533,7 @@ inline AudioSample makeAcousticGuitar(float f0, fl::u32 timestamp,
 /// drum pattern produces realistic time-domain features (jitter, ACF, zcCV).
 ///
 /// @param vocalRatio 0.0 = backing only, 1.0 = voice at equal level
-inline AudioSample makeFullBandMix(float vocalRatio, fl::u32 timestamp,
+inline Sample makeFullBandMix(float vocalRatio, fl::u32 timestamp,
                                     float amplitude = 16000.0f,
                                     int count = 512, float sampleRate = 44100.0f) {
     fl::vector<fl::i16> mixed(count, 0);
@@ -586,7 +586,7 @@ inline AudioSample makeFullBandMix(float vocalRatio, fl::u32 timestamp,
         }
     }
 
-    return AudioSample(mixed, timestamp);
+    return Sample(mixed, timestamp);
 }
 
 // ============================================================================
@@ -596,7 +596,7 @@ inline AudioSample makeFullBandMix(float vocalRatio, fl::u32 timestamp,
 /// Generate a sawtooth wave using Fourier series: sum((-1)^(h+1) * sin(2*pi*h*f*t) / h)
 /// Rich harmonics at 1/h amplitude but NO formant peaks (smooth spectral envelope).
 /// Tests that a spectrally rich but structurally non-vocal signal is rejected.
-inline AudioSample makeSawtoothWave(float freq, fl::u32 timestamp,
+inline Sample makeSawtoothWave(float freq, fl::u32 timestamp,
                                      float amplitude = 16000.0f, int count = 512,
                                      float sampleRate = 44100.0f) {
     fl::vector<fl::i16> data(count, 0);
@@ -612,13 +612,13 @@ inline AudioSample makeSawtoothWave(float freq, fl::u32 timestamp,
             data[i] = static_cast<fl::i16>(fl::clamp(sample, -32768.0f, 32767.0f));
         }
     }
-    return AudioSample(data, timestamp);
+    return Sample(data, timestamp);
 }
 
 /// Generate an AM-modulated sine (tremolo tone):
 ///   amp * (1 - depth + depth*sin(2*pi*modRate*t)) * sin(2*pi*freq*t)
 /// Creates envelope jitter without formant structure. Tests jitter boost false positives.
-inline AudioSample makeTremoloTone(float freq, float modRate, float modDepth,
+inline Sample makeTremoloTone(float freq, float modRate, float modDepth,
                                     fl::u32 timestamp, float amplitude = 16000.0f,
                                     int count = 512, float sampleRate = 44100.0f) {
     fl::vector<fl::i16> data;
@@ -629,12 +629,12 @@ inline AudioSample makeTremoloTone(float freq, float modRate, float modDepth,
         float sample = amplitude * envelope * fl::sinf(2.0f * FL_M_PI * freq * t);
         data.push_back(static_cast<fl::i16>(fl::clamp(sample, -32768.0f, 32767.0f)));
     }
-    return AudioSample(data, timestamp);
+    return Sample(data, timestamp);
 }
 
 /// Generate bandpass-filtered noise: ~40 random-phase sinusoids between lowFreq-highFreq.
 /// Use makeFilteredNoise(200, 4000, ts) = speech-band noise.
-inline AudioSample makeFilteredNoise(float lowFreq, float highFreq, fl::u32 timestamp,
+inline Sample makeFilteredNoise(float lowFreq, float highFreq, fl::u32 timestamp,
                                       float amplitude = 16000.0f, int count = 512,
                                       float sampleRate = 44100.0f) {
     fl::vector<fl::i16> data(count, 0);
@@ -651,12 +651,12 @@ inline AudioSample makeFilteredNoise(float lowFreq, float highFreq, fl::u32 time
             data[i] = static_cast<fl::i16>(fl::clamp(sample, -32768.0f, 32767.0f));
         }
     }
-    return AudioSample(data, timestamp);
+    return Sample(data, timestamp);
 }
 
 /// Generate a pitched tom drum: 3 harmonics at tuningHz/2x/3x with 60ms decay + noise attack.
 /// Sits at male vocal F0 frequency (~150Hz) but lacks formant structure.
-inline AudioSample makePitchedTom(float tuningHz, fl::u32 timestamp,
+inline Sample makePitchedTom(float tuningHz, fl::u32 timestamp,
                                    float amplitude = 16000.0f, int count = 512,
                                    float sampleRate = 44100.0f) {
     fl::fl_random rng(9876);
@@ -678,7 +678,7 @@ inline AudioSample makePitchedTom(float tuningHz, fl::u32 timestamp,
         float sample = body + attack;
         data[i] = static_cast<fl::i16>(fl::clamp(sample, -32768.0f, 32767.0f));
     }
-    return AudioSample(data, timestamp);
+    return Sample(data, timestamp);
 }
 
 } // namespace test

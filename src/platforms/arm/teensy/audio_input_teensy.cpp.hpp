@@ -83,7 +83,7 @@ bool TeensyAudioRecorder::dequeueBlock(fl::vector<fl::i16>& samples, u8& channel
 
 // Teensy_I2S_Audio implementation
 
-Teensy_I2S_Audio::Teensy_I2S_Audio(const AudioConfigI2S& config)
+Teensy_I2S_Audio::Teensy_I2S_Audio(const audio::ConfigI2S& config)
     : mConfig(config), mHasError(false), mTotalSamplesRead(0), mInitialized(false) {
 
     // Validate sample rate (Teensy Audio Library defaults to 44.1kHz)
@@ -176,8 +176,8 @@ void Teensy_I2S_Audio::start() {
 #endif
 
     // Log channel selection
-    FL_WARN("  Channel: " << ((mConfig.mAudioChannel == AudioChannel::Left) ? "Left" :
-                              (mConfig.mAudioChannel == AudioChannel::Right) ? "Right" : "Both (downmixed)"));
+    FL_WARN("  Channel: " << ((mConfig.mAudioChannel == Channel::Left) ? "Left" :
+                              (mConfig.mAudioChannel == Channel::Right) ? "Right" : "Both (downmixed)"));
 }
 
 void Teensy_I2S_Audio::stop() {
@@ -205,14 +205,14 @@ bool Teensy_I2S_Audio::error(fl::string* msg) {
     return mHasError;
 }
 
-AudioSample Teensy_I2S_Audio::read() {
+audio::Sample Teensy_I2S_Audio::read() {
     if (mHasError || !mInitialized || !mRecorder) {
-        return AudioSample();  // Invalid sample
+        return audio::Sample();  // Invalid sample
     }
 
     u32 firstBlockTimestamp = 0;
 
-    if (mConfig.mAudioChannel == AudioChannel::Both) {
+    if (mConfig.mAudioChannel == Channel::Both) {
         // Stereo downmix mode: accumulate L/R blocks and downmix to mono
         // Each iteration: get L block + R block, average them -> 128 mono samples
         // Repeat 4 times -> 512 mono samples total
@@ -226,7 +226,7 @@ AudioSample Teensy_I2S_Audio::read() {
 
             if (!hasLeft || !hasRight || leftChannel != 0 || rightChannel != 1) {
                 // Need both channels, but don't have them yet
-                return AudioSample();
+                return audio::Sample();
             }
 
             if (mBlocksAccumulated == 0) {
@@ -247,7 +247,7 @@ AudioSample Teensy_I2S_Audio::read() {
     } else {
         // Mono mode: accumulate single channel blocks
         // Target: 512 samples from one channel (Left or Right)
-        u8 expectedChannel = (mConfig.mAudioChannel == AudioChannel::Left) ? 0 : 1;
+        u8 expectedChannel = (mConfig.mAudioChannel == Channel::Left) ? 0 : 1;
 
         while (mBlocksAccumulated < BLOCKS_TO_ACCUMULATE) {
             fl::vector<fl::i16> samples;
@@ -256,7 +256,7 @@ AudioSample Teensy_I2S_Audio::read() {
 
             if (!mRecorder->dequeueBlock(samples, channel, timestamp)) {
                 // No data available yet
-                return AudioSample();
+                return audio::Sample();
             }
 
             if (channel != expectedChannel) {
@@ -280,7 +280,7 @@ AudioSample Teensy_I2S_Audio::read() {
     // We have enough samples - emit the buffer
     mTotalSamplesRead += mAccumulatedSamples.size();
 
-    AudioSample result(fl::span<const fl::i16>(mAccumulatedSamples.data(),
+    audio::Sample result(fl::span<const fl::i16>(mAccumulatedSamples.data(),
                                                mAccumulatedSamples.size()),
                       firstBlockTimestamp);
 
@@ -292,13 +292,13 @@ AudioSample Teensy_I2S_Audio::read() {
 }
 
 // Platform-specific audio input creation function for Teensy
-fl::shared_ptr<IAudioInput> teensy_create_audio_input(
-    const AudioConfig& config,
+fl::shared_ptr<audio::IInput> teensy_create_audio_input(
+    const audio::Config& config,
     fl::string* error_message
 ) {
-    if (config.is<AudioConfigI2S>()) {
+    if (config.is<audio::ConfigI2S>()) {
         FL_WARN("Creating Teensy I2S audio source");
-        AudioConfigI2S i2s_config = config.get<AudioConfigI2S>();
+        audio::ConfigI2S i2s_config = config.get<audio::ConfigI2S>();
         auto audio = fl::make_shared<Teensy_I2S_Audio>(i2s_config);
 
         // Check if initialization failed
@@ -307,17 +307,17 @@ fl::shared_ptr<IAudioInput> teensy_create_audio_input(
             if (error_message) {
                 *error_message = init_error;
             }
-            return fl::shared_ptr<IAudioInput>();  // Return null
+            return fl::shared_ptr<audio::IInput>();  // Return null
         }
 
         return audio;
-    } else if (config.is<AudioConfigPdm>()) {
+    } else if (config.is<audio::ConfigPdm>()) {
         const char* ERROR_MESSAGE = "PDM audio not supported in Teensy Audio Library implementation";
         FL_WARN(ERROR_MESSAGE);
         if (error_message) {
             *error_message = ERROR_MESSAGE;
         }
-        return fl::shared_ptr<IAudioInput>();  // Return null
+        return fl::shared_ptr<audio::IInput>();  // Return null
     }
 
     const char* ERROR_MESSAGE = "Unsupported audio configuration for Teensy";
@@ -325,14 +325,14 @@ fl::shared_ptr<IAudioInput> teensy_create_audio_input(
     if (error_message) {
         *error_message = ERROR_MESSAGE;
     }
-    return fl::shared_ptr<IAudioInput>();  // Return null
+    return fl::shared_ptr<audio::IInput>();  // Return null
 }
 
 #else // !TEENSY_AUDIO_LIBRARY_AVAILABLE
 
 // Null audio implementation fallback when Teensy Audio Library is not available
-fl::shared_ptr<IAudioInput> teensy_create_audio_input(
-    const AudioConfig& config,
+fl::shared_ptr<audio::IInput> teensy_create_audio_input(
+    const audio::Config& config,
     fl::string* error_message
 ) {
     FL_UNUSED(config);
@@ -341,7 +341,7 @@ fl::shared_ptr<IAudioInput> teensy_create_audio_input(
     if (error_message) {
         *error_message = ERROR_MESSAGE;
     }
-    return fl::shared_ptr<IAudioInput>();  // Return null
+    return fl::shared_ptr<audio::IInput>();  // Return null
 }
 
 #endif // TEENSY_AUDIO_LIBRARY_AVAILABLE

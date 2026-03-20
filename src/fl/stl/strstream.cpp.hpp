@@ -24,9 +24,9 @@ sstream &sstream::operator<<(const Tile2x2_u8 &subpixel) {
     return *this;
 }
 
-// FFTBins support - show both raw and db bins  
-sstream &sstream::operator<<(const FFTBins &bins) {
-    mStr.append("FFTBins(bands=");
+// Bins support - show both raw and db bins  
+sstream &sstream::operator<<(const audio::fft::Bins &bins) {
+    mStr.append("Bins(bands=");
     mStr.append(bins.bands());
     mStr.append(", raw=");
     (*this) << bins.raw();

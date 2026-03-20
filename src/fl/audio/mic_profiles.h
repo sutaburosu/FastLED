@@ -3,12 +3,13 @@
 #include "fl/stl/int.h"
 
 namespace fl {
+namespace audio {
 
 /// Microphone frequency response correction profile.
 /// Each profile provides 16-channel gain corrections to flatten the frequency
 /// response of a specific microphone. Derived from manufacturer datasheet data.
 ///
-/// Set on AudioProcessor via setMicProfile() — the correction is applied
+/// Set on Processor via setMicProfile() — the correction is applied
 /// inside EqualizerDetector before per-bin normalization.
 enum class MicProfile : u8 {
     None,           ///< No correction (flat response assumed)
@@ -19,4 +20,5 @@ enum class MicProfile : u8 {
     LineIn,         ///< Line-in input (relatively flat, minor HF rolloff)
 };
 
+} // namespace audio
 } // namespace fl

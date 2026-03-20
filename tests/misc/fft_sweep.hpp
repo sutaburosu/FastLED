@@ -56,9 +56,9 @@ struct SweepFrame {
 fl::vector<SweepFrame> runContinuousSweep(int numFrames, int bands, float fmin,
                                           float fmax, int sampleRate,
                                           int samplesPerFrame,
-                                          fl::FFTMode mode) {
-    fl::FFT_Args args(samplesPerFrame, bands, fmin, fmax, sampleRate, mode);
-    fl::FFTImpl fft(args);
+                                          fl::audio::fft::Mode mode) {
+    fl::audio::fft::Args args(samplesPerFrame, bands, fmin, fmax, sampleRate, mode);
+    fl::audio::fft::Impl fft(args);
 
     fl::vector<SweepFrame> frames;
     frames.reserve(numFrames);
@@ -70,7 +70,7 @@ fl::vector<SweepFrame> runContinuousSweep(int numFrames, int bands, float fmin,
         float freq = fmin * fl::expf(logRatio * t);
 
         auto samples = makeSine(freq, samplesPerFrame, static_cast<float>(sampleRate));
-        fl::FFTBins bins(bands);
+        fl::audio::fft::Bins bins(bands);
         fft.run(samples, &bins);
 
         SweepFrame frame;
@@ -183,7 +183,7 @@ FL_TEST_CASE("CqOctave frequency sweep (64 bins 20-11025 Hz)") {
     const int bands = 64;
     const float fmin = 20.0f;
     const float fmax = 11025.0f;
-    fl::FFT_Args args(512, bands, fmin, fmax, 44100, fl::FFTMode::CQ_OCTAVE);
+    fl::audio::fft::Args args(512, bands, fmin, fmax, 44100, fl::audio::fft::Mode::CQ_OCTAVE);
 
     // Test a subset of bins across the range
     // Bins are log-spaced: bin i center = fmin * exp(log(fmax/fmin) * i / (bands-1))
@@ -205,8 +205,8 @@ FL_TEST_CASE("CqOctave frequency sweep (64 bins 20-11025 Hz)") {
         if (centerFreq > 22050.0f) continue;
 
         auto samples = makeSine(centerFreq);
-        fl::FFTBins bins(bands);
-        fl::FFT fft;
+        fl::audio::fft::Bins bins(bands);
+        fl::audio::fft::FFT fft;
         fft.run(samples, &bins, args);
 
         // Find the peak CQ bin
@@ -252,7 +252,7 @@ FL_TEST_CASE("CqOctave frequency sweep (64 bins 20-11025 Hz)") {
 // winMin = 512 * 90 / 14080 = 3 → CQ kernels are fine.
 FL_TEST_CASE("CQ frequency sweep - default config (16 bins 90-14080 Hz)") {
     const int bands = 16;
-    fl::FFT_Args args; // defaults: 512, 16, 90, 14080, 44100, Auto→CqOctave(naive)
+    fl::audio::fft::Args args; // defaults: 512, 16, 90, 14080, 44100, Auto→CqOctave(naive)
 
     float logRatio = fl::logf(args.fmax / args.fmin);
     int correctBins = 0;
@@ -263,8 +263,8 @@ FL_TEST_CASE("CQ frequency sweep - default config (16 bins 90-14080 Hz)") {
                                                   static_cast<float>(bands - 1));
 
         auto samples = makeSine(centerFreq);
-        fl::FFTBins bins(bands);
-        fl::FFT fft;
+        fl::audio::fft::Bins bins(bands);
+        fl::audio::fft::FFT fft;
         fft.run(samples, &bins, args);
 
         int peakBin = 0;
@@ -303,7 +303,7 @@ FL_TEST_CASE("CQ frequency sweep - Equalizer config (16 bins 60-5120 Hz)") {
     const int bands = 16;
     const float fmin = 60.0f;
     const float fmax = 5120.0f;
-    fl::FFT_Args args(512, bands, fmin, fmax, 44100);
+    fl::audio::fft::Args args(512, bands, fmin, fmax, 44100);
 
     float logRatio = fl::logf(fmax / fmin);
     int correctBins = 0;
@@ -317,8 +317,8 @@ FL_TEST_CASE("CQ frequency sweep - Equalizer config (16 bins 60-5120 Hz)") {
         if (centerFreq < 86.0f) continue;
 
         auto samples = makeSine(centerFreq);
-        fl::FFTBins bins(bands);
-        fl::FFT fft;
+        fl::audio::fft::Bins bins(bands);
+        fl::audio::fft::FFT fft;
         fft.run(samples, &bins, args);
 
         int peakBin = 0;
@@ -346,7 +346,7 @@ FL_TEST_CASE("CQ frequency sweep - Equalizer config (16 bins 60-5120 Hz)") {
     FASTLED_WARN("CQ sweep (16 bins, 60-5120 Hz): " << correctBins << "/"
                  << totalTested << " bins correct (within +/-3)");
     // Q ≈ 0.70 limits accuracy. Require >50% correct; band-summing
-    // detectors (like EqualizerDetector) still work at this resolution.
+    // detector (like EqualizerDetector) still work at this resolution.
     float correctPct = static_cast<float>(correctBins) / static_cast<float>(totalTested);
     FL_CHECK_GT(correctPct, 0.50f);
 }
@@ -358,7 +358,7 @@ FL_TEST_CASE("LogRebin frequency sweep - wide range (64 bins 20-11025 Hz)") {
     const int bands = 64;
     const float fmin = 20.0f;
     const float fmax = 11025.0f;
-    fl::FFT_Args args(512, bands, fmin, fmax, 44100, fl::FFTMode::LOG_REBIN);
+    fl::audio::fft::Args args(512, bands, fmin, fmax, 44100, fl::audio::fft::Mode::LOG_REBIN);
 
     float logRatio = fl::logf(fmax / fmin);
     int correctBins = 0;
@@ -372,8 +372,8 @@ FL_TEST_CASE("LogRebin frequency sweep - wide range (64 bins 20-11025 Hz)") {
         if (centerFreq > 22050.0f) continue;
 
         auto samples = makeSine(centerFreq);
-        fl::FFTBins bins(bands);
-        fl::FFT fft;
+        fl::audio::fft::Bins bins(bands);
+        fl::audio::fft::FFT fft;
         fft.run(samples, &bins, args);
 
         int peakBin = 0;
@@ -409,7 +409,7 @@ FL_TEST_CASE("Linear bins frequency sweep - wide range (20-11025 Hz)") {
     const int bands = 64;
     const float fmin = 20.0f;
     const float fmax = 11025.0f;
-    fl::FFT_Args args(512, bands, fmin, fmax, 44100);
+    fl::audio::fft::Args args(512, bands, fmin, fmax, 44100);
 
     float linearBinHz = (fmax - fmin) / static_cast<float>(bands);
     int correctBins = 0;
@@ -423,8 +423,8 @@ FL_TEST_CASE("Linear bins frequency sweep - wide range (20-11025 Hz)") {
         if (centerFreq < 86.0f) continue;
 
         auto samples = makeSine(centerFreq);
-        fl::FFTBins bins(bands);
-        fl::FFT fft;
+        fl::audio::fft::Bins bins(bands);
+        fl::audio::fft::FFT fft;
         fft.run(samples, &bins, args);
 
         // Find peak in LINEAR bins
@@ -467,16 +467,16 @@ FL_TEST_CASE("Linear bins frequency sweep - wide range (20-11025 Hz)") {
 // This is the core reproduction of the jitter reported in issue #2193.
 FL_TEST_CASE("FFT sweep - LOG_REBIN 16 bins continuous diagnostic") {
     const int bands = 16;
-    const float fmin = fl::FFT_Args::DefaultMinFrequency();
-    const float fmax = fl::FFT_Args::DefaultMaxFrequency();
-    const int sampleRate = fl::FFT_Args::DefaultSampleRate();
-    const int samplesPerFrame = fl::FFT_Args::DefaultSamples();
+    const float fmin = fl::audio::fft::Args::DefaultMinFrequency();
+    const float fmax = fl::audio::fft::Args::DefaultMaxFrequency();
+    const int sampleRate = fl::audio::fft::Args::DefaultSampleRate();
+    const int samplesPerFrame = fl::audio::fft::Args::DefaultSamples();
 
     // ~10 seconds of audio at 512 samples/frame = 862 frames
     const int numFrames = 862;
 
     auto frames = runContinuousSweep(numFrames, bands, fmin, fmax, sampleRate,
-                                     samplesPerFrame, fl::FFTMode::LOG_REBIN);
+                                     samplesPerFrame, fl::audio::fft::Mode::LOG_REBIN);
     FL_REQUIRE_EQ(static_cast<int>(frames.size()), numFrames);
 
     int nonMonotonic = countNonMonotonicSteps(frames);
@@ -545,18 +545,18 @@ FL_TEST_CASE("FFT sweep - LOG_REBIN 16 bins continuous diagnostic") {
 // an FFT bin — causing quantization jitter.
 FL_TEST_CASE("FFT sweep - low frequency jitter detection") {
     const int bands = 16;
-    const float fmin = fl::FFT_Args::DefaultMinFrequency();
-    const float fmax = fl::FFT_Args::DefaultMaxFrequency();
-    const int sampleRate = fl::FFT_Args::DefaultSampleRate();
-    const int samplesPerFrame = fl::FFT_Args::DefaultSamples();
+    const float fmin = fl::audio::fft::Args::DefaultMinFrequency();
+    const float fmax = fl::audio::fft::Args::DefaultMaxFrequency();
+    const int sampleRate = fl::audio::fft::Args::DefaultSampleRate();
+    const int samplesPerFrame = fl::audio::fft::Args::DefaultSamples();
 
     // Sweep just the bottom bins (174-350 Hz) with fine resolution
     const float lowFmax = 350.0f;
     const int numFrames = 200;
 
-    fl::FFT_Args args(samplesPerFrame, bands, fmin, fmax, sampleRate,
-                      fl::FFTMode::LOG_REBIN);
-    fl::FFTImpl fft(args);
+    fl::audio::fft::Args args(samplesPerFrame, bands, fmin, fmax, sampleRate,
+                      fl::audio::fft::Mode::LOG_REBIN);
+    fl::audio::fft::Impl fft(args);
 
     int peakBinChanges = 0;
     int lastPeakBin = -1;
@@ -569,7 +569,7 @@ FL_TEST_CASE("FFT sweep - low frequency jitter detection") {
 
         auto samples =
             makeSine(freq, samplesPerFrame, static_cast<float>(sampleRate));
-        fl::FFTBins bins(bands);
+        fl::audio::fft::Bins bins(bands);
         fft.run(samples, &bins);
 
         int peakBin = 0;
@@ -617,21 +617,21 @@ FL_TEST_CASE("FFT sweep - low frequency jitter detection") {
 // Without windowing, spectral leakage spreads energy across many bins.
 FL_TEST_CASE("FFT sweep - single tone leakage LOG_REBIN") {
     const int bands = 16;
-    const int sampleRate = fl::FFT_Args::DefaultSampleRate();
-    const int samplesPerFrame = fl::FFT_Args::DefaultSamples();
+    const int sampleRate = fl::audio::fft::Args::DefaultSampleRate();
+    const int samplesPerFrame = fl::audio::fft::Args::DefaultSamples();
 
     float testFreqs[] = {200.0f, 400.0f, 800.0f, 1600.0f, 3200.0f};
 
     for (float freq : testFreqs) {
-        fl::FFT_Args args(samplesPerFrame, bands,
-                          fl::FFT_Args::DefaultMinFrequency(),
-                          fl::FFT_Args::DefaultMaxFrequency(), sampleRate,
-                          fl::FFTMode::LOG_REBIN);
-        fl::FFTImpl fft(args);
+        fl::audio::fft::Args args(samplesPerFrame, bands,
+                          fl::audio::fft::Args::DefaultMinFrequency(),
+                          fl::audio::fft::Args::DefaultMaxFrequency(), sampleRate,
+                          fl::audio::fft::Mode::LOG_REBIN);
+        fl::audio::fft::Impl fft(args);
 
         auto samples =
             makeSine(freq, samplesPerFrame, static_cast<float>(sampleRate));
-        fl::FFTBins bins(bands);
+        fl::audio::fft::Bins bins(bands);
         fft.run(samples, &bins);
 
         float peakEnergy = 0.0f;
@@ -676,14 +676,14 @@ FL_TEST_CASE("FFT sweep - single tone leakage LOG_REBIN") {
 // doesn't leak energy from distant frequencies.
 FL_TEST_CASE("FFT sweep - bin 0 anomaly") {
     const int bands = 16;
-    const float fmin = fl::FFT_Args::DefaultMinFrequency();
-    const float fmax = fl::FFT_Args::DefaultMaxFrequency();
-    const int sampleRate = fl::FFT_Args::DefaultSampleRate();
-    const int samplesPerFrame = fl::FFT_Args::DefaultSamples();
+    const float fmin = fl::audio::fft::Args::DefaultMinFrequency();
+    const float fmax = fl::audio::fft::Args::DefaultMaxFrequency();
+    const int sampleRate = fl::audio::fft::Args::DefaultSampleRate();
+    const int samplesPerFrame = fl::audio::fft::Args::DefaultSamples();
 
-    fl::FFT_Args args(samplesPerFrame, bands, fmin, fmax, sampleRate,
-                      fl::FFTMode::LOG_REBIN);
-    fl::FFTImpl fft(args);
+    fl::audio::fft::Args args(samplesPerFrame, bands, fmin, fmax, sampleRate,
+                      fl::audio::fft::Mode::LOG_REBIN);
+    fl::audio::fft::Impl fft(args);
 
     // Tone at the center of bin 0
     float bin0CenterFreq =
@@ -692,7 +692,7 @@ FL_TEST_CASE("FFT sweep - bin 0 anomaly") {
 
     auto samples =
         makeSine(bin0CenterFreq, samplesPerFrame, static_cast<float>(sampleRate));
-    fl::FFTBins bins(bands);
+    fl::audio::fft::Bins bins(bands);
     fft.run(samples, &bins);
 
     float bin0Energy = bins.raw()[0];
@@ -717,7 +717,7 @@ FL_TEST_CASE("FFT sweep - bin 0 anomaly") {
     // High-frequency tone should NOT leak into bin 0
     auto highSamples =
         makeSine(2000.0f, samplesPerFrame, static_cast<float>(sampleRate));
-    fl::FFTBins highBins(bands);
+    fl::audio::fft::Bins highBins(bands);
     fft.run(highSamples, &highBins);
 
     float highToneBin0 = highBins.raw()[0];
@@ -737,16 +737,16 @@ FL_TEST_CASE("FFT sweep - bin 0 anomaly") {
 // inherent algorithm limitation.
 FL_TEST_CASE("FFT sweep - LOG_REBIN vs CQ_OCTAVE quality comparison") {
     const int bands = 16;
-    const float fmin = fl::FFT_Args::DefaultMinFrequency();
-    const float fmax = fl::FFT_Args::DefaultMaxFrequency();
-    const int sampleRate = fl::FFT_Args::DefaultSampleRate();
-    const int samplesPerFrame = fl::FFT_Args::DefaultSamples();
+    const float fmin = fl::audio::fft::Args::DefaultMinFrequency();
+    const float fmax = fl::audio::fft::Args::DefaultMaxFrequency();
+    const int sampleRate = fl::audio::fft::Args::DefaultSampleRate();
+    const int samplesPerFrame = fl::audio::fft::Args::DefaultSamples();
     const int numFrames = 100;
 
     auto logFrames = runContinuousSweep(numFrames, bands, fmin, fmax, sampleRate,
-                                        samplesPerFrame, fl::FFTMode::LOG_REBIN);
+                                        samplesPerFrame, fl::audio::fft::Mode::LOG_REBIN);
     auto cqFrames = runContinuousSweep(numFrames, bands, fmin, fmax, sampleRate,
-                                       samplesPerFrame, fl::FFTMode::CQ_OCTAVE);
+                                       samplesPerFrame, fl::audio::fft::Mode::CQ_OCTAVE);
 
     float logConc = averageConcentration(logFrames);
     float cqConc = averageConcentration(cqFrames);
@@ -786,13 +786,13 @@ FL_TEST_CASE("FFT sweep - LOG_REBIN vs CQ_OCTAVE quality comparison") {
 // smears a single tone across all bins, two tones will be indistinguishable.
 FL_TEST_CASE("FFT sweep - two-tone separation LOG_REBIN") {
     const int bands = 16;
-    const int sampleRate = fl::FFT_Args::DefaultSampleRate();
-    const int N = fl::FFT_Args::DefaultSamples();
+    const int sampleRate = fl::audio::fft::Args::DefaultSampleRate();
+    const int N = fl::audio::fft::Args::DefaultSamples();
 
-    fl::FFT_Args args(N, bands, fl::FFT_Args::DefaultMinFrequency(),
-                      fl::FFT_Args::DefaultMaxFrequency(), sampleRate,
-                      fl::FFTMode::LOG_REBIN);
-    fl::FFTImpl fft(args);
+    fl::audio::fft::Args args(N, bands, fl::audio::fft::Args::DefaultMinFrequency(),
+                      fl::audio::fft::Args::DefaultMaxFrequency(), sampleRate,
+                      fl::audio::fft::Mode::LOG_REBIN);
+    fl::audio::fft::Impl fft(args);
 
     // Two tones well-separated in frequency: ~300 Hz (low bin) and ~2500 Hz (high bin)
     float freqLow = 300.0f;
@@ -809,7 +809,7 @@ FL_TEST_CASE("FFT sweep - two-tone separation LOG_REBIN") {
         samples[i] = static_cast<::fl::i16>(val);
     }
 
-    fl::FFTBins bins(bands);
+    fl::audio::fft::Bins bins(bands);
     fft.run(samples, &bins);
 
     int expectedLow = bins.freqToBin(freqLow);
@@ -871,14 +871,14 @@ FL_TEST_CASE("FFT sweep - two-tone separation LOG_REBIN") {
 // This directly tests the "lockstep" issue from #2193.
 FL_TEST_CASE("FFT sweep - band independence bass+treble") {
     const int bands = 16;
-    const int sampleRate = fl::FFT_Args::DefaultSampleRate();
-    const int N = fl::FFT_Args::DefaultSamples();
-    const float fmin = fl::FFT_Args::DefaultMinFrequency();
-    const float fmax = fl::FFT_Args::DefaultMaxFrequency();
+    const int sampleRate = fl::audio::fft::Args::DefaultSampleRate();
+    const int N = fl::audio::fft::Args::DefaultSamples();
+    const float fmin = fl::audio::fft::Args::DefaultMinFrequency();
+    const float fmax = fl::audio::fft::Args::DefaultMaxFrequency();
 
-    fl::FFT_Args args(N, bands, fmin, fmax, sampleRate,
-                      fl::FFTMode::LOG_REBIN);
-    fl::FFTImpl fft(args);
+    fl::audio::fft::Args args(N, bands, fmin, fmax, sampleRate,
+                      fl::audio::fft::Mode::LOG_REBIN);
+    fl::audio::fft::Impl fft(args);
 
     // Bass tone near fmin (should land in low bins)
     // Treble tone near fmax (should land in high bins)
@@ -897,7 +897,7 @@ FL_TEST_CASE("FFT sweep - band independence bass+treble") {
         samples[i] = static_cast<::fl::i16>(val);
     }
 
-    fl::FFTBins bins(bands);
+    fl::audio::fft::Bins bins(bands);
     fft.run(samples, &bins);
 
     // Sum energy in three regions: bass (0-3), mid (5-10), treble (12-15)
@@ -973,9 +973,9 @@ FL_TEST_CASE("FFT sweep - high-band aliasing diagnostic (Equalizer config)") {
     float worstAliasMetric = 0.0f;
     int worstAliasBin = -1;
 
-    fl::FFT_Args args(samplesPerFrame, bands, fmin, fmax, sampleRate,
-                      fl::FFTMode::LOG_REBIN);
-    fl::FFTImpl fft(args);
+    fl::audio::fft::Args args(samplesPerFrame, bands, fmin, fmax, sampleRate,
+                      fl::audio::fft::Mode::LOG_REBIN);
+    fl::audio::fft::Impl fft(args);
 
     // Sweep from ~1500 Hz to ~5120 Hz (upper region)
     float sweepFmin = 1500.0f;
@@ -986,7 +986,7 @@ FL_TEST_CASE("FFT sweep - high-band aliasing diagnostic (Equalizer config)") {
         float freq = sweepFmin * fl::expf(fl::logf(sweepFmax / sweepFmin) * t);
 
         auto samples = makeSine(freq, samplesPerFrame, static_cast<float>(sampleRate));
-        fl::FFTBins bins(bands);
+        fl::audio::fft::Bins bins(bands);
         fft.run(samples, &bins);
 
         // Use bin-width-normalized magnitudes for aliasing analysis
@@ -1049,13 +1049,13 @@ FL_TEST_CASE("FFT sweep - high-band aliasing diagnostic (Equalizer config)") {
 // break this linear relationship.
 FL_TEST_CASE("FFT sweep - amplitude linearity LOG_REBIN") {
     const int bands = 16;
-    const int sampleRate = fl::FFT_Args::DefaultSampleRate();
-    const int N = fl::FFT_Args::DefaultSamples();
+    const int sampleRate = fl::audio::fft::Args::DefaultSampleRate();
+    const int N = fl::audio::fft::Args::DefaultSamples();
 
-    fl::FFT_Args args(N, bands, fl::FFT_Args::DefaultMinFrequency(),
-                      fl::FFT_Args::DefaultMaxFrequency(), sampleRate,
-                      fl::FFTMode::LOG_REBIN);
-    fl::FFTImpl fft(args);
+    fl::audio::fft::Args args(N, bands, fl::audio::fft::Args::DefaultMinFrequency(),
+                      fl::audio::fft::Args::DefaultMaxFrequency(), sampleRate,
+                      fl::audio::fft::Mode::LOG_REBIN);
+    fl::audio::fft::Impl fft(args);
 
     float freq = 1000.0f;
     float ampLow = 4000.0f;
@@ -1064,7 +1064,7 @@ FL_TEST_CASE("FFT sweep - amplitude linearity LOG_REBIN") {
     auto samplesLow = makeSine(freq, N, static_cast<float>(sampleRate), ampLow);
     auto samplesHigh = makeSine(freq, N, static_cast<float>(sampleRate), ampHigh);
 
-    fl::FFTBins binsLow(bands), binsHigh(bands);
+    fl::audio::fft::Bins binsLow(bands), binsHigh(bands);
     fft.run(samplesLow, &binsLow);
     fft.run(samplesHigh, &binsHigh);
 
@@ -1116,12 +1116,12 @@ struct SimplePRNG {
     }
 };
 
-const char* advModeName(::fl::FFTMode mode) {
+const char* advModeName(::fl::audio::fft::Mode mode) {
     switch (mode) {
-    case ::fl::FFTMode::LOG_REBIN: return "LOG_REBIN";
-    case ::fl::FFTMode::CQ_NAIVE: return "CQ_NAIVE";
-    case ::fl::FFTMode::CQ_OCTAVE: return "CQ_OCTAVE";
-    case ::fl::FFTMode::CQ_HYBRID: return "CQ_HYBRID";
+    case ::fl::audio::fft::Mode::LOG_REBIN: return "LOG_REBIN";
+    case ::fl::audio::fft::Mode::CQ_NAIVE: return "CQ_NAIVE";
+    case ::fl::audio::fft::Mode::CQ_OCTAVE: return "CQ_OCTAVE";
+    case ::fl::audio::fft::Mode::CQ_HYBRID: return "CQ_HYBRID";
     default: return "UNKNOWN";
     }
 }
@@ -1132,29 +1132,29 @@ const char* advModeName(::fl::FFTMode mode) {
 // Pure tone at center of bins 13, 14, 15 — checks concentration and distant leakage.
 FL_TEST_CASE("FFT adversarial - high-bin spectral leakage (all modes)") {
     const int bands = 16;
-    const float fmin = fl::FFT_Args::DefaultMinFrequency();
-    const float fmax = fl::FFT_Args::DefaultMaxFrequency();
-    const int sampleRate = fl::FFT_Args::DefaultSampleRate();
-    const int N = fl::FFT_Args::DefaultSamples();
+    const float fmin = fl::audio::fft::Args::DefaultMinFrequency();
+    const float fmax = fl::audio::fft::Args::DefaultMaxFrequency();
+    const int sampleRate = fl::audio::fft::Args::DefaultSampleRate();
+    const int N = fl::audio::fft::Args::DefaultSamples();
     float logRatio = fl::logf(fmax / fmin);
 
-    fl::FFTMode modes[] = {
-        fl::FFTMode::LOG_REBIN,
-        fl::FFTMode::CQ_NAIVE,
-        fl::FFTMode::CQ_OCTAVE,
-        fl::FFTMode::CQ_HYBRID
+    fl::audio::fft::Mode modes[] = {
+        fl::audio::fft::Mode::LOG_REBIN,
+        fl::audio::fft::Mode::CQ_NAIVE,
+        fl::audio::fft::Mode::CQ_OCTAVE,
+        fl::audio::fft::Mode::CQ_HYBRID
     };
 
-    for (fl::FFTMode mode : modes) {
-        fl::FFT_Args args(N, bands, fmin, fmax, sampleRate, mode);
-        fl::FFTImpl fft(args);
+    for (fl::audio::fft::Mode mode : modes) {
+        fl::audio::fft::Args args(N, bands, fmin, fmax, sampleRate, mode);
+        fl::audio::fft::Impl fft(args);
 
         for (int targetBin = 13; targetBin <= 15; ++targetBin) {
             float centerFreq = fmin * fl::expf(logRatio * static_cast<float>(targetBin) /
                                                 static_cast<float>(bands - 1));
 
             auto samples = makeSine(centerFreq, N, static_cast<float>(sampleRate));
-            fl::FFTBins bins(bands);
+            fl::audio::fft::Bins bins(bands);
             fft.run(samples, &bins);
 
             float peakEnergy = 0.0f;
@@ -1186,8 +1186,8 @@ FL_TEST_CASE("FFT adversarial - high-bin spectral leakage (all modes)") {
             // Per-mode concentration thresholds:
             // CQ_NAIVE uses single-FFT CQ kernels → lower concentration at high bins.
             // CQ_OCTAVE has wider kernel main lobes → slightly lower concentration.
-            float concThreshold = (mode == fl::FFTMode::CQ_NAIVE) ? 0.25f :
-                                  (mode == fl::FFTMode::CQ_OCTAVE) ? 0.35f : 0.40f;
+            float concThreshold = (mode == fl::audio::fft::Mode::CQ_NAIVE) ? 0.25f :
+                                  (mode == fl::audio::fft::Mode::CQ_OCTAVE) ? 0.35f : 0.40f;
             FL_CHECK_GT(concentration, concThreshold);
             FL_CHECK_LT(distantLeakage, 0.20f);
         }
@@ -1206,11 +1206,11 @@ FL_TEST_CASE("FFT adversarial - near-Nyquist aliasing") {
     float testFreqs[] = {18000.0f, 19000.0f, 20000.0f};
 
     for (float freq : testFreqs) {
-        fl::FFT_Args args(N, bands, fmin, fmax, sampleRate, fl::FFTMode::LOG_REBIN);
-        fl::FFTImpl fft(args);
+        fl::audio::fft::Args args(N, bands, fmin, fmax, sampleRate, fl::audio::fft::Mode::LOG_REBIN);
+        fl::audio::fft::Impl fft(args);
 
         auto samples = makeSine(freq, N, static_cast<float>(sampleRate));
-        fl::FFTBins bins(bands);
+        fl::audio::fft::Bins bins(bands);
         fft.run(samples, &bins);
 
         int peakBin = 0;
@@ -1244,11 +1244,11 @@ FL_TEST_CASE("FFT adversarial - near-Nyquist aliasing") {
     // Nyquist tone: sin(n*pi) = 0, so total energy should be near-zero
     {
         float nyquistFreq = static_cast<float>(sampleRate) / 2.0f;
-        fl::FFT_Args args(N, bands, fmin, fmax, sampleRate, fl::FFTMode::LOG_REBIN);
-        fl::FFTImpl fft(args);
+        fl::audio::fft::Args args(N, bands, fmin, fmax, sampleRate, fl::audio::fft::Mode::LOG_REBIN);
+        fl::audio::fft::Impl fft(args);
 
         auto samples = makeSine(nyquistFreq, N, static_cast<float>(sampleRate));
-        fl::FFTBins bins(bands);
+        fl::audio::fft::Bins bins(bands);
         fft.run(samples, &bins);
 
         float totalEnergy = 0.0f;
@@ -1283,12 +1283,12 @@ FL_TEST_CASE("FFT adversarial - white noise normalization flatness") {
         noiseSamples[i] = rng.nextI16();
     }
 
-    fl::FFT_Args args(N, bands,
-                      fl::FFT_Args::DefaultMinFrequency(),
-                      fl::FFT_Args::DefaultMaxFrequency(),
-                      sampleRate, fl::FFTMode::LOG_REBIN);
-    fl::FFTImpl fft(args);
-    fl::FFTBins bins(bands);
+    fl::audio::fft::Args args(N, bands,
+                      fl::audio::fft::Args::DefaultMinFrequency(),
+                      fl::audio::fft::Args::DefaultMaxFrequency(),
+                      sampleRate, fl::audio::fft::Mode::LOG_REBIN);
+    fl::audio::fft::Impl fft(args);
+    fl::audio::fft::Bins bins(bands);
     fft.run(noiseSamples, &bins);
 
     // rawNormalized() should be flatter than raw()
@@ -1337,17 +1337,17 @@ FL_TEST_CASE("FFT adversarial - white noise normalization flatness") {
 // 100-frame sweep over bins 12-15 vs bins 4-8.
 FL_TEST_CASE("FFT adversarial - top-quartile vs mid-range concentration") {
     const int bands = 16;
-    const float fmin = fl::FFT_Args::DefaultMinFrequency();
-    const float fmax = fl::FFT_Args::DefaultMaxFrequency();
-    const int sampleRate = fl::FFT_Args::DefaultSampleRate();
-    const int N = fl::FFT_Args::DefaultSamples();
+    const float fmin = fl::audio::fft::Args::DefaultMinFrequency();
+    const float fmax = fl::audio::fft::Args::DefaultMaxFrequency();
+    const int sampleRate = fl::audio::fft::Args::DefaultSampleRate();
+    const int N = fl::audio::fft::Args::DefaultSamples();
     float logRatio = fl::logf(fmax / fmin);
 
-    fl::FFTMode modes[] = {fl::FFTMode::LOG_REBIN, fl::FFTMode::CQ_OCTAVE};
+    fl::audio::fft::Mode modes[] = {fl::audio::fft::Mode::LOG_REBIN, fl::audio::fft::Mode::CQ_OCTAVE};
 
-    for (fl::FFTMode mode : modes) {
-        fl::FFT_Args args(N, bands, fmin, fmax, sampleRate, mode);
-        fl::FFTImpl fft(args);
+    for (fl::audio::fft::Mode mode : modes) {
+        fl::audio::fft::Args args(N, bands, fmin, fmax, sampleRate, mode);
+        fl::audio::fft::Impl fft(args);
 
         // Sweep bins 12-15 (top quartile)
         const int topFrames = 100;
@@ -1359,7 +1359,7 @@ FL_TEST_CASE("FFT adversarial - top-quartile vs mid-range concentration") {
                                           static_cast<float>(bands - 1));
 
             auto samples = makeSine(freq, N, static_cast<float>(sampleRate));
-            fl::FFTBins bins(bands);
+            fl::audio::fft::Bins bins(bands);
             fft.run(samples, &bins);
 
             float peakE = 0.0f, totalE = 0.0f;
@@ -1381,7 +1381,7 @@ FL_TEST_CASE("FFT adversarial - top-quartile vs mid-range concentration") {
                                           static_cast<float>(bands - 1));
 
             auto samples = makeSine(freq, N, static_cast<float>(sampleRate));
-            fl::FFTBins bins(bands);
+            fl::audio::fft::Bins bins(bands);
             fft.run(samples, &bins);
 
             float peakE = 0.0f, totalE = 0.0f;
@@ -1412,22 +1412,22 @@ FL_TEST_CASE("FFT adversarial - top-quartile vs mid-range concentration") {
 // Tone at geometric mean between adjacent high bins.
 FL_TEST_CASE("FFT adversarial - high-bin boundary energy split") {
     const int bands = 16;
-    const float fmin = fl::FFT_Args::DefaultMinFrequency();
-    const float fmax = fl::FFT_Args::DefaultMaxFrequency();
-    const int sampleRate = fl::FFT_Args::DefaultSampleRate();
-    const int N = fl::FFT_Args::DefaultSamples();
+    const float fmin = fl::audio::fft::Args::DefaultMinFrequency();
+    const float fmax = fl::audio::fft::Args::DefaultMaxFrequency();
+    const int sampleRate = fl::audio::fft::Args::DefaultSampleRate();
+    const int N = fl::audio::fft::Args::DefaultSamples();
     float logRatio = fl::logf(fmax / fmin);
 
-    fl::FFTMode modes[] = {
-        fl::FFTMode::LOG_REBIN,
-        fl::FFTMode::CQ_NAIVE,
-        fl::FFTMode::CQ_OCTAVE,
-        fl::FFTMode::CQ_HYBRID
+    fl::audio::fft::Mode modes[] = {
+        fl::audio::fft::Mode::LOG_REBIN,
+        fl::audio::fft::Mode::CQ_NAIVE,
+        fl::audio::fft::Mode::CQ_OCTAVE,
+        fl::audio::fft::Mode::CQ_HYBRID
     };
 
-    for (fl::FFTMode mode : modes) {
-        fl::FFT_Args args(N, bands, fmin, fmax, sampleRate, mode);
-        fl::FFTImpl fft(args);
+    for (fl::audio::fft::Mode mode : modes) {
+        fl::audio::fft::Args args(N, bands, fmin, fmax, sampleRate, mode);
+        fl::audio::fft::Impl fft(args);
 
         // Test boundaries: bins 13-14 and bins 14-15
         for (int p = 0; p < 2; ++p) {
@@ -1442,7 +1442,7 @@ FL_TEST_CASE("FFT adversarial - high-bin boundary energy split") {
             float boundaryFreq = freqA * fl::expf(0.5f * fl::logf(freqB / freqA));
 
             auto samples = makeSine(boundaryFreq, N, static_cast<float>(sampleRate));
-            fl::FFTBins bins(bands);
+            fl::audio::fft::Bins bins(bands);
             fft.run(samples, &bins);
 
             float eA = bins.raw()[binA];
@@ -1458,7 +1458,7 @@ FL_TEST_CASE("FFT adversarial - high-bin boundary energy split") {
             // CQ_NAIVE frequency-domain kernels degenerate at the highest
             // bins when the frequency range is wide. Skip the topmost
             // boundary check for CQ_NAIVE.
-            if (mode == fl::FFTMode::CQ_NAIVE && binB == bands - 1) {
+            if (mode == fl::audio::fft::Mode::CQ_NAIVE && binB == bands - 1) {
                 FASTLED_WARN("  (skipping CQ_NAIVE top boundary - kernel degeneration)");
                 continue;
             }
@@ -1473,13 +1473,13 @@ FL_TEST_CASE("FFT adversarial - high-bin boundary energy split") {
 // Sweep with fine resolution across tier boundaries (~698 Hz, ~1397 Hz).
 FL_TEST_CASE("FFT adversarial - CQ_HYBRID tier boundary continuity") {
     const int bands = 16;
-    const float fmin = fl::FFT_Args::DefaultMinFrequency();
-    const float fmax = fl::FFT_Args::DefaultMaxFrequency();
-    const int sampleRate = fl::FFT_Args::DefaultSampleRate();
-    const int N = fl::FFT_Args::DefaultSamples();
+    const float fmin = fl::audio::fft::Args::DefaultMinFrequency();
+    const float fmax = fl::audio::fft::Args::DefaultMaxFrequency();
+    const int sampleRate = fl::audio::fft::Args::DefaultSampleRate();
+    const int N = fl::audio::fft::Args::DefaultSamples();
 
-    fl::FFT_Args args(N, bands, fmin, fmax, sampleRate, fl::FFTMode::CQ_HYBRID);
-    fl::FFTImpl fft(args);
+    fl::audio::fft::Args args(N, bands, fmin, fmax, sampleRate, fl::audio::fft::Mode::CQ_HYBRID);
+    fl::audio::fft::Impl fft(args);
 
     // Tier boundaries at ~698 Hz (fmin*4) and ~1397 Hz (fmin*8)
     float boundaries[] = {fmin * 4.0f, fmin * 8.0f};
@@ -1497,7 +1497,7 @@ FL_TEST_CASE("FFT adversarial - CQ_HYBRID tier boundary continuity") {
             float freq = boundary * (0.8f + 0.4f * t); // 80% to 120%
 
             auto samples = makeSine(freq, N, static_cast<float>(sampleRate));
-            fl::FFTBins bins(bands);
+            fl::audio::fft::Bins bins(bands);
             fft.run(samples, &bins);
 
             float peakEnergy = 0.0f;
@@ -1541,14 +1541,14 @@ FL_TEST_CASE("FFT adversarial - CQ_OCTAVE decimation boundary aliasing") {
     const int sampleRate = 44100;
     const int N = 512;
 
-    fl::FFT_Args args(N, bands, fmin, fmax, sampleRate, fl::FFTMode::CQ_OCTAVE);
-    fl::FFTImpl fft(args);
+    fl::audio::fft::Args args(N, bands, fmin, fmax, sampleRate, fl::audio::fft::Mode::CQ_OCTAVE);
+    fl::audio::fft::Impl fft(args);
 
     float testFreqs[] = {8000.0f, 10000.0f};
 
     for (float freq : testFreqs) {
         auto samples = makeSine(freq, N, static_cast<float>(sampleRate));
-        fl::FFTBins bins(bands);
+        fl::audio::fft::Bins bins(bands);
         fft.run(samples, &bins);
 
         float totalEnergy = 0.0f;
@@ -1583,14 +1583,14 @@ FL_TEST_CASE("FFT adversarial - CQ_OCTAVE decimation boundary aliasing") {
 // Same-amplitude pure tone at bin 1 center vs bin 14 center.
 FL_TEST_CASE("FFT adversarial - high vs low bin concentration symmetry") {
     const int bands = 16;
-    const float fmin = fl::FFT_Args::DefaultMinFrequency();
-    const float fmax = fl::FFT_Args::DefaultMaxFrequency();
-    const int sampleRate = fl::FFT_Args::DefaultSampleRate();
-    const int N = fl::FFT_Args::DefaultSamples();
+    const float fmin = fl::audio::fft::Args::DefaultMinFrequency();
+    const float fmax = fl::audio::fft::Args::DefaultMaxFrequency();
+    const int sampleRate = fl::audio::fft::Args::DefaultSampleRate();
+    const int N = fl::audio::fft::Args::DefaultSamples();
     float logRatio = fl::logf(fmax / fmin);
 
-    fl::FFT_Args args(N, bands, fmin, fmax, sampleRate, fl::FFTMode::LOG_REBIN);
-    fl::FFTImpl fft(args);
+    fl::audio::fft::Args args(N, bands, fmin, fmax, sampleRate, fl::audio::fft::Mode::LOG_REBIN);
+    fl::audio::fft::Impl fft(args);
 
     // Low bin (bin 1) center frequency
     float lowFreq = fmin * fl::expf(logRatio * 1.0f / static_cast<float>(bands - 1));
@@ -1600,7 +1600,7 @@ FL_TEST_CASE("FFT adversarial - high vs low bin concentration symmetry") {
     auto lowSamples = makeSine(lowFreq, N, static_cast<float>(sampleRate));
     auto highSamples = makeSine(highFreq, N, static_cast<float>(sampleRate));
 
-    fl::FFTBins lowBins(bands), highBins(bands);
+    fl::audio::fft::Bins lowBins(bands), highBins(bands);
     fft.run(lowSamples, &lowBins);
     fft.run(highSamples, &highBins);
 
@@ -1633,30 +1633,30 @@ FL_TEST_CASE("FFT adversarial - high vs low bin concentration symmetry") {
 // Tones at 3000, 3500, 4000, 4500 Hz — all 4 modes must agree on peak bin within +/-1.
 FL_TEST_CASE("FFT adversarial - all-mode high-bin peak agreement") {
     const int bands = 16;
-    const float fmin = fl::FFT_Args::DefaultMinFrequency();
-    const float fmax = fl::FFT_Args::DefaultMaxFrequency();
-    const int sampleRate = fl::FFT_Args::DefaultSampleRate();
-    const int N = fl::FFT_Args::DefaultSamples();
+    const float fmin = fl::audio::fft::Args::DefaultMinFrequency();
+    const float fmax = fl::audio::fft::Args::DefaultMaxFrequency();
+    const int sampleRate = fl::audio::fft::Args::DefaultSampleRate();
+    const int N = fl::audio::fft::Args::DefaultSamples();
 
     float testFreqs[] = {3000.0f, 3500.0f, 4000.0f, 4500.0f};
 
-    fl::FFTMode modes[] = {
-        fl::FFTMode::LOG_REBIN,
-        fl::FFTMode::CQ_NAIVE,
-        fl::FFTMode::CQ_OCTAVE,
-        fl::FFTMode::CQ_HYBRID
+    fl::audio::fft::Mode modes[] = {
+        fl::audio::fft::Mode::LOG_REBIN,
+        fl::audio::fft::Mode::CQ_NAIVE,
+        fl::audio::fft::Mode::CQ_OCTAVE,
+        fl::audio::fft::Mode::CQ_HYBRID
     };
 
     for (float freq : testFreqs) {
         int peakBins[4];
         int modeIdx = 0;
 
-        for (fl::FFTMode mode : modes) {
-            fl::FFT_Args args(N, bands, fmin, fmax, sampleRate, mode);
-            fl::FFTImpl fft(args);
+        for (fl::audio::fft::Mode mode : modes) {
+            fl::audio::fft::Args args(N, bands, fmin, fmax, sampleRate, mode);
+            fl::audio::fft::Impl fft(args);
 
             auto samples = makeSine(freq, N, static_cast<float>(sampleRate));
-            fl::FFTBins bins(bands);
+            fl::audio::fft::Bins bins(bands);
             fft.run(samples, &bins);
 
             float peakE = 0.0f;
@@ -1689,23 +1689,23 @@ FL_TEST_CASE("FFT adversarial - all-mode high-bin peak agreement") {
 // 200 frames sweeping bins 8-15 for each mode.
 FL_TEST_CASE("FFT adversarial - systematic top-half sweep (all modes)") {
     const int bands = 16;
-    const float fmin = fl::FFT_Args::DefaultMinFrequency();
-    const float fmax = fl::FFT_Args::DefaultMaxFrequency();
-    const int sampleRate = fl::FFT_Args::DefaultSampleRate();
-    const int N = fl::FFT_Args::DefaultSamples();
+    const float fmin = fl::audio::fft::Args::DefaultMinFrequency();
+    const float fmax = fl::audio::fft::Args::DefaultMaxFrequency();
+    const int sampleRate = fl::audio::fft::Args::DefaultSampleRate();
+    const int N = fl::audio::fft::Args::DefaultSamples();
     const int numFrames = 200;
     float logRatio = fl::logf(fmax / fmin);
 
-    fl::FFTMode modes[] = {
-        fl::FFTMode::LOG_REBIN,
-        fl::FFTMode::CQ_NAIVE,
-        fl::FFTMode::CQ_OCTAVE,
-        fl::FFTMode::CQ_HYBRID
+    fl::audio::fft::Mode modes[] = {
+        fl::audio::fft::Mode::LOG_REBIN,
+        fl::audio::fft::Mode::CQ_NAIVE,
+        fl::audio::fft::Mode::CQ_OCTAVE,
+        fl::audio::fft::Mode::CQ_HYBRID
     };
 
-    for (fl::FFTMode mode : modes) {
-        fl::FFT_Args args(N, bands, fmin, fmax, sampleRate, mode);
-        fl::FFTImpl fft(args);
+    for (fl::audio::fft::Mode mode : modes) {
+        fl::audio::fft::Args args(N, bands, fmin, fmax, sampleRate, mode);
+        fl::audio::fft::Impl fft(args);
 
         int correctPeaks = 0;
         float concSum = 0.0f;
@@ -1719,7 +1719,7 @@ FL_TEST_CASE("FFT adversarial - systematic top-half sweep (all modes)") {
                                           static_cast<float>(bands - 1));
 
             auto samples = makeSine(freq, N, static_cast<float>(sampleRate));
-            fl::FFTBins bins(bands);
+            fl::audio::fft::Bins bins(bands);
             fft.run(samples, &bins);
 
             float peakE = 0.0f, totalE = 0.0f;
@@ -1763,10 +1763,10 @@ FL_TEST_CASE("FFT adversarial - systematic top-half sweep (all modes)") {
         // LOG_REBIN/CQ_HYBRID: sharp bin assignment → high concentration, few active
         // CQ_OCTAVE: octave-wise CQ → wider kernel main lobe → more active bins
         // CQ_NAIVE: single-FFT CQ → inherently lower concentration at high bins
-        if (mode == fl::FFTMode::CQ_NAIVE) {
+        if (mode == fl::audio::fft::Mode::CQ_NAIVE) {
             FL_CHECK_GT(avgConc, 0.20f);
             FL_CHECK_LE(maxActive, 10);
-        } else if (mode == fl::FFTMode::CQ_OCTAVE) {
+        } else if (mode == fl::audio::fft::Mode::CQ_OCTAVE) {
             FL_CHECK_GT(avgConc, 0.30f);
             FL_CHECK_LE(maxActive, 14);
         } else {
@@ -1794,10 +1794,10 @@ FL_TEST_CASE("FFT adversarial - systematic top-half sweep (all modes)") {
 
 FL_TEST_CASE("FFT adversarial - zero leakage at distance 3 (LOG_REBIN)") {
     const int bands = 16;
-    const float fmin = fl::FFT_Args::DefaultMinFrequency();
-    const float fmax = fl::FFT_Args::DefaultMaxFrequency();
-    const int sampleRate = fl::FFT_Args::DefaultSampleRate();
-    const int N = fl::FFT_Args::DefaultSamples();
+    const float fmin = fl::audio::fft::Args::DefaultMinFrequency();
+    const float fmax = fl::audio::fft::Args::DefaultMaxFrequency();
+    const int sampleRate = fl::audio::fft::Args::DefaultSampleRate();
+    const int N = fl::audio::fft::Args::DefaultSamples();
     const float fftBinHz = static_cast<float>(sampleRate) / static_cast<float>(N);
     const float logRatio = fl::logf(fmax / fmin);
     const float binRatio = fl::expf(logRatio / static_cast<float>(bands - 1));
@@ -1815,8 +1815,8 @@ FL_TEST_CASE("FFT adversarial - zero leakage at distance 3 (LOG_REBIN)") {
     // raising the quantization floor. Threshold of 5 accounts for this.
     const float noiseFloor = 5.0f;
 
-    fl::FFT_Args args(N, bands, fmin, fmax, sampleRate, fl::FFTMode::LOG_REBIN);
-    fl::FFTImpl fft(args);
+    fl::audio::fft::Args args(N, bands, fmin, fmax, sampleRate, fl::audio::fft::Mode::LOG_REBIN);
+    fl::audio::fft::Impl fft(args);
 
     int testedBins = 0;
     int passedBins = 0;
@@ -1837,7 +1837,7 @@ FL_TEST_CASE("FFT adversarial - zero leakage at distance 3 (LOG_REBIN)") {
         testedBins++;
 
         auto samples = makeSine(centerFreq, N, static_cast<float>(sampleRate));
-        fl::FFTBins bins(bands);
+        fl::audio::fft::Bins bins(bands);
         fft.run(samples, &bins);
 
         // Find peak

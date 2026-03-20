@@ -49,46 +49,48 @@
 #endif
 
 namespace fl {
+namespace audio {
+namespace fft {
 
-    // Delegates to FFT_Args::resolve() — single source of truth.
+    // Delegates to Args::resolve() — single source of truth.
 
-class FFTContext {
+class Context {
   public:
-    FFTContext(int samples, int bands, float fmin, float fmax, int sample_rate,
-              FFTMode mode, FFTWindow window)
+    Context(int samples, int bands, float fmin, float fmax, int sample_rate,
+              Mode mode, Window window)
         : mFftrCfg(nullptr), mInputSamples(samples),
           mKernels(nullptr),
           mMode(mode), mTotalBands(bands), mFmin(fmin), mFmax(fmax),
           mSampleRate(sample_rate), mWindow(window) {
-        FFT_Args::resolveModeEnums(mMode, mWindow, bands, samples, fmin, fmax);
+        Args::resolveModeEnums(mMode, mWindow, bands, samples, fmin, fmax);
         fl::memset(&mCqCfg, 0, sizeof(mCqCfg));
 
         mFftrCfg = kiss_fftr_alloc(samples, 0, nullptr, nullptr);
         if (!mFftrCfg) {
-            FASTLED_WARN("Failed to allocate FFTImpl context");
+            FASTLED_WARN("Failed to allocate Impl context");
             return;
         }
 
         switch (mMode) {
-        case FFTMode::LOG_REBIN:
+        case Mode::LOG_REBIN:
             initLogRebin();
             break;
-        case FFTMode::CQ_NAIVE:
+        case Mode::CQ_NAIVE:
             initNaive(samples, bands, fmin, fmax, sample_rate);
             break;
-        case FFTMode::CQ_HYBRID:
+        case Mode::CQ_HYBRID:
             initHybrid(samples, bands, fmin, fmax, sample_rate);
             break;
-        case FFTMode::CQ_OCTAVE:
+        case Mode::CQ_OCTAVE:
             initOctaveWise(samples, bands, fmin, fmax, sample_rate);
             break;
-        case FFTMode::AUTO:
-            FASTLED_WARN("FFTMode::AUTO should have been resolved");
+        case Mode::AUTO:
+            FASTLED_WARN("Mode::AUTO should have been resolved");
             break;
         }
     }
 
-    ~FFTContext() {
+    ~Context() {
         if (mFftrCfg) {
             kiss_fftr_free(mFftrCfg);
         }
@@ -110,35 +112,35 @@ class FFTContext {
 
     fl::size sampleSize() const { return mInputSamples; }
 
-    void run(span<const i16> buffer, FFTBins *out) {
+    void run(span<const i16> buffer, Bins *out) {
         switch (mMode) {
-        case FFTMode::LOG_REBIN:
+        case Mode::LOG_REBIN:
             runLogRebin(buffer, out);
             break;
-        case FFTMode::CQ_NAIVE:
+        case Mode::CQ_NAIVE:
             runNaive(buffer, out);
             break;
-        case FFTMode::CQ_OCTAVE:
+        case Mode::CQ_OCTAVE:
             runOctaveWise(buffer, out);
             break;
-        case FFTMode::CQ_HYBRID:
+        case Mode::CQ_HYBRID:
             runHybrid(buffer, out);
             break;
-        case FFTMode::AUTO:
-            FASTLED_WARN("FFTMode::AUTO should have been resolved");
+        case Mode::AUTO:
+            FASTLED_WARN("Mode::AUTO should have been resolved");
             break;
         }
     }
 
     fl::string info() const {
-        FFTBins tmp(mTotalBands);
+        Bins tmp(mTotalBands);
         tmp.setParams(mFmin, mFmax, mSampleRate);
         for (int i = 0; i < mTotalBands; ++i) {
             tmp.raw_mut().push_back(0.0f);
         }
 
         fl::sstream ss;
-        ss << "FFTImpl Frequency Bands (CQ log-spaced): ";
+        ss << "Impl Frequency Bands (CQ log-spaced): ";
         for (int i = 0; i < mTotalBands; ++i) {
             float f_low = (i == 0) ? mFmin : tmp.binBoundary(i - 1);
             float f_high =
@@ -230,7 +232,7 @@ class FFTContext {
                                    0, mTotalBands);
     }
 
-    void runLogRebin(span<const i16> buffer, FFTBins *out) {
+    void runLogRebin(span<const i16> buffer, Bins *out) {
         out->setParams(mFmin, mFmax, mSampleRate);
         const int N = mInputSamples;
         const int bands = mTotalBands;
@@ -261,7 +263,7 @@ class FFTContext {
         logRebinRange(s.mag.data(), N, static_cast<float>(mSampleRate),
                       0, bands, s.rawBinsI.data(), mLogBinLut);
 
-        // Store raw magnitudes (dB computed lazily by FFTBins::db())
+        // Store raw magnitudes (dB computed lazily by Bins::db())
         fl::vector<float> &rawBins = out->raw_mut();
         rawBins.resize(bands);
         for (int i = 0; i < bands; ++i) {
@@ -288,7 +290,7 @@ class FFTContext {
         // Adding time-domain Hanning would double-window and over-attenuate.
     }
 
-    void runNaive(span<const i16> buffer, FFTBins *out) {
+    void runNaive(span<const i16> buffer, Bins *out) {
         out->setParams(mFmin, mFmax, mSampleRate);
         const int fftSize = mInputSamples;
         const int numRawBins = fftSize / 2 + 1;
@@ -485,12 +487,12 @@ class FFTContext {
 
     // Compute window function as alpha16 (UNORM16) coefficients in [0, 1].
     // Uses fixed-point arithmetic throughout to avoid float on MCUs.
-    static void computeWindow(fl::vector<alpha16> &win, int N, FFTWindow type) {
+    static void computeWindow(fl::vector<alpha16> &win, int N, Window type) {
         using FP = fl::fixed_point<16, 16>;
         win.resize(N);
 
         // NONE: rectangular window (all coefficients = 1.0)
-        if (type == FFTWindow::NONE) {
+        if (type == Window::NONE) {
             for (int n = 0; n < N; ++n) {
                 win[n] = alpha16(65535);
             }
@@ -514,7 +516,7 @@ class FFTContext {
         for (int n = 0; n < N; ++n) {
             FP w;
             switch (type) {
-            case FFTWindow::BLACKMAN_HARRIS: {
+            case Window::BLACKMAN_HARRIS: {
                 // 4-term Blackman-Harris: -92 dB sidelobe rejection
                 FP phase2 = phase + phase;
                 FP phase3 = phase2 + phase;
@@ -523,7 +525,7 @@ class FFTContext {
                     - bh_a3 * FP::cos(phase3);
                 break;
             }
-            case FFTWindow::HANNING:
+            case Window::HANNING:
             default:
                 w = half * (one - FP::cos(phase));
                 break;
@@ -653,7 +655,7 @@ class FFTContext {
         // Adding time-domain Hanning would double-window and over-attenuate.
     }
 
-    void runOctaveWise(span<const i16> buffer, FFTBins *out) {
+    void runOctaveWise(span<const i16> buffer, Bins *out) {
         const int N = mInputSamples;
         const int numOctaves = static_cast<int>(mOctaves.size());
         const int numRawBins = N / 2 + 1;
@@ -860,7 +862,7 @@ class FFTContext {
         }
     }
 
-    void runHybrid(span<const i16> buffer, FFTBins *out) {
+    void runHybrid(span<const i16> buffer, Bins *out) {
         const int N = mInputSamples;
         const int numRawBins = N / 2 + 1;
 
@@ -945,7 +947,7 @@ class FFTContext {
                           mLogBinLutBass);
         }
 
-        // Store raw magnitudes (dB computed lazily by FFTBins::db())
+        // Store raw magnitudes (dB computed lazily by Bins::db())
         fl::vector<float> &rawBins = out->raw_mut();
         rawBins.resize(mTotalBands);
         for (int i = 0; i < mTotalBands; ++i) {
@@ -1025,7 +1027,7 @@ class FFTContext {
         }
     }
 
-    void computeLinearBins(const u16 *mag, int /*nfft*/, FFTBins *out) {
+    void computeLinearBins(const u16 *mag, int /*nfft*/, Bins *out) {
         const int numLinearBins = mTotalBands;
 
         fl::vector<float> &linBins = out->linear_mut();
@@ -1084,14 +1086,14 @@ class FFTContext {
     fl::vector<float> mLogBinNormFactors;  // Per-bin width normalization (1/count)
 
     // Octave-wise CQ path (also used by Hybrid)
-    FFTMode mMode;
+    Mode mMode;
     fl::vector<OctaveInfo> mOctaves;
     fl::vector<kiss_fft_scalar> mWorkBuf; // reusable decimation buffer
     fl::vector<kiss_fft_cpx> mFftOut;     // reusable FFT output buffer
     int mMaxBinsPerOctave = 0;
 
     // Hybrid 3-tier path
-    int mHybridSplitBin = 0;      // bins < this use bass FFT
+    int mHybridSplitBin = 0;      // bins < this use bass fft::FFT
     int mHybridSmallN = 0;        // bass FFT size (samples/8)
     float mHybridSmallFs = 0.0f;  // bass sample rate (sr/8)
     kiss_fftr_cfg mHybridSmallFft = nullptr;
@@ -1101,7 +1103,7 @@ class FFTContext {
     float mHybridMidFs = 0.0f;    // mid sample rate (sr/4)
     kiss_fftr_cfg mHybridMidFft = nullptr;
     fl::vector<kiss_fft_cpx> mHybridMidFftOut;
-    int mHybridMidSplitBin = 0;   // bins >= this use upper FFT
+    int mHybridMidSplitBin = 0;   // bins >= this use upper fft::FFT
     fl::vector<alpha16> mHybridBassWindow;  // UNORM16 window for bass
     fl::vector<alpha16> mHybridMidWindow;   // UNORM16 window for mid
     fl::vector<float> mHybridNormUpper; // Normalization factors for upper tier
@@ -1110,8 +1112,8 @@ class FFTContext {
     fl::vector<float> mHybridMergedNorm; // Pre-computed merged norm factors
 
     // Pre-computed bin mapping LUTs (built at init, used at runtime)
-    fl::vector<u8> mLogBinLut;       // FFT bin k → log-bin index (primary FFT)
-    fl::vector<u8> mLinearBinLut;    // FFT bin k → linear-bin index (primary FFT)
+    fl::vector<u8> mLogBinLut;       // FFT bin k → log-bin index (primary fft::FFT)
+    fl::vector<u8> mLinearBinLut;    // FFT bin k → linear-bin index (primary fft::FFT)
     fl::vector<u8> mLogBinLutMid;    // HYBRID mid-tier LUT (256pt)
     fl::vector<u8> mLogBinLutBass;   // HYBRID bass-tier LUT (64pt)
     int mLinearKStart = 0;           // Pre-computed linear bin loop bounds
@@ -1121,49 +1123,51 @@ class FFTContext {
     int mTotalBands;
     float mFmin, mFmax;
     int mSampleRate;
-    FFTWindow mWindow;
+    Window mWindow;
 };
 
-FFTImpl::FFTImpl(const FFT_Args &args) {
-    mContext = fl::make_unique<FFTContext>(args.samples, args.bands, args.fmin,
+Impl::Impl(const Args &args) {
+    mContext = fl::make_unique<Context>(args.samples, args.bands, args.fmin,
                                           args.fmax, args.sample_rate,
                                           args.mode, args.window);
 }
 
-FFTImpl::~FFTImpl() { mContext.reset(); }
+Impl::~Impl() { mContext.reset(); }
 
-fl::string FFTImpl::info() const {
+fl::string Impl::info() const {
     if (mContext) {
         return mContext->info();
     } else {
-        FASTLED_WARN("FFTImpl context is not initialized");
+        FASTLED_WARN("Impl context is not initialized");
         return fl::string();
     }
 }
 
-fl::size FFTImpl::sampleSize() const {
+fl::size Impl::sampleSize() const {
     if (mContext) {
         return mContext->sampleSize();
     }
     return 0;
 }
 
-FFTImpl::Result FFTImpl::run(const AudioSample &sample, FFTBins *out) {
+Impl::Result Impl::run(const Sample &sample, Bins *out) {
     auto &audio_sample = sample.pcm();
     span<const i16> slice(audio_sample);
     return run(slice, out);
 }
 
-FFTImpl::Result FFTImpl::run(span<const i16> sample, FFTBins *out) {
+Impl::Result Impl::run(span<const i16> sample, Bins *out) {
     if (!mContext) {
-        return FFTImpl::Result(false, "FFTImpl context is not initialized");
+        return Impl::Result(false, "Impl context is not initialized");
     }
     if (sample.size() != mContext->sampleSize()) {
-        FASTLED_WARN("FFTImpl sample size mismatch");
-        return FFTImpl::Result(false, "FFTImpl sample size mismatch");
+        FASTLED_WARN("Impl sample size mismatch");
+        return Impl::Result(false, "Impl sample size mismatch");
     }
     mContext->run(sample, out);
-    return FFTImpl::Result(true, "");
+    return Impl::Result(true, "");
 }
 
+} // namespace fft
+} // namespace audio
 } // namespace fl

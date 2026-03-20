@@ -1,9 +1,10 @@
 #include "fl/audio/audio_context.h"
 
 namespace fl {
+namespace audio {
 
-fl::size AudioContext::hashFFTArgs(const FFT_Args& args) {
-    // Create a hash from FFT_Args for O(1) cache lookup
+fl::size Context::hashFFTArgs(const fft::Args& args) {
+    // Create a hash from fft::Args for O(1) cache lookup
     // Use simple hash combining of the integer fields
     fl::size hash = 0;
     hash = (hash * 31) ^ static_cast<fl::size>(args.samples);
@@ -20,7 +21,7 @@ fl::size AudioContext::hashFFTArgs(const FFT_Args& args) {
     return hash;
 }
 
-AudioContext::AudioContext(const AudioSample& sample)
+Context::Context(const Sample& sample)
     : mSample(sample)
     , mFFTHistoryDepth(0)
     , mFFTHistoryIndex(0)
@@ -28,10 +29,10 @@ AudioContext::AudioContext(const AudioSample& sample)
     mFFTCache.reserve(MAX_FFT_CACHE_ENTRIES);
 }
 
-AudioContext::~AudioContext() = default;
+Context::~Context() = default;
 
-shared_ptr<const FFTBins> AudioContext::getFFT(int bands, float fmin, float fmax, FFTMode mode, FFTWindow window) {
-    FFT_Args args(mSample.size(), bands, fmin, fmax, mSampleRate, mode, window);
+shared_ptr<const fft::Bins> Context::getFFT(int bands, float fmin, float fmax, fft::Mode mode, fft::Window window) {
+    fft::Args args(mSample.size(), bands, fmin, fmax, mSampleRate, mode, window);
 
     // O(1) cache lookup using hash map
     fl::size argsHash = hashFFTArgs(args);
@@ -46,8 +47,8 @@ shared_ptr<const FFTBins> AudioContext::getFFT(int bands, float fmin, float fmax
         }
     }
 
-    // Not cached — try to recycle a previously-used FFTBins with matching band count
-    shared_ptr<FFTBins> bins;
+    // Not cached — try to recycle a previously-used fft::Bins with matching band count
+    shared_ptr<fft::Bins> bins;
     for (size i = 0; i < mRecyclePool.size(); i++) {
         if (static_cast<int>(mRecyclePool[i]->bands()) == bands) {
             bins = fl::move(mRecyclePool[i]);
@@ -57,7 +58,7 @@ shared_ptr<const FFTBins> AudioContext::getFFT(int bands, float fmin, float fmax
         }
     }
     if (!bins) {
-        bins = fl::make_shared<FFTBins>(bands);
+        bins = fl::make_shared<fft::Bins>(bands);
     }
 
     fl::span<const fl::i16> sample = mSample.pcm();
@@ -89,7 +90,7 @@ shared_ptr<const FFTBins> AudioContext::getFFT(int bands, float fmin, float fmax
     return bins;
 }
 
-BandEnergy AudioContext::getBandEnergy() {
+BandEnergy Context::getBandEnergy() {
     auto fft = getFFT(3, 20.0f, 11025.0f);
     BandEnergy out;
     span<const float> lin = fft->linear();
@@ -101,12 +102,12 @@ BandEnergy AudioContext::getBandEnergy() {
     return out;
 }
 
-shared_ptr<const FFTBins> AudioContext::getFFT16(FFTMode mode, FFTWindow window) {
-    return getFFT(16, FFT_Args::DefaultMinFrequency(),
-                  FFT_Args::DefaultMaxFrequency(), mode, window);
+shared_ptr<const fft::Bins> Context::getFFT16(fft::Mode mode, fft::Window window) {
+    return getFFT(16, fft::Args::DefaultMinFrequency(),
+                  fft::Args::DefaultMaxFrequency(), mode, window);
 }
 
-void AudioContext::setFFTHistoryDepth(int depth) {
+void Context::setFFTHistoryDepth(int depth) {
     if (mFFTHistoryDepth != depth) {
         mFFTHistory.clear();
         mFFTHistory.reserve(depth);
@@ -115,7 +116,7 @@ void AudioContext::setFFTHistoryDepth(int depth) {
     }
 }
 
-const FFTBins* AudioContext::getHistoricalFFT(int framesBack) const {
+const fft::Bins* Context::getHistoricalFFT(int framesBack) const {
     if (framesBack < 0 || framesBack >= static_cast<int>(mFFTHistory.size())) {
         return nullptr;
     }
@@ -127,10 +128,10 @@ const FFTBins* AudioContext::getHistoricalFFT(int framesBack) const {
     return &mFFTHistory[index];
 }
 
-void AudioContext::setSample(const AudioSample& sample) {
-    // Save current FFT to history (use first cached entry if available)
+void Context::setSample(const Sample& sample) {
+    // Save current fft::FFT to history (use first cached entry if available)
     if (!mFFTCache.empty() && mFFTHistoryDepth > 0) {
-        const shared_ptr<FFTBins>& first = mFFTCache[0].bins;
+        const shared_ptr<fft::Bins>& first = mFFTCache[0].bins;
         if (first) {
             if (static_cast<int>(mFFTHistory.size()) < mFFTHistoryDepth) {
                 mFFTHistory.push_back(*first);
@@ -153,11 +154,11 @@ void AudioContext::setSample(const AudioSample& sample) {
     }
 
     mSample = sample;
-    // Clear per-frame FFT cache (new sample = new data)
+    // Clear per-frame fft::FFT cache (new sample = new data)
     mFFTCache.clear();
 }
 
-void AudioContext::clearCache() {
+void Context::clearCache() {
     mFFTCache.clear();
     mFFTCacheMap.clear();
     mRecyclePool.clear();
@@ -166,4 +167,5 @@ void AudioContext::clearCache() {
     mFFTHistoryIndex = 0;
 }
 
+} // namespace audio
 } // namespace fl

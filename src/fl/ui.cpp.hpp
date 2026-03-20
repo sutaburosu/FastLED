@@ -59,10 +59,10 @@ UIHelp::~UIHelp() {}
 // UIAudio constructors
 UIAudio::UIAudio(const fl::string& name) : mImpl(name) {}
 UIAudio::UIAudio(const fl::string& name, const fl::url& url) : mImpl(name, url) {}
-UIAudio::UIAudio(const fl::string& name, const fl::AudioConfig& config) : mImpl(name, config) {}
+UIAudio::UIAudio(const fl::string& name, const fl::audio::Config& config) : mImpl(name, config) {}
 UIAudio::~UIAudio() {}
 
-fl::shared_ptr<AudioProcessor> UIAudio::processor() {
+fl::shared_ptr<audio::Processor> UIAudio::processor() {
     if (!mProcessor) {
         mProcessor = addUIAudioProcessor(*this);
     }

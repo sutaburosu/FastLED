@@ -7,6 +7,7 @@
 #include "fl/stl/compiler_control.h"
 
 namespace fl {
+namespace audio {
 
 // Define static constexpr arrays
 constexpr float SpectralEqualizer::A_WEIGHTING_16BAND[16];
@@ -235,4 +236,5 @@ void SpectralEqualizer::resetStats() {
     mStats = Stats();
 }
 
+} // namespace audio
 } // namespace fl

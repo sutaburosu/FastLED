@@ -11,25 +11,26 @@
 #include "fl/stl/int.h"
 
 namespace fl {
+namespace audio {
 
 namespace {
 
 struct GuardedFFT {
-    void run(fl::span<const fl::i16> sample, FFTBins *out,
-             const FFT_Args &args) {
+    void run(fl::span<const fl::i16> sample, fft::Bins *out,
+             const fft::Args &args) {
         fl::unique_lock<fl::mutex> lock(mtx);
         fft.run(sample, out, args);
     }
 
   private:
     fl::mutex mtx;
-    FFT fft;
+    fft::FFT fft;
 };
 
 // Object pool implementation
 
 struct AudioSamplePool {
-    void put(AudioSampleImplPtr&& impl) {
+    void put(SampleImplPtr&& impl) {
         if (impl.unique()) {
             // There is no more shared_ptr to this object, so we can recycle it.
             fl::unique_lock<fl::mutex> lock(mutex);
@@ -43,32 +44,32 @@ struct AudioSamplePool {
         // Pool is full, discard the impl
         impl.reset();
     }
-    AudioSampleImplPtr getOrCreate() {
+    SampleImplPtr getOrCreate() {
         {
             fl::unique_lock<fl::mutex> lock(mutex);
             if (!pool.empty()) {
-                AudioSampleImplPtr impl = pool.back();
+                SampleImplPtr impl = pool.back();
                 pool.pop_back();
                 return impl;
             }
         }
-        return fl::make_shared<AudioSampleImpl>();
+        return fl::make_shared<SampleImpl>();
     }
 
-    fl::vector<AudioSampleImplPtr> pool;
+    fl::vector<SampleImplPtr> pool;
     static constexpr fl::size MAX_POOL_SIZE = 8;
     fl::mutex mutex;
 };
 
 } // namespace
 
-AudioSample::~AudioSample() {
+Sample::~Sample() {
     if (mImpl) {
         fl::Singleton<AudioSamplePool>::instance().put(fl::move(mImpl));
     }
 }
 
-const AudioSample::VectorPCM &AudioSample::pcm() const {
+const Sample::VectorPCM &Sample::pcm() const {
     if (isValid()) {
         return mImpl->pcm();
     }
@@ -76,28 +77,28 @@ const AudioSample::VectorPCM &AudioSample::pcm() const {
     return empty;
 }
 
-AudioSample &AudioSample::operator=(const AudioSample &other) {
+Sample &Sample::operator=(const Sample &other) {
     mImpl = other.mImpl;
     return *this;
 }
 
-fl::size AudioSample::size() const {
+fl::size Sample::size() const {
     if (isValid()) {
         return mImpl->pcm().size();
     }
     return 0;
 }
 
-const fl::i16 &AudioSample::at(fl::size i) const {
+const fl::i16 &Sample::at(fl::size i) const {
     if (i < size()) {
         return pcm()[i];
     }
     return empty()[0];
 }
 
-const fl::i16 &AudioSample::operator[](fl::size i) const { return at(i); }
+const fl::i16 &Sample::operator[](fl::size i) const { return at(i); }
 
-bool AudioSample::operator==(const AudioSample &other) const {
+bool Sample::operator==(const Sample &other) const {
     if (mImpl == other.mImpl) {
         return true;
     }
@@ -115,19 +116,19 @@ bool AudioSample::operator==(const AudioSample &other) const {
     return true;
 }
 
-bool AudioSample::operator!=(const AudioSample &other) const {
+bool Sample::operator!=(const Sample &other) const {
     return !(*this == other);
 }
 
-const AudioSample::VectorPCM &AudioSample::empty() {
+const Sample::VectorPCM &Sample::empty() {
     static fl::i16 empty_data[1] = {0}; // okay static in header
     static VectorPCM empty(empty_data); // okay static in header
     return empty;
 }
 
-float AudioSample::zcf() const { return mImpl->zcf(); }
+float Sample::zcf() const { return mImpl->zcf(); }
 
-fl::u32 AudioSample::timestamp() const {
+fl::u32 Sample::timestamp() const {
     if (isValid()) {
         return mImpl->timestamp();
     }
@@ -135,7 +136,7 @@ fl::u32 AudioSample::timestamp() const {
 }
 
 // O(1) - returns pre-computed cached value
-float AudioSample::rms() const {
+float Sample::rms() const {
     if (!isValid()) {
         return 0.0f;
     }
@@ -173,20 +174,20 @@ void SoundLevelMeter::processBlock(const fl::i16 *samples, fl::size count) {
     mCurrentSpl = dbfs + mOffset;
 }
 
-void AudioSample::fft(FFTBins *out) const {
+void Sample::fft(fft::Bins *out) const {
     fl::span<const fl::i16> sample = pcm();
-    FFT_Args args;
+    fft::Args args;
     args.samples = sample.size();
     args.bands = out->bands();
-    args.fmin = FFT_Args::DefaultMinFrequency();
-    args.fmax = FFT_Args::DefaultMaxFrequency();
+    args.fmin = fft::Args::DefaultMinFrequency();
+    args.fmax = fft::Args::DefaultMaxFrequency();
     args.sample_rate =
-        FFT_Args::DefaultSampleRate(); // TODO: get sample rate from AudioSample
+        fft::Args::DefaultSampleRate(); // TODO: get sample rate from Sample
     fl::Singleton<GuardedFFT>::instance().run(sample, out, args);
 }
 
 
-void AudioSample::applyGain(float gain) {
+void Sample::applyGain(float gain) {
     if (!isValid() || gain == 1.0f) return;
     auto& samples = mImpl->pcm_mutable();
     for (fl::size i = 0; i < samples.size(); ++i) {
@@ -197,7 +198,7 @@ void AudioSample::applyGain(float gain) {
     }
 }
 
-AudioSample::AudioSample(fl::span<const fl::i16> span, fl::u32 timestamp) {
+Sample::Sample(fl::span<const fl::i16> span, fl::u32 timestamp) {
     mImpl = fl::Singleton<AudioSamplePool>::instance().getOrCreate();
     auto begin = span.data();
     auto end = begin + span.size();
@@ -205,4 +206,5 @@ AudioSample::AudioSample(fl::span<const fl::i16> span, fl::u32 timestamp) {
 }
 
 
+} // namespace audio
 } // namespace fl

@@ -1,6 +1,6 @@
-/// @file    AudioReactive.ino
+/// @file    Reactive.ino
 /// @brief   Audio reactive visualization with multiple modes
-/// @example AudioReactive.ino
+/// @example Reactive.ino
 
 #include <Arduino.h>
 #include <FastLED.h>
@@ -76,7 +76,7 @@ fl::UIAudio audio("Audio Input");
 // Global variables
 fl::CRGB leds[NUM_LEDS];
 fl::XYMap xyMap(WIDTH, HEIGHT, false);
-fl::SoundLevelMeter soundMeter(0.0, 0.0);
+fl::audio::SoundLevelMeter soundMeter(0.0, 0.0);
 
 // Audio processing variables - keep these smaller for WebAssembly
 static const int NUM_BANDS = 16;  // Reduced from 32
@@ -179,7 +179,7 @@ void clearDisplay() {
 }
 
 // Visualization: Spectrum Bars
-void drawSpectrumBars(fl::FFTBins* fft, float /* peak */) {
+void drawSpectrumBars(fl::audio::fft::Bins* fft, float /* peak */) {
     clearDisplay();
     fl::CRGBPalette16 palette = getCurrentPalette();
     
@@ -229,7 +229,7 @@ void drawSpectrumBars(fl::FFTBins* fft, float /* peak */) {
 }
 
 // Visualization: Radial Spectrum
-void drawRadialSpectrum(fl::FFTBins* fft, float /* peak */) {
+void drawRadialSpectrum(fl::audio::fft::Bins* fft, float /* peak */) {
     clearDisplay();
     fl::CRGBPalette16 palette = getCurrentPalette();
     
@@ -509,7 +509,7 @@ void loop() {
     }
     
     // Process only one audio sample per frame to avoid accumulation
-    fl::AudioSample sample = audio.next();
+    fl::audio::Sample sample = audio.next();
     if (sample.isValid()) {
         // Process pitch detection if enabled
         if (pitchDetectEnable && pitchEngine) {
@@ -547,8 +547,8 @@ void loop() {
             isBeat = detectBeat(peak);
         }
         
-        // Get FFT data - create local FFTBins to avoid accumulation
-        fl::FFTBins fftBins(NUM_BANDS);
+        // Get FFT data - create local Bins to avoid accumulation
+        fl::audio::fft::Bins fftBins(NUM_BANDS);
         sample.fft(&fftBins);
         
         // Update color animation

@@ -5,6 +5,7 @@
 #include "fl/stl/math.h"
 
 namespace fl {
+namespace audio {
 
 SignalConditioner::SignalConditioner() {
     configure(SignalConditionerConfig{});
@@ -28,9 +29,9 @@ void SignalConditioner::reset() {
     mStats.samplesProcessed = 0;
 }
 
-AudioSample SignalConditioner::processSample(const AudioSample& sample) {
+Sample SignalConditioner::processSample(const Sample& sample) {
     if (!sample.isValid() || sample.size() == 0) {
-        return AudioSample();  // Return empty sample
+        return Sample();  // Return empty sample
     }
 
     const auto pcm = sample.pcm();
@@ -77,10 +78,10 @@ AudioSample SignalConditioner::processSample(const AudioSample& sample) {
     mStats.noiseGateOpen = mNoiseGateOpen;
     mStats.samplesProcessed += sampleCount;
 
-    // Create new AudioSample from cleaned PCM
-    AudioSampleImplPtr impl = fl::make_shared<AudioSampleImpl>();
+    // Create new Sample from cleaned PCM
+    SampleImplPtr impl = fl::make_shared<SampleImpl>();
     impl->assign(mOutputBuffer.begin(), mOutputBuffer.end(), sample.timestamp());
-    return AudioSample(impl);
+    return Sample(impl);
 }
 
 size SignalConditioner::filterSpikes(span<const i16> pcm, vector<bool>& validMask) {
@@ -182,4 +183,5 @@ void SignalConditioner::applyNoiseGate(span<const i16> pcm, vector<i16>& output)
     }
 }
 
+} // namespace audio
 } // namespace fl

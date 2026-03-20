@@ -1,14 +1,15 @@
 #pragma once
 
 namespace fl {
+namespace audio {
 
-class AudioContext;
+class Context;
 
-class AudioDetector {
+class Detector {
 public:
-    virtual ~AudioDetector() = default;
+    virtual ~Detector() = default;
 
-    virtual void update(shared_ptr<AudioContext> context) = 0;
+    virtual void update(shared_ptr<Context> context) = 0;
     virtual void fireCallbacks() {}
     virtual void setSampleRate(int) {}
     virtual bool needsFFT() const { return false; }
@@ -17,4 +18,5 @@ public:
     virtual void reset() {}
 };
 
+} // namespace audio
 } // namespace fl

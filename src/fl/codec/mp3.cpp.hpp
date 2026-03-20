@@ -92,8 +92,8 @@ int Mp3HelixDecoder::decodeFrame(const fl::u8** inbuf, fl::size* bytes_left) {
     return result;
 }
 
-fl::vector<AudioSample> Mp3HelixDecoder::decodeToAudioSamples(const fl::u8* data, fl::size len) {
-    fl::vector<AudioSample> samples;
+fl::vector<audio::Sample> Mp3HelixDecoder::decodeToAudioSamples(const fl::u8* data, fl::size len) {
+    fl::vector<audio::Sample> samples;
 
     decode(data, len, [&](const Mp3Frame& frame) {
         // Convert stereo to mono by averaging channels
@@ -108,11 +108,11 @@ fl::vector<AudioSample> Mp3HelixDecoder::decodeToAudioSamples(const fl::u8* data
                 mono_pcm.push_back(static_cast<fl::i16>(avg));
             }
 
-            AudioSample sample(mono_pcm);
+            audio::Sample sample(mono_pcm);
             samples.push_back(sample);
         } else {
             // Mono audio - use directly
-            AudioSample sample(fl::span<const fl::i16>(frame.pcm, frame.samples));
+            audio::Sample sample(fl::span<const fl::i16>(frame.pcm, frame.samples));
             samples.push_back(sample);
         }
     });
@@ -130,7 +130,7 @@ class Mp3StreamDecoderImpl {
     void end();
     bool isReady() const { return mStream != nullptr && mDecoder != nullptr; }
     bool hasError(fl::string* msg = nullptr) const;
-    bool decodeNextFrame(AudioSample* out_sample);
+    bool decodeNextFrame(audio::Sample* out_sample);
     fl::size getPosition() const { return mBytesProcessed; }
     void reset();
     Mp3Info getInfo() const { return mInfo; }
@@ -139,7 +139,7 @@ class Mp3StreamDecoderImpl {
     static constexpr fl::size BUFFER_SIZE = 4096;
 
     bool fillBuffer();
-    bool findAndDecodeFrame(AudioSample* out_sample);
+    bool findAndDecodeFrame(audio::Sample* out_sample);
 
     fl::filebuf_ptr mStream;
     fl::unique_ptr<Mp3HelixDecoder> mDecoder;
@@ -246,7 +246,7 @@ bool Mp3StreamDecoderImpl::fillBuffer() {
     return mBufferFilled > mBufferPos;
 }
 
-bool Mp3StreamDecoderImpl::findAndDecodeFrame(AudioSample* out_sample) {
+bool Mp3StreamDecoderImpl::findAndDecodeFrame(audio::Sample* out_sample) {
     if (!mDecoder) {
         return false;
     }
@@ -304,7 +304,7 @@ bool Mp3StreamDecoderImpl::findAndDecodeFrame(AudioSample* out_sample) {
             mHasDecodedFirstFrame = true;
         }
 
-        // Convert to AudioSample (convert stereo to mono if needed)
+        // Convert to audio::Sample (convert stereo to mono if needed)
         if (frame.channels == 2) {
             fl::vector<fl::i16> mono_pcm;
             mono_pcm.reserve(frame.samples);
@@ -316,10 +316,10 @@ bool Mp3StreamDecoderImpl::findAndDecodeFrame(AudioSample* out_sample) {
                 mono_pcm.push_back(static_cast<fl::i16>(avg));
             }
 
-            *out_sample = AudioSample(mono_pcm);
+            *out_sample = audio::Sample(mono_pcm);
         } else {
             // Mono audio - use directly
-            *out_sample = AudioSample(fl::span<const fl::i16>(frame.pcm, frame.samples));
+            *out_sample = audio::Sample(fl::span<const fl::i16>(frame.pcm, frame.samples));
         }
 
         return true;
@@ -328,7 +328,7 @@ bool Mp3StreamDecoderImpl::findAndDecodeFrame(AudioSample* out_sample) {
     return false;
 }
 
-bool Mp3StreamDecoderImpl::decodeNextFrame(AudioSample* out_sample) {
+bool Mp3StreamDecoderImpl::decodeNextFrame(audio::Sample* out_sample) {
     if (!isReady()) {
         mErrorMsg = "Decoder not ready";
         mHasError = true;
@@ -379,7 +379,7 @@ bool Mp3Decoder::hasError(fl::string* msg) const {
     return mImpl->hasError(msg);
 }
 
-bool Mp3Decoder::decodeNextFrame(AudioSample* out_sample) {
+bool Mp3Decoder::decodeNextFrame(audio::Sample* out_sample) {
     return mImpl->decodeNextFrame(out_sample);
 }
 

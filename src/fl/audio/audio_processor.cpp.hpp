@@ -1,42 +1,43 @@
 #include "fl/audio/audio_processor.h"
 #include "fl/stl/weak_ptr.h"
 #include "fl/audio/input.h"
-#include "fl/audio/detectors/beat.h"
-#include "fl/audio/detectors/frequency_bands.h"
-#include "fl/audio/detectors/energy_analyzer.h"
-#include "fl/audio/detectors/tempo_analyzer.h"
-#include "fl/audio/detectors/transient.h"
-#include "fl/audio/detectors/silence.h"
-#include "fl/audio/detectors/dynamics_analyzer.h"
-#include "fl/audio/detectors/pitch.h"
-#include "fl/audio/detectors/note.h"
-#include "fl/audio/detectors/downbeat.h"
-#include "fl/audio/detectors/backbeat.h"
-#include "fl/audio/detectors/vocal.h"
-#include "fl/audio/detectors/percussion.h"
-#include "fl/audio/detectors/chord.h"
-#include "fl/audio/detectors/key.h"
-#include "fl/audio/detectors/mood_analyzer.h"
-#include "fl/audio/detectors/buildup.h"
-#include "fl/audio/detectors/drop.h"
-#include "fl/audio/detectors/equalizer.h"
-#include "fl/audio/detectors/vibe.h"
+#include "fl/audio/detector/beat.h"
+#include "fl/audio/detector/frequency_bands.h"
+#include "fl/audio/detector/energy_analyzer.h"
+#include "fl/audio/detector/tempo_analyzer.h"
+#include "fl/audio/detector/transient.h"
+#include "fl/audio/detector/silence.h"
+#include "fl/audio/detector/dynamics_analyzer.h"
+#include "fl/audio/detector/pitch.h"
+#include "fl/audio/detector/note.h"
+#include "fl/audio/detector/downbeat.h"
+#include "fl/audio/detector/backbeat.h"
+#include "fl/audio/detector/vocal.h"
+#include "fl/audio/detector/percussion.h"
+#include "fl/audio/detector/chord.h"
+#include "fl/audio/detector/key.h"
+#include "fl/audio/detector/mood_analyzer.h"
+#include "fl/audio/detector/buildup.h"
+#include "fl/audio/detector/drop.h"
+#include "fl/audio/detector/equalizer.h"
+#include "fl/audio/detector/vibe.h"
 
 namespace fl {
+namespace audio {
 
-AudioProcessor::AudioProcessor()
-    : mContext(make_shared<AudioContext>(AudioSample()))
+Processor::Processor()
+    : mContext(make_shared<Context>(Sample()))
 {}
 
-void AudioProcessor::registerDetector(shared_ptr<AudioDetector> detector) {
+void Processor::registerDetector(shared_ptr<Detector> detector) {
     mActiveDetectors.push_back(detector);
 }
 
-AudioProcessor::~AudioProcessor() = default;
+Processor::~Processor() = default;
 
-void AudioProcessor::update(const AudioSample& sample) {
+void Processor::update(const Sample& sample) {
     // Signal conditioning pipeline: raw sample → conditioned sample
-    AudioSample conditioned = sample;
+    Sample conditioned = sample;
 
     // Stage 1: Signal conditioning (DC removal, spike filtering, noise gate)
     if (mSignalConditioningEnabled && conditioned.isValid()) {
@@ -58,236 +59,236 @@ void AudioProcessor::update(const AudioSample& sample) {
 
     mContext->setSample(conditioned);
 
-    // Phase 1: Compute state for all active detectors
+    // Phase 1: Compute state for all active detector
     for (auto& d : mActiveDetectors) {
         d->update(mContext);
     }
 
-    // Phase 2: Fire callbacks for all active detectors
+    // Phase 2: Fire callbacks for all active detector
     for (auto& d : mActiveDetectors) {
         d->fireCallbacks();
     }
 }
 
-void AudioProcessor::onBeat(function<void()> callback) {
+void Processor::onBeat(function<void()> callback) {
     auto detector = getBeatDetector();
     detector->onBeat.add(callback);
 }
 
-void AudioProcessor::onBeatPhase(function<void(float)> callback) {
+void Processor::onBeatPhase(function<void(float)> callback) {
     auto detector = getBeatDetector();
     detector->onBeatPhase.add(callback);
 }
 
-void AudioProcessor::onOnset(function<void(float)> callback) {
+void Processor::onOnset(function<void(float)> callback) {
     auto detector = getBeatDetector();
     detector->onOnset.add(callback);
 }
 
-void AudioProcessor::onTempoChange(function<void(float, float)> callback) {
+void Processor::onTempoChange(function<void(float, float)> callback) {
     auto detector = getBeatDetector();
     detector->onTempoChange.add(callback);
 }
 
-void AudioProcessor::onTempo(function<void(float)> callback) {
+void Processor::onTempo(function<void(float)> callback) {
     auto detector = getTempoAnalyzer();
     detector->onTempo.add(callback);
 }
 
-void AudioProcessor::onTempoWithConfidence(function<void(float, float)> callback) {
+void Processor::onTempoWithConfidence(function<void(float, float)> callback) {
     auto detector = getTempoAnalyzer();
     detector->onTempoWithConfidence.add(callback);
 }
 
-void AudioProcessor::onTempoStable(function<void()> callback) {
+void Processor::onTempoStable(function<void()> callback) {
     auto detector = getTempoAnalyzer();
     detector->onTempoStable.add(callback);
 }
 
-void AudioProcessor::onTempoUnstable(function<void()> callback) {
+void Processor::onTempoUnstable(function<void()> callback) {
     auto detector = getTempoAnalyzer();
     detector->onTempoUnstable.add(callback);
 }
 
-void AudioProcessor::onBass(function<void(float)> callback) {
+void Processor::onBass(function<void(float)> callback) {
     auto detector = getFrequencyBands();
     detector->onBassLevel.add(callback);
 }
 
-void AudioProcessor::onMid(function<void(float)> callback) {
+void Processor::onMid(function<void(float)> callback) {
     auto detector = getFrequencyBands();
     detector->onMidLevel.add(callback);
 }
 
-void AudioProcessor::onTreble(function<void(float)> callback) {
+void Processor::onTreble(function<void(float)> callback) {
     auto detector = getFrequencyBands();
     detector->onTrebleLevel.add(callback);
 }
 
-void AudioProcessor::onFrequencyBands(function<void(float, float, float)> callback) {
+void Processor::onFrequencyBands(function<void(float, float, float)> callback) {
     auto detector = getFrequencyBands();
     detector->onLevelsUpdate.add(callback);
 }
 
-void AudioProcessor::onEqualizer(function<void(const Equalizer&)> callback) {
+void Processor::onEqualizer(function<void(const detector::Equalizer&)> callback) {
     auto detector = getEqualizerDetector();
     detector->onEqualizer.add(callback);
 }
 
-void AudioProcessor::onEnergy(function<void(float)> callback) {
+void Processor::onEnergy(function<void(float)> callback) {
     auto detector = getEnergyAnalyzer();
     detector->onEnergy.add(callback);
 }
 
-void AudioProcessor::onNormalizedEnergy(function<void(float)> callback) {
+void Processor::onNormalizedEnergy(function<void(float)> callback) {
     auto detector = getEnergyAnalyzer();
     detector->onNormalizedEnergy.add(callback);
 }
 
-void AudioProcessor::onPeak(function<void(float)> callback) {
+void Processor::onPeak(function<void(float)> callback) {
     auto detector = getEnergyAnalyzer();
     detector->onPeak.add(callback);
 }
 
-void AudioProcessor::onAverageEnergy(function<void(float)> callback) {
+void Processor::onAverageEnergy(function<void(float)> callback) {
     auto detector = getEnergyAnalyzer();
     detector->onAverageEnergy.add(callback);
 }
 
-void AudioProcessor::onTransient(function<void()> callback) {
+void Processor::onTransient(function<void()> callback) {
     auto detector = getTransientDetector();
     detector->onTransient.add(callback);
 }
 
-void AudioProcessor::onTransientWithStrength(function<void(float)> callback) {
+void Processor::onTransientWithStrength(function<void(float)> callback) {
     auto detector = getTransientDetector();
     detector->onTransientWithStrength.add(callback);
 }
 
-void AudioProcessor::onAttack(function<void(float)> callback) {
+void Processor::onAttack(function<void(float)> callback) {
     auto detector = getTransientDetector();
     detector->onAttack.add(callback);
 }
 
-void AudioProcessor::onSilence(function<void(u8)> callback) {
+void Processor::onSilence(function<void(u8)> callback) {
     auto detector = getSilenceDetector();
     detector->onSilence.add(callback);
 }
 
-void AudioProcessor::onSilenceStart(function<void()> callback) {
+void Processor::onSilenceStart(function<void()> callback) {
     auto detector = getSilenceDetector();
     detector->onSilenceStart.add(callback);
 }
 
-void AudioProcessor::onSilenceEnd(function<void()> callback) {
+void Processor::onSilenceEnd(function<void()> callback) {
     auto detector = getSilenceDetector();
     detector->onSilenceEnd.add(callback);
 }
 
-void AudioProcessor::onSilenceDuration(function<void(u32)> callback) {
+void Processor::onSilenceDuration(function<void(u32)> callback) {
     auto detector = getSilenceDetector();
     detector->onSilenceDuration.add(callback);
 }
 
-void AudioProcessor::onCrescendo(function<void()> callback) {
+void Processor::onCrescendo(function<void()> callback) {
     auto detector = getDynamicsAnalyzer();
     detector->onCrescendo.add(callback);
 }
 
-void AudioProcessor::onDiminuendo(function<void()> callback) {
+void Processor::onDiminuendo(function<void()> callback) {
     auto detector = getDynamicsAnalyzer();
     detector->onDiminuendo.add(callback);
 }
 
-void AudioProcessor::onDynamicTrend(function<void(float)> callback) {
+void Processor::onDynamicTrend(function<void(float)> callback) {
     auto detector = getDynamicsAnalyzer();
     detector->onDynamicTrend.add(callback);
 }
 
-void AudioProcessor::onCompressionRatio(function<void(float)> callback) {
+void Processor::onCompressionRatio(function<void(float)> callback) {
     auto detector = getDynamicsAnalyzer();
     detector->onCompressionRatio.add(callback);
 }
 
-void AudioProcessor::onPitch(function<void(float)> callback) {
+void Processor::onPitch(function<void(float)> callback) {
     auto detector = getPitchDetector();
     detector->onPitch.add(callback);
 }
 
-void AudioProcessor::onPitchWithConfidence(function<void(float, float)> callback) {
+void Processor::onPitchWithConfidence(function<void(float, float)> callback) {
     auto detector = getPitchDetector();
     detector->onPitchWithConfidence.add(callback);
 }
 
-void AudioProcessor::onPitchChange(function<void(float)> callback) {
+void Processor::onPitchChange(function<void(float)> callback) {
     auto detector = getPitchDetector();
     detector->onPitchChange.add(callback);
 }
 
-void AudioProcessor::onVoiced(function<void(u8)> callback) {
+void Processor::onVoiced(function<void(u8)> callback) {
     auto detector = getPitchDetector();
     detector->onVoiced.add(callback);
 }
 
-void AudioProcessor::onNoteOn(function<void(u8, u8)> callback) {
+void Processor::onNoteOn(function<void(u8, u8)> callback) {
     auto detector = getNoteDetector();
     detector->onNoteOn.add(callback);
 }
 
-void AudioProcessor::onNoteOff(function<void(u8)> callback) {
+void Processor::onNoteOff(function<void(u8)> callback) {
     auto detector = getNoteDetector();
     detector->onNoteOff.add(callback);
 }
 
-void AudioProcessor::onNoteChange(function<void(u8, u8)> callback) {
+void Processor::onNoteChange(function<void(u8, u8)> callback) {
     auto detector = getNoteDetector();
     detector->onNoteChange.add(callback);
 }
 
-void AudioProcessor::onDownbeat(function<void()> callback) {
+void Processor::onDownbeat(function<void()> callback) {
     auto detector = getDownbeatDetector();
     detector->onDownbeat.add(callback);
 }
 
-void AudioProcessor::onMeasureBeat(function<void(u8)> callback) {
+void Processor::onMeasureBeat(function<void(u8)> callback) {
     auto detector = getDownbeatDetector();
     detector->onMeasureBeat.add(callback);
 }
 
-void AudioProcessor::onMeterChange(function<void(u8)> callback) {
+void Processor::onMeterChange(function<void(u8)> callback) {
     auto detector = getDownbeatDetector();
     detector->onMeterChange.add(callback);
 }
 
-void AudioProcessor::onMeasurePhase(function<void(float)> callback) {
+void Processor::onMeasurePhase(function<void(float)> callback) {
     auto detector = getDownbeatDetector();
     detector->onMeasurePhase.add(callback);
 }
 
-void AudioProcessor::onBackbeat(function<void(u8 beatNumber, float confidence, float strength)> callback) {
+void Processor::onBackbeat(function<void(u8 beatNumber, float confidence, float strength)> callback) {
     auto detector = getBackbeatDetector();
     detector->onBackbeat.add(callback);
 }
 
-void AudioProcessor::onVocal(function<void(u8)> callback) {
+void Processor::onVocal(function<void(u8)> callback) {
     auto detector = getVocalDetector();
     detector->onVocal.add(callback);
 }
 
-void AudioProcessor::onVocalStart(function<void()> callback) {
+void Processor::onVocalStart(function<void()> callback) {
     auto detector = getVocalDetector();
     detector->onVocalStart.add(callback);
 }
 
-void AudioProcessor::onVocalEnd(function<void()> callback) {
+void Processor::onVocalEnd(function<void()> callback) {
     auto detector = getVocalDetector();
     detector->onVocalEnd.add(callback);
 }
 
-void AudioProcessor::onVocalConfidence(function<void(float)> callback) {
+void Processor::onVocalConfidence(function<void(float)> callback) {
     auto detector = getVocalDetector();
     // This callback fires every frame with the current confidence
-    // We need to wrap it since VocalDetector doesn't have this callback built-in
+    // We need to wrap it since detector::Vocal doesn't have this callback built-in
     detector->onVocal.add([callback, detector](u8) {
         if (callback) {
             callback(detector->getConfidence());
@@ -295,132 +296,132 @@ void AudioProcessor::onVocalConfidence(function<void(float)> callback) {
     });
 }
 
-void AudioProcessor::onPercussion(function<void(PercussionType)> callback) {
+void Processor::onPercussion(function<void(detector::PercussionType)> callback) {
     auto detector = getPercussionDetector();
     detector->onPercussionHit.add(callback);
 }
 
-void AudioProcessor::onKick(function<void()> callback) {
+void Processor::onKick(function<void()> callback) {
     auto detector = getPercussionDetector();
     detector->onKick.add(callback);
 }
 
-void AudioProcessor::onSnare(function<void()> callback) {
+void Processor::onSnare(function<void()> callback) {
     auto detector = getPercussionDetector();
     detector->onSnare.add(callback);
 }
 
-void AudioProcessor::onHiHat(function<void()> callback) {
+void Processor::onHiHat(function<void()> callback) {
     auto detector = getPercussionDetector();
     detector->onHiHat.add(callback);
 }
 
-void AudioProcessor::onTom(function<void()> callback) {
+void Processor::onTom(function<void()> callback) {
     auto detector = getPercussionDetector();
     detector->onTom.add(callback);
 }
 
-void AudioProcessor::onChord(function<void(const Chord&)> callback) {
+void Processor::onChord(function<void(const detector::Chord&)> callback) {
     auto detector = getChordDetector();
     detector->onChord.add(callback);
 }
 
-void AudioProcessor::onChordChange(function<void(const Chord&)> callback) {
+void Processor::onChordChange(function<void(const detector::Chord&)> callback) {
     auto detector = getChordDetector();
     detector->onChordChange.add(callback);
 }
 
-void AudioProcessor::onChordEnd(function<void()> callback) {
+void Processor::onChordEnd(function<void()> callback) {
     auto detector = getChordDetector();
     detector->onChordEnd.add(callback);
 }
 
-void AudioProcessor::onKey(function<void(const Key&)> callback) {
+void Processor::onKey(function<void(const detector::Key&)> callback) {
     auto detector = getKeyDetector();
     detector->onKey.add(callback);
 }
 
-void AudioProcessor::onKeyChange(function<void(const Key&)> callback) {
+void Processor::onKeyChange(function<void(const detector::Key&)> callback) {
     auto detector = getKeyDetector();
     detector->onKeyChange.add(callback);
 }
 
-void AudioProcessor::onKeyEnd(function<void()> callback) {
+void Processor::onKeyEnd(function<void()> callback) {
     auto detector = getKeyDetector();
     detector->onKeyEnd.add(callback);
 }
 
-void AudioProcessor::onMood(function<void(const Mood&)> callback) {
+void Processor::onMood(function<void(const detector::Mood&)> callback) {
     auto detector = getMoodAnalyzer();
     detector->onMood.add(callback);
 }
 
-void AudioProcessor::onMoodChange(function<void(const Mood&)> callback) {
+void Processor::onMoodChange(function<void(const detector::Mood&)> callback) {
     auto detector = getMoodAnalyzer();
     detector->onMoodChange.add(callback);
 }
 
-void AudioProcessor::onValenceArousal(function<void(float, float)> callback) {
+void Processor::onValenceArousal(function<void(float, float)> callback) {
     auto detector = getMoodAnalyzer();
     detector->onValenceArousal.add(callback);
 }
 
-void AudioProcessor::onBuildupStart(function<void()> callback) {
+void Processor::onBuildupStart(function<void()> callback) {
     auto detector = getBuildupDetector();
     detector->onBuildupStart.add(callback);
 }
 
-void AudioProcessor::onBuildupProgress(function<void(float)> callback) {
+void Processor::onBuildupProgress(function<void(float)> callback) {
     auto detector = getBuildupDetector();
     detector->onBuildupProgress.add(callback);
 }
 
-void AudioProcessor::onBuildupPeak(function<void()> callback) {
+void Processor::onBuildupPeak(function<void()> callback) {
     auto detector = getBuildupDetector();
     detector->onBuildupPeak.add(callback);
 }
 
-void AudioProcessor::onBuildupEnd(function<void()> callback) {
+void Processor::onBuildupEnd(function<void()> callback) {
     auto detector = getBuildupDetector();
     detector->onBuildupEnd.add(callback);
 }
 
-void AudioProcessor::onBuildup(function<void(const Buildup&)> callback) {
+void Processor::onBuildup(function<void(const detector::Buildup&)> callback) {
     auto detector = getBuildupDetector();
     detector->onBuildup.add(callback);
 }
 
-void AudioProcessor::onDrop(function<void()> callback) {
+void Processor::onDrop(function<void()> callback) {
     auto detector = getDropDetector();
     detector->onDrop.add(callback);
 }
 
-void AudioProcessor::onDropEvent(function<void(const Drop&)> callback) {
+void Processor::onDropEvent(function<void(const detector::Drop&)> callback) {
     auto detector = getDropDetector();
     detector->onDropEvent.add(callback);
 }
 
-void AudioProcessor::onDropImpact(function<void(float)> callback) {
+void Processor::onDropImpact(function<void(float)> callback) {
     auto detector = getDropDetector();
     detector->onDropImpact.add(callback);
 }
 
-void AudioProcessor::onVibeLevels(function<void(const VibeLevels&)> callback) {
+void Processor::onVibeLevels(function<void(const detector::VibeLevels&)> callback) {
     auto detector = getVibeDetector();
     detector->onVibeLevels.add(callback);
 }
 
-void AudioProcessor::onVibeBassSpike(function<void()> callback) {
+void Processor::onVibeBassSpike(function<void()> callback) {
     auto detector = getVibeDetector();
     detector->onBassSpike.add(callback);
 }
 
-void AudioProcessor::onVibeMidSpike(function<void()> callback) {
+void Processor::onVibeMidSpike(function<void()> callback) {
     auto detector = getVibeDetector();
     detector->onMidSpike.add(callback);
 }
 
-void AudioProcessor::onVibeTrebSpike(function<void()> callback) {
+void Processor::onVibeTrebSpike(function<void()> callback) {
     auto detector = getVibeDetector();
     detector->onTrebSpike.add(callback);
 }
@@ -441,314 +442,314 @@ static float clampNeg1To1(float v) {
     return v;
 }
 
-float AudioProcessor::getVocalConfidence() {
+float Processor::getVocalConfidence() {
     return clamp01(getVocalDetector()->getConfidence());
 }
 
-float AudioProcessor::getBeatConfidence() {
+float Processor::getBeatConfidence() {
     return clamp01(getBeatDetector()->getConfidence());
 }
 
-float AudioProcessor::getBPM() {
+float Processor::getBPM() {
     return getBeatDetector()->getBPM();
 }
 
-float AudioProcessor::getEnergy() {
+float Processor::getEnergy() {
     return clamp01(getEnergyAnalyzer()->getNormalizedRMS());
 }
 
-float AudioProcessor::getPeakLevel() {
+float Processor::getPeakLevel() {
     return clamp01(getEnergyAnalyzer()->getPeak());
 }
 
-float AudioProcessor::getBassLevel() {
+float Processor::getBassLevel() {
     return clamp01(getFrequencyBands()->getBassNorm());
 }
 
-float AudioProcessor::getMidLevel() {
+float Processor::getMidLevel() {
     return clamp01(getFrequencyBands()->getMidNorm());
 }
 
-float AudioProcessor::getTrebleLevel() {
+float Processor::getTrebleLevel() {
     return clamp01(getFrequencyBands()->getTrebleNorm());
 }
 
-float AudioProcessor::getBassRaw() {
+float Processor::getBassRaw() {
     return getFrequencyBands()->getBass();
 }
 
-float AudioProcessor::getMidRaw() {
+float Processor::getMidRaw() {
     return getFrequencyBands()->getMid();
 }
 
-float AudioProcessor::getTrebleRaw() {
+float Processor::getTrebleRaw() {
     return getFrequencyBands()->getTreble();
 }
 
-bool AudioProcessor::isSilent() {
+bool Processor::isSilent() {
     return getSilenceDetector()->isSilent();
 }
 
-u32 AudioProcessor::getSilenceDuration() {
+u32 Processor::getSilenceDuration() {
     return getSilenceDetector()->getSilenceDuration();
 }
 
-float AudioProcessor::getTransientStrength() {
+float Processor::getTransientStrength() {
     return clamp01(getTransientDetector()->getStrength());
 }
 
-float AudioProcessor::getDynamicTrend() {
+float Processor::getDynamicTrend() {
     return clampNeg1To1(getDynamicsAnalyzer()->getDynamicTrend());
 }
 
-bool AudioProcessor::isCrescendo() {
+bool Processor::isCrescendo() {
     return getDynamicsAnalyzer()->isCrescendo();
 }
 
-bool AudioProcessor::isDiminuendo() {
+bool Processor::isDiminuendo() {
     return getDynamicsAnalyzer()->isDiminuendo();
 }
 
-float AudioProcessor::getPitchConfidence() {
+float Processor::getPitchConfidence() {
     return clamp01(getPitchDetector()->getConfidence());
 }
 
-float AudioProcessor::getPitch() {
+float Processor::getPitch() {
     return getPitchDetector()->getPitch();
 }
 
-float AudioProcessor::getTempoConfidence() {
+float Processor::getTempoConfidence() {
     return clamp01(getTempoAnalyzer()->getConfidence());
 }
 
-float AudioProcessor::getTempoBPM() {
+float Processor::getTempoBPM() {
     return getTempoAnalyzer()->getBPM();
 }
 
-float AudioProcessor::getBuildupIntensity() {
+float Processor::getBuildupIntensity() {
     return clamp01(getBuildupDetector()->getIntensity());
 }
 
-float AudioProcessor::getBuildupProgress() {
+float Processor::getBuildupProgress() {
     return clamp01(getBuildupDetector()->getProgress());
 }
 
-float AudioProcessor::getDropImpact() {
+float Processor::getDropImpact() {
     return clamp01(getDropDetector()->getLastDrop().impact);
 }
 
-bool AudioProcessor::isKick() {
+bool Processor::isKick() {
     return getPercussionDetector()->isKick();
 }
 
-bool AudioProcessor::isSnare() {
+bool Processor::isSnare() {
     return getPercussionDetector()->isSnare();
 }
 
-bool AudioProcessor::isHiHat() {
+bool Processor::isHiHat() {
     return getPercussionDetector()->isHiHat();
 }
 
-bool AudioProcessor::isTom() {
+bool Processor::isTom() {
     return getPercussionDetector()->isTom();
 }
 
-u8 AudioProcessor::getCurrentNote() {
+u8 Processor::getCurrentNote() {
     return getNoteDetector()->getCurrentNote();
 }
 
-float AudioProcessor::getNoteVelocity() {
+float Processor::getNoteVelocity() {
     return getNoteDetector()->getLastVelocity() / 255.0f;
 }
 
-float AudioProcessor::getNoteConfidence() {
+float Processor::getNoteConfidence() {
     return getNoteDetector()->isNoteActive() ? (getNoteDetector()->getLastVelocity() / 255.0f) : 0.0f;
 }
 
-float AudioProcessor::getDownbeatConfidence() {
+float Processor::getDownbeatConfidence() {
     return clamp01(getDownbeatDetector()->getConfidence());
 }
 
-float AudioProcessor::getMeasurePhase() {
+float Processor::getMeasurePhase() {
     return clamp01(getDownbeatDetector()->getMeasurePhase());
 }
 
-u8 AudioProcessor::getCurrentBeatNumber() {
+u8 Processor::getCurrentBeatNumber() {
     return getDownbeatDetector()->getCurrentBeat();
 }
 
-float AudioProcessor::getBackbeatConfidence() {
+float Processor::getBackbeatConfidence() {
     return clamp01(getBackbeatDetector()->getConfidence());
 }
 
-float AudioProcessor::getBackbeatStrength() {
+float Processor::getBackbeatStrength() {
     return clamp01(getBackbeatDetector()->getStrength());
 }
 
-float AudioProcessor::getChordConfidence() {
+float Processor::getChordConfidence() {
     return clamp01(getChordDetector()->getCurrentChord().confidence);
 }
 
-float AudioProcessor::getKeyConfidence() {
+float Processor::getKeyConfidence() {
     return clamp01(getKeyDetector()->getCurrentKey().confidence);
 }
 
-float AudioProcessor::getMoodArousal() {
+float Processor::getMoodArousal() {
     return clamp01(getMoodAnalyzer()->getArousal());
 }
 
-float AudioProcessor::getMoodValence() {
+float Processor::getMoodValence() {
     return clampNeg1To1(getMoodAnalyzer()->getValence());
 }
 
-float AudioProcessor::getVibeBass() {
+float Processor::getVibeBass() {
     return getVibeDetector()->getBass();
 }
 
-float AudioProcessor::getVibeMid() {
+float Processor::getVibeMid() {
     return getVibeDetector()->getMid();
 }
 
-float AudioProcessor::getVibeTreb() {
+float Processor::getVibeTreb() {
     return getVibeDetector()->getTreb();
 }
 
-float AudioProcessor::getVibeVol() {
+float Processor::getVibeVol() {
     return getVibeDetector()->getVol();
 }
 
-float AudioProcessor::getVibeBassAtt() {
+float Processor::getVibeBassAtt() {
     return getVibeDetector()->getBassAtt();
 }
 
-float AudioProcessor::getVibeMidAtt() {
+float Processor::getVibeMidAtt() {
     return getVibeDetector()->getMidAtt();
 }
 
-float AudioProcessor::getVibeTrebAtt() {
+float Processor::getVibeTrebAtt() {
     return getVibeDetector()->getTrebAtt();
 }
 
-float AudioProcessor::getVibeVolAtt() {
+float Processor::getVibeVolAtt() {
     return getVibeDetector()->getVolAtt();
 }
 
-bool AudioProcessor::isVibeBassSpike() {
+bool Processor::isVibeBassSpike() {
     return getVibeDetector()->isBassSpike();
 }
 
-bool AudioProcessor::isVibeMidSpike() {
+bool Processor::isVibeMidSpike() {
     return getVibeDetector()->isMidSpike();
 }
 
-bool AudioProcessor::isVibeTrebSpike() {
+bool Processor::isVibeTrebSpike() {
     return getVibeDetector()->isTrebSpike();
 }
 
-float AudioProcessor::getEqBass() {
+float Processor::getEqBass() {
     return clamp01(getEqualizerDetector()->getBass());
 }
 
-float AudioProcessor::getEqMid() {
+float Processor::getEqMid() {
     return clamp01(getEqualizerDetector()->getMid());
 }
 
-float AudioProcessor::getEqTreble() {
+float Processor::getEqTreble() {
     return clamp01(getEqualizerDetector()->getTreble());
 }
 
-float AudioProcessor::getEqVolume() {
+float Processor::getEqVolume() {
     return clamp01(getEqualizerDetector()->getVolume());
 }
 
-float AudioProcessor::getEqVolumeNormFactor() {
+float Processor::getEqVolumeNormFactor() {
     return clamp01(getEqualizerDetector()->getVolumeNormFactor());
 }
 
-float AudioProcessor::getEqZcf() {
+float Processor::getEqZcf() {
     return clamp01(getEqualizerDetector()->getZcf());
 }
 
-float AudioProcessor::getEqBin(int index) {
+float Processor::getEqBin(int index) {
     return clamp01(getEqualizerDetector()->getBin(index));
 }
 
-float AudioProcessor::getEqAutoGain() {
+float Processor::getEqAutoGain() {
     return getEqualizerDetector()->getAutoGain();
 }
 
-bool AudioProcessor::getEqIsSilence() {
+bool Processor::getEqIsSilence() {
     return getEqualizerDetector()->getIsSilence();
 }
 
-float AudioProcessor::getEqDominantFreqHz() {
+float Processor::getEqDominantFreqHz() {
     return getEqualizerDetector()->getDominantFreqHz();
 }
 
-float AudioProcessor::getEqDominantMagnitude() {
+float Processor::getEqDominantMagnitude() {
     return clamp01(getEqualizerDetector()->getDominantMagnitude());
 }
 
-float AudioProcessor::getEqVolumeDb() {
+float Processor::getEqVolumeDb() {
     return getEqualizerDetector()->getVolumeDb();
 }
 
-void AudioProcessor::setSampleRate(int sampleRate) {
+void Processor::setSampleRate(int sampleRate) {
     mSampleRate = sampleRate;
     mContext->setSampleRate(sampleRate);
 
-    // Propagate to all active detectors that are sample-rate-aware
+    // Propagate to all active detector that are sample-rate-aware
     for (auto& d : mActiveDetectors) {
         d->setSampleRate(sampleRate);
     }
 }
 
-int AudioProcessor::getSampleRate() const {
+int Processor::getSampleRate() const {
     return mSampleRate;
 }
 
-void AudioProcessor::setGain(float gain) {
+void Processor::setGain(float gain) {
     mGain = gain;
 }
 
-float AudioProcessor::getGain() const {
+float Processor::getGain() const {
     return mGain;
 }
 
-void AudioProcessor::setSignalConditioningEnabled(bool enabled) {
+void Processor::setSignalConditioningEnabled(bool enabled) {
     mSignalConditioningEnabled = enabled;
 }
 
-void AudioProcessor::setNoiseFloorTrackingEnabled(bool enabled) {
+void Processor::setNoiseFloorTrackingEnabled(bool enabled) {
     mNoiseFloorTrackingEnabled = enabled;
 }
 
-void AudioProcessor::configureSignalConditioner(const SignalConditionerConfig& config) {
+void Processor::configureSignalConditioner(const SignalConditionerConfig& config) {
     mSignalConditioner.configure(config);
     mSignalConditioningEnabled = true;
 }
 
-void AudioProcessor::configureNoiseFloorTracker(const NoiseFloorTrackerConfig& config) {
+void Processor::configureNoiseFloorTracker(const NoiseFloorTrackerConfig& config) {
     mNoiseFloorTracker.configure(config);
     mNoiseFloorTrackingEnabled = config.enabled;
 }
 
-void AudioProcessor::setMicProfile(MicProfile profile) {
+void Processor::setMicProfile(MicProfile profile) {
     mMicProfile = profile;
     if (mEqualizerDetector) {
         mEqualizerDetector->setMicProfile(profile);
     }
 }
 
-void AudioProcessor::configureEqualizer(const EqualizerConfig& config) {
+void Processor::configureEqualizer(const detector::EqualizerConfig& config) {
     getEqualizerDetector()->configure(config);
 }
 
-const AudioSample& AudioProcessor::getSample() const {
+const Sample& Processor::getSample() const {
     return mContext->getSample();
 }
 
-void AudioProcessor::reset() {
+void Processor::reset() {
     mSignalConditioner.reset();
     mNoiseFloorTracker.reset();
     mContext->clearCache();
@@ -781,160 +782,160 @@ void AudioProcessor::reset() {
     mVibeDetector.reset();
 }
 
-shared_ptr<BeatDetector> AudioProcessor::getBeatDetector() {
+shared_ptr<detector::Beat> Processor::getBeatDetector() {
     if (!mBeatDetector) {
-        mBeatDetector = make_shared<BeatDetector>();
+        mBeatDetector = make_shared<detector::Beat>();
         registerDetector(mBeatDetector);
     }
     return mBeatDetector;
 }
 
-shared_ptr<FrequencyBands> AudioProcessor::getFrequencyBands() {
+shared_ptr<detector::FrequencyBands> Processor::getFrequencyBands() {
     if (!mFrequencyBands) {
-        mFrequencyBands = make_shared<FrequencyBands>();
+        mFrequencyBands = make_shared<detector::FrequencyBands>();
         registerDetector(mFrequencyBands);
     }
     return mFrequencyBands;
 }
 
-shared_ptr<EnergyAnalyzer> AudioProcessor::getEnergyAnalyzer() {
+shared_ptr<detector::EnergyAnalyzer> Processor::getEnergyAnalyzer() {
     if (!mEnergyAnalyzer) {
-        mEnergyAnalyzer = make_shared<EnergyAnalyzer>();
+        mEnergyAnalyzer = make_shared<detector::EnergyAnalyzer>();
         registerDetector(mEnergyAnalyzer);
     }
     return mEnergyAnalyzer;
 }
 
-shared_ptr<TempoAnalyzer> AudioProcessor::getTempoAnalyzer() {
+shared_ptr<detector::TempoAnalyzer> Processor::getTempoAnalyzer() {
     if (!mTempoAnalyzer) {
-        mTempoAnalyzer = make_shared<TempoAnalyzer>();
+        mTempoAnalyzer = make_shared<detector::TempoAnalyzer>();
         registerDetector(mTempoAnalyzer);
     }
     return mTempoAnalyzer;
 }
 
-shared_ptr<TransientDetector> AudioProcessor::getTransientDetector() {
+shared_ptr<detector::Transient> Processor::getTransientDetector() {
     if (!mTransientDetector) {
-        mTransientDetector = make_shared<TransientDetector>();
+        mTransientDetector = make_shared<detector::Transient>();
         registerDetector(mTransientDetector);
     }
     return mTransientDetector;
 }
 
-shared_ptr<SilenceDetector> AudioProcessor::getSilenceDetector() {
+shared_ptr<detector::Silence> Processor::getSilenceDetector() {
     if (!mSilenceDetector) {
-        mSilenceDetector = make_shared<SilenceDetector>();
+        mSilenceDetector = make_shared<detector::Silence>();
         registerDetector(mSilenceDetector);
     }
     return mSilenceDetector;
 }
 
-shared_ptr<DynamicsAnalyzer> AudioProcessor::getDynamicsAnalyzer() {
+shared_ptr<detector::DynamicsAnalyzer> Processor::getDynamicsAnalyzer() {
     if (!mDynamicsAnalyzer) {
-        mDynamicsAnalyzer = make_shared<DynamicsAnalyzer>();
+        mDynamicsAnalyzer = make_shared<detector::DynamicsAnalyzer>();
         registerDetector(mDynamicsAnalyzer);
     }
     return mDynamicsAnalyzer;
 }
 
-shared_ptr<PitchDetector> AudioProcessor::getPitchDetector() {
+shared_ptr<detector::Pitch> Processor::getPitchDetector() {
     if (!mPitchDetector) {
-        mPitchDetector = make_shared<PitchDetector>();
+        mPitchDetector = make_shared<detector::Pitch>();
         registerDetector(mPitchDetector);
     }
     return mPitchDetector;
 }
 
-shared_ptr<NoteDetector> AudioProcessor::getNoteDetector() {
+shared_ptr<detector::Note> Processor::getNoteDetector() {
     if (!mNoteDetector) {
-        // Share the PitchDetector instance between AudioProcessor and NoteDetector
+        // Share the detector::Pitch instance between Processor and detector::Note
         auto pitchDetector = getPitchDetector();
-        mNoteDetector = make_shared<NoteDetector>(pitchDetector);
+        mNoteDetector = make_shared<detector::Note>(pitchDetector);
         registerDetector(mNoteDetector);
     }
     return mNoteDetector;
 }
 
-shared_ptr<DownbeatDetector> AudioProcessor::getDownbeatDetector() {
+shared_ptr<detector::Downbeat> Processor::getDownbeatDetector() {
     if (!mDownbeatDetector) {
-        // Share the BeatDetector instance between AudioProcessor and DownbeatDetector
+        // Share the detector::Beat instance between Processor and detector::Downbeat
         auto beatDetector = getBeatDetector();
-        mDownbeatDetector = make_shared<DownbeatDetector>(beatDetector);
+        mDownbeatDetector = make_shared<detector::Downbeat>(beatDetector);
         registerDetector(mDownbeatDetector);
     }
     return mDownbeatDetector;
 }
 
-shared_ptr<BackbeatDetector> AudioProcessor::getBackbeatDetector() {
+shared_ptr<detector::Backbeat> Processor::getBackbeatDetector() {
     if (!mBackbeatDetector) {
-        // Share the BeatDetector and DownbeatDetector instances with BackbeatDetector
+        // Share the detector::Beat and detector::Downbeat instances with detector::Backbeat
         auto beatDetector = getBeatDetector();
         auto downbeatDetector = getDownbeatDetector();
-        mBackbeatDetector = make_shared<BackbeatDetector>(beatDetector, downbeatDetector);
+        mBackbeatDetector = make_shared<detector::Backbeat>(beatDetector, downbeatDetector);
         registerDetector(mBackbeatDetector);
     }
     return mBackbeatDetector;
 }
 
-shared_ptr<VocalDetector> AudioProcessor::getVocalDetector() {
+shared_ptr<detector::Vocal> Processor::getVocalDetector() {
     if (!mVocalDetector) {
-        mVocalDetector = make_shared<VocalDetector>();
+        mVocalDetector = make_shared<detector::Vocal>();
         registerDetector(mVocalDetector);
     }
     return mVocalDetector;
 }
 
-shared_ptr<PercussionDetector> AudioProcessor::getPercussionDetector() {
+shared_ptr<detector::Percussion> Processor::getPercussionDetector() {
     if (!mPercussionDetector) {
-        mPercussionDetector = make_shared<PercussionDetector>();
+        mPercussionDetector = make_shared<detector::Percussion>();
         registerDetector(mPercussionDetector);
     }
     return mPercussionDetector;
 }
 
-shared_ptr<ChordDetector> AudioProcessor::getChordDetector() {
+shared_ptr<detector::ChordDetector> Processor::getChordDetector() {
     if (!mChordDetector) {
-        mChordDetector = make_shared<ChordDetector>();
+        mChordDetector = make_shared<detector::ChordDetector>();
         registerDetector(mChordDetector);
     }
     return mChordDetector;
 }
 
-shared_ptr<KeyDetector> AudioProcessor::getKeyDetector() {
+shared_ptr<detector::KeyDetector> Processor::getKeyDetector() {
     if (!mKeyDetector) {
-        mKeyDetector = make_shared<KeyDetector>();
+        mKeyDetector = make_shared<detector::KeyDetector>();
         registerDetector(mKeyDetector);
     }
     return mKeyDetector;
 }
 
-shared_ptr<MoodAnalyzer> AudioProcessor::getMoodAnalyzer() {
+shared_ptr<detector::MoodAnalyzer> Processor::getMoodAnalyzer() {
     if (!mMoodAnalyzer) {
-        mMoodAnalyzer = make_shared<MoodAnalyzer>();
+        mMoodAnalyzer = make_shared<detector::MoodAnalyzer>();
         registerDetector(mMoodAnalyzer);
     }
     return mMoodAnalyzer;
 }
 
-shared_ptr<BuildupDetector> AudioProcessor::getBuildupDetector() {
+shared_ptr<detector::BuildupDetector> Processor::getBuildupDetector() {
     if (!mBuildupDetector) {
-        mBuildupDetector = make_shared<BuildupDetector>();
+        mBuildupDetector = make_shared<detector::BuildupDetector>();
         registerDetector(mBuildupDetector);
     }
     return mBuildupDetector;
 }
 
-shared_ptr<DropDetector> AudioProcessor::getDropDetector() {
+shared_ptr<detector::DropDetector> Processor::getDropDetector() {
     if (!mDropDetector) {
-        mDropDetector = make_shared<DropDetector>();
+        mDropDetector = make_shared<detector::DropDetector>();
         registerDetector(mDropDetector);
     }
     return mDropDetector;
 }
 
-shared_ptr<EqualizerDetector> AudioProcessor::getEqualizerDetector() {
+shared_ptr<detector::EqualizerDetector> Processor::getEqualizerDetector() {
     if (!mEqualizerDetector) {
-        mEqualizerDetector = make_shared<EqualizerDetector>();
+        mEqualizerDetector = make_shared<detector::EqualizerDetector>();
         if (mMicProfile != MicProfile::None) {
             mEqualizerDetector->setMicProfile(mMicProfile);
         }
@@ -943,28 +944,28 @@ shared_ptr<EqualizerDetector> AudioProcessor::getEqualizerDetector() {
     return mEqualizerDetector;
 }
 
-shared_ptr<VibeDetector> AudioProcessor::getVibeDetector() {
+shared_ptr<detector::Vibe> Processor::getVibeDetector() {
     if (!mVibeDetector) {
-        mVibeDetector = make_shared<VibeDetector>();
+        mVibeDetector = make_shared<detector::Vibe>();
         registerDetector(mVibeDetector);
     }
     return mVibeDetector;
 }
 
-shared_ptr<AudioProcessor> AudioProcessor::createWithAutoInput(
-        shared_ptr<IAudioInput> input) {
-    auto processor = make_shared<AudioProcessor>();
+shared_ptr<Processor> Processor::createWithAutoInput(
+        shared_ptr<IInput> input) {
+    auto processor = make_shared<Processor>();
     processor->mAudioInput = input;
-    // weak_ptr so the lambda doesn't prevent AudioProcessor destruction
-    weak_ptr<AudioProcessor> weak = processor;
-    weak_ptr<IAudioInput> weakInput = input;
+    // weak_ptr so the lambda doesn't prevent Processor destruction
+    weak_ptr<Processor> weak = processor;
+    weak_ptr<IInput> weakInput = input;
     processor->mAutoTask = fl::task::every_ms(1).then([weak, weakInput]() {
         auto proc = weak.lock();
         auto inp = weakInput.lock();
         if (!proc || !inp) {
             return;
         }
-        vector_inlined<AudioSample, 16> samples;
+        vector_inlined<Sample, 16> samples;
         inp->readAll(&samples);
         for (const auto& sample : samples) {
             proc->update(sample);
@@ -973,4 +974,5 @@ shared_ptr<AudioProcessor> AudioProcessor::createWithAutoInput(
     return processor;
 }
 
+} // namespace audio
 } // namespace fl

@@ -5,7 +5,7 @@
 
 namespace fl {
 
-class Null_Audio : public IAudioInput {
+class Null_Audio : public audio::IInput {
 public:
     ~Null_Audio() = default;
     // Starts the audio source.
@@ -19,10 +19,10 @@ public:
         }
         return true;
     }
-    // Read audio data and return as AudioSample with calculated timestamp.
-    // Returns invalid AudioSample on error or when no data is available.
-    AudioSample read() override {
-        return AudioSample();  // Always return invalid sample
+    // Read audio data and return as audio::Sample with calculated timestamp.
+    // Returns invalid audio::Sample on error or when no data is available.
+    audio::Sample read() override {
+        return audio::Sample();  // Always return invalid sample
     }
 
 };

@@ -16,7 +16,7 @@ namespace fl {
 // WASM Audio Input Implementation
 // Receives 512-sample Int16 PCM blocks from JavaScript via pushAudioSamples()
 // Stores up to 16 blocks in a ring buffer for consumption by FastLED engine
-class WasmAudioInput : public IAudioInput {
+class WasmAudioInput : public audio::IInput {
 public:
     static constexpr int BLOCK_SIZE = 512;
     static constexpr int RING_BUFFER_SLOTS = 16;
@@ -24,11 +24,11 @@ public:
     WasmAudioInput();
     ~WasmAudioInput() override;
 
-    // IAudioInput interface
+    // audio::IInput interface
     void start() override;
     void stop() override;
     bool error(fl::string* msg = nullptr) override;
-    AudioSample read() override;
+    audio::Sample read() override;
 
     // Called from JavaScript via EMSCRIPTEN_KEEPALIVE
     void pushSamples(const fl::i16* samples, int count, fl::u32 timestamp);
@@ -58,7 +58,7 @@ private:
 };
 
 // Factory function for creating WASM audio input
-fl::shared_ptr<IAudioInput> wasm_create_audio_input(const AudioConfig& config, fl::string* error_message = nullptr);
+fl::shared_ptr<audio::IInput> wasm_create_audio_input(const audio::Config& config, fl::string* error_message = nullptr);
 
 // Get the global WASM audio input instance (for integration with UIAudio)
 WasmAudioInput* wasm_get_audio_input();

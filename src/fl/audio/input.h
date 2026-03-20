@@ -6,7 +6,6 @@
 #include "fl/audio/audio.h"
 #include "fl/audio/mic_profiles.h"
 #include "fl/stl/compiler_control.h"
-#include "fl/system/log.h"
 #include "platforms/audio.h"
 
 #ifndef FASTLED_HAS_AUDIO_INPUT
@@ -19,10 +18,11 @@
 #define AUDIO_DMA_BUFFER_COUNT 8
 
 namespace fl {
+namespace audio {
 
 // Note: Right now these are esp specific, but they are designed to migrate to a common api.
 
-enum AudioChannel {
+enum Channel {
     Left = 0,
     Right = 1,
     Both = 2,  // Two microphones can be used to capture both channels with one AudioSource.
@@ -36,22 +36,22 @@ enum I2SCommFormat {
     Max = 0x0F,  // standard max
 };
 
-struct AudioConfigI2S {
+struct ConfigI2S {
     int mPinWs;
     int mPinSd;
     int mPinClk;
     int mI2sNum;
-    AudioChannel mAudioChannel;
+    Channel mAudioChannel;
     u16 mSampleRate;
     u8 mBitResolution;
     I2SCommFormat mCommFormat;
     bool mInvert;
-    AudioConfigI2S(
+    ConfigI2S(
         int pin_ws,
         int pin_sd,
         int pin_clk,
         int i2s_num,
-        AudioChannel mic_channel,
+        Channel mic_channel,
         u16 sample_rate,
         u8 bit_resolution,
         I2SCommFormat comm_format = Philips,
@@ -62,14 +62,14 @@ struct AudioConfigI2S {
           mSampleRate(sample_rate), mBitResolution(bit_resolution), mCommFormat(comm_format), mInvert(invert) {}
 };
 
-struct AudioConfigPdm {
+struct ConfigPdm {
     int mPinDin;
     int mPinClk;
     int mI2sNum;
     u16 mSampleRate;
     bool mInvert = false;
 
-    AudioConfigPdm(int pin_din, int pin_clk, int i2s_num, u16 sample_rate = AUDIO_DEFAULT_SAMPLE_RATE, bool invert = false)
+    ConfigPdm(int pin_din, int pin_clk, int i2s_num, u16 sample_rate = AUDIO_DEFAULT_SAMPLE_RATE, bool invert = false)
         : mPinDin(pin_din), mPinClk(pin_clk), mI2sNum(i2s_num), mSampleRate(sample_rate), mInvert(invert) {}
 };
 
@@ -134,26 +134,26 @@ namespace TeensyI2S {
     }
 }
 
-class AudioConfig : public fl::variant<AudioConfigI2S, AudioConfigPdm> {
+class Config : public fl::variant<ConfigI2S, ConfigPdm> {
 public:
     // The most common microphone on Amazon as of 2025-September.
-    static AudioConfig CreateInmp441(int pin_ws, int pin_sd, int pin_clk, AudioChannel channel, u16 sample_rate = 44100ul, int i2s_num = 0) {
-        AudioConfigI2S config(pin_ws, pin_sd, pin_clk, i2s_num, channel, sample_rate, 16);
-        AudioConfig out(config);
+    static Config CreateInmp441(int pin_ws, int pin_sd, int pin_clk, Channel channel, u16 sample_rate = 44100ul, int i2s_num = 0) {
+        ConfigI2S config(pin_ws, pin_sd, pin_clk, i2s_num, channel, sample_rate, 16);
+        Config out(config);
         out.setMicProfile(MicProfile::INMP441);
         return out;
     }
 
     // Factory method for Teensy I2S microphones (INMP441, ICS43432, SPH0645LM4H, etc.)
     // Teensy uses fixed hardware pins - see TeensyI2S namespace for pin assignments.
-    // Example: auto config = AudioConfig::CreateTeensyI2S(TeensyI2S::I2S1, Right, 44100);
-    static AudioConfig CreateTeensyI2S(
+    // Example: auto config = Config::CreateTeensyI2S(TeensyI2S::I2S1, Right, 44100);
+    static Config CreateTeensyI2S(
         TeensyI2S::I2SPort port = TeensyI2S::I2S1,
-        AudioChannel channel = Right,
+        Channel channel = Right,
         u16 sample_rate = AUDIO_DEFAULT_SAMPLE_RATE,
         u8 bit_resolution = AUDIO_DEFAULT_BIT_RESOLUTION
     ) {
-        AudioConfigI2S config(
+        ConfigI2S config(
             TeensyI2S::getPinWS(port),     // pin_ws (LRCLK)
             TeensyI2S::getPinSD(port),     // pin_sd (RX)
             TeensyI2S::getPinCLK(port),    // pin_clk (BCLK)
@@ -164,11 +164,11 @@ public:
             Philips,                       // comm_format (Teensy uses I2S Philips)
             false                          // invert
         );
-        return AudioConfig(config);
+        return Config(config);
     }
 
-    AudioConfig(const AudioConfigI2S& config) : fl::variant<AudioConfigI2S, AudioConfigPdm>(config) {}
-    AudioConfig(const AudioConfigPdm& config) : fl::variant<AudioConfigI2S, AudioConfigPdm>(config) {}
+    Config(const ConfigI2S& config) : fl::variant<ConfigI2S, ConfigPdm>(config) {}
+    Config(const ConfigPdm& config) : fl::variant<ConfigI2S, ConfigPdm>(config) {}
 
     /// Digital gain applied to all input samples. Default 1.0 (no change).
     void setGain(float gain) { mGain = gain; }
@@ -184,43 +184,42 @@ private:
     MicProfile mMicProfile = MicProfile::None;
 };
 
-class IAudioInput {
+class IInput {
 public:
     // This is the single factory function for creating the audio source. If the creation was successful, then
     // the return value will be non-null. If the creation was not successful, then the return value will be null
     // and the error_message will be set to a non-empty string.
-    // Keep in mind that the AudioConfig is a variant type. Many esp types do not support all the types in the variant.
-    // For example, the AudioConfigPdm is not supported on the ESP32-C3 and in this case it will return a null pointer
+    // Keep in mind that the Config is a variant type. Many esp types do not support all the types in the variant.
+    // For example, the ConfigPdm is not supported on the ESP32-C3 and in this case it will return a null pointer
     // and the error_message will be set to a non-empty string.
     // Implimentation notes:
     //   It's very important that the implimentation uses a esp task / interrupt to fill in the buffer. The reason is that
     //   there will be looooong delays during FastLED show() on some esp platforms, for example idf 4.4. If we do
     //   poll only, then audio buffers can be dropped. However if using a task then the audio buffers will be
     //   set internally via an interrupt / queue and then they can just be popped off the queue.
-    static fl::shared_ptr<IAudioInput> create(const AudioConfig& config, fl::string* error_message = nullptr);
+    static fl::shared_ptr<IInput> create(const Config& config, fl::string* error_message = nullptr);
 
-    virtual ~IAudioInput() = default;
+    virtual ~IInput() = default;
     // Starts the audio source.
     virtual void start() = 0;
     // Stops the audio source, call this before light sleep.
     virtual void stop() = 0;
 
     virtual bool error(fl::string* msg = nullptr) = 0;  // if an error occured then query it here.
-    // Read audio data and return as AudioSample with calculated timestamp.
-    // Returns invalid AudioSample on error or when no data is available.
-    virtual AudioSample read() = 0;
+    // Read audio data and return as Sample with calculated timestamp.
+    // Returns invalid Sample on error or when no data is available.
+    virtual Sample read() = 0;
 
     /// Digital gain applied to raw PCM samples. Default 1.0 (no change).
     void setGain(float gain) { mGain = gain; }
     float getGain() const { return mGain; }
 
-    // Read all available audio data and return as AudioSample. All AudioSamples
+    // Read all available audio data and return as Sample. All AudioSamples
     // returned by this will be valid. Gain is applied to each sample.
-    size_t readAll(fl::vector_inlined<AudioSample, 16> *out) {
-        static constexpr size_t kMaxReads = 64;  // Safety limit
+    size_t readAll(fl::vector_inlined<Sample, 16> *out) {
         size_t count = 0;
         while (true) {
-            AudioSample sample = read();
+            Sample sample = read();
             if (sample.isValid()) {
                 if (mGain != 1.0f) {
                     sample.applyGain(mGain);
@@ -228,10 +227,6 @@ public:
                 out->push_back(sample);
                 count++;
             } else {
-                break;
-            }
-            if (count >= kMaxReads) {
-                FL_ERROR("AudioInput: readAll() exceeded kMaxReads");
                 break;
             }
         }
@@ -243,6 +238,7 @@ private:
 };
 
 // Free function for audio input creation - can be overridden by platform-specific implementations
-fl::shared_ptr<IAudioInput> platform_create_audio_input(const AudioConfig& config, fl::string* error_message = nullptr) FL_LINK_WEAK;
+fl::shared_ptr<IInput> platform_create_audio_input(const Config& config, fl::string* error_message = nullptr) FL_LINK_WEAK;
 
+} // namespace audio
 }  // namespace fl

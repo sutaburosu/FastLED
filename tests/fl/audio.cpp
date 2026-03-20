@@ -21,11 +21,11 @@ FL_TEST_CASE("Audio - Test registration works") {
 #include "audio/signal_conditioner.hpp"
 #include "audio/spectral_equalizer.hpp"
 #include "audio/synth.hpp"
-#include "audio/detectors/equalizer.hpp"
+#include "audio/detector/equalizer.hpp"
 #include "audio/gain.hpp"
 #include "audio/mic_response_data.hpp"
-#include "audio/detectors/multiband_beat_detector.hpp"
-#include "audio/detectors/musical_beat_detector.hpp"
+#include "audio/detector/multiband_beat_detector.hpp"
+#include "audio/detector/musical_beat_detector.hpp"
 
 FL_TEST_FILE(FL_FILEPATH) {
 

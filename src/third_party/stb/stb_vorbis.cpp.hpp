@@ -611,8 +611,14 @@ struct StbvTempBuffer {
         size = (size + 7) & ~7;  // Round up to 8-byte alignment
         int32_t new_offset = offset + size;
 
-        // Grow buffer if needed
+        // Grow buffer if needed. Use reserve() with 2x growth factor to
+        // avoid reallocation during a save/restore scope. Without this,
+        // resize() can move the buffer and invalidate pointers returned
+        // by earlier alloc() calls in the same scope (use-after-realloc).
         if (new_offset > (int32_t)buffer.size()) {
+            int32_t new_capacity = new_offset * 2;
+            if (new_capacity < 65536) new_capacity = 65536;
+            buffer.reserve(new_capacity);
             buffer.resize(new_offset);
         }
 

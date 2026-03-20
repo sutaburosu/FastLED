@@ -564,7 +564,7 @@ class CFastLED {
 	power_func mPPowerFunc;  ///< function for overriding brightness when using FastLED.show();
 	static fl::vector<fl::ChannelPtr> mChannels; ///< stored ChannelPtrs to keep them alive
 #if SKETCH_HAS_LOTS_OF_MEMORY
-	static fl::vector<fl::shared_ptr<fl::AudioProcessor>> mAudioProcessors; ///< stored AudioProcessors to keep them alive
+	static fl::vector<fl::shared_ptr<fl::audio::Processor>> mAudioProcessors; ///< stored AudioProcessors to keep them alive
 #endif
 
 public:
@@ -725,36 +725,36 @@ public:
 	/// @endcode
 	FL_NODISCARD static fl::vector<fl::ChannelPtr> add(const fl::MultiChannelConfig& multiConfig);
 
-	/// @brief Add an audio input and return an auto-pumped AudioProcessor
+	/// @brief Add an audio input and return an auto-pumped Processor
 	///
 	/// Creates an audio input from the given config and sets up a scheduler task
-	/// that automatically reads samples and feeds them to the AudioProcessor
+	/// that automatically reads samples and feeds them to the Processor
 	/// during FastLED.show(). The returned processor can be used to register
 	/// event callbacks (onBeat, onVocalStart, etc.) without manual update() calls.
 	///
-	/// On platforms without audio hardware support, returns a no-op AudioProcessor
+	/// On platforms without audio hardware support, returns a no-op Processor
 	/// (callbacks will never fire but the returned pointer is valid).
 	///
-	/// @param config Audio hardware configuration (e.g., AudioConfig::CreateInmp441(...))
-	/// @return shared_ptr to AudioProcessor, or nullptr on failure
+	/// @param config Audio hardware configuration (e.g., Config::CreateInmp441(...))
+	/// @return shared_ptr to Processor, or nullptr on failure
 	///
 	/// Example:
 	/// @code
-	/// auto config = fl::AudioConfig::CreateInmp441(WS, SD, CLK, fl::Both);
+	/// auto config = fl::audio::Config::CreateInmp441(WS, SD, CLK, fl::Both);
 	/// auto audio = FastLED.add(config);
 	/// audio->setGain(2.0f);  // Optional: amplify input
 	/// audio->onBeat([]{ /* pulse leds */ });
 	/// @endcode
-	FL_NODISCARD static fl::shared_ptr<fl::AudioProcessor> add(const fl::AudioConfig& config);
+	FL_NODISCARD static fl::shared_ptr<fl::audio::Processor> add(const fl::audio::Config& config);
 
-	/// @brief Add a pre-created audio input and return an auto-pumped AudioProcessor
+	/// @brief Add a pre-created audio input and return an auto-pumped Processor
 	///
-	/// This overload accepts a raw IAudioInput, enabling unit tests and stub
+	/// This overload accepts a raw IInput, enabling unit tests and stub
 	/// platforms to inject custom audio sources (e.g., MP3-decoded samples)
 	/// without real hardware. Available on all platforms.
 	///
-	/// @param input Shared pointer to an IAudioInput implementation
-	/// @return shared_ptr to AudioProcessor, or nullptr if input is null
+	/// @param input Shared pointer to an IInput implementation
+	/// @return shared_ptr to Processor, or nullptr if input is null
 	///
 	/// Example (test injection):
 	/// @code
@@ -762,14 +762,14 @@ public:
 	/// auto audio = FastLED.add(fakeInput);
 	/// audio->onBeat([]{ /* test callback */ });
 	/// @endcode
-	FL_NODISCARD static fl::shared_ptr<fl::AudioProcessor> add(fl::shared_ptr<fl::IAudioInput> input);
+	FL_NODISCARD static fl::shared_ptr<fl::audio::Processor> add(fl::shared_ptr<fl::audio::IInput> input);
 
-	/// @brief Add a UIAudio element and return an auto-pumped AudioProcessor
+	/// @brief Add a UIAudio element and return an auto-pumped Processor
 	///
 	/// Convenience overload that extracts the audio input from a UIAudio widget.
 	///
 	/// @param uiAudio Reference to a UIAudio instance
-	/// @return shared_ptr to AudioProcessor
+	/// @return shared_ptr to Processor
 	///
 	/// Example:
 	/// @code
@@ -777,7 +777,7 @@ public:
 	/// auto audio = FastLED.add(audio_ui);
 	/// audio->onBeat([]{ /* pulse leds */ });
 	/// @endcode
-	static fl::shared_ptr<fl::AudioProcessor> add(fl::UIAudio& uiAudio);
+	static fl::shared_ptr<fl::audio::Processor> add(fl::UIAudio& uiAudio);
 
 	/// @brief Remove a channel from the LED controller list
 	///
@@ -803,9 +803,9 @@ public:
 	/// be kept alive by FastLED. If this was the last shared_ptr, the processor
 	/// and its associated mic/task will be destroyed via RAII.
 	///
-	/// @param processor Shared pointer to an AudioProcessor instance
+	/// @param processor Shared pointer to an Processor instance
 	/// @note Safe to call multiple times - no error if processor not in list
-	static void remove(fl::shared_ptr<fl::AudioProcessor> processor);
+	static void remove(fl::shared_ptr<fl::audio::Processor> processor);
 
 	/// @}
 

@@ -56,7 +56,7 @@ Performence notes @64x64:
 #include "fl/fx/2d/animartrix.hpp"
 #include "fl/ui.h"
 #include "fl/audio/audio_processor.h"
-#include "fl/audio/detectors/vibe.h"
+#include "fl/audio/detector/vibe.h"
 
 #ifndef PIN_DATA
 #define PIN_DATA 3
@@ -116,8 +116,8 @@ fl::UICheckbox enableVibeReactive("Enable Vibe Reactive", false);
 fl::UISlider vibeSpeedMultiplier("Vibe Speed Multiplier", 3.0, 0.0, 10.0, 0.1);
 fl::UISlider vibeBaseSpeed("Vibe Base Speed", 1.0, 0.0, 5.0, 0.1);
 
-// AudioProcessor with VibeDetector
-fl::AudioProcessor audioProcessor;
+// Processor with Vibe
+fl::audio::Processor audioProcessor;
 
 fl::Animartrix animartrix(xyMap, FIRST_ANIMATION);
 fl::FxEngine fxEngine(NUM_LEDS);
@@ -157,12 +157,12 @@ void setup() {
         animartrix.setColorOrder(static_cast<fl::EOrder>(value));
     });
 
-    // Hook VibeDetector bass level to FxEngine timewarp.
+    // Hook Vibe bass level to FxEngine timewarp.
     // onVibeLevels fires every frame with self-normalizing levels:
     //   bass ~1.0 = average, >1.0 = louder than normal, <1.0 = quieter
     // We map bass level directly to animation speed so beats accelerate
     // the animation.
-    audioProcessor.onVibeLevels([](const fl::VibeLevels &vibe) {
+    audioProcessor.onVibeLevels([](const fl::audio::detector::VibeLevels &vibe) {
         if (!enableVibeReactive.value()) {
             return;
         }
@@ -196,7 +196,7 @@ void loop() {
     // Always drain audio samples from the ring buffer to prevent overflow,
     // and process them when vibe reactive is enabled.
     {
-        fl::AudioSample sample = audio.next();
+        fl::audio::Sample sample = audio.next();
         if (sample.isValid()) {
             static uint32_t sAudioSamples = 0;
             sAudioSamples++;

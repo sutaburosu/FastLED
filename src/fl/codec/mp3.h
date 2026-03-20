@@ -106,8 +106,8 @@ namespace third_party {
             return frames_decoded;
         }
 
-        // Decode MP3 data and convert to AudioSample objects
-        fl::vector<AudioSample> decodeToAudioSamples(const fl::u8* data, fl::size len);
+        // Decode MP3 data and convert to audio::Sample objects
+        fl::vector<audio::Sample> decodeToAudioSamples(const fl::u8* data, fl::size len);
 
         // Public members/methods used by internal decoder implementation
         int findSyncWord(const fl::u8* buf, fl::size len);
@@ -152,7 +152,7 @@ public:
 
     // Decode the next audio frame from the stream
     // Returns true if a frame was decoded, false if end of stream or error
-    bool decodeNextFrame(AudioSample* out_sample);
+    bool decodeNextFrame(audio::Sample* out_sample);
 
     // Get current stream position in bytes
     fl::size getPosition() const;

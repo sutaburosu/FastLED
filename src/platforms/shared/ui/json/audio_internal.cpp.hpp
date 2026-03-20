@@ -45,8 +45,8 @@ void JsonUiAudioInternal::updateInternal(const fl::json &value) {
                     u32 current_timestamp = timestamp;
 
                     if (!current_samples.empty()) {
-                        AudioSampleImplPtr sample =
-                            fl::make_shared<AudioSampleImpl>();
+                        audio::SampleImplPtr sample =
+                            fl::make_shared<audio::SampleImpl>();
                         sample->assign(current_samples.begin(),
                                        current_samples.end(),
                                        current_timestamp);

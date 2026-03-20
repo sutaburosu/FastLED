@@ -7,7 +7,7 @@
 #include "fl/stl/url.h"
 #include "fl/stl/int.h"  // IWYU pragma: keep
 #include "fl/audio/audio.h"
-#include "fl/audio/audio_input.h"  // For AudioConfig  // IWYU pragma: keep
+#include "fl/audio/audio_input.h"  // For audio::Config  // IWYU pragma: keep
 #include "fl/engine_events.h"
 #include "fl/stl/function.h"
 #include "fl/stl/math.h"
@@ -422,17 +422,17 @@ class UIAudio : public UIElement {
     FL_NO_COPY(UIAudio)
     UIAudio(const fl::string& name);
     UIAudio(const fl::string& name, const fl::url& url);
-    UIAudio(const fl::string& name, const fl::AudioConfig& config);
+    UIAudio(const fl::string& name, const fl::audio::Config& config);
     ~UIAudio();
-    AudioSample next() { return mImpl.next(); }
+    audio::Sample next() { return mImpl.next(); }
     bool hasNext() { return mImpl.hasNext(); }
 
     // Expose underlying audio input for FastLED.add() auto-pump
-    fl::shared_ptr<IAudioInput> audioInput() { return mImpl.audioInput(); }
+    fl::shared_ptr<audio::IInput> audioInput() { return mImpl.audioInput(); }
 
     // Lazily registers with CFastLED::add() on first call and returns the
-    // auto-pumped AudioProcessor. Subsequent calls return the cached processor.
-    fl::shared_ptr<AudioProcessor> processor();
+    // auto-pumped audio::Processor. Subsequent calls return the cached processor.
+    fl::shared_ptr<audio::Processor> processor();
 
     // Override setGroup to also update the implementation
     void setGroup(const fl::string& groupName) override {
@@ -443,7 +443,7 @@ class UIAudio : public UIElement {
 
   protected:
     UIAudioImpl mImpl;
-    fl::shared_ptr<AudioProcessor> mProcessor;
+    fl::shared_ptr<audio::Processor> mProcessor;
 };
 
 class UIDropdown : public UIElement {
@@ -602,6 +602,6 @@ FASTLED_UI_DEFINE_OPERATORS(UIButton);
 FASTLED_UI_DEFINE_OPERATORS(UIDropdown);
 
 // Bridge: defined in FastLED.cpp.hpp where CFastLED is complete.
-shared_ptr<AudioProcessor> addUIAudioProcessor(UIAudio& audio);
+shared_ptr<audio::Processor> addUIAudioProcessor(UIAudio& audio);
 
 } // end namespace fl

@@ -1,4 +1,4 @@
-// Unit tests for AudioProcessor
+// Unit tests for audio::Processor
 
 #include "test.h"
 #include "test_helpers.h"
@@ -17,34 +17,34 @@ namespace {
 
 } // anonymous namespace
 
-FL_TEST_CASE("AudioProcessor - update with valid sample doesn't crash") {
-    AudioProcessor processor;
-    AudioSample sample = makeSample(440.0f, 1000);
+FL_TEST_CASE("audio::Processor - update with valid sample doesn't crash") {
+    audio::Processor processor;
+    audio::Sample sample = makeSample(440.0f, 1000);
     processor.update(sample);
     // After update, the processor should have a valid context
     FL_CHECK(processor.getContext() != nullptr);
 }
 
-FL_TEST_CASE("AudioProcessor - setSampleRate / getSampleRate round-trip") {
-    AudioProcessor processor;
+FL_TEST_CASE("audio::Processor - setSampleRate / getSampleRate round-trip") {
+    audio::Processor processor;
     FL_CHECK_EQ(processor.getSampleRate(), 44100);
     processor.setSampleRate(22050);
     FL_CHECK_EQ(processor.getSampleRate(), 22050);
 }
 
-FL_TEST_CASE("AudioProcessor - onEnergy callback fires") {
-    AudioProcessor processor;
+FL_TEST_CASE("audio::Processor - onEnergy callback fires") {
+    audio::Processor processor;
     float lastRMS = -1.0f;
     processor.onEnergy([&lastRMS](float rms) { lastRMS = rms; });
 
-    AudioSample sample = makeSample(440.0f, 1000, 10000.0f);
+    audio::Sample sample = makeSample(440.0f, 1000, 10000.0f);
     processor.update(sample);
 
     FL_CHECK_GT(lastRMS, 0.0f);
 }
 
-FL_TEST_CASE("AudioProcessor - onBass/onMid/onTreble callbacks fire") {
-    AudioProcessor processor;
+FL_TEST_CASE("audio::Processor - onBass/onMid/onTreble callbacks fire") {
+    audio::Processor processor;
     float lastBass = -1.0f;
     float lastMid = -1.0f;
     float lastTreble = -1.0f;
@@ -65,7 +65,7 @@ FL_TEST_CASE("AudioProcessor - onBass/onMid/onTreble callbacks fire") {
         if (combined < -32768) combined = -32768;
         data.push_back(static_cast<fl::i16>(combined));
     }
-    AudioSample sample(data, 1000);
+    audio::Sample sample(data, 1000);
     processor.update(sample);
 
     // The signal contains explicit 200Hz bass + 1000Hz mid + 4000Hz treble energy.
@@ -75,24 +75,24 @@ FL_TEST_CASE("AudioProcessor - onBass/onMid/onTreble callbacks fire") {
     FL_CHECK_GT(lastTreble, 0.0f);
 }
 
-FL_TEST_CASE("AudioProcessor - signal conditioning enabled by default") {
-    AudioProcessor processor;
+FL_TEST_CASE("audio::Processor - signal conditioning enabled by default") {
+    audio::Processor processor;
     // Signal conditioning is enabled by default
     const auto& stats = processor.getSignalConditionerStats();
     FL_CHECK_EQ(stats.samplesProcessed, 0u);
 
-    AudioSample sample = makeSample(440.0f, 1000);
+    audio::Sample sample = makeSample(440.0f, 1000);
     processor.update(sample);
 
     FL_CHECK_GT(processor.getSignalConditionerStats().samplesProcessed, 0u);
 }
 
-FL_TEST_CASE("AudioProcessor - reset clears all state") {
-    AudioProcessor processor;
+FL_TEST_CASE("audio::Processor - reset clears all state") {
+    audio::Processor processor;
     float lastRMS = -1.0f;
     processor.onEnergy([&lastRMS](float rms) { lastRMS = rms; });
 
-    AudioSample sample = makeSample(440.0f, 1000);
+    audio::Sample sample = makeSample(440.0f, 1000);
     processor.update(sample);
     FL_CHECK_GT(lastRMS, 0.0f);
 
@@ -101,10 +101,10 @@ FL_TEST_CASE("AudioProcessor - reset clears all state") {
     FL_CHECK_EQ(processor.getSignalConditionerStats().samplesProcessed, 0u);
 }
 
-FL_TEST_CASE("AudioProcessor - lazy detector creation") {
-    AudioProcessor processor;
+FL_TEST_CASE("audio::Processor - lazy detector creation") {
+    audio::Processor processor;
     // Without callbacks registered, just update() should work fine
-    AudioSample sample = makeSample(440.0f, 1000);
+    audio::Sample sample = makeSample(440.0f, 1000);
     processor.update(sample);
 
     // Now register a callback - should trigger detector creation
@@ -116,20 +116,20 @@ FL_TEST_CASE("AudioProcessor - lazy detector creation") {
     FL_CHECK(processor.getContext() != nullptr);
 }
 
-FL_TEST_CASE("FrequencyBands - getBassNorm/getMidNorm/getTrebleNorm exist and return 0-1") {
-    AudioProcessor processor;
+FL_TEST_CASE("audio::detector::FrequencyBands - getBassNorm/getMidNorm/getTrebleNorm exist and return 0-1") {
+    audio::Processor processor;
     // Disable signal conditioning so our test signal passes through cleanly
     processor.setSignalConditioningEnabled(false);
-    // Force lazy creation of FrequencyBands detector before feeding data
+    // Force lazy creation of audio::detector::FrequencyBands detector before feeding data
     processor.getBassLevel();
 
     // Feed a bass-heavy signal for multiple frames to let filters converge
     for (int i = 0; i < 30; ++i) {
-        AudioSample sample = makeSample(200.0f, i * 23, 20000.0f);
+        audio::Sample sample = makeSample(200.0f, i * 23, 20000.0f);
         processor.update(sample);
     }
 
-    // Access FrequencyBands through AudioProcessor's polling getters
+    // Access audio::detector::FrequencyBands through audio::Processor's polling getters
     float bassLevel = processor.getBassLevel();
     float midLevel = processor.getMidLevel();
     float trebleLevel = processor.getTrebleLevel();
@@ -146,10 +146,10 @@ FL_TEST_CASE("FrequencyBands - getBassNorm/getMidNorm/getTrebleNorm exist and re
     FL_CHECK_GT(bassLevel, 0.0f);
 }
 
-FL_TEST_CASE("FrequencyBands - normalization makes bands self-referential") {
-    AudioProcessor processor;
+FL_TEST_CASE("audio::detector::FrequencyBands - normalization makes bands self-referential") {
+    audio::Processor processor;
     processor.setSignalConditioningEnabled(false);
-    // Force lazy creation of FrequencyBands detector before feeding data
+    // Force lazy creation of audio::detector::FrequencyBands detector before feeding data
     processor.getBassLevel();
 
     // Feed a signal with strong bass (200Hz, amplitude 20000) and weak treble (6000Hz, amplitude 2000)
@@ -166,7 +166,7 @@ FL_TEST_CASE("FrequencyBands - normalization makes bands self-referential") {
             if (combined < -32768) combined = -32768;
             data.push_back(static_cast<fl::i16>(combined));
         }
-        AudioSample sample(data, i * 12);
+        audio::Sample sample(data, i * 12);
         processor.update(sample);
     }
 
@@ -179,15 +179,15 @@ FL_TEST_CASE("FrequencyBands - normalization makes bands self-referential") {
     FL_CHECK_GT(trebleLevel, 0.1f);
 }
 
-FL_TEST_CASE("FrequencyBands - reset clears normalization filters") {
-    AudioProcessor processor;
+FL_TEST_CASE("audio::detector::FrequencyBands - reset clears normalization filters") {
+    audio::Processor processor;
     processor.setSignalConditioningEnabled(false);
-    // Force lazy creation of FrequencyBands detector before feeding data
+    // Force lazy creation of audio::detector::FrequencyBands detector before feeding data
     processor.getBassLevel();
 
     // Feed signal for multiple frames
     for (int i = 0; i < 30; ++i) {
-        AudioSample sample = makeSample(200.0f, i * 23, 20000.0f);
+        audio::Sample sample = makeSample(200.0f, i * 23, 20000.0f);
         processor.update(sample);
     }
 
@@ -199,17 +199,17 @@ FL_TEST_CASE("FrequencyBands - reset clears normalization filters") {
     // After reset, re-access triggers lazy creation with fresh state
     // Feed silence to get a zero reading
     fl::vector<fl::i16> silence(512, 0);
-    AudioSample silenceSample(silence, 0);
+    audio::Sample silenceSample(silence, 0);
     processor.update(silenceSample);
     float bassAfterReset = processor.getBassLevel();
     // Bass should be at or very near zero after reset + silence
     FL_CHECK_LT(bassAfterReset, 0.01f);
 }
 
-FL_TEST_CASE("AudioProcessor - getBassRaw/getMidRaw/getTrebleRaw exist") {
-    AudioProcessor processor;
+FL_TEST_CASE("audio::Processor - getBassRaw/getMidRaw/getTrebleRaw exist") {
+    audio::Processor processor;
     processor.setSignalConditioningEnabled(false);
-    // Force lazy creation of FrequencyBands detector before feeding data
+    // Force lazy creation of audio::detector::FrequencyBands detector before feeding data
     processor.getBassRaw();
 
     // Feed a multi-frequency signal
@@ -225,7 +225,7 @@ FL_TEST_CASE("AudioProcessor - getBassRaw/getMidRaw/getTrebleRaw exist") {
         if (combined < -32768) combined = -32768;
         data.push_back(static_cast<fl::i16>(combined));
     }
-    AudioSample sample(data, 1000);
+    audio::Sample sample(data, 1000);
     processor.update(sample);
 
     FL_CHECK_GT(processor.getBassRaw(), 0.0f);
@@ -233,10 +233,10 @@ FL_TEST_CASE("AudioProcessor - getBassRaw/getMidRaw/getTrebleRaw exist") {
     FL_CHECK_GT(processor.getTrebleRaw(), 0.0f);
 }
 
-FL_TEST_CASE("AudioProcessor - getBassLevel uses normalized values") {
-    AudioProcessor processor;
+FL_TEST_CASE("audio::Processor - getBassLevel uses normalized values") {
+    audio::Processor processor;
     processor.setSignalConditioningEnabled(false);
-    // Force lazy creation of FrequencyBands detector before feeding data
+    // Force lazy creation of audio::detector::FrequencyBands detector before feeding data
     processor.getBassLevel();
 
     // Feed bass-heavy + weak-treble signal for multiple frames
@@ -253,7 +253,7 @@ FL_TEST_CASE("AudioProcessor - getBassLevel uses normalized values") {
             if (combined < -32768) combined = -32768;
             data.push_back(static_cast<fl::i16>(combined));
         }
-        AudioSample sample(data, i * 12);
+        audio::Sample sample(data, i * 12);
         processor.update(sample);
     }
 
@@ -263,14 +263,14 @@ FL_TEST_CASE("AudioProcessor - getBassLevel uses normalized values") {
 }
 
 // ==========================================================================
-// Adversarial tests for per-band normalization in FrequencyBands detector
+// Adversarial tests for per-band normalization in audio::detector::FrequencyBands detector
 // ==========================================================================
 
-FL_TEST_CASE("FrequencyBands - callback delivers raw values not normalized") {
+FL_TEST_CASE("audio::detector::FrequencyBands - callback delivers raw values not normalized") {
     // BUG: onBass/onMid/onTreble callbacks fire with raw smoothed values,
     // but getBassLevel() returns normalized values. Users get inconsistent
     // results depending on which API they use.
-    AudioProcessor processor;
+    audio::Processor processor;
     processor.setSignalConditioningEnabled(false);
 
     float callbackBass = -1.0f;
@@ -278,7 +278,7 @@ FL_TEST_CASE("FrequencyBands - callback delivers raw values not normalized") {
 
     // Feed strong bass signal to build up raw energy
     for (int i = 0; i < 50; ++i) {
-        AudioSample sample = makeSample(200.0f, i * 23, 20000.0f);
+        audio::Sample sample = makeSample(200.0f, i * 23, 20000.0f);
         processor.update(sample);
     }
 
@@ -292,30 +292,30 @@ FL_TEST_CASE("FrequencyBands - callback delivers raw values not normalized") {
     // Document this divergence: they are NOT the same value.
     FL_CHECK_LE(polledBass, 1.0f);
     // Raw callback value is typically much larger than the normalized polled value
-    // because it's unnormalized FFT energy.
+    // because it's unnormalized audio::fft::FFT energy.
     // This test documents the API inconsistency.
 }
 
-FL_TEST_CASE("FrequencyBands - signal above FFT max leaks via spectral leakage") {
-    // The FFT range is [100, 10000] Hz but treble range is [4000, 20000] Hz.
-    // A pure 15kHz signal is above FFT max but still present in PCM data.
+FL_TEST_CASE("audio::detector::FrequencyBands - signal above audio::fft::FFT max leaks via spectral leakage") {
+    // The audio::fft::FFT range is [100, 10000] Hz but treble range is [4000, 20000] Hz.
+    // A pure 15kHz signal is above audio::fft::FFT max but still present in PCM data.
     // BUG/LIMITATION: The CQ kernel's high-frequency bins have short windows
     // that can alias/leak energy from out-of-range frequencies. This test
     // documents that a 15kHz signal DOES produce non-trivial treble energy
-    // even though it's "outside" the FFT range.
-    AudioProcessor processor;
+    // even though it's "outside" the audio::fft::FFT range.
+    audio::Processor processor;
     processor.setSignalConditioningEnabled(false);
     processor.getBassLevel(); // Force lazy creation
 
-    // Feed a 15kHz signal (above FFT max of 10kHz)
+    // Feed a 15kHz signal (above audio::fft::FFT max of 10kHz)
     for (int i = 0; i < 30; ++i) {
-        AudioSample sample = makeSample(15000.0f, i * 23, 20000.0f);
+        audio::Sample sample = makeSample(15000.0f, i * 23, 20000.0f);
         processor.update(sample);
     }
 
     float trebleRaw = processor.getTrebleRaw();
     // Spectral leakage means this is NOT zero — documenting the actual behavior.
-    // This is a known limitation: the FFT range doesn't act as a hard cutoff.
+    // This is a known limitation: the audio::fft::FFT range doesn't act as a hard cutoff.
     FL_CHECK_GT(trebleRaw, 1.0f);
 
     // Bass should be much lower than treble for a 15kHz signal
@@ -323,16 +323,16 @@ FL_TEST_CASE("FrequencyBands - signal above FFT max leaks via spectral leakage")
     FL_CHECK_LT(bassRaw, trebleRaw);
 }
 
-FL_TEST_CASE("FrequencyBands - normalized values stay in [0,1] under rapid signal changes") {
+FL_TEST_CASE("audio::detector::FrequencyBands - normalized values stay in [0,1] under rapid signal changes") {
     // Adversarial: alternate between silence and max-amplitude signal
     // every frame. The normalization filter should never produce values
     // outside [0, 1] despite the whiplash.
-    AudioProcessor processor;
+    audio::Processor processor;
     processor.setSignalConditioningEnabled(false);
     processor.getBassLevel(); // Force lazy creation
 
     for (int i = 0; i < 100; ++i) {
-        AudioSample sample;
+        audio::Sample sample;
         if (i % 2 == 0) {
             sample = makeSample(200.0f, i * 23, 30000.0f);
         } else {
@@ -353,18 +353,18 @@ FL_TEST_CASE("FrequencyBands - normalized values stay in [0,1] under rapid signa
     }
 }
 
-FL_TEST_CASE("FrequencyBands - first frame after reset normalizes against floor") {
+FL_TEST_CASE("audio::detector::FrequencyBands - first frame after reset normalizes against floor") {
     // After reset, filters start at 0. The first non-zero signal gets
     // normalized against the floor (0.001). With fast attack tau the
     // running max snaps to the input, but the very first frame could
     // produce a spike if the floor is too low relative to the signal.
-    AudioProcessor processor;
+    audio::Processor processor;
     processor.setSignalConditioningEnabled(false);
     processor.getBassLevel(); // Force lazy creation
 
     // Build up some state
     for (int i = 0; i < 20; ++i) {
-        AudioSample sample = makeSample(200.0f, i * 23, 20000.0f);
+        audio::Sample sample = makeSample(200.0f, i * 23, 20000.0f);
         processor.update(sample);
     }
 
@@ -373,7 +373,7 @@ FL_TEST_CASE("FrequencyBands - first frame after reset normalizes against floor"
 
     // First frame with a signal — should still be in [0, 1]
     processor.getBassLevel(); // Re-trigger lazy creation
-    AudioSample sample = makeSample(200.0f, 0, 20000.0f);
+    audio::Sample sample = makeSample(200.0f, 0, 20000.0f);
     processor.update(sample);
 
     float bass = processor.getBassLevel();
@@ -381,16 +381,16 @@ FL_TEST_CASE("FrequencyBands - first frame after reset normalizes against floor"
     FL_CHECK_LE(bass, 1.0f);
 }
 
-FL_TEST_CASE("FrequencyBands - raw values not clamped to [0,1]") {
-    // getBassRaw() should return the actual FFT energy, which can be > 1.0
+FL_TEST_CASE("audio::detector::FrequencyBands - raw values not clamped to [0,1]") {
+    // getBassRaw() should return the actual audio::fft::FFT energy, which can be > 1.0
     // unlike getBassLevel() which is normalized and clamped.
-    AudioProcessor processor;
+    audio::Processor processor;
     processor.setSignalConditioningEnabled(false);
     processor.getBassRaw(); // Force lazy creation
 
     // Feed a very strong bass signal
     for (int i = 0; i < 30; ++i) {
-        AudioSample sample = makeSample(200.0f, i * 23, 30000.0f);
+        audio::Sample sample = makeSample(200.0f, i * 23, 30000.0f);
         processor.update(sample);
     }
 
@@ -404,14 +404,14 @@ FL_TEST_CASE("FrequencyBands - raw values not clamped to [0,1]") {
     FL_CHECK_LE(bassNorm, 1.0f);
 }
 
-FL_TEST_CASE("FrequencyBands - silence produces zero for both raw and normalized") {
-    AudioProcessor processor;
+FL_TEST_CASE("audio::detector::FrequencyBands - silence produces zero for both raw and normalized") {
+    audio::Processor processor;
     processor.setSignalConditioningEnabled(false);
     processor.getBassLevel(); // Force lazy creation
 
     // Feed pure silence
     for (int i = 0; i < 30; ++i) {
-        AudioSample sample = fl::audio::test::makeSilence(i * 23);
+        audio::Sample sample = fl::audio::test::makeSilence(i * 23);
         processor.update(sample);
     }
 
@@ -423,18 +423,18 @@ FL_TEST_CASE("FrequencyBands - silence produces zero for both raw and normalized
     FL_CHECK_LT(processor.getTrebleLevel(), 0.001f);
 }
 
-FL_TEST_CASE("FrequencyBands - signal drop from loud to quiet normalizes correctly") {
+FL_TEST_CASE("audio::detector::FrequencyBands - signal drop from loud to quiet normalizes correctly") {
     // After establishing a high running max with loud signal, switching to
     // a quiet signal should produce low normalized values (not near 1.0).
     // The running max decays slowly (4s tau) so the quiet signal should
     // read as a fraction of the peak.
-    AudioProcessor processor;
+    audio::Processor processor;
     processor.setSignalConditioningEnabled(false);
     processor.getBassLevel(); // Force lazy creation
 
     // Phase 1: Loud bass for many frames to establish high running max
     for (int i = 0; i < 60; ++i) {
-        AudioSample sample = makeSample(200.0f, i * 23, 30000.0f);
+        audio::Sample sample = makeSample(200.0f, i * 23, 30000.0f);
         processor.update(sample);
     }
     float loudBass = processor.getBassLevel();
@@ -442,7 +442,7 @@ FL_TEST_CASE("FrequencyBands - signal drop from loud to quiet normalizes correct
 
     // Phase 2: Much quieter bass (1/10th amplitude)
     for (int i = 60; i < 80; ++i) {
-        AudioSample sample = makeSample(200.0f, i * 23, 3000.0f);
+        audio::Sample sample = makeSample(200.0f, i * 23, 3000.0f);
         processor.update(sample);
     }
     float quietBass = processor.getBassLevel();
@@ -454,15 +454,15 @@ FL_TEST_CASE("FrequencyBands - signal drop from loud to quiet normalizes correct
     FL_CHECK_LT(quietBass, loudBass);
 }
 
-FL_TEST_CASE("FrequencyBands - pure mid-frequency signal has dominant mid band") {
+FL_TEST_CASE("audio::detector::FrequencyBands - pure mid-frequency signal has dominant mid band") {
     // A 1kHz signal should produce dominant mid-band energy.
     // Bass and treble should be significantly lower.
-    AudioProcessor processor;
+    audio::Processor processor;
     processor.setSignalConditioningEnabled(false);
     processor.getBassLevel(); // Force lazy creation
 
     for (int i = 0; i < 50; ++i) {
-        AudioSample sample = makeSample(1000.0f, i * 23, 20000.0f);
+        audio::Sample sample = makeSample(1000.0f, i * 23, 20000.0f);
         processor.update(sample);
     }
 
@@ -475,18 +475,18 @@ FL_TEST_CASE("FrequencyBands - pure mid-frequency signal has dominant mid band")
     FL_CHECK_GT(midRaw, trebleRaw);
 }
 
-FL_TEST_CASE("FrequencyBands - normalization converges for steady signal") {
+FL_TEST_CASE("audio::detector::FrequencyBands - normalization converges for steady signal") {
     // For a constant-amplitude signal, the normalized value should converge
     // to ~1.0 over time as the running max tracks the steady level.
     // With correct dt (~11.6ms for 512 samples at 44100Hz), filters need
     // ~2x more frames to converge than with the old hardcoded 23ms dt.
-    AudioProcessor processor;
+    audio::Processor processor;
     processor.setSignalConditioningEnabled(false);
     processor.getBassLevel(); // Force lazy creation
 
     // Feed steady bass signal for many frames
     for (int i = 0; i < 200; ++i) {
-        AudioSample sample = makeSample(200.0f, i * 12, 20000.0f);
+        audio::Sample sample = makeSample(200.0f, i * 12, 20000.0f);
         processor.update(sample);
     }
 
@@ -496,15 +496,15 @@ FL_TEST_CASE("FrequencyBands - normalization converges for steady signal") {
     FL_CHECK_GT(bassNorm, 0.8f);
 }
 
-FL_TEST_CASE("AudioProcessor - onBeat callback fires with periodic bass") {
-    AudioProcessor processor;
+FL_TEST_CASE("audio::Processor - onBeat callback fires with periodic bass") {
+    audio::Processor processor;
     int beatCount = 0;
     processor.onBeat([&beatCount]() { beatCount++; });
 
     // Feed silence to establish baseline
     fl::vector<fl::i16> silenceData(512, 0);
     for (int i = 0; i < 20; ++i) {
-        AudioSample silence(silenceData, i * 23);
+        audio::Sample silence(silenceData, i * 23);
         processor.update(silence);
     }
 
@@ -518,13 +518,13 @@ FL_TEST_CASE("AudioProcessor - onBeat callback fires with periodic bass") {
             float phase = 2.0f * FL_M_PI * 200.0f * s / 44100.0f;
             bassData.push_back(static_cast<fl::i16>(20000.0f * fl::sinf(phase)));
         }
-        AudioSample bassSample(bassData, timestamp);
+        audio::Sample bassSample(bassData, timestamp);
         processor.update(bassSample);
 
         // Silence between beats
         for (int frame = 1; frame < 22; ++frame) {
             timestamp += 23;
-            AudioSample silence(silenceData, timestamp);
+            audio::Sample silence(silenceData, timestamp);
             processor.update(silence);
         }
         timestamp += 23;
@@ -538,7 +538,7 @@ FL_TEST_CASE("AudioProcessor - onBeat callback fires with periodic bass") {
 // Adversarial tests for computed dt (not hardcoded kFrameDt)
 // ==========================================================================
 
-FL_TEST_CASE("FrequencyBands - dt differs between buffer sizes") {
+FL_TEST_CASE("audio::detector::FrequencyBands - dt differs between buffer sizes") {
     // Verify that dt is actually computed from pcm size, not hardcoded.
     // Two processors with same sample rate but different buffer sizes:
     //   256 samples → dt = 256/44100 = 5.8ms
@@ -547,8 +547,8 @@ FL_TEST_CASE("FrequencyBands - dt differs between buffer sizes") {
     // larger dt → higher alpha → the smoother tracks the input faster.
     // After just a few frames, the 512-sample processor should have a
     // higher raw smoothed value because it converges faster.
-    AudioProcessor proc256;
-    AudioProcessor proc512;
+    audio::Processor proc256;
+    audio::Processor proc512;
     proc256.setSignalConditioningEnabled(false);
     proc512.setSignalConditioningEnabled(false);
     proc256.getBassRaw();
@@ -556,10 +556,10 @@ FL_TEST_CASE("FrequencyBands - dt differs between buffer sizes") {
 
     // Feed just 3 frames so the smoother hasn't fully converged
     for (int i = 0; i < 3; ++i) {
-        AudioSample s256 = makeSample(200.0f, i * 6, 20000.0f, 256);
+        audio::Sample s256 = makeSample(200.0f, i * 6, 20000.0f, 256);
         proc256.update(s256);
 
-        AudioSample s512 = makeSample(200.0f, i * 12, 20000.0f, 512);
+        audio::Sample s512 = makeSample(200.0f, i * 12, 20000.0f, 512);
         proc512.update(s512);
     }
 
@@ -571,12 +571,12 @@ FL_TEST_CASE("FrequencyBands - dt differs between buffer sizes") {
     FL_CHECK_GT(raw512, 0.0f);
 
     // The two raw values should NOT be identical — this proves dt varies
-    // with buffer size (if hardcoded, they could still differ due to FFT
+    // with buffer size (if hardcoded, they could still differ due to audio::fft::FFT
     // resolution differences, but this at minimum validates the fix runs).
     FL_CHECK_NE(raw256, raw512);
 }
 
-FL_TEST_CASE("FrequencyBands - dt scales with sample rate") {
+FL_TEST_CASE("audio::detector::FrequencyBands - dt scales with sample rate") {
     // Same buffer size (512), different sample rates.
     // At 22050 Hz: dt = 512/22050 = 23.2ms
     // At 44100 Hz: dt = 512/44100 = 11.6ms
@@ -584,8 +584,8 @@ FL_TEST_CASE("FrequencyBands - dt scales with sample rate") {
     //
     // Strategy: Build up running max, then drop to quiet signal.
     // Larger dt → faster decay → higher normalized value after drop.
-    AudioProcessor procHigh;
-    AudioProcessor procLow;
+    audio::Processor procHigh;
+    audio::Processor procLow;
     procHigh.setSignalConditioningEnabled(false);
     procLow.setSignalConditioningEnabled(false);
     procHigh.setSampleRate(44100);
@@ -595,19 +595,19 @@ FL_TEST_CASE("FrequencyBands - dt scales with sample rate") {
 
     // Phase 1: Build up running max
     for (int i = 0; i < 100; ++i) {
-        AudioSample sHigh = makeSample(200.0f, i * 12, 20000.0f, 512, 44100.0f);
+        audio::Sample sHigh = makeSample(200.0f, i * 12, 20000.0f, 512, 44100.0f);
         procHigh.update(sHigh);
 
-        AudioSample sLow = makeSample(200.0f, i * 23, 20000.0f, 512, 22050.0f);
+        audio::Sample sLow = makeSample(200.0f, i * 23, 20000.0f, 512, 22050.0f);
         procLow.update(sLow);
     }
 
-    // Phase 2: Drop to quiet signal
+    // Phase 2: audio::detector::Drop to quiet signal
     for (int i = 0; i < 30; ++i) {
-        AudioSample sHigh = makeSample(200.0f, (100 + i) * 12, 2000.0f, 512, 44100.0f);
+        audio::Sample sHigh = makeSample(200.0f, (100 + i) * 12, 2000.0f, 512, 44100.0f);
         procHigh.update(sHigh);
 
-        AudioSample sLow = makeSample(200.0f, (100 + i) * 23, 2000.0f, 512, 22050.0f);
+        audio::Sample sLow = makeSample(200.0f, (100 + i) * 23, 2000.0f, 512, 22050.0f);
         procLow.update(sLow);
     }
 
@@ -622,17 +622,17 @@ FL_TEST_CASE("FrequencyBands - dt scales with sample rate") {
     FL_CHECK_GT(bassLow, bassHigh);
 }
 
-FL_TEST_CASE("FrequencyBands - burst mode identical timestamps still converge") {
+FL_TEST_CASE("audio::detector::FrequencyBands - burst mode identical timestamps still converge") {
     // Simulate I2S DMA burst: 10 samples arrive with identical timestamp.
     // Each still represents 11.6ms of audio (512/44100).
     // Normalized bass should converge above 0.5.
-    AudioProcessor processor;
+    audio::Processor processor;
     processor.setSignalConditioningEnabled(false);
     processor.getBassLevel();
 
     const fl::u32 burstTimestamp = 1000;
     for (int i = 0; i < 10; ++i) {
-        AudioSample sample = makeSample(200.0f, burstTimestamp, 20000.0f);
+        audio::Sample sample = makeSample(200.0f, burstTimestamp, 20000.0f);
         processor.update(sample);
     }
 

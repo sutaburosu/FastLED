@@ -5,45 +5,51 @@
 #include "fl/stl/unique_ptr.h"
 
 namespace fl {
+namespace audio {
 
-class AudioSample;
-class FFTContext;
-struct FFT_Args;
+class Sample;  // Forward declare in fl::audio (correct namespace)
+
+namespace fft {
+
+class Context;
+struct Args;
 
 // Example:
-//   FFTImpl fft(512, 16);
+//   Impl fft(512, 16);
 //   auto sample = SINE WAVE OF 512 SAMPLES
 //   fft.run(buffer, &out);
-//   FASTLED_WARN("FFTImpl output: " << out);  // 16 bands of output.
-class FFTImpl {
+//   FASTLED_WARN("Impl output: " << out);  // 16 bands of output.
+class Impl {
   public:
-    // Result indicating success or failure of the FFTImpl run (in which case
+    // Result indicating success or failure of the Impl run (in which case
     // there will be an error message).
     struct Result {
         Result(bool ok, const string &error) : ok(ok), error(error) {}
         bool ok = false;
         fl::string error;
     };
-    // Default values for the FFTImpl.
-    FFTImpl(const FFT_Args &args);
-    ~FFTImpl();
+    // Default values for the Impl.
+    Impl(const Args &args);
+    ~Impl();
 
     fl::size sampleSize() const;
     // Note that the sample sizes MUST match the samples size passed into the
     // constructor.
-    Result run(const AudioSample &sample, FFTBins *out);
-    Result run(span<const i16> sample, FFTBins *out);
+    Result run(const Sample &sample, Bins *out);
+    Result run(span<const i16> sample, Bins *out);
     // Info on what the frequency the bins represent
     fl::string info() const;
 
     // Disable copy and move constructors and assignment operators
-    FFTImpl(const FFTImpl &) = delete;
-    FFTImpl &operator=(const FFTImpl &) = delete;
-    FFTImpl(FFTImpl &&) = delete;
-    FFTImpl &operator=(FFTImpl &&) = delete;
+    Impl(const Impl &) = delete;
+    Impl &operator=(const Impl &) = delete;
+    Impl(Impl &&) = delete;
+    Impl &operator=(Impl &&) = delete;
 
   private:
-    fl::unique_ptr<FFTContext> mContext;
+    fl::unique_ptr<Context> mContext;
 };
 
+} // namespace fft
+} // namespace audio
 }; // namespace fl

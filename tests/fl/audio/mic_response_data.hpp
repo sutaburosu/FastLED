@@ -7,26 +7,26 @@
 using namespace fl;
 
 FL_TEST_CASE("MicResponseData - interpolation at exact data points") {
-    MicResponseCurve curve = getMicResponseCurve(MicProfile::LineIn);
+    audio::MicResponseCurve curve = getMicResponseCurve(audio::MicProfile::LineIn);
     FL_CHECK_GT(curve.count, 0);
 
     // LineIn is all 1.0 — interpolation at any frequency should return 1.0
     for (int i = 0; i < curve.count; ++i) {
-        float freq = fl_progmem_read_float(&curve.freqs[i]);
+        float freq = audio::fl_progmem_read_float(&curve.freqs[i]);
         float gain = interpolateMicResponse(curve, freq);
         FL_CHECK(fl::almost_equal(gain, 1.0f, 0.001f));
     }
 }
 
 FL_TEST_CASE("MicResponseData - interpolation between points is smooth") {
-    MicResponseCurve curve = getMicResponseCurve(MicProfile::INMP441);
+    audio::MicResponseCurve curve = getMicResponseCurve(audio::MicProfile::INMP441);
     FL_CHECK_GT(curve.count, 0);
 
     // Pick a frequency between two known data points (e.g., between index 16 and 17)
-    float f16 = fl_progmem_read_float(&curve.freqs[16]);
-    float f17 = fl_progmem_read_float(&curve.freqs[17]);
-    float g16 = fl_progmem_read_float(&curve.gains[16]);
-    float g17 = fl_progmem_read_float(&curve.gains[17]);
+    float f16 = audio::fl_progmem_read_float(&curve.freqs[16]);
+    float f17 = audio::fl_progmem_read_float(&curve.freqs[17]);
+    float g16 = audio::fl_progmem_read_float(&curve.gains[16]);
+    float g17 = audio::fl_progmem_read_float(&curve.gains[17]);
     float midFreq = fl::sqrtf(f16 * f17); // geometric mean
 
     float interpolated = interpolateMicResponse(curve, midFreq);
@@ -39,11 +39,11 @@ FL_TEST_CASE("MicResponseData - interpolation between points is smooth") {
 }
 
 FL_TEST_CASE("MicResponseData - clamping at frequency extremes") {
-    MicResponseCurve curve = getMicResponseCurve(MicProfile::INMP441);
+    audio::MicResponseCurve curve = getMicResponseCurve(audio::MicProfile::INMP441);
     FL_CHECK_GT(curve.count, 0);
 
-    float g0 = fl_progmem_read_float(&curve.gains[0]);
-    float gN = fl_progmem_read_float(&curve.gains[curve.count - 1]);
+    float g0 = audio::fl_progmem_read_float(&curve.gains[0]);
+    float gN = audio::fl_progmem_read_float(&curve.gains[curve.count - 1]);
 
     // Below 20 Hz → should clamp to first value
     float belowMin = interpolateMicResponse(curve, 5.0f);
@@ -55,9 +55,9 @@ FL_TEST_CASE("MicResponseData - clamping at frequency extremes") {
 }
 
 FL_TEST_CASE("MicResponseData - downsample to 16 bins") {
-    MicResponseCurve curve = getMicResponseCurve(MicProfile::INMP441);
+    audio::MicResponseCurve curve = getMicResponseCurve(audio::MicProfile::INMP441);
 
-    // Create log-spaced bin centers matching EqualizerDetector defaults (60–5120 Hz)
+    // Create log-spaced bin centers matching audio::detector::EqualizerDetector defaults (60–5120 Hz)
     float binCenters[16];
     float fmin = 60.0f;
     float fmax = 5120.0f;
@@ -85,7 +85,7 @@ FL_TEST_CASE("MicResponseData - downsample to 16 bins") {
 FL_TEST_CASE("MicResponseData - pink noise gains follow sqrt formula") {
     float binCenters[4] = {100.0f, 400.0f, 1600.0f, 6400.0f};
     float gains[4];
-    computePinkNoiseGains(binCenters, 4, gains);
+    audio::computePinkNoiseGains(binCenters, 4, gains);
 
     // Gains should be monotonically increasing (higher freq = more gain)
     for (int i = 1; i < 4; ++i) {
@@ -108,7 +108,7 @@ FL_TEST_CASE("MicResponseData - pink noise geometric mean normalization") {
     }
 
     float gains[16];
-    computePinkNoiseGains(binCenters, 16, gains);
+    audio::computePinkNoiseGains(binCenters, 16, gains);
 
     // Geometric mean should be approximately 1.0
     float logSum = 0.0f;
@@ -120,9 +120,9 @@ FL_TEST_CASE("MicResponseData - pink noise geometric mean normalization") {
 }
 
 FL_TEST_CASE("MicResponseData - all mic profiles produce valid gains") {
-    MicProfile profiles[] = {
-        MicProfile::INMP441, MicProfile::ICS43434,
-        MicProfile::SPM1423, MicProfile::GenericMEMS, MicProfile::LineIn
+    audio::MicProfile profiles[] = {
+        audio::MicProfile::INMP441, audio::MicProfile::ICS43434,
+        audio::MicProfile::SPM1423, audio::MicProfile::GenericMEMS, audio::MicProfile::LineIn
     };
 
     float binCenters[16];
@@ -134,7 +134,7 @@ FL_TEST_CASE("MicResponseData - all mic profiles produce valid gains") {
     }
 
     for (auto profile : profiles) {
-        MicResponseCurve curve = getMicResponseCurve(profile);
+        audio::MicResponseCurve curve = getMicResponseCurve(profile);
         FL_CHECK_GT(curve.count, 0);
 
         float gains[16];
@@ -152,23 +152,23 @@ FL_TEST_CASE("MicResponseData - all mic profiles produce valid gains") {
 }
 
 FL_TEST_CASE("MicResponseData - None profile returns empty curve") {
-    MicResponseCurve curve = getMicResponseCurve(MicProfile::None);
+    audio::MicResponseCurve curve = getMicResponseCurve(audio::MicProfile::None);
     FL_CHECK_EQ(curve.count, 0);
     FL_CHECK(curve.freqs == nullptr);
     FL_CHECK(curve.gains == nullptr);
 }
 
 FL_TEST_CASE("MicResponseData - interpolation with None curve returns 1.0") {
-    MicResponseCurve curve = getMicResponseCurve(MicProfile::None);
+    audio::MicResponseCurve curve = getMicResponseCurve(audio::MicProfile::None);
     float gain = interpolateMicResponse(curve, 1000.0f);
     FL_CHECK(fl::almost_equal(gain, 1.0f, 0.001f));
 }
 
 FL_TEST_CASE("MicResponseData - mic correction * pink noise stays reasonable") {
     // Combined mic + pink noise gains should stay within 0.1x–20x for all profiles.
-    MicProfile profiles[] = {
-        MicProfile::INMP441, MicProfile::ICS43434,
-        MicProfile::SPM1423, MicProfile::GenericMEMS, MicProfile::LineIn
+    audio::MicProfile profiles[] = {
+        audio::MicProfile::INMP441, audio::MicProfile::ICS43434,
+        audio::MicProfile::SPM1423, audio::MicProfile::GenericMEMS, audio::MicProfile::LineIn
     };
 
     float binCenters[16];
@@ -180,10 +180,10 @@ FL_TEST_CASE("MicResponseData - mic correction * pink noise stays reasonable") {
     }
 
     float pinkGains[16];
-    computePinkNoiseGains(binCenters, 16, pinkGains);
+    audio::computePinkNoiseGains(binCenters, 16, pinkGains);
 
     for (auto profile : profiles) {
-        MicResponseCurve curve = getMicResponseCurve(profile);
+        audio::MicResponseCurve curve = getMicResponseCurve(profile);
         float micGains[16];
         downsampleMicResponse(curve, binCenters, 16, micGains);
 
@@ -196,7 +196,7 @@ FL_TEST_CASE("MicResponseData - mic correction * pink noise stays reasonable") {
 }
 
 FL_TEST_CASE("MicResponseData - INMP441 key frequencies match reference") {
-    MicResponseCurve curve = getMicResponseCurve(MicProfile::INMP441);
+    audio::MicResponseCurve curve = getMicResponseCurve(audio::MicProfile::INMP441);
 
     // At 40 Hz (f[6]), ikostoski analysis: significant bass rolloff, ~1.74x
     float gain40 = interpolateMicResponse(curve, 40.0f);

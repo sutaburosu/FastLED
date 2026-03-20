@@ -80,9 +80,9 @@
 // Platform name for serial output
 #define PLATFORM_NAME "Teensy I2S Audio FastLED Example"
 
-// Create platform-specific AudioConfig
-inline fl::AudioConfig createAudioConfig() {
-    return fl::AudioConfig::CreateTeensyI2S(USE_I2S_PORT, AUDIO_CHANNEL, SAMPLE_RATE);
+// Create platform-specific Config
+inline fl::audio::Config createAudioConfig() {
+    return fl::audio::Config::CreateTeensyI2S(USE_I2S_PORT, AUDIO_CHANNEL, SAMPLE_RATE);
 }
 
 // Print platform-specific setup information

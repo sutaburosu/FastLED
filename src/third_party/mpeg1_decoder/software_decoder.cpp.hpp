@@ -128,9 +128,9 @@ void SoftwareMpeg1Decoder::audioDecodeCallback(fl::third_party::plm_t* plm_ptr, 
         pcm.push_back(static_cast<fl::i16>(sample * 32767.0f));
     }
 
-    // Create AudioSample with timestamp in milliseconds
+    // Create audio::Sample with timestamp in milliseconds
     fl::u32 timestampMs = static_cast<fl::u32>(samples->time * 1000.0);
-    AudioSample audioSample(fl::span<const fl::i16>(pcm.data(), pcm.size()), timestampMs);
+    audio::Sample audioSample(fl::span<const fl::i16>(pcm.data(), pcm.size()), timestampMs);
 
     // Call the user's audio callback
     decoder->config_.audioCallback(audioSample);

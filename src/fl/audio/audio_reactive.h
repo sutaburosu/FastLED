@@ -15,24 +15,27 @@
 #include "fl/stl/vector.h"
 
 namespace fl {
+namespace audio {
 
-class AudioProcessor;
+class Processor;
 
 // Forward declarations for enhanced beat detection
 class SpectralFluxDetector;
 class PerceptualWeighting;
-class MusicalBeatDetector;
-class MultiBandBeatDetector;
+namespace detector {
+class MusicalBeat;
+class MultiBandBeat;
+}
 
 // Audio data structure - matches original WLED output with extensions
-struct AudioData {
+struct Data {
     float volume = 0.0f;                    // Overall volume level (0-255)
     float volumeRaw = 0.0f;                 // Raw volume without smoothing
     float peak = 0.0f;                      // Peak level (0-255) 
     bool beatDetected = false;              // Beat detection flag
     float frequencyBins[16] = {0};          // 16 frequency bins (matches WLED NUM_GEQ_CHANNELS)
     float dominantFrequency = 0.0f;         // Major peak frequency (Hz)
-    float magnitude = 0.0f;                 // FFT magnitude of dominant frequency
+    float magnitude = 0.0f;                 // fft::FFT magnitude of dominant frequency
     fl::u32 timestamp = 0;                 // millis() when data was captured
     
     // Enhanced beat detection fields
@@ -45,7 +48,7 @@ struct AudioData {
     float trebleEnergy = 0.0f;              // Energy in treble frequencies (14-15)
 };
 
-struct AudioReactiveConfig {
+struct ReactiveConfig {
     fl::u8 gain = 128;              // Input gain (0-255)
     fl::u8 sensitivity = 128;       // AGC sensitivity
     bool noiseGate = true;           // Noise gate
@@ -80,24 +83,24 @@ struct AudioReactiveConfig {
     float musicalBeatConfidence = 0.5f;     // Minimum confidence for beat validation
 };
 
-class AudioReactive {
+class Reactive {
 public:
-    AudioReactive();
-    ~AudioReactive();
+    Reactive();
+    ~Reactive();
     
     // Setup
-    void begin(const AudioReactiveConfig& config = AudioReactiveConfig{});
-    void setConfig(const AudioReactiveConfig& config);
+    void begin(const ReactiveConfig& config = ReactiveConfig{});
+    void setConfig(const ReactiveConfig& config);
     
     // Process audio sample - this does all the work immediately
-    void processSample(const AudioSample& sample);
+    void processSample(const Sample& sample);
     
     // Optional: update smoothing without new sample data  
     void update(fl::u32 currentTimeMs);
     
     // Data access
-    const AudioData& getData() const;
-    const AudioData& getSmoothedData() const;
+    const Data& getData() const;
+    const Data& getSmoothedData() const;
     
     // Convenience accessors
     float getVolume() const;
@@ -116,7 +119,7 @@ public:
     float getTrebleEnergy() const;
     
     // ----- Polling Getters (float 0.0-1.0, bool, or integer) -----
-    // These forward to an internal AudioProcessor for detector-based analysis.
+    // These forward to an internal Processor for detector-based analysis.
 
     // Vocal Detection
     float getVocalConfidence();
@@ -191,7 +194,7 @@ public:
     float getMoodArousal();
     float getMoodValence();  // -1.0 to 1.0
 
-    // Gain control - delegates to internal AudioProcessor
+    // Gain control - delegates to internal Processor
     void setGain(float gain);
     float getGain() const;
 
@@ -210,9 +213,9 @@ public:
 
 private:
     // Internal processing methods
-    void processFFT(const AudioSample& sample);
+    void processFFT(const Sample& sample);
     void mapFFTBinsToFrequencyChannels();
-    void updateVolumeAndPeak(const AudioSample& sample);
+    void updateVolumeAndPeak(const Sample& sample);
     void detectBeat(fl::u32 currentTimeMs);
     void smoothResults();
     void applyScaling();
@@ -230,14 +233,14 @@ private:
     float computeRMS(const fl::vector<fl::i16>& samples);
     
     // Configuration
-    AudioReactiveConfig mConfig;
+    ReactiveConfig mConfig;
     
     // FFT processing
-    FFTBins mFFTBins;
+    fft::Bins mFFTBins;
     
     // Audio data  
-    AudioData mCurrentData;
-    AudioData mSmoothedData;
+    Data mCurrentData;
+    Data mSmoothedData;
     
     // Processing state  
     fl::u32 mLastBeatTime = 0;
@@ -263,16 +266,16 @@ private:
     fl::unique_ptr<PerceptualWeighting> mPerceptualWeighting;
 
     // Musical beat detection components (Phase 3 middleware)
-    fl::unique_ptr<MusicalBeatDetector> mMusicalBeatDetector;
-    fl::unique_ptr<MultiBandBeatDetector> mMultiBandBeatDetector;
+    fl::unique_ptr<detector::MusicalBeat> mMusicalBeatDetector;
+    fl::unique_ptr<detector::MultiBandBeat> mMultiBandBeatDetector;
     fl::unique_ptr<SpectralEqualizer> mSpectralEqualizer;
 
     // Enhanced beat detection state
     fl::array<float, 16> mPreviousMagnitudes;
 
-    // Internal AudioProcessor for detector-based polling getters
-    fl::unique_ptr<AudioProcessor> mAudioProcessor;
-    AudioProcessor& ensureAudioProcessor();
+    // Internal Processor for detector-based polling getters
+    fl::unique_ptr<Processor> mAudioProcessor;
+    Processor& ensureAudioProcessor();
 };
 
 // Spectral flux-based onset detection for enhanced beat detection
@@ -304,7 +307,7 @@ struct BeatDetectors {
     ~BeatDetectors();
     
     void reset();
-    void detectBeats(const float* frequencyBins, AudioData& audioData);
+    void detectBeats(const float* frequencyBins, Data& audioData);
     void setThresholds(float bassThresh, float midThresh, float trebleThresh);
     
 private:
@@ -331,8 +334,8 @@ public:
     PerceptualWeighting();
     ~PerceptualWeighting();
     
-    void applyAWeighting(AudioData& data) const;
-    void applyLoudnessCompensation(AudioData& data, float referenceLevel) const;
+    void applyAWeighting(Data& data) const;
+    void applyLoudnessCompensation(Data& data, float referenceLevel) const;
     
 private:
     // A-weighting coefficients for 16-bin frequency analysis
@@ -347,4 +350,5 @@ private:
 #endif
 };
 
+} // namespace audio
 } // namespace fl

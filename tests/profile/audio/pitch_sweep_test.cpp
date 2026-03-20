@@ -1,6 +1,6 @@
 // Pitch Sweep Test — Aliasing & Spectral Quality Analysis
 //
-// Sweeps a sine wave across the full matrix of FFTMode × FFTWindow
+// Sweeps a sine wave across the full matrix of Mode × Window
 // configurations. Two sweep regions:
 //
 //   1. In-band:  fmin → fmax  (where the FFT has valid bins)
@@ -86,27 +86,27 @@ static float energyConcentration(fl::span<const float> bins, int peak) {
 // Mode / Window enum tables
 // ---------------------------------------------------------------------------
 struct ModeEntry {
-    FFTMode mode;
+    Mode mode;
     const char *label;
 };
 
 static const ModeEntry MODES[] = {
-    {FFTMode::LOG_REBIN, "LOG_REBIN"},
-    {FFTMode::CQ_NAIVE, "CQ_NAIVE"},
-    {FFTMode::CQ_OCTAVE, "CQ_OCTAVE"},
-    {FFTMode::CQ_HYBRID, "CQ_HYBRID"},
+    {Mode::LOG_REBIN, "LOG_REBIN"},
+    {Mode::CQ_NAIVE, "CQ_NAIVE"},
+    {Mode::CQ_OCTAVE, "CQ_OCTAVE"},
+    {Mode::CQ_HYBRID, "CQ_HYBRID"},
 };
 static const int NUM_MODES = 4;
 
 struct WindowEntry {
-    FFTWindow window;
+    Window window;
     const char *label;
 };
 
 static const WindowEntry WINDOWS[] = {
-    {FFTWindow::NONE, "NONE"},
-    {FFTWindow::HANNING, "HANNING"},
-    {FFTWindow::BLACKMAN_HARRIS, "BLACKMAN_HARRIS"},
+    {Window::NONE, "NONE"},
+    {Window::HANNING, "HANNING"},
+    {Window::BLACKMAN_HARRIS, "BLACKMAN_HARRIS"},
 };
 static const int NUM_WINDOWS = 3;
 
@@ -128,13 +128,13 @@ struct SweepPoint {
 // Sweeps from fmin to sweepMax (Nyquist) in log-spaced steps.
 // Points where inputFreq > fmax are marked as out-of-band.
 // ---------------------------------------------------------------------------
-static void runSweep(FFTMode mode, FFTWindow window,
+static void runSweep(Mode mode, Window window,
                      int samples, int bands, float fmin, float fmax,
                      int sampleRate, int numSteps,
                      fl::vector<SweepPoint> &out) {
-    FFT_Args args(samples, bands, fmin, fmax, sampleRate, mode, window);
-    FFTImpl fft(args);
-    FFTBins bins(bands);
+    Args args(samples, bands, fmin, fmax, sampleRate, mode, window);
+    Impl fft(args);
+    Bins bins(bands);
     fl::vector<fl::i16> signal;
 
     // Sweep from fmin to Nyquist in log-spaced steps
@@ -361,8 +361,8 @@ int main(int argc, char *argv[]) {
 
     const int SAMPLES = 512;
     const int BANDS = 64;
-    const float FMIN = FFT_Args::DefaultMinFrequency();
-    const float FMAX = FFT_Args::DefaultMaxFrequency();
+    const float FMIN = Args::DefaultMinFrequency();
+    const float FMAX = Args::DefaultMaxFrequency();
     const int SAMPLE_RATE = 44100;
     const int NUM_STEPS = 200;
 

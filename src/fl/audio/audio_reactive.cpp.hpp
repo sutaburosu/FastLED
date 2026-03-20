@@ -1,7 +1,7 @@
 #include "fl/audio/audio_reactive.h"
 #include "fl/audio/audio_processor.h"
-#include "fl/audio/detectors/musical_beat_detector.h"
-#include "fl/audio/detectors/multiband_beat_detector.h"
+#include "fl/audio/detector/musical_beat_detector.h"
+#include "fl/audio/detector/multiband_beat_detector.h"
 #include "fl/audio/mic_response_data.h"
 #include "fl/stl/math.h"
 #include "fl/stl/span.h"
@@ -9,8 +9,9 @@
 #include "fl/stl/unique_ptr.h"  // For unique_ptr
 
 namespace fl {
+namespace audio {
 
-AudioReactive::AudioReactive()
+Reactive::Reactive()
     : mConfig{}, mFFTBins(16)  // Initialize with 16 frequency bins
 {
     // Initialize enhanced beat detection components
@@ -23,14 +24,14 @@ AudioReactive::AudioReactive()
     }
 }
 
-AudioReactive::~AudioReactive() = default;
+Reactive::~Reactive() = default;
 
-void AudioReactive::begin(const AudioReactiveConfig& config) {
+void Reactive::begin(const ReactiveConfig& config) {
     setConfig(config);
 
     // Reset state
-    mCurrentData = AudioData{};
-    mSmoothedData = AudioData{};
+    mCurrentData = Data{};
+    mSmoothedData = Data{};
     mLastBeatTime = 0;
     mPreviousVolume = 0.0f;
 
@@ -54,20 +55,19 @@ void AudioReactive::begin(const AudioReactiveConfig& config) {
     fbmConfig.useLogSpacing = config.enableLogBinSpacing;
     fbmConfig.minFrequency = 20.0f;
     fbmConfig.maxFrequency = static_cast<float>(config.sampleRate) / 2.0f;  // Nyquist
-    // fftBinCount will be set when we know the FFT size (after first processSample)
-    fbmConfig.fftBinCount = 256;  // Default, overridden when actual FFT size known
+    // fftBinCount will be set when we know the fft::FFT size (after first processSample)
+    fbmConfig.fftBinCount = 256;  // Default, overridden when actual fft::FFT size known
     mFrequencyBinMapper.configure(fbmConfig);
 
     // Compute pink noise compensation gains from bin centers.
-    // CQ bins are log-spaced from fmin to fmax (default: 90-14080 Hz).
+    // CQ bins span linearly from fmin to fmax (default: 90-14080 Hz).
     {
-        const float fmin = FFT_Args::DefaultMinFrequency();
-        const float fmax = FFT_Args::DefaultMaxFrequency();
-        const float logRatio = logf(fmax / fmin);
+        const float fmin = fft::Args::DefaultMinFrequency();
+        const float fmax = fft::Args::DefaultMaxFrequency();
         float binCenters[16];
         for (int i = 0; i < 16; ++i) {
             float t = static_cast<float>(i) / 15.0f;
-            binCenters[i] = fmin * expf(logRatio * t);
+            binCenters[i] = fmin + (fmax - fmin) * t;
         }
         computePinkNoiseGains(binCenters, 16, mPinkNoiseGains);
         mPinkNoiseComputed = true;
@@ -82,14 +82,14 @@ void AudioReactive::begin(const AudioReactiveConfig& config) {
     // Configure musical beat detection (Phase 3 middleware - lazy creation)
     if (config.enableMusicalBeatDetection) {
         if (!mMusicalBeatDetector) {
-            mMusicalBeatDetector = fl::make_unique<MusicalBeatDetector>();
+            mMusicalBeatDetector = fl::make_unique<detector::MusicalBeat>();
         }
-        MusicalBeatDetectorConfig mbdConfig;
+        detector::MusicalBeatDetectorConfig mbdConfig;
         mbdConfig.minBPM = config.musicalBeatMinBPM;
         mbdConfig.maxBPM = config.musicalBeatMaxBPM;
         mbdConfig.minBeatConfidence = config.musicalBeatConfidence;
         mbdConfig.sampleRate = config.sampleRate;
-        mbdConfig.samplesPerFrame = 512;  // Typical FFT frame size
+        mbdConfig.samplesPerFrame = 512;  // Typical fft::FFT frame size
         mMusicalBeatDetector->configure(mbdConfig);
         mMusicalBeatDetector->reset();
     } else {
@@ -98,9 +98,9 @@ void AudioReactive::begin(const AudioReactiveConfig& config) {
 
     if (config.enableMultiBandBeats) {
         if (!mMultiBandBeatDetector) {
-            mMultiBandBeatDetector = fl::make_unique<MultiBandBeatDetector>();
+            mMultiBandBeatDetector = fl::make_unique<detector::MultiBandBeat>();
         }
-        MultiBandBeatDetectorConfig mbbdConfig;
+        detector::MultiBandBeatDetectorConfig mbbdConfig;
         mbbdConfig.bassThreshold = config.bassThreshold;
         mbbdConfig.midThreshold = config.midThreshold;
         mbbdConfig.trebleThreshold = config.trebleThreshold;
@@ -128,27 +128,27 @@ void AudioReactive::begin(const AudioReactiveConfig& config) {
         mPreviousMagnitudes[i] = 0.0f;
     }
 
-    // Reset internal AudioProcessor if it exists
+    // Reset internal Processor if it exists
     if (mAudioProcessor) {
         mAudioProcessor->setSampleRate(config.sampleRate);
         mAudioProcessor->reset();
     }
 }
 
-void AudioReactive::setConfig(const AudioReactiveConfig& config) {
+void Reactive::setConfig(const ReactiveConfig& config) {
     mConfig = config;
 }
 
-void AudioReactive::processSample(const AudioSample& sample) {
+void Reactive::processSample(const Sample& sample) {
     if (!sample.isValid()) {
         return; // Invalid sample, ignore
     }
 
-    // Extract timestamp from the AudioSample
+    // Extract timestamp from the Sample
     fl::u32 currentTimeMs = sample.timestamp();
 
     // Phase 1: Signal conditioning pipeline
-    AudioSample processedSample = sample;
+    Sample processedSample = sample;
 
     // Step 1: Signal conditioning (DC removal, spike filtering, noise gate)
     if (mConfig.enableSignalConditioning) {
@@ -164,7 +164,7 @@ void AudioReactive::processSample(const AudioSample& sample) {
         mNoiseFloorTracker.update(rms);
     }
 
-    // Process the conditioned AudioSample - timing is gated by sample availability
+    // Process the conditioned Sample - timing is gated by sample availability
     processFFT(processedSample);
     updateVolumeAndPeak(processedSample);
 
@@ -195,33 +195,33 @@ void AudioReactive::processSample(const AudioSample& sample) {
 
     mCurrentData.timestamp = currentTimeMs;
 
-    // Forward to internal AudioProcessor for detector-based polling getters
+    // Forward to internal Processor for detector-based polling getters
     if (mAudioProcessor) {
         mAudioProcessor->update(sample);
     }
 }
 
-void AudioReactive::update(fl::u32 currentTimeMs) {
+void Reactive::update(fl::u32 currentTimeMs) {
     // This method handles updates without new sample data
     // Just apply smoothing and update timestamp
     smoothResults();
     mCurrentData.timestamp = currentTimeMs;
 }
 
-void AudioReactive::processFFT(const AudioSample& sample) {
-    // Get PCM data from AudioSample
+void Reactive::processFFT(const Sample& sample) {
+    // Get PCM data from Sample
     const auto& pcmData = sample.pcm();
     if (pcmData.empty()) return;
     
-    // Use AudioSample's built-in FFT capability
+    // Use Sample's built-in fft::FFT capability
     sample.fft(&mFFTBins);
     
-    // Map FFT bins to frequency channels using WLED-compatible mapping
+    // Map fft::FFT bins to frequency channels using WLED-compatible mapping
     mapFFTBinsToFrequencyChannels();
 }
 
-void AudioReactive::mapFFTBinsToFrequencyChannels() {
-    // AudioSample::fft() returns CQ-kernel bins that are already
+void Reactive::mapFFTBinsToFrequencyChannels() {
+    // Sample::fft() returns CQ-kernel bins that are already
     // frequency-mapped (linearly spaced from fmin to fmax). Copy them
     // directly instead of re-mapping through FrequencyBinMapper, which
     // incorrectly treats CQ bins as raw DFT bins.
@@ -257,14 +257,17 @@ void AudioReactive::mapFFTBinsToFrequencyChannels() {
         }
     }
 
-    // CQ bins are log-spaced from fmin to fmax (default: 90-14080 Hz).
-    // Use the same log-spaced formula to find the dominant bin center frequency.
-    mCurrentData.dominantFrequency = mFFTBins.binToFreq(maxBin);
+    // CQ bins span linearly from fmin to fmax (default: 90-14080 Hz)
+    const float fmin = fft::Args::DefaultMinFrequency();
+    const float fmax = fft::Args::DefaultMaxFrequency();
+    const float deltaF = (fmax - fmin) / 16.0f;
+    float dominantFreqStart = fmin + static_cast<float>(maxBin) * deltaF;
+    mCurrentData.dominantFrequency = dominantFreqStart + deltaF * 0.5f;
     mCurrentData.magnitude = maxMagnitude;
 }
 
-void AudioReactive::updateVolumeAndPeak(const AudioSample& sample) {
-    // Get PCM data from AudioSample
+void Reactive::updateVolumeAndPeak(const Sample& sample) {
+    // Get PCM data from Sample
     const auto& pcmData = sample.pcm();
     if (pcmData.empty()) {
         mCurrentData.volume = 0.0f;
@@ -273,7 +276,7 @@ void AudioReactive::updateVolumeAndPeak(const AudioSample& sample) {
         return;
     }
     
-    // Use AudioSample's built-in RMS calculation
+    // Use Sample's built-in RMS calculation
     float rms = sample.rms();
     
     // Calculate peak from PCM data
@@ -291,7 +294,7 @@ void AudioReactive::updateVolumeAndPeak(const AudioSample& sample) {
     mCurrentData.peak = maxSample / 32768.0f * 255.0f;
 }
 
-void AudioReactive::detectBeat(fl::u32 currentTimeMs) {
+void Reactive::detectBeat(fl::u32 currentTimeMs) {
     // Need minimum time since last beat
     if (currentTimeMs - mLastBeatTime < BEAT_COOLDOWN) {
         mCurrentData.beatDetected = false;
@@ -323,7 +326,7 @@ void AudioReactive::detectBeat(fl::u32 currentTimeMs) {
     }
 }
 
-void AudioReactive::applyGain() {
+void Reactive::applyGain() {
     // Apply gain setting (0-255 maps to 0.0-2.0 multiplier)
     float gainMultiplier = static_cast<float>(mConfig.gain) / 128.0f;
 
@@ -336,7 +339,7 @@ void AudioReactive::applyGain() {
     }
 }
 
-void AudioReactive::applyScaling() {
+void Reactive::applyScaling() {
     // Apply scaling mode to frequency bins
     for (int i = 0; i < 16; ++i) {
         float value = mCurrentData.frequencyBins[i];
@@ -372,7 +375,7 @@ void AudioReactive::applyScaling() {
     }
 }
 
-void AudioReactive::smoothResults() {
+void Reactive::smoothResults() {
     // Attack/decay smoothing - different rates for rising vs falling values
     // Convert attack/decay times to smoothing factors
     // Shorter times = less smoothing (faster response)
@@ -428,77 +431,77 @@ void AudioReactive::smoothResults() {
     mSmoothedData.timestamp = mCurrentData.timestamp;
 }
 
-const AudioData& AudioReactive::getData() const {
+const Data& Reactive::getData() const {
     return mCurrentData;
 }
 
-const AudioData& AudioReactive::getSmoothedData() const {
+const Data& Reactive::getSmoothedData() const {
     return mSmoothedData;
 }
 
-float AudioReactive::getVolume() const {
+float Reactive::getVolume() const {
     return mCurrentData.volume;
 }
 
-float AudioReactive::getBass() const {
+float Reactive::getBass() const {
     // Average of bins 0-1 (sub-bass and bass)
     return (mCurrentData.frequencyBins[0] + mCurrentData.frequencyBins[1]) / 2.0f;
 }
 
-float AudioReactive::getMid() const {
+float Reactive::getMid() const {
     // Average of bins 6-7 (midrange around 1kHz)
     return (mCurrentData.frequencyBins[6] + mCurrentData.frequencyBins[7]) / 2.0f;
 }
 
-float AudioReactive::getTreble() const {
+float Reactive::getTreble() const {
     // Average of bins 14-15 (high frequencies)
     return (mCurrentData.frequencyBins[14] + mCurrentData.frequencyBins[15]) / 2.0f;
 }
 
-bool AudioReactive::isBeat() const {
+bool Reactive::isBeat() const {
     return mCurrentData.beatDetected;
 }
 
-bool AudioReactive::isBassBeat() const {
+bool Reactive::isBassBeat() const {
     return mCurrentData.bassBeatDetected;
 }
 
-bool AudioReactive::isMidBeat() const {
+bool Reactive::isMidBeat() const {
     return mCurrentData.midBeatDetected;
 }
 
-bool AudioReactive::isTrebleBeat() const {
+bool Reactive::isTrebleBeat() const {
     return mCurrentData.trebleBeatDetected;
 }
 
-float AudioReactive::getSpectralFlux() const {
+float Reactive::getSpectralFlux() const {
     return mCurrentData.spectralFlux;
 }
 
-float AudioReactive::getBassEnergy() const {
+float Reactive::getBassEnergy() const {
     return mCurrentData.bassEnergy;
 }
 
-float AudioReactive::getMidEnergy() const {
+float Reactive::getMidEnergy() const {
     return mCurrentData.midEnergy;
 }
 
-float AudioReactive::getTrebleEnergy() const {
+float Reactive::getTrebleEnergy() const {
     return mCurrentData.trebleEnergy;
 }
 
-fl::u8 AudioReactive::volumeToScale255() const {
+fl::u8 Reactive::volumeToScale255() const {
     float vol = (mCurrentData.volume < 0.0f) ? 0.0f : ((mCurrentData.volume > 255.0f) ? 255.0f : mCurrentData.volume);
     return static_cast<fl::u8>(vol);
 }
 
-CRGB AudioReactive::volumeToColor(const CRGBPalette16& /* palette */) const {
+CRGB Reactive::volumeToColor(const CRGBPalette16& /* palette */) const {
     fl::u8 index = volumeToScale255();
     // Simplified color palette lookup 
     return CRGB(index, index, index);  // For now, return grayscale
 }
 
-fl::u8 AudioReactive::frequencyToScale255(fl::u8 binIndex) const {
+fl::u8 Reactive::frequencyToScale255(fl::u8 binIndex) const {
     if (binIndex >= 16) return 0;
     
     float value = (mCurrentData.frequencyBins[binIndex] < 0.0f) ? 0.0f : 
@@ -507,14 +510,14 @@ fl::u8 AudioReactive::frequencyToScale255(fl::u8 binIndex) const {
 }
 
 // Enhanced beat detection methods
-void AudioReactive::calculateBandEnergies() {
+void Reactive::calculateBandEnergies() {
     span<const float> bins(mCurrentData.frequencyBins, 16);
     mCurrentData.bassEnergy = mFrequencyBinMapper.getBassEnergy(bins);
     mCurrentData.midEnergy = mFrequencyBinMapper.getMidEnergy(bins);
     mCurrentData.trebleEnergy = mFrequencyBinMapper.getTrebleEnergy(bins);
 }
 
-void AudioReactive::applySpectralEqualization() {
+void Reactive::applySpectralEqualization() {
     if (!mConfig.enableSpectralEqualizer) {
         return;
     }
@@ -531,7 +534,7 @@ void AudioReactive::applySpectralEqualization() {
     }
 }
 
-void AudioReactive::updateSpectralFlux() {
+void Reactive::updateSpectralFlux() {
     if (!mSpectralFluxDetector) {
         mCurrentData.spectralFlux = 0.0f;
         return;
@@ -549,7 +552,7 @@ void AudioReactive::updateSpectralFlux() {
     }
 }
 
-void AudioReactive::detectEnhancedBeats(fl::u32 currentTimeMs) {
+void Reactive::detectEnhancedBeats(fl::u32 currentTimeMs) {
     // Reset beat flags
     mCurrentData.bassBeatDetected = false;
     mCurrentData.midBeatDetected = false;
@@ -625,7 +628,7 @@ void AudioReactive::detectEnhancedBeats(fl::u32 currentTimeMs) {
     }
 }
 
-void AudioReactive::applyPerceptualWeighting() {
+void Reactive::applyPerceptualWeighting() {
     // Apply perceptual weighting if available
     if (mPerceptualWeighting) {
         mPerceptualWeighting->applyAWeighting(mCurrentData);
@@ -636,7 +639,7 @@ void AudioReactive::applyPerceptualWeighting() {
 }
 
 // Helper methods
-float AudioReactive::mapFrequencyBin(int fromBin, int toBin) {
+float Reactive::mapFrequencyBin(int fromBin, int toBin) {
     if (fromBin < 0 || toBin >= static_cast<int>(mFFTBins.bands()) || fromBin > toBin) {
         return 0.0f;
     }
@@ -651,7 +654,7 @@ float AudioReactive::mapFrequencyBin(int fromBin, int toBin) {
     return sum / static_cast<float>(toBin - fromBin + 1);
 }
 
-float AudioReactive::computeRMS(const fl::vector<fl::i16>& samples) {
+float Reactive::computeRMS(const fl::vector<fl::i16>& samples) {
     if (samples.empty()) return 0.0f;
     
     float sumSquares = 0.0f;
@@ -781,14 +784,14 @@ void BeatDetectors::reset() {
     mPreviousTrebleEnergy = 0.0f;
 }
 
-void BeatDetectors::detectBeats(const float* frequencyBins, AudioData& audioData) {
+void BeatDetectors::detectBeats(const float* frequencyBins, Data& audioData) {
     // Calculate current band energies
     mBassEnergy = (frequencyBins[0] + frequencyBins[1]) / 2.0f;
     mMidEnergy = (frequencyBins[6] + frequencyBins[7]) / 2.0f;
     mTrebleEnergy = (frequencyBins[14] + frequencyBins[15]) / 2.0f;
     
 #if SKETCH_HAS_LOTS_OF_MEMORY
-    // Use separate detectors for each band
+    // Use separate detector for each band
     audioData.bassBeatDetected = bass.detectOnset(&mBassEnergy, &mPreviousBassEnergy);
     audioData.midBeatDetected = mid.detectOnset(&mMidEnergy, &mPreviousMidEnergy);
     audioData.trebleBeatDetected = treble.detectOnset(&mTrebleEnergy, &mPreviousTrebleEnergy);
@@ -833,14 +836,14 @@ PerceptualWeighting::PerceptualWeighting()
 
 PerceptualWeighting::~PerceptualWeighting() = default;
 
-void PerceptualWeighting::applyAWeighting(AudioData& data) const {
+void PerceptualWeighting::applyAWeighting(Data& data) const {
     // Apply A-weighting coefficients to frequency bins
     for (int i = 0; i < 16; ++i) {
         data.frequencyBins[i] *= A_WEIGHTING_COEFFS[i];
     }
 }
 
-void PerceptualWeighting::applyLoudnessCompensation(AudioData& data, float referenceLevel) const {
+void PerceptualWeighting::applyLoudnessCompensation(Data& data, float referenceLevel) const {
     // Calculate current loudness level
     float currentLoudness = data.volume;
     
@@ -865,11 +868,11 @@ void PerceptualWeighting::applyLoudnessCompensation(AudioData& data, float refer
 #endif
 }
 
-void AudioReactive::setGain(float gain) {
+void Reactive::setGain(float gain) {
     ensureAudioProcessor().setGain(gain);
 }
 
-float AudioReactive::getGain() const {
+float Reactive::getGain() const {
     if (mAudioProcessor) {
         return mAudioProcessor->getGain();
     }
@@ -877,68 +880,69 @@ float AudioReactive::getGain() const {
 }
 
 // Signal conditioning stats accessors
-const SignalConditioner::Stats& AudioReactive::getSignalConditionerStats() const {
+const SignalConditioner::Stats& Reactive::getSignalConditionerStats() const {
     return mSignalConditioner.getStats();
 }
 
-const NoiseFloorTracker::Stats& AudioReactive::getNoiseFloorStats() const {
+const NoiseFloorTracker::Stats& Reactive::getNoiseFloorStats() const {
     return mNoiseFloorTracker.getStats();
 }
 
-bool AudioReactive::isSpectralEqualizerEnabled() const {
+bool Reactive::isSpectralEqualizerEnabled() const {
     return mConfig.enableSpectralEqualizer;
 }
 
-const SpectralEqualizer::Stats& AudioReactive::getSpectralEqualizerStats() const {
+const SpectralEqualizer::Stats& Reactive::getSpectralEqualizerStats() const {
     return mSpectralEqualizer->getStats();
 }
 
-// ----- Polling Getter Forwarding (via internal AudioProcessor) -----
+// ----- Polling Getter Forwarding (via internal Processor) -----
 
-AudioProcessor& AudioReactive::ensureAudioProcessor() {
+Processor& Reactive::ensureAudioProcessor() {
     if (!mAudioProcessor) {
-        mAudioProcessor = fl::make_unique<AudioProcessor>();
+        mAudioProcessor = fl::make_unique<Processor>();
         mAudioProcessor->setSampleRate(mConfig.sampleRate);
     }
     return *mAudioProcessor;
 }
 
-float AudioReactive::getVocalConfidence() { return ensureAudioProcessor().getVocalConfidence(); }
-float AudioReactive::getBeatConfidence() { return ensureAudioProcessor().getBeatConfidence(); }
-float AudioReactive::getBPM() { return ensureAudioProcessor().getBPM(); }
-float AudioReactive::getEnergyLevel() { return ensureAudioProcessor().getEnergy(); }
-float AudioReactive::getPeakLevel() { return ensureAudioProcessor().getPeakLevel(); }
-float AudioReactive::getBassLevel() { return ensureAudioProcessor().getBassLevel(); }
-float AudioReactive::getMidLevel() { return ensureAudioProcessor().getMidLevel(); }
-float AudioReactive::getTrebleLevel() { return ensureAudioProcessor().getTrebleLevel(); }
-bool AudioReactive::isSilent() { return ensureAudioProcessor().isSilent(); }
-u32 AudioReactive::getSilenceDuration() { return ensureAudioProcessor().getSilenceDuration(); }
-float AudioReactive::getTransientStrength() { return ensureAudioProcessor().getTransientStrength(); }
-float AudioReactive::getDynamicTrend() { return ensureAudioProcessor().getDynamicTrend(); }
-bool AudioReactive::isCrescendo() { return ensureAudioProcessor().isCrescendo(); }
-bool AudioReactive::isDiminuendo() { return ensureAudioProcessor().isDiminuendo(); }
-float AudioReactive::getPitchConfidence() { return ensureAudioProcessor().getPitchConfidence(); }
-float AudioReactive::getPitchHz() { return ensureAudioProcessor().getPitch(); }
-float AudioReactive::getTempoConfidence() { return ensureAudioProcessor().getTempoConfidence(); }
-float AudioReactive::getTempoBPM() { return ensureAudioProcessor().getTempoBPM(); }
-float AudioReactive::getBuildupIntensity() { return ensureAudioProcessor().getBuildupIntensity(); }
-float AudioReactive::getBuildupProgress() { return ensureAudioProcessor().getBuildupProgress(); }
-float AudioReactive::getDropImpact() { return ensureAudioProcessor().getDropImpact(); }
-bool AudioReactive::isKick() { return ensureAudioProcessor().isKick(); }
-bool AudioReactive::isSnare() { return ensureAudioProcessor().isSnare(); }
-bool AudioReactive::isHiHat() { return ensureAudioProcessor().isHiHat(); }
-bool AudioReactive::isTom() { return ensureAudioProcessor().isTom(); }
-u8 AudioReactive::getCurrentNote() { return ensureAudioProcessor().getCurrentNote(); }
-float AudioReactive::getNoteVelocity() { return ensureAudioProcessor().getNoteVelocity(); }
-float AudioReactive::getNoteConfidence() { return ensureAudioProcessor().getNoteConfidence(); }
-float AudioReactive::getDownbeatConfidence() { return ensureAudioProcessor().getDownbeatConfidence(); }
-float AudioReactive::getMeasurePhase() { return ensureAudioProcessor().getMeasurePhase(); }
-u8 AudioReactive::getCurrentBeatNumber() { return ensureAudioProcessor().getCurrentBeatNumber(); }
-float AudioReactive::getBackbeatConfidence() { return ensureAudioProcessor().getBackbeatConfidence(); }
-float AudioReactive::getBackbeatStrength() { return ensureAudioProcessor().getBackbeatStrength(); }
-float AudioReactive::getChordConfidence() { return ensureAudioProcessor().getChordConfidence(); }
-float AudioReactive::getKeyConfidence() { return ensureAudioProcessor().getKeyConfidence(); }
-float AudioReactive::getMoodArousal() { return ensureAudioProcessor().getMoodArousal(); }
-float AudioReactive::getMoodValence() { return ensureAudioProcessor().getMoodValence(); }
+float Reactive::getVocalConfidence() { return ensureAudioProcessor().getVocalConfidence(); }
+float Reactive::getBeatConfidence() { return ensureAudioProcessor().getBeatConfidence(); }
+float Reactive::getBPM() { return ensureAudioProcessor().getBPM(); }
+float Reactive::getEnergyLevel() { return ensureAudioProcessor().getEnergy(); }
+float Reactive::getPeakLevel() { return ensureAudioProcessor().getPeakLevel(); }
+float Reactive::getBassLevel() { return ensureAudioProcessor().getBassLevel(); }
+float Reactive::getMidLevel() { return ensureAudioProcessor().getMidLevel(); }
+float Reactive::getTrebleLevel() { return ensureAudioProcessor().getTrebleLevel(); }
+bool Reactive::isSilent() { return ensureAudioProcessor().isSilent(); }
+u32 Reactive::getSilenceDuration() { return ensureAudioProcessor().getSilenceDuration(); }
+float Reactive::getTransientStrength() { return ensureAudioProcessor().getTransientStrength(); }
+float Reactive::getDynamicTrend() { return ensureAudioProcessor().getDynamicTrend(); }
+bool Reactive::isCrescendo() { return ensureAudioProcessor().isCrescendo(); }
+bool Reactive::isDiminuendo() { return ensureAudioProcessor().isDiminuendo(); }
+float Reactive::getPitchConfidence() { return ensureAudioProcessor().getPitchConfidence(); }
+float Reactive::getPitchHz() { return ensureAudioProcessor().getPitch(); }
+float Reactive::getTempoConfidence() { return ensureAudioProcessor().getTempoConfidence(); }
+float Reactive::getTempoBPM() { return ensureAudioProcessor().getTempoBPM(); }
+float Reactive::getBuildupIntensity() { return ensureAudioProcessor().getBuildupIntensity(); }
+float Reactive::getBuildupProgress() { return ensureAudioProcessor().getBuildupProgress(); }
+float Reactive::getDropImpact() { return ensureAudioProcessor().getDropImpact(); }
+bool Reactive::isKick() { return ensureAudioProcessor().isKick(); }
+bool Reactive::isSnare() { return ensureAudioProcessor().isSnare(); }
+bool Reactive::isHiHat() { return ensureAudioProcessor().isHiHat(); }
+bool Reactive::isTom() { return ensureAudioProcessor().isTom(); }
+u8 Reactive::getCurrentNote() { return ensureAudioProcessor().getCurrentNote(); }
+float Reactive::getNoteVelocity() { return ensureAudioProcessor().getNoteVelocity(); }
+float Reactive::getNoteConfidence() { return ensureAudioProcessor().getNoteConfidence(); }
+float Reactive::getDownbeatConfidence() { return ensureAudioProcessor().getDownbeatConfidence(); }
+float Reactive::getMeasurePhase() { return ensureAudioProcessor().getMeasurePhase(); }
+u8 Reactive::getCurrentBeatNumber() { return ensureAudioProcessor().getCurrentBeatNumber(); }
+float Reactive::getBackbeatConfidence() { return ensureAudioProcessor().getBackbeatConfidence(); }
+float Reactive::getBackbeatStrength() { return ensureAudioProcessor().getBackbeatStrength(); }
+float Reactive::getChordConfidence() { return ensureAudioProcessor().getChordConfidence(); }
+float Reactive::getKeyConfidence() { return ensureAudioProcessor().getKeyConfidence(); }
+float Reactive::getMoodArousal() { return ensureAudioProcessor().getMoodArousal(); }
+float Reactive::getMoodValence() { return ensureAudioProcessor().getMoodValence(); }
 
+} // namespace audio
 } // namespace fl

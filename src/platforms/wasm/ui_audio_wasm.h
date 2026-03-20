@@ -8,7 +8,7 @@
 #include "fl/stl/string.h"
 #include "fl/stl/url.h"
 #include "fl/audio/audio.h"
-#include "fl/audio/audio_input.h"  // For AudioConfig
+#include "fl/audio/audio_input.h"  // For Config
 #include "fl/stl/shared_ptr.h"
 
 namespace fl {
@@ -24,22 +24,22 @@ class WasmAudioImpl {
   public:
     WasmAudioImpl(const fl::string& name);
     WasmAudioImpl(const fl::string& name, const fl::url& url);
-    WasmAudioImpl(const fl::string& name, const fl::AudioConfig& config);
+    WasmAudioImpl(const fl::string& name, const fl::audio::Config& config);
     ~WasmAudioImpl();
 
-    AudioSample next();
+    Sample next();
     bool hasNext();
 
     // Group setting (used by JSON UI system)
     void setGroup(const fl::string& groupName);
 
     // Expose underlying audio input for FastLED.add() auto-pump
-    fl::shared_ptr<IAudioInput> audioInput() { return mWasmInputOwner; }
+    fl::shared_ptr<IInput> audioInput() { return mWasmInputOwner; }
 
   private:
     fl::string mName;
     WasmAudioInput* mWasmInput;
-    fl::shared_ptr<IAudioInput> mWasmInputOwner;  // Prevent premature destruction
+    fl::shared_ptr<IInput> mWasmInputOwner;  // Prevent premature destruction
     bool mOwnsInput;  // Track if we created the input
     fl::shared_ptr<JsonUiAudioInternal> mInternal;  // UI registration component
 };

@@ -91,7 +91,7 @@ FL_TEST_CASE("Vorbis - decodeAll with invalid data") {
     fl::u8 invalidData[] = { 0xFF, 0xFE, 0xFD, 0xFC };
     fl::string error;
 
-    fl::vector<AudioSample> samples = Vorbis::decodeAll(
+    fl::vector<fl::audio::Sample> samples = Vorbis::decodeAll(
         fl::span<const fl::u8>(invalidData, sizeof(invalidData)),
         &error
     );
@@ -253,12 +253,12 @@ FL_TEST_CASE("Vorbis - decodeAll convenience function") {
     FL_REQUIRE(!oggData.empty());
 
     fl::string error;
-    fl::vector<AudioSample> samples = Vorbis::decodeAll(oggData, &error);
+    fl::vector<fl::audio::Sample> samples = Vorbis::decodeAll(oggData, &error);
 
     FL_REQUIRE(error.empty());
     FL_REQUIRE(!samples.empty());
 
-    // Each AudioSample contains a chunk of decoded audio
+    // Each fl::audio::Sample contains a chunk of decoded audio
     // Verify we got some audio data
     fl::size totalSamples = 0;
     for (const auto& sample : samples) {

@@ -31,8 +31,8 @@ struct I2SContext {
     i2s_port_t i2s_port;
 };
 
-I2SContext make_context(const AudioConfigI2S &config) {
-    auto convert_channel = [](AudioChannel value) -> int {
+I2SContext make_context(const audio::ConfigI2S &config) {
+    auto convert_channel = [](audio::Channel value) -> int {
         switch (value) {
         case Left:
             return I2S_CHANNEL_FMT_ONLY_LEFT;
@@ -92,7 +92,7 @@ I2SContext make_context(const AudioConfigI2S &config) {
     return out;
 }
 
-I2SContext i2s_audio_init(const AudioConfigI2S &config) {
+I2SContext i2s_audio_init(const audio::ConfigI2S &config) {
     I2SContext ctx = make_context(config);
     i2s_driver_install(ctx.i2s_port, &ctx.i2s_config, 0, nullptr);
     i2s_set_pin(ctx.i2s_port, &ctx.pin_config);

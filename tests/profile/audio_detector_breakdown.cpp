@@ -1,7 +1,7 @@
 // Audio Detector Performance Breakdown
 //
 // This profiler breaks down detector costs into:
-// 1. FFT computation cost (computed once per sample in AudioContext)
+// 1. FFT computation cost (computed once per sample in Context)
 // 2. Detector analysis cost (operating on cached FFT bins)
 //
 // Usage:
@@ -26,7 +26,7 @@ public:
     explicit SynthAudioGenerator(int sampleRate = 16000)
         : mSampleRate(sampleRate), mPhase(0) {}
 
-    AudioSample generateSample() {
+    Sample generateSample() {
         const int bufferSize = mSampleRate / 100;  // 10ms at 16kHz = 160 samples
         fl::vector<fl::i16> pcm(bufferSize);
 
@@ -40,7 +40,7 @@ public:
         }
 
         mPhase += bufferSize;
-        return AudioSample(fl::span<const fl::i16>(pcm.data(), pcm.size()), 0);
+        return Sample(fl::span<const fl::i16>(pcm.data(), pcm.size()), 0);
     }
 
 private:
@@ -67,10 +67,10 @@ int runProfiler(bool jsonOutput) {
     SynthAudioGenerator audioGen(SAMPLE_RATE);
 
     // ===== PHASE 1: Baseline (Energy only) =====
-    // This gives us the true baseline cost without any FFT-dependent detectors
+    // This gives us the true baseline cost without any FFT-dependent detector
     fl::u32 baselineTotal_us = 0;
     {
-        fl::AudioProcessor processor;
+        fl::audio::Processor processor;
         processor.setSampleRate(SAMPLE_RATE);
         processor.onEnergy([](float) {});
 
@@ -89,9 +89,9 @@ int runProfiler(bool jsonOutput) {
                         baselineTotal_us / static_cast<float>(ITERATIONS), 0.0f, 0.0f});
     }
 
-    // ===== PHASE 2: Measure detectors that DON'T use FFT =====
+    // ===== PHASE 2: Measure detector that DON'T use FFT =====
     fl::vector<const char*> noFFTDetectors = {
-        "BeatDetector", "TempoAnalyzer", "TransientDetector"
+        "Beat", "TempoAnalyzer", "Transient"
     };
 
     fl::vector<fl::u32> noFFTTotals;
@@ -99,7 +99,7 @@ int runProfiler(bool jsonOutput) {
 
     // Beat detector
     {
-        fl::AudioProcessor processor;
+        fl::audio::Processor processor;
         processor.setSampleRate(SAMPLE_RATE);
         processor.onEnergy([](float) {});
         processor.onBeat([]() {});
@@ -116,14 +116,14 @@ int runProfiler(bool jsonOutput) {
         fl::u32 total = t1 - t0;
         float detectorCost = (total - baselineTotal_us) / static_cast<float>(ITERATIONS);
 
-        costs.push_back({"BeatDetector",
+        costs.push_back({"Beat",
                         total / static_cast<float>(ITERATIONS), 0.0f, detectorCost});
         noFFTTotals.push_back(total);
     }
 
     // Tempo analyzer
     {
-        fl::AudioProcessor processor;
+        fl::audio::Processor processor;
         processor.setSampleRate(SAMPLE_RATE);
         processor.onEnergy([](float) {});
         processor.onTempo([](float) {});
@@ -147,7 +147,7 @@ int runProfiler(bool jsonOutput) {
 
     // Transient detector
     {
-        fl::AudioProcessor processor;
+        fl::audio::Processor processor;
         processor.setSampleRate(SAMPLE_RATE);
         processor.onEnergy([](float) {});
         processor.onTransient([]() {});
@@ -164,7 +164,7 @@ int runProfiler(bool jsonOutput) {
         fl::u32 total = t1 - t0;
         float detectorCost = (total - baselineTotal_us) / static_cast<float>(ITERATIONS);
 
-        costs.push_back({"TransientDetector",
+        costs.push_back({"Transient",
                         total / static_cast<float>(ITERATIONS), 0.0f, detectorCost});
         noFFTTotals.push_back(total);
     }
@@ -172,7 +172,7 @@ int runProfiler(bool jsonOutput) {
     // ===== PHASE 3: FFT cost (determined by FrequencyBands alone) =====
     fl::u32 fftCostTotal_us = 0;
     {
-        fl::AudioProcessor processor;
+        fl::audio::Processor processor;
         processor.setSampleRate(SAMPLE_RATE);
         processor.onEnergy([](float) {});
         processor.onFrequencyBands([](float, float, float) {});
@@ -197,10 +197,10 @@ int runProfiler(bool jsonOutput) {
                         total / static_cast<float>(ITERATIONS), fftCost, detectorCost});
     }
 
-    // ===== PHASE 4: Measure detectors that USE FFT =====
+    // ===== PHASE 4: Measure detector that USE FFT =====
     // Pitch detector (uses FFT)
     {
-        fl::AudioProcessor processor;
+        fl::audio::Processor processor;
         processor.setSampleRate(SAMPLE_RATE);
         processor.onEnergy([](float) {});
         processor.onPitch([](float) {});
@@ -219,14 +219,14 @@ int runProfiler(bool jsonOutput) {
         // Cost = Total - (Baseline + FFT)
         float detectorCost = ((total - baselineTotal_us) - fftCostTotal_us) / static_cast<float>(ITERATIONS);
 
-        costs.push_back({"PitchDetector (w/ FFT)",
+        costs.push_back({"Pitch (w/ FFT)",
                         total / static_cast<float>(ITERATIONS),
                         fftCostTotal_us / static_cast<float>(ITERATIONS), detectorCost});
     }
 
     // Vocal detector (uses FFT)
     {
-        fl::AudioProcessor processor;
+        fl::audio::Processor processor;
         processor.setSampleRate(SAMPLE_RATE);
         processor.onEnergy([](float) {});
         processor.onVocal([](fl::u8) {});
@@ -244,17 +244,17 @@ int runProfiler(bool jsonOutput) {
 
         float detectorCost = ((total - baselineTotal_us) - fftCostTotal_us) / static_cast<float>(ITERATIONS);
 
-        costs.push_back({"VocalDetector (w/ FFT)",
+        costs.push_back({"Vocal (w/ FFT)",
                         total / static_cast<float>(ITERATIONS),
                         fftCostTotal_us / static_cast<float>(ITERATIONS), detectorCost});
     }
 
     // Vibe detector (uses FFT)
     {
-        fl::AudioProcessor processor;
+        fl::audio::Processor processor;
         processor.setSampleRate(SAMPLE_RATE);
         processor.onEnergy([](float) {});
-        processor.onVibeLevels([](const fl::VibeLevels&) {});
+        processor.onVibeLevels([](const fl::audio::detector::VibeLevels&) {});
 
         for (int i = 0; i < 10; i++) {
             processor.update(audioGen.generateSample());
@@ -269,7 +269,7 @@ int runProfiler(bool jsonOutput) {
 
         float detectorCost = ((total - baselineTotal_us) - fftCostTotal_us) / static_cast<float>(ITERATIONS);
 
-        costs.push_back({"VibeDetector (w/ FFT)",
+        costs.push_back({"Vibe (w/ FFT)",
                         total / static_cast<float>(ITERATIONS),
                         fftCostTotal_us / static_cast<float>(ITERATIONS), detectorCost});
     }
@@ -305,19 +305,19 @@ int runProfiler(bool jsonOutput) {
 
         fl::printf("Summary:\n");
         fl::printf("  Baseline (EnergyAnalyzer):   %.2f µs/call\n", costs[0].totalCostUs);
-        fl::printf("  FFT Computation:              %.2f µs/call (reused by multiple detectors)\n",
+        fl::printf("  FFT Computation:              %.2f µs/call (reused by multiple detector)\n",
                    fftCostTotal_us / static_cast<float>(ITERATIONS));
         fl::printf("\n");
 
         fl::printf("Insights:\n");
-        fl::printf("  ✓ FFT is computed ONCE per sample in AudioContext\n");
-        fl::printf("  ✓ Multiple detectors can reuse the same cached FFT bins\n");
-        fl::printf("  ✓ Non-FFT detectors (Beat, Tempo, Transient) are very cheap\n");
-        fl::printf("  ✓ FFT-based detectors pay the FFT cost + their analysis cost\n");
+        fl::printf("  ✓ FFT is computed ONCE per sample in Context\n");
+        fl::printf("  ✓ Multiple detector can reuse the same cached FFT bins\n");
+        fl::printf("  ✓ Non-FFT detector (Beat, Tempo, Transient) are very cheap\n");
+        fl::printf("  ✓ FFT-based detector pay the FFT cost + their analysis cost\n");
         fl::printf("\n");
 
         fl::printf("Optimization Strategies:\n");
-        fl::printf("  • Enable only non-FFT detectors if latency is critical (< 50µs budget)\n");
+        fl::printf("  • Enable only non-FFT detector if latency is critical (< 50µs budget)\n");
         fl::printf("  • If using any FFT detector, cost of others is cheap (just analysis)\n");
         fl::printf("  • Pre-computing or caching FFT results can save ~50µs per sample\n");
         fl::printf("  • For real-time systems, consider parallel processing with dedicated FFT thread\n");

@@ -8,11 +8,11 @@
 ///
 /// Deficiencies tested:
 ///   1. Signal conditioning should be enabled by default
-///   2. FrequencyBands should isolate bass from mid (pure bass → mid ≈ 0)
-///   3. BeatDetector should NOT fire on pure treble transients
-///   4. TempoAnalyzer should not penalize BPM values away from range midpoint
-///   5. VocalDetector needs enough FFT bins to resolve vocal formants
-///   6. FrequencyBands should produce comparable outputs for equal-energy input
+///   2. audio::detector::FrequencyBands should isolate bass from mid (pure bass → mid ≈ 0)
+///   3. audio::detector::Beat should NOT fire on pure treble transients
+///   4. audio::detector::TempoAnalyzer should not penalize BPM values away from range midpoint
+///   5. audio::detector::Vocal needs enough audio::fft::FFT bins to resolve vocal formants
+///   6. audio::detector::FrequencyBands should produce comparable outputs for equal-energy input
 
 #include "test.h"
 #include "test_helpers.h"
@@ -20,16 +20,16 @@
 #include "fl/audio/audio_context.h"
 #include "fl/audio/fft/fft.h"
 #include "fl/audio/audio_processor.h"
-#include "fl/audio/detectors/beat.h"
-#include "fl/audio/detectors/frequency_bands.h"
-#include "fl/audio/detectors/tempo_analyzer.h"
-#include "fl/audio/detectors/vocal.h"
+#include "fl/audio/detector/beat.h"
+#include "fl/audio/detector/frequency_bands.h"
+#include "fl/audio/detector/tempo_analyzer.h"
+#include "fl/audio/detector/vocal.h"
 #include "fl/stl/math.h"
 
 FL_TEST_FILE(FL_FILEPATH) {
 
 using namespace fl;
-using Diag = fl::VocalDetectorDiagnostics;
+using Diag = fl::audio::detector::VocalDetectorDiagnostics;
 using fl::audio::test::makeSample;
 using fl::audio::test::generateDC;
 using fl::audio::test::generateSine;
@@ -43,13 +43,13 @@ constexpr float PI = 3.14159265358979f;
 // =============================================================================
 // 1. Signal conditioning SHOULD be enabled by default
 // =============================================================================
-// A user who creates an AudioProcessor and calls update() should get
+// A user who creates an audio::Processor and calls update() should get
 // conditioned audio (DC removed, spikes filtered) without needing to know
 // about setSignalConditioningEnabled(). MEMS microphones like the INMP441
 // always have DC offset and occasional I2S glitches.
 
 FL_TEST_CASE("Audio fix - DC offset removed by default") {
-    AudioProcessor processor;
+    audio::Processor processor;
 
     // Sample with large DC offset (3000) — common with INMP441 MEMS mic
     vector<i16> pcm;
@@ -62,7 +62,7 @@ FL_TEST_CASE("Audio fix - DC offset removed by default") {
 
     processor.update(makeSample(pcm, 1000));
 
-    // Measure DC offset of the sample that reached detectors
+    // Measure DC offset of the sample that reached detector
     const auto &processed = processor.getSample().pcm();
     i64 sum = 0;
     for (size i = 0; i < processed.size(); ++i) {
@@ -76,7 +76,7 @@ FL_TEST_CASE("Audio fix - DC offset removed by default") {
 }
 
 FL_TEST_CASE("Audio fix - I2S spike filtered by default") {
-    AudioProcessor processor;
+    audio::Processor processor;
 
     // Sample with a large spike (I2S glitch)
     vector<i16> pcm;
@@ -91,21 +91,21 @@ FL_TEST_CASE("Audio fix - I2S spike filtered by default") {
 }
 
 // =============================================================================
-// 2. FrequencyBands SHOULD isolate bass from mid
+// 2. audio::detector::FrequencyBands SHOULD isolate bass from mid
 // =============================================================================
 // A pure 100 Hz signal should produce strong bass and near-zero mid.
 // The current linear bin mapping causes bin 0 (0-1378 Hz) to be shared
 // by both bass and mid ranges, so mid is incorrectly non-zero.
 
 FL_TEST_CASE("Audio fix - pure bass signal shows zero mid energy") {
-    // Feed a pure 100 Hz bass signal through FrequencyBands
+    // Feed a pure 100 Hz bass signal through audio::detector::FrequencyBands
     vector<i16> pcm;
     generateSine(pcm, 1024, 100.0f, 44100.0f, 20000.0f);
 
-    auto context = make_shared<AudioContext>(makeSample(pcm, 1000));
+    auto context = make_shared<audio::Context>(makeSample(pcm, 1000));
     context->setSampleRate(44100);
 
-    FrequencyBands bands;
+    audio::detector::FrequencyBands bands;
     bands.setSampleRate(44100);
     bands.setSmoothing(0.0f); // disable smoothing for immediate response
 
@@ -126,14 +126,14 @@ FL_TEST_CASE("Audio fix - pure bass signal shows zero mid energy") {
 }
 
 // =============================================================================
-// 3. BeatDetector SHOULD NOT fire on pure treble transients
+// 3. audio::detector::Beat SHOULD NOT fire on pure treble transients
 // =============================================================================
 // A real beat detector should weight bass frequencies and use tempo-locked
 // acceptance. A hi-hat (high-frequency transient) is not a musical beat.
 
-FL_TEST_CASE("Audio fix - BeatDetector ignores treble-only transients") {
-    BeatDetector detector;
-    auto context = make_shared<AudioContext>(AudioSample());
+FL_TEST_CASE("Audio fix - audio::detector::Beat ignores treble-only transients") {
+    audio::detector::Beat detector;
+    auto context = make_shared<audio::Context>(audio::Sample());
     context->setSampleRate(44100);
 
     int beatCount = 0;
@@ -156,26 +156,26 @@ FL_TEST_CASE("Audio fix - BeatDetector ignores treble-only transients") {
     detector.update(context);
     detector.fireCallbacks();
 
-    // DESIRED: BeatDetector should NOT fire on a pure treble transient.
+    // DESIRED: audio::detector::Beat should NOT fire on a pure treble transient.
     // Musical beats are characterized by bass/low-mid energy (kick drum).
     FL_CHECK_EQ(beatCount, 0);
 }
 
 // =============================================================================
-// 4. TempoAnalyzer SHOULD NOT bias toward range midpoint
+// 4. audio::detector::TempoAnalyzer SHOULD NOT bias toward range midpoint
 // =============================================================================
 // calculateIntervalScore currently returns higher scores for BPM values
 // near the midpoint of [minBPM, maxBPM]. An 80 BPM hypothesis gets
 // penalized 33% vs a 120 BPM match. All valid BPM values should
 // score equally to allow unbiased detection.
 
-FL_TEST_CASE("Audio fix - TempoAnalyzer scores all BPM values equally") {
+FL_TEST_CASE("Audio fix - audio::detector::TempoAnalyzer scores all BPM values equally") {
     // The TempoAnalyzer::calculateIntervalScore should return the same score
     // for all BPM values within the valid range [minBPM, maxBPM].
     // Previously it used a center-biased formula that penalized BPM values
     // away from the midpoint. Now it returns 1.0 for all in-range BPM.
 
-    TempoAnalyzer analyzer;
+    audio::detector::TempoAnalyzer analyzer;
     analyzer.setMinBPM(60.0f);
     analyzer.setMaxBPM(180.0f);
 
@@ -196,27 +196,27 @@ FL_TEST_CASE("Audio fix - TempoAnalyzer scores all BPM values equally") {
 }
 
 // =============================================================================
-// 5. VocalDetector SHOULD have sufficient frequency resolution
+// 5. audio::detector::Vocal SHOULD have sufficient frequency resolution
 // =============================================================================
 // At 44100 Hz with 16 bins, each bin is ~1378 Hz. The F1 vocal formant
 // (500-900 Hz) fits inside a single bin, making formant detection impossible.
 // The detector needs at least 64 bins (or log-spaced bins) to resolve F1/F2.
 
-FL_TEST_CASE("Audio fix - VocalDetector F1 formant spans multiple FFT bins") {
-    // The VocalDetector should request enough FFT bins so that the F1 vocal
+FL_TEST_CASE("Audio fix - audio::detector::Vocal F1 formant spans multiple audio::fft::FFT bins") {
+    // The audio::detector::Vocal should request enough audio::fft::FFT bins so that the F1 vocal
     // formant range (500-900 Hz) spans at least 3 CQ log-spaced bins for
     // meaningful formant detection. With 128 CQ bins:
     //   F1 min bin = freqToBin(500), F1 max bin = freqToBin(900)
     //   Span should be >= 3 bins (sufficient)
 
-    VocalDetector detector;
+    audio::detector::Vocal detector;
     const int numBins = Diag::getNumBins(detector);
 
-    // Run FFT with silence to populate bins for freqToBin to use
+    // Run audio::fft::FFT with silence to populate bins for freqToBin to use
     fl::vector<fl::i16> silence(512, 0);
-    FFTBins fftBins(numBins);
-    FFT fft;
-    fft.run(silence, &fftBins, FFT_Args(512, numBins));
+    audio::fft::Bins fftBins(numBins);
+    audio::fft::FFT fft;
+    fft.run(silence, &fftBins, audio::fft::Args(512, numBins));
 
     int f1MinBin = fftBins.freqToBin(500.0f);
     int f1MaxBin = fftBins.freqToBin(900.0f);
@@ -227,15 +227,15 @@ FL_TEST_CASE("Audio fix - VocalDetector F1 formant spans multiple FFT bins") {
 }
 
 // =============================================================================
-// 6. FrequencyBands SHOULD produce comparable outputs for equal-energy input
+// 6. audio::detector::FrequencyBands SHOULD produce comparable outputs for equal-energy input
 // =============================================================================
 // When equal-amplitude tones are present in bass, mid, and treble ranges,
 // the three band outputs should be roughly equal. Without spectral EQ
-// or normalization, mid dominates because it covers more FFT bins.
+// or normalization, mid dominates because it covers more audio::fft::FFT bins.
 
 FL_TEST_CASE(
     "Audio fix - equal energy input produces comparable band outputs") {
-    FrequencyBands bands;
+    audio::detector::FrequencyBands bands;
     bands.setSampleRate(44100);
     bands.setSmoothing(0.0f);
 
@@ -256,7 +256,7 @@ FL_TEST_CASE(
         pcm.push_back(static_cast<i16>(combined));
     }
 
-    auto context = make_shared<AudioContext>(makeSample(pcm, 1000));
+    auto context = make_shared<audio::Context>(makeSample(pcm, 1000));
     context->setSampleRate(44100);
     bands.update(context);
 
@@ -279,8 +279,8 @@ FL_TEST_CASE(
     FL_CHECK_LT(maxBand, minBand * 2.0f);
 }
 
-FL_TEST_CASE("Audio fix - FrequencyBands callbacks fire") {
-    FrequencyBands bands;
+FL_TEST_CASE("Audio fix - audio::detector::FrequencyBands callbacks fire") {
+    audio::detector::FrequencyBands bands;
     bands.setSampleRate(44100);
     bands.setSmoothing(0.0f);
 
@@ -308,7 +308,7 @@ FL_TEST_CASE("Audio fix - FrequencyBands callbacks fire") {
         pcm.push_back(static_cast<i16>(combined));
     }
 
-    auto context = make_shared<AudioContext>(makeSample(pcm, 1000));
+    auto context = make_shared<audio::Context>(makeSample(pcm, 1000));
     context->setSampleRate(44100);
     bands.update(context);
     bands.fireCallbacks();

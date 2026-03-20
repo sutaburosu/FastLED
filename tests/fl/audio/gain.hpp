@@ -1,5 +1,5 @@
 /// @file gain.hpp
-/// @brief Tests for AudioSample::applyGain() — the low-level PCM gain primitive
+/// @brief Tests for Sample::applyGain() — the low-level PCM gain primitive
 
 #pragma once
 
@@ -14,11 +14,11 @@
 using namespace fl;
 using namespace fl::test;
 
-// ---------- AudioSample::applyGain tests ----------
+// ---------- Sample::applyGain tests ----------
 
 FL_TEST_CASE("applyGain - unity gain is no-op") {
     vector<i16> data = generateSineWave(512, 440.0f, 44100.0f, 16000);
-    AudioSample sample(data, 100);
+    audio::Sample sample(data, 100);
 
     // Snapshot original PCM
     vector<i16> original(sample.pcm().begin(), sample.pcm().end());
@@ -39,7 +39,7 @@ FL_TEST_CASE("applyGain - 2x doubles samples") {
     for (size i = 0; i < 512; ++i) {
         data.push_back(static_cast<i16>((i % 2 == 0) ? 8000 : -8000));
     }
-    AudioSample sample(data, 0);
+    audio::Sample sample(data, 0);
     sample.applyGain(2.0f);
 
     const auto& pcm = sample.pcm();
@@ -55,7 +55,7 @@ FL_TEST_CASE("applyGain - 0.5x halves samples") {
     for (size i = 0; i < 512; ++i) {
         data.push_back(static_cast<i16>((i % 2 == 0) ? 16000 : -16000));
     }
-    AudioSample sample(data, 0);
+    audio::Sample sample(data, 0);
     sample.applyGain(0.5f);
 
     const auto& pcm = sample.pcm();
@@ -67,7 +67,7 @@ FL_TEST_CASE("applyGain - 0.5x halves samples") {
 
 FL_TEST_CASE("applyGain - clamps at i16 max") {
     vector<i16> data(512, 20000);
-    AudioSample sample(data, 0);
+    audio::Sample sample(data, 0);
     sample.applyGain(2.0f);
 
     const auto& pcm = sample.pcm();
@@ -78,7 +78,7 @@ FL_TEST_CASE("applyGain - clamps at i16 max") {
 
 FL_TEST_CASE("applyGain - clamps at i16 min") {
     vector<i16> data(512, -20000);
-    AudioSample sample(data, 0);
+    audio::Sample sample(data, 0);
     sample.applyGain(2.0f);
 
     const auto& pcm = sample.pcm();
@@ -89,7 +89,7 @@ FL_TEST_CASE("applyGain - clamps at i16 min") {
 
 FL_TEST_CASE("applyGain - zero gain produces silence") {
     vector<i16> data = generateSineWave(512, 440.0f, 44100.0f, 16000);
-    AudioSample sample(data, 0);
+    audio::Sample sample(data, 0);
     sample.applyGain(0.0f);
 
     const auto& pcm = sample.pcm();
@@ -100,7 +100,7 @@ FL_TEST_CASE("applyGain - zero gain produces silence") {
 
 FL_TEST_CASE("applyGain - negative gain inverts") {
     vector<i16> data(512, 10000);
-    AudioSample sample(data, 0);
+    audio::Sample sample(data, 0);
     sample.applyGain(-1.0f);
 
     const auto& pcm = sample.pcm();
@@ -111,7 +111,7 @@ FL_TEST_CASE("applyGain - negative gain inverts") {
 
 FL_TEST_CASE("applyGain - very large gain clamps") {
     vector<i16> data = generateSineWave(512, 440.0f, 44100.0f, 16000);
-    AudioSample sample(data, 0);
+    audio::Sample sample(data, 0);
     sample.applyGain(1000.0f);
 
     const auto& pcm = sample.pcm();
@@ -123,7 +123,7 @@ FL_TEST_CASE("applyGain - very large gain clamps") {
 
 FL_TEST_CASE("applyGain - fractional gain precision") {
     vector<i16> data(512, 10000);
-    AudioSample sample(data, 0);
+    audio::Sample sample(data, 0);
     sample.applyGain(0.333f);
 
     const auto& pcm = sample.pcm();
@@ -135,7 +135,7 @@ FL_TEST_CASE("applyGain - fractional gain precision") {
 }
 
 FL_TEST_CASE("applyGain - invalid sample is no-op") {
-    AudioSample sample; // default, invalid
+    audio::Sample sample; // default, invalid
     FL_CHECK_FALSE(sample.isValid());
     sample.applyGain(2.0f); // must not crash
     FL_CHECK_FALSE(sample.isValid());
@@ -143,7 +143,7 @@ FL_TEST_CASE("applyGain - invalid sample is no-op") {
 
 FL_TEST_CASE("applyGain - empty sample is no-op") {
     vector<i16> empty_data;
-    AudioSample sample(empty_data, 0);
+    audio::Sample sample(empty_data, 0);
     FL_CHECK(sample.isValid());
     FL_CHECK_EQ(sample.size(), 0u);
     sample.applyGain(2.0f); // must not crash
@@ -152,7 +152,7 @@ FL_TEST_CASE("applyGain - empty sample is no-op") {
 
 FL_TEST_CASE("applyGain - sequential gains multiply") {
     vector<i16> data(512, 100);
-    AudioSample sample(data, 0);
+    audio::Sample sample(data, 0);
     sample.applyGain(10.0f);
     sample.applyGain(10.0f);
 
@@ -164,7 +164,7 @@ FL_TEST_CASE("applyGain - sequential gains multiply") {
 
 FL_TEST_CASE("applyGain - preserves timestamp") {
     vector<i16> data = generateSineWave(512, 440.0f, 44100.0f, 8000);
-    AudioSample sample(data, 12345);
+    audio::Sample sample(data, 12345);
     FL_CHECK_EQ(sample.timestamp(), 12345u);
 
     sample.applyGain(2.0f);

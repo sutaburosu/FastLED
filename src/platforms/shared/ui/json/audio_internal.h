@@ -15,7 +15,7 @@ namespace fl {
 class JsonUiAudioInternal : public JsonUiInternal {
 private:
     fl::json mAudioDataArray;  // Store actual JSON array instead of string
-    fl::vector<AudioSampleImplPtr> mAudioSampleImpls;
+    fl::vector<audio::SampleImplPtr> mAudioSampleImpls;
 
 public:
     JsonUiAudioInternal(const fl::string& name)
@@ -28,8 +28,8 @@ public:
     void updateInternal(const fl::json& json) override;
 
     // Accessors for audio data
-    fl::vector<AudioSampleImplPtr>& audioSamples() { return mAudioSampleImpls; }
-    const fl::vector<AudioSampleImplPtr>& audioSamples() const { return mAudioSampleImpls; }
+    fl::vector<audio::SampleImplPtr>& audioSamples() { return mAudioSampleImpls; }
+    const fl::vector<audio::SampleImplPtr>& audioSamples() const { return mAudioSampleImpls; }
 
     const fl::url& url() const { return mUrl; }
 

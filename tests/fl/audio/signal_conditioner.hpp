@@ -1,4 +1,4 @@
-// Unit tests for SignalConditioner - adversarial and boundary tests
+// Unit tests for audio::SignalConditioner - adversarial and boundary tests
 // standalone test
 
 #include "fl/audio/signal_conditioner.h"
@@ -11,18 +11,18 @@ using namespace fl;
 
 namespace {
 
-static AudioSample createSample_SignalConditioner(const vector<i16>& samples, u32 timestamp = 0) {
-    AudioSampleImplPtr impl = fl::make_shared<AudioSampleImpl>();
+static audio::Sample createSample_SignalConditioner(const vector<i16>& samples, u32 timestamp = 0) {
+    audio::SampleImplPtr impl = fl::make_shared<audio::SampleImpl>();
     impl->assign(samples.begin(), samples.end(), timestamp);
-    return AudioSample(impl);
+    return audio::Sample(impl);
 }
 
 } // anonymous namespace
 
 // SC-1: DC Removal - Exact Offset Subtraction
-FL_TEST_CASE("SignalConditioner - DC removal exact offset") {
-    SignalConditioner conditioner;
-    SignalConditionerConfig config;
+FL_TEST_CASE("audio::SignalConditioner - DC removal exact offset") {
+    audio::SignalConditioner conditioner;
+    audio::SignalConditionerConfig config;
     config.enableDCRemoval = true;
     config.enableSpikeFilter = false;
     config.enableNoiseGate = false;
@@ -30,8 +30,8 @@ FL_TEST_CASE("SignalConditioner - DC removal exact offset") {
 
     // Pure DC: all samples = 5000
     vector<i16> dcSamples(512, 5000);
-    AudioSample raw = createSample_SignalConditioner(dcSamples, 1000);
-    AudioSample cleaned = conditioner.processSample(raw);
+    audio::Sample raw = createSample_SignalConditioner(dcSamples, 1000);
+    audio::Sample cleaned = conditioner.processSample(raw);
 
     // Mean of all-5000 buffer = 5000, subtracted → all zero
     const auto& pcm = cleaned.pcm();
@@ -49,9 +49,9 @@ FL_TEST_CASE("SignalConditioner - DC removal exact offset") {
 // SC-2: Spike Filtering - Exact Threshold Boundary
 // Note: Spike zeroing happens inside removeDCOffset, so DC removal must be
 // enabled for spikes to actually be zeroed in the output.
-FL_TEST_CASE("SignalConditioner - spike filter threshold boundary") {
-    SignalConditioner conditioner;
-    SignalConditionerConfig config;
+FL_TEST_CASE("audio::SignalConditioner - spike filter threshold boundary") {
+    audio::SignalConditioner conditioner;
+    audio::SignalConditionerConfig config;
     config.enableDCRemoval = true;   // Required for spike zeroing in output
     config.enableSpikeFilter = true;
     config.enableNoiseGate = false;
@@ -67,8 +67,8 @@ FL_TEST_CASE("SignalConditioner - spike filter threshold boundary") {
     samples[3] = -10000; // -10000 > -10000 is false → SPIKE
     samples[4] = -9999;  // -9999 > -10000 is true → valid
 
-    AudioSample raw = createSample_SignalConditioner(samples, 2000);
-    AudioSample cleaned = conditioner.processSample(raw);
+    audio::Sample raw = createSample_SignalConditioner(samples, 2000);
+    audio::Sample cleaned = conditioner.processSample(raw);
 
     const auto& pcm = cleaned.pcm();
     // DC offset from valid samples: (507*1000 + 9999 + (-9999)) / 509 ≈ 995
@@ -86,9 +86,9 @@ FL_TEST_CASE("SignalConditioner - spike filter threshold boundary") {
 }
 
 // SC-3: Noise Gate Hysteresis - Per-Sample Boundary
-FL_TEST_CASE("SignalConditioner - noise gate hysteresis per-sample") {
-    SignalConditioner conditioner;
-    SignalConditionerConfig config;
+FL_TEST_CASE("audio::SignalConditioner - noise gate hysteresis per-sample") {
+    audio::SignalConditioner conditioner;
+    audio::SignalConditionerConfig config;
     config.enableDCRemoval = false;
     config.enableSpikeFilter = false;
     config.enableNoiseGate = true;
@@ -106,8 +106,8 @@ FL_TEST_CASE("SignalConditioner - noise gate hysteresis per-sample") {
     for (int i = 0; i < 128; ++i) samples.push_back(250);
     for (int i = 0; i < 128; ++i) samples.push_back(450);
 
-    AudioSample raw = createSample_SignalConditioner(samples, 3000);
-    AudioSample cleaned = conditioner.processSample(raw);
+    audio::Sample raw = createSample_SignalConditioner(samples, 3000);
+    audio::Sample cleaned = conditioner.processSample(raw);
     const auto& pcm = cleaned.pcm();
 
     // Region 1 (0-127): gate opens at first sample, all pass through
@@ -132,9 +132,9 @@ FL_TEST_CASE("SignalConditioner - noise gate hysteresis per-sample") {
 }
 
 // SC-4: DC Removal With Spikes - Spikes Excluded From Mean
-FL_TEST_CASE("SignalConditioner - DC removal excludes spikes from mean") {
-    SignalConditioner conditioner;
-    SignalConditionerConfig config;
+FL_TEST_CASE("audio::SignalConditioner - DC removal excludes spikes from mean") {
+    audio::SignalConditioner conditioner;
+    audio::SignalConditionerConfig config;
     config.enableDCRemoval = true;
     config.enableSpikeFilter = true;
     config.enableNoiseGate = false;
@@ -146,8 +146,8 @@ FL_TEST_CASE("SignalConditioner - DC removal excludes spikes from mean") {
     samples[100] = 30000;
     samples[200] = 30000;
 
-    AudioSample raw = createSample_SignalConditioner(samples, 4000);
-    AudioSample cleaned = conditioner.processSample(raw);
+    audio::Sample raw = createSample_SignalConditioner(samples, 4000);
+    audio::Sample cleaned = conditioner.processSample(raw);
     const auto& pcm = cleaned.pcm();
 
     // DC offset should be ~1000 (spikes excluded from mean calculation)
@@ -170,16 +170,16 @@ FL_TEST_CASE("SignalConditioner - DC removal excludes spikes from mean") {
 }
 
 // SC-5: Empty and Invalid Samples
-FL_TEST_CASE("SignalConditioner - empty and invalid samples") {
-    SignalConditioner conditioner;
+FL_TEST_CASE("audio::SignalConditioner - empty and invalid samples") {
+    audio::SignalConditioner conditioner;
 
-    AudioSample emptySample;
-    AudioSample result1 = conditioner.processSample(emptySample);
+    audio::Sample emptySample;
+    audio::Sample result1 = conditioner.processSample(emptySample);
     FL_CHECK_FALSE(result1.isValid());
 
     vector<i16> emptyVec;
-    AudioSample zeroSizeSample = createSample_SignalConditioner(emptyVec, 5000);
-    AudioSample result2 = conditioner.processSample(zeroSizeSample);
+    audio::Sample zeroSizeSample = createSample_SignalConditioner(emptyVec, 5000);
+    audio::Sample result2 = conditioner.processSample(zeroSizeSample);
     FL_CHECK_FALSE(result2.isValid());
 
     FL_CHECK_EQ(conditioner.getStats().samplesProcessed, 0u);
@@ -187,9 +187,9 @@ FL_TEST_CASE("SignalConditioner - empty and invalid samples") {
 }
 
 // SC-6: All-Spike Buffer
-FL_TEST_CASE("SignalConditioner - all spike buffer") {
-    SignalConditioner conditioner;
-    SignalConditionerConfig config;
+FL_TEST_CASE("audio::SignalConditioner - all spike buffer") {
+    audio::SignalConditioner conditioner;
+    audio::SignalConditionerConfig config;
     config.enableDCRemoval = true;
     config.enableSpikeFilter = true;
     config.enableNoiseGate = false;
@@ -198,8 +198,8 @@ FL_TEST_CASE("SignalConditioner - all spike buffer") {
 
     // All samples above spike threshold
     vector<i16> spikes(512, 32000);
-    AudioSample raw = createSample_SignalConditioner(spikes, 6000);
-    AudioSample cleaned = conditioner.processSample(raw);
+    audio::Sample raw = createSample_SignalConditioner(spikes, 6000);
+    audio::Sample cleaned = conditioner.processSample(raw);
     const auto& pcm = cleaned.pcm();
 
     // All should be zeroed
@@ -213,11 +213,11 @@ FL_TEST_CASE("SignalConditioner - all spike buffer") {
 }
 
 // SC-7: Config Change Mid-Stream
-FL_TEST_CASE("SignalConditioner - config change affects spike count") {
-    SignalConditioner conditioner;
+FL_TEST_CASE("audio::SignalConditioner - config change affects spike count") {
+    audio::SignalConditioner conditioner;
 
     // Pass 1: threshold=10000, signal at 8000 (no spikes)
-    SignalConditionerConfig config1;
+    audio::SignalConditionerConfig config1;
     config1.enableDCRemoval = false;
     config1.enableSpikeFilter = true;
     config1.enableNoiseGate = false;
@@ -231,7 +231,7 @@ FL_TEST_CASE("SignalConditioner - config change affects spike count") {
 
     // Pass 2: lower threshold to 5000, same 8000 signal → all spikes
     conditioner.reset();
-    SignalConditionerConfig config2;
+    audio::SignalConditionerConfig config2;
     config2.enableDCRemoval = false;
     config2.enableSpikeFilter = true;
     config2.enableNoiseGate = false;
@@ -244,9 +244,9 @@ FL_TEST_CASE("SignalConditioner - config change affects spike count") {
 }
 
 // SC-8: Noise Gate Reopening
-FL_TEST_CASE("SignalConditioner - noise gate reopening") {
-    SignalConditioner conditioner;
-    SignalConditionerConfig config;
+FL_TEST_CASE("audio::SignalConditioner - noise gate reopening") {
+    audio::SignalConditioner conditioner;
+    audio::SignalConditionerConfig config;
     config.enableDCRemoval = false;
     config.enableSpikeFilter = false;
     config.enableNoiseGate = true;
@@ -261,8 +261,8 @@ FL_TEST_CASE("SignalConditioner - noise gate reopening") {
     for (int i = 0; i < 128; ++i) samples.push_back(200);
     for (int i = 0; i < 128; ++i) samples.push_back(600);
 
-    AudioSample raw = createSample_SignalConditioner(samples, 8000);
-    AudioSample cleaned = conditioner.processSample(raw);
+    audio::Sample raw = createSample_SignalConditioner(samples, 8000);
+    audio::Sample cleaned = conditioner.processSample(raw);
     const auto& pcm = cleaned.pcm();
 
     FL_CHECK_EQ(pcm[64], 600);   // gate open
@@ -271,9 +271,9 @@ FL_TEST_CASE("SignalConditioner - noise gate reopening") {
 }
 
 // Keep: Full pipeline test
-FL_TEST_CASE("SignalConditioner - full pipeline") {
-    SignalConditioner conditioner;
-    SignalConditionerConfig config;
+FL_TEST_CASE("audio::SignalConditioner - full pipeline") {
+    audio::SignalConditioner conditioner;
+    audio::SignalConditionerConfig config;
     config.enableDCRemoval = true;
     config.enableSpikeFilter = true;
     config.enableNoiseGate = true;
@@ -294,8 +294,8 @@ FL_TEST_CASE("SignalConditioner - full pipeline") {
         samples.push_back(static_cast<i16>(biased));
     }
 
-    AudioSample raw = createSample_SignalConditioner(samples, 9000);
-    AudioSample cleaned = conditioner.processSample(raw);
+    audio::Sample raw = createSample_SignalConditioner(samples, 9000);
+    audio::Sample cleaned = conditioner.processSample(raw);
     const auto& stats = conditioner.getStats();
 
     FL_CHECK(cleaned.isValid());
@@ -305,8 +305,8 @@ FL_TEST_CASE("SignalConditioner - full pipeline") {
 }
 
 // Keep: Reset
-FL_TEST_CASE("SignalConditioner - reset clears state") {
-    SignalConditioner conditioner;
+FL_TEST_CASE("audio::SignalConditioner - reset clears state") {
+    audio::SignalConditioner conditioner;
     vector<i16> samples(100, 20000);
     conditioner.processSample(createSample_SignalConditioner(samples, 10000));
     FL_CHECK_GT(conditioner.getStats().spikesRejected, 0u);
@@ -320,10 +320,10 @@ FL_TEST_CASE("SignalConditioner - reset clears state") {
 }
 
 // Keep: Timestamp preservation
-FL_TEST_CASE("SignalConditioner - timestamp preserved") {
-    SignalConditioner conditioner;
+FL_TEST_CASE("audio::SignalConditioner - timestamp preserved") {
+    audio::SignalConditioner conditioner;
     vector<i16> samples(500, 5000);
-    AudioSample raw = createSample_SignalConditioner(samples, 123456);
-    AudioSample cleaned = conditioner.processSample(raw);
+    audio::Sample raw = createSample_SignalConditioner(samples, 123456);
+    audio::Sample cleaned = conditioner.processSample(raw);
     FL_CHECK_EQ(cleaned.timestamp(), 123456u);
 }

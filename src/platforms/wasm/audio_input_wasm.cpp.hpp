@@ -74,21 +74,21 @@ bool WasmAudioInput::error(fl::string* msg) {
     return mHasError;
 }
 
-AudioSample WasmAudioInput::read() {
+audio::Sample WasmAudioInput::read() {
     if (!mRunning || isEmpty()) {
-        return AudioSample();  // Return invalid sample
+        return audio::Sample();  // Return invalid sample
     }
 
     // Read from tail
     AudioBlock& block = mRingBuffer[mTail];
 
     if (!block.valid) {
-        return AudioSample();  // Shouldn't happen, but safety check
+        return audio::Sample();  // Shouldn't happen, but safety check
     }
 
-    // Create AudioSample from block data
+    // Create audio::Sample from block data
     fl::span<const fl::i16> samples(block.samples, BLOCK_SIZE);
-    AudioSample result(samples, block.timestamp);
+    audio::Sample result(samples, block.timestamp);
 
     // Mark block as consumed and advance tail
     block.valid = false;
@@ -163,7 +163,7 @@ int WasmAudioInput::nextIndex(int index) const {
     return (index + 1) % RING_BUFFER_SLOTS;
 }
 
-fl::shared_ptr<IAudioInput> wasm_create_audio_input(const AudioConfig& config, fl::string* error_message) {
+fl::shared_ptr<audio::IInput> wasm_create_audio_input(const audio::Config& config, fl::string* error_message) {
     // Config is ignored for WASM - audio comes from JavaScript
     (void)config;
 

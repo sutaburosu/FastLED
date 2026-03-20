@@ -1,4 +1,4 @@
-// Unit tests for NoiseFloorTracker - adversarial and boundary tests
+// Unit tests for audio::NoiseFloorTracker - adversarial and boundary tests
 // standalone test
 
 #include "fl/audio/noise_floor_tracker.h"
@@ -7,9 +7,9 @@
 using namespace fl;
 
 // NF-1: Floor Decay - Fast Tracking Downward
-FL_TEST_CASE("NoiseFloorTracker - floor decays toward lower signal") {
-    NoiseFloorTracker tracker;
-    NoiseFloorTrackerConfig config;
+FL_TEST_CASE("audio::NoiseFloorTracker - floor decays toward lower signal") {
+    audio::NoiseFloorTracker tracker;
+    audio::NoiseFloorTrackerConfig config;
     config.decayRate = 0.97f;  // 0.97^100 ≈ 0.048 → floor ≈ 143 after 100 frames
     config.minFloor = 10.0f;
     tracker.configure(config);
@@ -34,9 +34,9 @@ FL_TEST_CASE("NoiseFloorTracker - floor decays toward lower signal") {
 }
 
 // NF-2: Floor Attack - Slow Tracking Upward
-FL_TEST_CASE("NoiseFloorTracker - floor rises slowly toward higher signal") {
-    NoiseFloorTracker tracker;
-    NoiseFloorTrackerConfig config;
+FL_TEST_CASE("audio::NoiseFloorTracker - floor rises slowly toward higher signal") {
+    audio::NoiseFloorTracker tracker;
+    audio::NoiseFloorTrackerConfig config;
     config.decayRate = 0.99f;
     config.attackRate = 0.001f;
     config.minFloor = 10.0f;
@@ -56,9 +56,9 @@ FL_TEST_CASE("NoiseFloorTracker - floor rises slowly toward higher signal") {
 }
 
 // NF-3: Hysteresis - Exact Margin Test
-FL_TEST_CASE("NoiseFloorTracker - isAboveFloor uses margin") {
-    NoiseFloorTracker tracker;
-    NoiseFloorTrackerConfig config;
+FL_TEST_CASE("audio::NoiseFloorTracker - isAboveFloor uses margin") {
+    audio::NoiseFloorTracker tracker;
+    audio::NoiseFloorTrackerConfig config;
     config.hysteresisMargin = 100.0f;
     config.attackRate = 0.05f;
     config.decayRate = 0.99f;
@@ -76,9 +76,9 @@ FL_TEST_CASE("NoiseFloorTracker - isAboveFloor uses margin") {
 }
 
 // NF-4: Cross-Domain Blending - Exact Math
-FL_TEST_CASE("NoiseFloorTracker - cross domain blending math") {
-    NoiseFloorTracker tracker;
-    NoiseFloorTrackerConfig config;
+FL_TEST_CASE("audio::NoiseFloorTracker - cross domain blending math") {
+    audio::NoiseFloorTracker tracker;
+    audio::NoiseFloorTrackerConfig config;
     config.crossDomainWeight = 0.3f;
     tracker.configure(config);
 
@@ -93,9 +93,9 @@ FL_TEST_CASE("NoiseFloorTracker - cross domain blending math") {
 }
 
 // NF-5: Floor Clamping - Min Bound
-FL_TEST_CASE("NoiseFloorTracker - min floor clamping") {
-    NoiseFloorTracker tracker;
-    NoiseFloorTrackerConfig config;
+FL_TEST_CASE("audio::NoiseFloorTracker - min floor clamping") {
+    audio::NoiseFloorTracker tracker;
+    audio::NoiseFloorTrackerConfig config;
     config.minFloor = 100.0f;
     config.decayRate = 0.8f; // fast decay
     tracker.configure(config);
@@ -107,9 +107,9 @@ FL_TEST_CASE("NoiseFloorTracker - min floor clamping") {
 }
 
 // NF-6: Floor Clamping - Max Bound
-FL_TEST_CASE("NoiseFloorTracker - max floor clamping") {
-    NoiseFloorTracker tracker;
-    NoiseFloorTrackerConfig config;
+FL_TEST_CASE("audio::NoiseFloorTracker - max floor clamping") {
+    audio::NoiseFloorTracker tracker;
+    audio::NoiseFloorTrackerConfig config;
     config.maxFloor = 1000.0f;
     config.attackRate = 0.1f; // fast attack for test
     tracker.configure(config);
@@ -121,9 +121,9 @@ FL_TEST_CASE("NoiseFloorTracker - max floor clamping") {
 }
 
 // NF-7: Normalize - Floor Subtraction
-FL_TEST_CASE("NoiseFloorTracker - normalize subtracts floor") {
-    NoiseFloorTracker tracker;
-    NoiseFloorTrackerConfig config;
+FL_TEST_CASE("audio::NoiseFloorTracker - normalize subtracts floor") {
+    audio::NoiseFloorTracker tracker;
+    audio::NoiseFloorTrackerConfig config;
     config.minFloor = 10.0f;
     config.attackRate = 0.05f;
     tracker.configure(config);
@@ -147,9 +147,9 @@ FL_TEST_CASE("NoiseFloorTracker - normalize subtracts floor") {
 }
 
 // NF-8: First Update Initialization
-FL_TEST_CASE("NoiseFloorTracker - first update initializes floor") {
-    NoiseFloorTracker tracker;
-    NoiseFloorTrackerConfig config;
+FL_TEST_CASE("audio::NoiseFloorTracker - first update initializes floor") {
+    audio::NoiseFloorTracker tracker;
+    audio::NoiseFloorTrackerConfig config;
     config.minFloor = 10.0f;
     config.maxFloor = 5000.0f;
     tracker.configure(config);
@@ -162,16 +162,16 @@ FL_TEST_CASE("NoiseFloorTracker - first update initializes floor") {
 }
 
 // Keep: Basic init
-FL_TEST_CASE("NoiseFloorTracker - basic initialization") {
-    NoiseFloorTracker tracker;
+FL_TEST_CASE("audio::NoiseFloorTracker - basic initialization") {
+    audio::NoiseFloorTracker tracker;
     FL_CHECK_GT(tracker.getFloor(), 0.0f);
     FL_CHECK_EQ(tracker.getStats().samplesProcessed, 0u);
 }
 
 // Keep: Above floor detection
-FL_TEST_CASE("NoiseFloorTracker - above floor detection") {
-    NoiseFloorTracker tracker;
-    NoiseFloorTrackerConfig config;
+FL_TEST_CASE("audio::NoiseFloorTracker - above floor detection") {
+    audio::NoiseFloorTracker tracker;
+    audio::NoiseFloorTrackerConfig config;
     config.hysteresisMargin = 100.0f;
     tracker.configure(config);
 
@@ -184,8 +184,8 @@ FL_TEST_CASE("NoiseFloorTracker - above floor detection") {
 }
 
 // Keep: Time domain only
-FL_TEST_CASE("NoiseFloorTracker - time domain only") {
-    NoiseFloorTracker tracker;
+FL_TEST_CASE("audio::NoiseFloorTracker - time domain only") {
+    audio::NoiseFloorTracker tracker;
     for (int i = 0; i < 20; ++i) tracker.update(250.0f);
     float floor = tracker.getFloor();
     FL_CHECK_GT(floor, 50.0f);
@@ -193,8 +193,8 @@ FL_TEST_CASE("NoiseFloorTracker - time domain only") {
 }
 
 // Keep: Statistics
-FL_TEST_CASE("NoiseFloorTracker - statistics tracking") {
-    NoiseFloorTracker tracker;
+FL_TEST_CASE("audio::NoiseFloorTracker - statistics tracking") {
+    audio::NoiseFloorTracker tracker;
     tracker.update(100.0f);
     tracker.update(500.0f);
     tracker.update(50.0f);
@@ -207,8 +207,8 @@ FL_TEST_CASE("NoiseFloorTracker - statistics tracking") {
 }
 
 // Keep: Reset
-FL_TEST_CASE("NoiseFloorTracker - reset clears state") {
-    NoiseFloorTracker tracker;
+FL_TEST_CASE("audio::NoiseFloorTracker - reset clears state") {
+    audio::NoiseFloorTracker tracker;
     for (int i = 0; i < 20; ++i) tracker.update(300.0f);
     FL_CHECK_GT(tracker.getStats().samplesProcessed, 0u);
 
@@ -219,9 +219,9 @@ FL_TEST_CASE("NoiseFloorTracker - reset clears state") {
 }
 
 // Keep: Disabled mode
-FL_TEST_CASE("NoiseFloorTracker - disabled mode") {
-    NoiseFloorTracker tracker;
-    NoiseFloorTrackerConfig config;
+FL_TEST_CASE("audio::NoiseFloorTracker - disabled mode") {
+    audio::NoiseFloorTracker tracker;
+    audio::NoiseFloorTrackerConfig config;
     config.enabled = false;
     tracker.configure(config);
 

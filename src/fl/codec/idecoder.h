@@ -24,7 +24,7 @@ enum class DecodeResult {
 
 // Audio frame callback - called when audio frames are decoded
 // Not all decoders will support audio
-using AudioFrameCallback = fl::function<void(const AudioSample&)>;
+using AudioFrameCallback = fl::function<void(const audio::Sample&)>;
 
 // Base decoder interface for multimedia codecs
 // This interface provides a unified API for decoding various formats including:

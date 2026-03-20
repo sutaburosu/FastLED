@@ -8,11 +8,11 @@
 #include "fl/audio/auto_gain.h"
 #include "fl/audio/noise_floor_tracker.h"
 #include "fl/audio/audio_processor.h"
-#include "fl/audio/detectors/beat.h"
-#include "fl/audio/detectors/energy_analyzer.h"
-#include "fl/audio/detectors/tempo_analyzer.h"
-#include "fl/audio/detectors/frequency_bands.h"
-#include "fl/audio/detectors/vocal.h"
+#include "fl/audio/detector/beat.h"
+#include "fl/audio/detector/energy_analyzer.h"
+#include "fl/audio/detector/tempo_analyzer.h"
+#include "fl/audio/detector/frequency_bands.h"
+#include "fl/audio/detector/vocal.h"
 #include "fl/stl/int.h"
 #include "fl/stl/function.h"
 #include "fl/stl/span.h"
@@ -32,7 +32,7 @@ using fl::audio::test::makeMaxAmplitude;
 
 namespace {
 
-static AudioSample makeSample_Adversarial(float freq, fl::u32 timestamp, float amplitude = 16000.0f) {
+static audio::Sample makeSample_Adversarial(float freq, fl::u32 timestamp, float amplitude = 16000.0f) {
     return makeSample(freq, timestamp, amplitude);
 }
 
@@ -43,12 +43,12 @@ static bool isNaN(float x) {
 
 } // anonymous namespace
 
-// F1: FFT Edge Cases
+// F1: audio::fft::FFT Edge Cases
 
-FL_TEST_CASE("Adversarial - FFT with DC-only input produces no spectral peaks") {
-    FFT fft;
+FL_TEST_CASE("Adversarial - audio::fft::FFT with DC-only input produces no spectral peaks") {
+    audio::fft::FFT fft;
     fl::vector<fl::i16> dcSignal(512, 10000);  // Pure DC
-    FFTBins bins(16);
+    audio::fft::Bins bins(16);
     fft.run(dcSignal, &bins);
 
     // DC should not produce significant energy in frequency bins.
@@ -62,14 +62,14 @@ FL_TEST_CASE("Adversarial - FFT with DC-only input produces no spectral peaks") 
     FL_CHECK_LT(totalEnergy, 5000.0f);
 }
 
-FL_TEST_CASE("Adversarial - FFT with alternating max samples") {
-    FFT fft;
+FL_TEST_CASE("Adversarial - audio::fft::FFT with alternating max samples") {
+    audio::fft::FFT fft;
     fl::vector<fl::i16> alternating;
     alternating.reserve(512);
     for (int i = 0; i < 512; ++i) {
         alternating.push_back((i % 2 == 0) ? 32767 : -32768);
     }
-    FFTBins bins(16);
+    audio::fft::Bins bins(16);
     fft.run(alternating, &bins);
 
     // Should not crash, bins should have values
@@ -83,11 +83,11 @@ FL_TEST_CASE("Adversarial - FFT with alternating max samples") {
     }
 }
 
-FL_TEST_CASE("Adversarial - FFT with single impulse") {
-    FFT fft;
+FL_TEST_CASE("Adversarial - audio::fft::FFT with single impulse") {
+    audio::fft::FFT fft;
     fl::vector<fl::i16> impulse(512, 0);
     impulse[256] = 32767; // Center of buffer (Hanning window = 1.0 here)
-    FFTBins bins(16);
+    audio::fft::Bins bins(16);
     fft.run(impulse, &bins);
 
     // Impulse should distribute energy across all frequency bins
@@ -102,16 +102,16 @@ FL_TEST_CASE("Adversarial - FFT with single impulse") {
 
 // F2: Signal Conditioner Edge Cases
 
-FL_TEST_CASE("Adversarial - SignalConditioner with max DC offset") {
-    SignalConditioner conditioner;
-    SignalConditionerConfig config;
+FL_TEST_CASE("Adversarial - audio::SignalConditioner with max DC offset") {
+    audio::SignalConditioner conditioner;
+    audio::SignalConditionerConfig config;
     config.enableDCRemoval = true;
     conditioner.configure(config);
 
     // Feed constant max positive value
     fl::vector<fl::i16> maxDC(512, 32767);
-    AudioSample inputSample(maxDC, 0);
-    AudioSample output = conditioner.processSample(inputSample);
+    audio::Sample inputSample(maxDC, 0);
+    audio::Sample output = conditioner.processSample(inputSample);
 
     // After DC removal, output should be near zero (or at least reduced)
     fl::i64 sum = 0;
@@ -122,9 +122,9 @@ FL_TEST_CASE("Adversarial - SignalConditioner with max DC offset") {
     FL_CHECK_LT(fl::abs(meanDC), 16000.0f);
 }
 
-FL_TEST_CASE("Adversarial - SignalConditioner with alternating spikes") {
-    SignalConditioner conditioner;
-    SignalConditionerConfig config;
+FL_TEST_CASE("Adversarial - audio::SignalConditioner with alternating spikes") {
+    audio::SignalConditioner conditioner;
+    audio::SignalConditionerConfig config;
     config.enableSpikeFilter = true;
     conditioner.configure(config);
 
@@ -133,8 +133,8 @@ FL_TEST_CASE("Adversarial - SignalConditioner with alternating spikes") {
     for (int i = 0; i < 512; ++i) {
         spiky[i] = (i % 2 == 0) ? 30000 : 0;
     }
-    AudioSample inputSample(spiky, 0);
-    AudioSample output = conditioner.processSample(inputSample);
+    audio::Sample inputSample(spiky, 0);
+    audio::Sample output = conditioner.processSample(inputSample);
 
     fl::i16 maxVal = 0;
     for (size i = 0; i < output.pcm().size(); ++i) {
@@ -143,19 +143,19 @@ FL_TEST_CASE("Adversarial - SignalConditioner with alternating spikes") {
     FL_CHECK_LT(static_cast<fl::i32>(maxVal), 30000);
 }
 
-// F3: AutoGain Edge Cases
+// F3: audio::AutoGain Edge Cases
 
-FL_TEST_CASE("Adversarial - AutoGain with silence doesn't produce NaN") {
-    AutoGain gain;
-    AutoGainConfig config;
+FL_TEST_CASE("Adversarial - audio::AutoGain with silence doesn't produce NaN") {
+    audio::AutoGain gain;
+    audio::AutoGainConfig config;
     config.enabled = true;
     gain.configure(config);
 
     fl::vector<fl::i16> silence(512, 0);
-    AudioSample inputSample(silence, 0);
+    audio::Sample inputSample(silence, 0);
 
     // Feed many frames of silence
-    AudioSample output = inputSample;
+    audio::Sample output = inputSample;
     for (int i = 0; i < 50; ++i) {
         output = gain.process(inputSample);
     }
@@ -169,9 +169,9 @@ FL_TEST_CASE("Adversarial - AutoGain with silence doesn't produce NaN") {
     FL_CHECK_GT(stats.samplesProcessed, 0u);
 }
 
-FL_TEST_CASE("Adversarial - AutoGain with max amplitude clipping") {
-    AutoGain gain;
-    AutoGainConfig config;
+FL_TEST_CASE("Adversarial - audio::AutoGain with max amplitude clipping") {
+    audio::AutoGain gain;
+    audio::AutoGainConfig config;
     config.enabled = true;
     config.targetRMSLevel = 20000.0f;  // High target to test clipping
     gain.configure(config);
@@ -183,9 +183,9 @@ FL_TEST_CASE("Adversarial - AutoGain with max amplitude clipping") {
         float phase = 2.0f * FL_M_PI * 440.0f * i / 44100.0f;
         loud.push_back(static_cast<fl::i16>(20000.0f * fl::sinf(phase)));
     }
-    AudioSample inputSample(loud, 0);
+    audio::Sample inputSample(loud, 0);
 
-    AudioSample output = inputSample;
+    audio::Sample output = inputSample;
     for (int iter = 0; iter < 20; ++iter) {
         output = gain.process(inputSample);
     }
@@ -200,11 +200,11 @@ FL_TEST_CASE("Adversarial - AutoGain with max amplitude clipping") {
     FL_CHECK(hasNonZero);
 }
 
-// F4: NoiseFloorTracker Edge Cases
+// F4: audio::NoiseFloorTracker Edge Cases
 
-FL_TEST_CASE("Adversarial - NoiseFloorTracker with zero input doesn't go negative") {
-    NoiseFloorTracker tracker;
-    NoiseFloorTrackerConfig config;
+FL_TEST_CASE("Adversarial - audio::NoiseFloorTracker with zero input doesn't go negative") {
+    audio::NoiseFloorTracker tracker;
+    audio::NoiseFloorTrackerConfig config;
     config.minFloor = 1.0f;
     tracker.configure(config);
 
@@ -218,8 +218,8 @@ FL_TEST_CASE("Adversarial - NoiseFloorTracker with zero input doesn't go negativ
     FL_CHECK_FALSE(isNaN(floor));
 }
 
-FL_TEST_CASE("Adversarial - NoiseFloorTracker with huge value spike") {
-    NoiseFloorTracker tracker;
+FL_TEST_CASE("Adversarial - audio::NoiseFloorTracker with huge value spike") {
+    audio::NoiseFloorTracker tracker;
 
     // Establish low floor
     for (int i = 0; i < 20; ++i) {
@@ -236,14 +236,14 @@ FL_TEST_CASE("Adversarial - NoiseFloorTracker with huge value spike") {
     FL_CHECK_FALSE(isNaN(afterSpike));
 }
 
-// F5: BeatDetector Edge Cases
+// F5: audio::detector::Beat Edge Cases
 
-FL_TEST_CASE("Adversarial - BeatDetector with constant loud signal doesn't spam beats") {
-    BeatDetector detector;
+FL_TEST_CASE("Adversarial - audio::detector::Beat with constant loud signal doesn't spam beats") {
+    audio::detector::Beat detector;
     int beatCount = 0;
     detector.onBeat.add([&beatCount]() { beatCount++; });
 
-    auto ctx = fl::make_shared<AudioContext>(makeSilence(0));
+    auto ctx = fl::make_shared<audio::Context>(makeSilence(0));
     ctx->setSampleRate(44100);
 
     // Feed constant loud bass tone (no transients, just sustained)
@@ -259,8 +259,8 @@ FL_TEST_CASE("Adversarial - BeatDetector with constant loud signal doesn't spam 
     FL_CHECK_LT(beatCount, 10);
 }
 
-FL_TEST_CASE("Adversarial - BeatDetector cooldown enforced") {
-    BeatDetector detector;
+FL_TEST_CASE("Adversarial - audio::detector::Beat cooldown enforced") {
+    audio::detector::Beat detector;
     detector.setThreshold(0.01f);  // Very low threshold
 
     fl::vector<u32> beatTimestamps;
@@ -269,7 +269,7 @@ FL_TEST_CASE("Adversarial - BeatDetector cooldown enforced") {
         beatTimestamps.push_back(static_cast<u32>(beatTimestamps.size()));
     });
 
-    auto ctx = fl::make_shared<AudioContext>(makeSilence(0));
+    auto ctx = fl::make_shared<audio::Context>(makeSilence(0));
     ctx->setSampleRate(44100);
     ctx->getFFT(16);
     ctx->setFFTHistoryDepth(4);
@@ -286,19 +286,19 @@ FL_TEST_CASE("Adversarial - BeatDetector cooldown enforced") {
     FL_CHECK_LT(static_cast<int>(beatTimestamps.size()), 10);
 }
 
-// F6: EnergyAnalyzer Edge Cases
+// F6: audio::detector::EnergyAnalyzer Edge Cases
 
-FL_TEST_CASE("Adversarial - EnergyAnalyzer silence then loud doesn't overflow") {
-    EnergyAnalyzer analyzer;
+FL_TEST_CASE("Adversarial - audio::detector::EnergyAnalyzer silence then loud doesn't overflow") {
+    audio::detector::EnergyAnalyzer analyzer;
 
     // Extended silence
     for (int i = 0; i < 50; ++i) {
-        auto ctx = fl::make_shared<AudioContext>(makeSilence(i * 23));
+        auto ctx = fl::make_shared<audio::Context>(makeSilence(i * 23));
         analyzer.update(ctx);
     }
 
     // Sudden max amplitude
-    auto ctx = fl::make_shared<AudioContext>(makeMaxAmplitude(1200));
+    auto ctx = fl::make_shared<audio::Context>(makeMaxAmplitude(1200));
     analyzer.update(ctx);
 
     float rms = analyzer.getRMS();
@@ -310,17 +310,17 @@ FL_TEST_CASE("Adversarial - EnergyAnalyzer silence then loud doesn't overflow") 
     FL_CHECK_LE(normalized, 1.0f);
 }
 
-FL_TEST_CASE("Adversarial - EnergyAnalyzer min never exceeds max after silence") {
-    EnergyAnalyzer analyzer;
+FL_TEST_CASE("Adversarial - audio::detector::EnergyAnalyzer min never exceeds max after silence") {
+    audio::detector::EnergyAnalyzer analyzer;
 
     // Only silence - tests degenerate min/max initialization
     for (int i = 0; i < 30; ++i) {
-        auto ctx = fl::make_shared<AudioContext>(makeSilence(i * 23));
+        auto ctx = fl::make_shared<audio::Context>(makeSilence(i * 23));
         analyzer.update(ctx);
     }
 
     // Now a real signal
-    auto ctx = fl::make_shared<AudioContext>(makeSample_Adversarial(440.0f, 700, 10000.0f));
+    auto ctx = fl::make_shared<audio::Context>(makeSample_Adversarial(440.0f, 700, 10000.0f));
     analyzer.update(ctx);
 
     float minE = analyzer.getMinEnergy();
@@ -329,11 +329,11 @@ FL_TEST_CASE("Adversarial - EnergyAnalyzer min never exceeds max after silence")
     FL_CHECK_GE(maxE, minE);
 }
 
-// F7: TempoAnalyzer Edge Cases
+// F7: audio::detector::TempoAnalyzer Edge Cases
 
-FL_TEST_CASE("Adversarial - TempoAnalyzer with random noise doesn't crash") {
-    TempoAnalyzer analyzer;
-    auto ctx = fl::make_shared<AudioContext>(makeSilence(0));
+FL_TEST_CASE("Adversarial - audio::detector::TempoAnalyzer with random noise doesn't crash") {
+    audio::detector::TempoAnalyzer analyzer;
+    auto ctx = fl::make_shared<audio::Context>(makeSilence(0));
     ctx->setSampleRate(44100);
     ctx->getFFT(16);
     ctx->setFFTHistoryDepth(4);
@@ -357,9 +357,9 @@ FL_TEST_CASE("Adversarial - TempoAnalyzer with random noise doesn't crash") {
     FL_CHECK_FALSE(isNaN(analyzer.getStability()));
 }
 
-FL_TEST_CASE("Adversarial - TempoAnalyzer with silence only") {
-    TempoAnalyzer analyzer;
-    auto ctx = fl::make_shared<AudioContext>(makeSilence(0));
+FL_TEST_CASE("Adversarial - audio::detector::TempoAnalyzer with silence only") {
+    audio::detector::TempoAnalyzer analyzer;
+    auto ctx = fl::make_shared<audio::Context>(makeSilence(0));
     ctx->setSampleRate(44100);
     ctx->getFFT(16);
     ctx->setFFTHistoryDepth(4);
@@ -375,17 +375,17 @@ FL_TEST_CASE("Adversarial - TempoAnalyzer with silence only") {
     FL_CHECK_EQ(analyzer.getConfidence(), 0.0f);
 }
 
-// F8: AudioProcessor Full Pipeline Edge Cases
+// F8: audio::Processor Full Pipeline Edge Cases
 
-FL_TEST_CASE("Adversarial - AudioProcessor full pipeline with silence") {
-    AudioProcessor processor;
+FL_TEST_CASE("Adversarial - audio::Processor full pipeline with silence") {
+    audio::Processor processor;
     float lastEnergy = -1.0f;
     processor.onEnergy([&lastEnergy](float rms) { lastEnergy = rms; });
 
     // Feed only silence through full pipeline
     for (int i = 0; i < 50; ++i) {
         fl::vector<fl::i16> silence(512, 0);
-        AudioSample sample(silence, i * 23);
+        audio::Sample sample(silence, i * 23);
         processor.update(sample);
     }
 
@@ -394,20 +394,20 @@ FL_TEST_CASE("Adversarial - AudioProcessor full pipeline with silence") {
     FL_CHECK_LT(lastEnergy, 100.0f);
 }
 
-FL_TEST_CASE("Adversarial - AudioProcessor rapid sample rate changes") {
-    AudioProcessor processor;
+FL_TEST_CASE("Adversarial - audio::Processor rapid sample rate changes") {
+    audio::Processor processor;
 
     // Change sample rate between updates
     processor.setSampleRate(44100);
-    AudioSample s1 = makeSample_Adversarial(440.0f, 100);
+    audio::Sample s1 = makeSample_Adversarial(440.0f, 100);
     processor.update(s1);
 
     processor.setSampleRate(22050);
-    AudioSample s2 = makeSample_Adversarial(440.0f, 200);
+    audio::Sample s2 = makeSample_Adversarial(440.0f, 200);
     processor.update(s2);
 
     processor.setSampleRate(16000);
-    AudioSample s3 = makeSample_Adversarial(440.0f, 300);
+    audio::Sample s3 = makeSample_Adversarial(440.0f, 300);
     processor.update(s3);
 
     // Should not crash, context should be valid
@@ -415,15 +415,15 @@ FL_TEST_CASE("Adversarial - AudioProcessor rapid sample rate changes") {
     FL_CHECK_EQ(processor.getSampleRate(), 16000);
 }
 
-FL_TEST_CASE("Adversarial - AudioProcessor reset mid-processing") {
-    AudioProcessor processor;
+FL_TEST_CASE("Adversarial - audio::Processor reset mid-processing") {
+    audio::Processor processor;
     int beatCount = 0;
     processor.onBeat([&beatCount]() { beatCount++; });
-    processor.onEnergy([](float) {});  // Register to create detectors
+    processor.onEnergy([](float) {});  // Register to create detector
 
     // Process some frames
     for (int i = 0; i < 10; ++i) {
-        AudioSample s = makeSample_Adversarial(200.0f, i * 23, 15000.0f);
+        audio::Sample s = makeSample_Adversarial(200.0f, i * 23, 15000.0f);
         processor.update(s);
     }
 
@@ -432,17 +432,17 @@ FL_TEST_CASE("Adversarial - AudioProcessor reset mid-processing") {
 
     // Continue processing - should not crash
     for (int i = 0; i < 10; ++i) {
-        AudioSample s = makeSample_Adversarial(200.0f, (10 + i) * 23, 15000.0f);
+        audio::Sample s = makeSample_Adversarial(200.0f, (10 + i) * 23, 15000.0f);
         processor.update(s);
     }
 
     FL_CHECK(processor.getContext() != nullptr);
 }
 
-// F9: FrequencyBands Edge Cases
+// F9: audio::detector::FrequencyBands Edge Cases
 
-FL_TEST_CASE("Adversarial - FrequencyBands with sub-bass frequency") {
-    FrequencyBands bands;
+FL_TEST_CASE("Adversarial - audio::detector::FrequencyBands with sub-bass frequency") {
+    audio::detector::FrequencyBands bands;
     bands.setSampleRate(44100);
     bands.setSmoothing(0.0f);
 
@@ -454,8 +454,8 @@ FL_TEST_CASE("Adversarial - FrequencyBands with sub-bass frequency") {
         subBass.push_back(static_cast<fl::i16>(20000.0f * fl::sinf(phase)));
     }
 
-    auto ctx = fl::make_shared<AudioContext>(
-        AudioSample(subBass, 0));
+    auto ctx = fl::make_shared<audio::Context>(
+        audio::Sample(subBass, 0));
     ctx->setSampleRate(44100);
     bands.update(ctx);
 
@@ -464,8 +464,8 @@ FL_TEST_CASE("Adversarial - FrequencyBands with sub-bass frequency") {
     FL_CHECK_FALSE(isNaN(bands.getTreble()));
 }
 
-FL_TEST_CASE("Adversarial - FrequencyBands with Nyquist frequency") {
-    FrequencyBands bands;
+FL_TEST_CASE("Adversarial - audio::detector::FrequencyBands with Nyquist frequency") {
+    audio::detector::FrequencyBands bands;
     bands.setSampleRate(44100);
     bands.setSmoothing(0.0f);
 
@@ -476,8 +476,8 @@ FL_TEST_CASE("Adversarial - FrequencyBands with Nyquist frequency") {
         nyquist.push_back((i % 2 == 0) ? 20000 : -20000);
     }
 
-    auto ctx = fl::make_shared<AudioContext>(
-        AudioSample(nyquist, 0));
+    auto ctx = fl::make_shared<audio::Context>(
+        audio::Sample(nyquist, 0));
     ctx->setSampleRate(44100);
     bands.update(ctx);
 
@@ -487,13 +487,13 @@ FL_TEST_CASE("Adversarial - FrequencyBands with Nyquist frequency") {
     FL_CHECK_FALSE(isNaN(bands.getTreble()));
 }
 
-// F10: VocalDetector Edge Cases
+// F10: audio::detector::Vocal Edge Cases
 
-FL_TEST_CASE("Adversarial - VocalDetector with DC input") {
-    VocalDetector detector;
+FL_TEST_CASE("Adversarial - audio::detector::Vocal with DC input") {
+    audio::detector::Vocal detector;
     detector.setSampleRate(44100);
 
-    auto ctx = fl::make_shared<AudioContext>(makeDC(10000, 0));
+    auto ctx = fl::make_shared<audio::Context>(makeDC(10000, 0));
     ctx->setSampleRate(44100);
     ctx->getFFT(128);
     detector.update(ctx);
@@ -505,16 +505,16 @@ FL_TEST_CASE("Adversarial - VocalDetector with DC input") {
 
 // ADV-2: INT16_MAX/INT16_MIN Saturation (full-scale square wave)
 FL_TEST_CASE("Adversarial - INT16 saturation through pipeline") {
-    SignalConditioner conditioner;
-    SignalConditionerConfig scConfig;
+    audio::SignalConditioner conditioner;
+    audio::SignalConditionerConfig scConfig;
     scConfig.enableDCRemoval = true;
     scConfig.enableSpikeFilter = true;
     scConfig.enableNoiseGate = true;
     conditioner.configure(scConfig);
 
     // Full-scale square wave: alternating 32767 and -32768
-    AudioSample saturated = makeMaxAmplitude(1000);
-    AudioSample result = conditioner.processSample(saturated);
+    audio::Sample saturated = makeMaxAmplitude(1000);
+    audio::Sample result = conditioner.processSample(saturated);
 
     // Should not crash, output should be valid
     FL_CHECK(result.isValid());
@@ -524,12 +524,12 @@ FL_TEST_CASE("Adversarial - INT16 saturation through pipeline") {
 
 // ADV-3: Single-Sample Buffer
 FL_TEST_CASE("Adversarial - single sample buffer") {
-    SignalConditioner conditioner;
+    audio::SignalConditioner conditioner;
 
     // Create a buffer with exactly 1 sample
     fl::vector<fl::i16> single(1, 5000);
-    AudioSample singleSample(single, 2000);
-    AudioSample result = conditioner.processSample(singleSample);
+    audio::Sample singleSample(single, 2000);
+    audio::Sample result = conditioner.processSample(singleSample);
 
     // Should not crash
     FL_CHECK(result.isValid());
@@ -538,20 +538,20 @@ FL_TEST_CASE("Adversarial - single sample buffer") {
 
 // ADV-4: Rapid Config Switching
 FL_TEST_CASE("Adversarial - rapid config switching") {
-    SignalConditioner conditioner;
+    audio::SignalConditioner conditioner;
 
     fl::vector<fl::i16> samples(512, 5000);
-    AudioSample audio(samples, 0);
+    audio::Sample audio(samples, 0);
 
     // Switch configs every frame for 100 frames
     for (int i = 0; i < 100; ++i) {
-        SignalConditionerConfig config;
+        audio::SignalConditionerConfig config;
         config.enableDCRemoval = (i % 2 == 0);
         config.enableSpikeFilter = (i % 3 == 0);
         config.enableNoiseGate = (i % 5 == 0);
         config.spikeThreshold = static_cast<fl::i16>(5000 + (i % 10) * 1000);
         conditioner.configure(config);
-        AudioSample result = conditioner.processSample(audio);
+        audio::Sample result = conditioner.processSample(audio);
         FL_CHECK(result.isValid());
     }
 }
@@ -564,17 +564,17 @@ FL_TEST_CASE("Adversarial - monotonic signal no false beats") {
         // Linear ramp from 0 to 32767
         ramp.push_back(static_cast<fl::i16>((static_cast<fl::i32>(i) * 32767) / 511));
     }
-    AudioSample rampSample(ramp, 3000);
+    audio::Sample rampSample(ramp, 3000);
 
     // Process through signal conditioner
-    SignalConditioner conditioner;
-    AudioSample cleaned = conditioner.processSample(rampSample);
+    audio::SignalConditioner conditioner;
+    audio::Sample cleaned = conditioner.processSample(rampSample);
     FL_CHECK(cleaned.isValid());
     FL_CHECK_EQ(cleaned.size(), 512u);
 
     // Process through auto gain
-    AutoGain agc;
-    AudioSample gained = agc.process(cleaned);
+    audio::AutoGain agc;
+    audio::Sample gained = agc.process(cleaned);
     FL_CHECK(gained.isValid());
 
     // No NaN in output
@@ -585,11 +585,11 @@ FL_TEST_CASE("Adversarial - monotonic signal no false beats") {
     }
 }
 
-FL_TEST_CASE("Adversarial - VocalDetector with silence") {
-    VocalDetector detector;
+FL_TEST_CASE("Adversarial - audio::detector::Vocal with silence") {
+    audio::detector::Vocal detector;
     detector.setSampleRate(44100);
 
-    auto ctx = fl::make_shared<AudioContext>(makeSilence(0));
+    auto ctx = fl::make_shared<audio::Context>(makeSilence(0));
     ctx->setSampleRate(44100);
     ctx->getFFT(128);
     detector.update(ctx);

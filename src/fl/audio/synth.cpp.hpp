@@ -11,6 +11,7 @@
 // IWYU pragma: end_keep
 
 namespace fl {
+namespace audio {
 
 // Short alias for third_party hexwave namespace to avoid verbose qualification
 // without polluting fl:: namespace in unity builds.
@@ -214,4 +215,5 @@ void SynthOscillatorImpl::reset() {
     }
 }
 
+} // namespace audio
 } // namespace fl

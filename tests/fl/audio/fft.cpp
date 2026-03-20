@@ -37,13 +37,13 @@ FL_TEST_CASE("fft tester 512") {
         float sin_x = fl::sin(rot);
         buffer[i] = int16_t(32767 * sin_x);
     }
-    fl::FFTBins out(16);
+    fl::audio::fft::Bins out(16);
     // Explicitly use CQ_OCTAVE to match golden values (AUTO would select LOG_REBIN for 16 bins)
     const int samples = n;
-    fl::FFT_Args args(samples, 16, fl::FFT_Args::DefaultMinFrequency(),
-                      fl::FFT_Args::DefaultMaxFrequency(),
-                      fl::FFT_Args::DefaultSampleRate(), fl::FFTMode::CQ_OCTAVE);
-    fl::FFTImpl fft(args);
+    fl::audio::fft::Args args(samples, 16, fl::audio::fft::Args::DefaultMinFrequency(),
+                      fl::audio::fft::Args::DefaultMaxFrequency(),
+                      fl::audio::fft::Args::DefaultSampleRate(), fl::audio::fft::Mode::CQ_OCTAVE);
+    fl::audio::fft::Impl fft(args);
     fft.run(buffer, &out);
     // Test expectations for different precision modes
     // Each mode has slightly different numerical results due to internal precision
@@ -74,14 +74,14 @@ FL_TEST_CASE("fft tester 512") {
         float b = expected_output[i];
         bool almost_equal = fl::almost_equal(a, b, tolerance);
         if (!almost_equal) {
-            FASTLED_WARN("FFTImpl output mismatch at index " << i << ": " << a
+            FASTLED_WARN("Impl output mismatch at index " << i << ": " << a
                                                          << " != " << b);
         }
         FL_CHECK(almost_equal);
     }
 
     fl::string info = fft.info();
-    FASTLED_WARN("FFTImpl info: " << info);
+    FASTLED_WARN("Impl info: " << info);
     FASTLED_WARN("Done");
 }
 
@@ -96,13 +96,13 @@ FL_TEST_CASE("fft tester 256") {
         auto v = int16_t(32767 * sin_x);
         buffer.push_back(v);
     }
-    fl::FFTBins out(16);
+    fl::audio::fft::Bins out(16);
     // Explicitly use CQ_OCTAVE to match golden values (AUTO would select LOG_REBIN for 16 bins)
     const int samples = n;
-    fl::FFT_Args args(samples, 16, fl::FFT_Args::DefaultMinFrequency(),
-                      fl::FFT_Args::DefaultMaxFrequency(),
-                      fl::FFT_Args::DefaultSampleRate(), fl::FFTMode::CQ_OCTAVE);
-    fl::FFTImpl fft(args);
+    fl::audio::fft::Args args(samples, 16, fl::audio::fft::Args::DefaultMinFrequency(),
+                      fl::audio::fft::Args::DefaultMaxFrequency(),
+                      fl::audio::fft::Args::DefaultSampleRate(), fl::audio::fft::Mode::CQ_OCTAVE);
+    fl::audio::fft::Impl fft(args);
     fft.run(buffer, &out);
     // Test expectations for different precision modes
     // Each mode has slightly different numerical results due to internal precision
@@ -133,14 +133,14 @@ FL_TEST_CASE("fft tester 256") {
         float b = expected_output[i];
         bool almost_equal = fl::almost_equal(a, b, tolerance);
         if (!almost_equal) {
-            FASTLED_WARN("FFTImpl output mismatch at index " << i << ": " << a
+            FASTLED_WARN("Impl output mismatch at index " << i << ": " << a
                                                          << " != " << b);
         }
         FL_CHECK(almost_equal);
     }
 
     fl::string info = fft.info();
-    FASTLED_WARN("FFTImpl info: " << info);
+    FASTLED_WARN("Impl info: " << info);
     FASTLED_WARN("Done");
 }
 
@@ -155,10 +155,10 @@ FL_TEST_CASE("fft tester 256 with 64 bands") {
         auto v = int16_t(32767 * sin_x);
         buffer.push_back(v);
     }
-    fl::FFTBins out(64);
+    fl::audio::fft::Bins out(64);
     const int samples = n;
-    fl::FFT_Args args(samples, 64);
-    fl::FFTImpl fft(args);
+    fl::audio::fft::Args args(samples, 64);
+    fl::audio::fft::Impl fft(args);
     fft.run(buffer, &out);
     // Test expectations for different precision modes
     // Each mode has slightly different numerical results due to internal precision
@@ -212,13 +212,13 @@ FL_TEST_CASE("fft tester 256 with 64 bands") {
         float b = expected_output[i];
         bool almost_equal = fl::almost_equal(a, b, tolerance);
         if (!almost_equal) {
-            FASTLED_WARN("FFTImpl output mismatch at index " << i << ": " << a
+            FASTLED_WARN("Impl output mismatch at index " << i << ": " << a
                                                          << " != " << b);
         }
         FL_CHECK(almost_equal);
     }
     fl::string info = fft.info();
-    FASTLED_WARN("FFTImpl info: " << info);
+    FASTLED_WARN("Impl info: " << info);
     FASTLED_WARN("Done");
 }
 
@@ -236,20 +236,20 @@ fl::vector<fl::i16> generateSine(float freq, int count = 512, float sampleRate =
 
 } // anonymous namespace
 
-FL_TEST_CASE("FFTBins - constructor and bands") {
-    fl::FFTBins bins(16);
+FL_TEST_CASE("Bins - constructor and bands") {
+    fl::audio::fft::Bins bins(16);
     FL_CHECK_EQ(bins.bands(), 16u);
     FL_CHECK_EQ(bins.raw().size(), 0u);  // Initially empty (just reserved)
     FL_CHECK_EQ(bins.db().size(), 0u);
 }
 
-FL_TEST_CASE("fl::FFTBins - copy constructor") {
+FL_TEST_CASE("fl::audio::fft::Bins - copy constructor") {
     auto samples = generateSine(1000.0f);
-    fl::FFTBins original(16);
-    fl::FFT fft;
+    fl::audio::fft::Bins original(16);
+    fl::audio::fft::FFT fft;
     fft.run(samples, &original);
 
-    fl::FFTBins copy(original);
+    fl::audio::fft::Bins copy(original);
     FL_CHECK_EQ(copy.bands(), 16u);
     FL_CHECK_EQ(copy.raw().size(), original.raw().size());
     for (fl::size i = 0; i < copy.raw().size(); ++i) {
@@ -257,24 +257,24 @@ FL_TEST_CASE("fl::FFTBins - copy constructor") {
     }
 }
 
-FL_TEST_CASE("fl::FFTBins - move constructor") {
+FL_TEST_CASE("fl::audio::fft::Bins - move constructor") {
     auto samples = generateSine(1000.0f);
-    fl::FFTBins original(16);
-    fl::FFT fft;
+    fl::audio::fft::Bins original(16);
+    fl::audio::fft::FFT fft;
     fft.run(samples, &original);
     fl::size origSize = original.raw().size();
     float firstVal = original.raw()[0];
 
-    fl::FFTBins moved(fl::move(original));
+    fl::audio::fft::Bins moved(fl::move(original));
     FL_CHECK_EQ(moved.bands(), 16u);
     FL_CHECK_EQ(moved.raw().size(), origSize);
     FL_CHECK_EQ(moved.raw()[0], firstVal);
 }
 
-FL_TEST_CASE("fl::FFTBins - clear") {
+FL_TEST_CASE("fl::audio::fft::Bins - clear") {
     auto samples = generateSine(1000.0f);
-    fl::FFTBins bins(16);
-    fl::FFT fft;
+    fl::audio::fft::Bins bins(16);
+    fl::audio::fft::FFT fft;
     fft.run(samples, &bins);
     FL_CHECK_GT(bins.raw().size(), 0u);
     bins.clear();
@@ -283,21 +283,21 @@ FL_TEST_CASE("fl::FFTBins - clear") {
     FL_CHECK_EQ(bins.bands(), 16u);  // bands unchanged
 }
 
-FL_TEST_CASE("fl::FFT_Args - defaults match documented values") {
-    fl::FFT_Args args;
+FL_TEST_CASE("fl::audio::fft::Args - defaults match documented values") {
+    fl::audio::fft::Args args;
     FL_CHECK_EQ(args.samples, 512);
     FL_CHECK_EQ(args.bands, 16);
     FL_CHECK_EQ(args.sample_rate, 44100);
 
     // Check floats with tolerance
-    FL_CHECK(fl::almost_equal(args.fmin, fl::FFT_Args::DefaultMinFrequency(), 0.1f));
-    FL_CHECK(fl::almost_equal(args.fmax, fl::FFT_Args::DefaultMaxFrequency(), 0.1f));
+    FL_CHECK(fl::almost_equal(args.fmin, fl::audio::fft::Args::DefaultMinFrequency(), 0.1f));
+    FL_CHECK(fl::almost_equal(args.fmax, fl::audio::fft::Args::DefaultMaxFrequency(), 0.1f));
 }
 
-FL_TEST_CASE("fl::FFT - run with sine wave concentrates energy") {
-    fl::FFT fft;
+FL_TEST_CASE("fl::audio::fft::FFT - run with sine wave concentrates energy") {
+    fl::audio::fft::FFT fft;
     auto samples = generateSine(1000.0f);  // 1kHz sine, within CQ range 90-14080 Hz
-    fl::FFTBins bins(16);
+    fl::audio::fft::Bins bins(16);
     fft.run(samples, &bins);
 
     FL_REQUIRE_GT(bins.raw().size(), 0u);
@@ -327,15 +327,15 @@ FL_TEST_CASE("fl::FFT - run with sine wave concentrates energy") {
     FL_CHECK_GT(maxVal, otherBinsAvg * 3.0f);  // Peak should be at least 3x the average of other bins
 }
 
-FL_TEST_CASE("fl::FFT - different frequencies produce different peak bins") {
-    fl::FFT fft;
+FL_TEST_CASE("fl::audio::fft::FFT - different frequencies produce different peak bins") {
+    fl::audio::fft::FFT fft;
 
     // Generate a bass tone (200 Hz) and a mid/treble tone (2000 Hz)
     auto bassSignal = generateSine(200.0f);
     auto trebleSignal = generateSine(2000.0f);
 
-    fl::FFTBins bassBins(16);
-    fl::FFTBins trebleBins(16);
+    fl::audio::fft::Bins bassBins(16);
+    fl::audio::fft::Bins trebleBins(16);
 
     fft.run(bassSignal, &bassBins);
     fft.run(trebleSignal, &trebleBins);
@@ -371,10 +371,10 @@ FL_TEST_CASE("fl::FFT - different frequencies produce different peak bins") {
     FL_CHECK_LT(bassPeakBin, treblePeakBin);
 }
 
-FL_TEST_CASE("fl::FFT - silence produces near-zero bins") {
-    fl::FFT fft;
+FL_TEST_CASE("fl::audio::fft::FFT - silence produces near-zero bins") {
+    fl::audio::fft::FFT fft;
     fl::vector<fl::i16> silence(512, 0);
-    fl::FFTBins bins(16);
+    fl::audio::fft::Bins bins(16);
     fft.run(silence, &bins);
 
     // All bins should be near zero
@@ -383,25 +383,25 @@ FL_TEST_CASE("fl::FFT - silence produces near-zero bins") {
     }
 }
 
-FL_TEST_CASE("fl::FFT_Args - equality operator") {
-    fl::FFT_Args args1;
-    fl::FFT_Args args2;
+FL_TEST_CASE("fl::audio::fft::Args - equality operator") {
+    fl::audio::fft::Args args1;
+    fl::audio::fft::Args args2;
     FL_CHECK(args1 == args2);
     FL_CHECK_FALSE(args1 != args2);
 
-    fl::FFT_Args args3(256, 8, 100.0f, 5000.0f, 22050);
+    fl::audio::fft::Args args3(256, 8, 100.0f, 5000.0f, 22050);
     FL_CHECK(args1 != args3);
 }
 
-FL_TEST_CASE("fl::FFT - sine wave maps to correct CQ bin") {
+FL_TEST_CASE("fl::audio::fft::FFT - sine wave maps to correct CQ bin") {
     const int bands = 16;
 
     float testFreqs[] = {300.0f, 440.0f, 1000.0f, 2000.0f};
 
     for (float freq : testFreqs) {
         auto samples = generateSine(freq);
-        fl::FFTBins bins(bands);
-        fl::FFT fft;
+        fl::audio::fft::Bins bins(bands);
+        fl::audio::fft::FFT fft;
         fft.run(samples, &bins);
 
         int peakBin = 0;
@@ -420,26 +420,26 @@ FL_TEST_CASE("fl::FFT - sine wave maps to correct CQ bin") {
     }
 }
 
-FL_TEST_CASE("fl::FFTBins - binToFreq known values") {
+FL_TEST_CASE("fl::audio::fft::Bins - binToFreq known values") {
     // Run FFT with silence to populate 16 bins with default params
     fl::vector<fl::i16> silence(512, 0);
-    fl::FFTBins bins(16);
-    fl::FFT fft;
+    fl::audio::fft::Bins bins(16);
+    fl::audio::fft::FFT fft;
     fft.run(silence, &bins);
 
     // Bin 0 = fmin
-    FL_CHECK(fl::almost_equal(bins.binToFreq(0), fl::FFT_Args::DefaultMinFrequency(), 0.1f));
+    FL_CHECK(fl::almost_equal(bins.binToFreq(0), fl::audio::fft::Args::DefaultMinFrequency(), 0.1f));
 
     // Bin 15 = fmax (within 5% due to fl:: math precision across wide range)
-    float expectedFmax = fl::FFT_Args::DefaultMaxFrequency();
+    float expectedFmax = fl::audio::fft::Args::DefaultMaxFrequency();
     float relError = fl::abs(bins.binToFreq(15) - expectedFmax) / expectedFmax;
     FL_CHECK_LT(relError, 0.05f);
 }
 
-FL_TEST_CASE("fl::FFTBins - freqToBin is inverse of binToFreq") {
+FL_TEST_CASE("fl::audio::fft::Bins - freqToBin is inverse of binToFreq") {
     fl::vector<fl::i16> silence(512, 0);
-    fl::FFTBins bins(16);
-    fl::FFT fft;
+    fl::audio::fft::Bins bins(16);
+    fl::audio::fft::FFT fft;
     fft.run(silence, &bins);
 
     for (int i = 0; i < 16; ++i) {
@@ -448,21 +448,21 @@ FL_TEST_CASE("fl::FFTBins - freqToBin is inverse of binToFreq") {
     }
 }
 
-FL_TEST_CASE("fl::FFTBins - freqToBin clamps to valid range") {
+FL_TEST_CASE("fl::audio::fft::Bins - freqToBin clamps to valid range") {
     fl::vector<fl::i16> silence(512, 0);
-    fl::FFTBins bins(16);
-    fl::FFT fft;
+    fl::audio::fft::Bins bins(16);
+    fl::audio::fft::FFT fft;
     fft.run(silence, &bins);
 
     FL_CHECK_EQ(bins.freqToBin(10.0f), 0);
     FL_CHECK_EQ(bins.freqToBin(50000.0f), 15);
 }
 
-FL_TEST_CASE("fl::FFTBins - linear bins redistribute energy") {
+FL_TEST_CASE("fl::audio::fft::Bins - linear bins redistribute energy") {
     const int bands = 16;
     auto samples = generateSine(440.0f);
-    fl::FFTBins bins(bands);
-    fl::FFT fft;
+    fl::audio::fft::Bins bins(bands);
+    fl::audio::fft::FFT fft;
     fft.run(samples, &bins);
 
     fl::span<const float> linear = bins.linear();
@@ -486,14 +486,14 @@ FL_TEST_CASE("fl::FFTBins - linear bins redistribute energy") {
     FL_CHECK_GT(linPeakVal, 0.0f);
 }
 
-FL_TEST_CASE("fl::FFTBins - multi-freq CQ and linear mapping") {
+FL_TEST_CASE("fl::audio::fft::Bins - multi-freq CQ and linear mapping") {
     const int bands = 16;
     float freqs[] = {440.0f, 900.0f, 1600.0f};
 
     for (float freq : freqs) {
         auto samples = generateSine(freq);
-        fl::FFTBins bins(bands);
-        fl::FFT fft;
+        fl::audio::fft::Bins bins(bands);
+        fl::audio::fft::FFT fft;
         fft.run(samples, &bins);
 
         // CQ bin check
@@ -526,9 +526,9 @@ FL_TEST_CASE("fl::FFTBins - multi-freq CQ and linear mapping") {
     }
 }
 
-FL_TEST_CASE("fl::FFTImpl - info reports log-spaced") {
-    fl::FFT_Args args;
-    fl::FFTImpl fft(args);
+FL_TEST_CASE("fl::audio::fft::Impl - info reports log-spaced") {
+    fl::audio::fft::Args args;
+    fl::audio::fft::Impl fft(args);
     fl::string info = fft.info();
 
     // Should contain "log-spaced" to indicate CQ layout
@@ -544,10 +544,10 @@ FL_TEST_CASE("fl::FFTImpl - info reports log-spaced") {
     FL_CHECK(hasLogSpaced);
 }
 
-FL_TEST_CASE("FFTBins - linear bins populated after FFT run") {
+FL_TEST_CASE("Bins - linear bins populated after FFT run") {
     auto samples = generateSine(1000.0f);
-    fl::FFTBins bins(16);
-    fl::FFT fft;
+    fl::audio::fft::Bins bins(16);
+    fl::audio::fft::FFT fft;
     fft.run(samples, &bins);
 
     FL_CHECK_EQ(bins.linear().size(), static_cast<fl::size>(16));
@@ -560,14 +560,14 @@ FL_TEST_CASE("FFTBins - linear bins populated after FFT run") {
     FL_CHECK(hasEnergy);
 }
 
-FL_TEST_CASE("FFTBins - linear bins peak at correct frequency") {
+FL_TEST_CASE("Bins - linear bins peak at correct frequency") {
     float testFreqs[] = {300.0f, 1000.0f, 2000.0f, 4000.0f};
     const int bands = 16;
 
     for (float freq : testFreqs) {
         auto samples = generateSine(freq);
-        fl::FFTBins bins(bands);
-        fl::FFT fft;
+        fl::audio::fft::Bins bins(bands);
+        fl::audio::fft::FFT fft;
         fft.run(samples, &bins);
 
         fl::span<const float> linear = bins.linear();
@@ -598,10 +598,10 @@ FL_TEST_CASE("FFTBins - linear bins peak at correct frequency") {
     }
 }
 
-FL_TEST_CASE("FFTBins - linear bins sine energy is concentrated") {
+FL_TEST_CASE("Bins - linear bins sine energy is concentrated") {
     auto samples = generateSine(1000.0f);
-    fl::FFTBins bins(16);
-    fl::FFT fft;
+    fl::audio::fft::Bins bins(16);
+    fl::audio::fft::FFT fft;
     fft.run(samples, &bins);
 
     fl::span<const float> linear = bins.linear();
@@ -620,10 +620,10 @@ FL_TEST_CASE("FFTBins - linear bins sine energy is concentrated") {
     FL_CHECK_GT(peakFraction, 0.25f);
 }
 
-FL_TEST_CASE("FFTBins - linear bins silence produces near-zero") {
+FL_TEST_CASE("Bins - linear bins silence produces near-zero") {
     fl::vector<fl::i16> silence(512, 0);
-    fl::FFTBins bins(16);
-    fl::FFT fft;
+    fl::audio::fft::Bins bins(16);
+    fl::audio::fft::FFT fft;
     fft.run(silence, &bins);
 
     for (fl::size i = 0; i < bins.linear().size(); ++i) {
@@ -631,14 +631,14 @@ FL_TEST_CASE("FFTBins - linear bins silence produces near-zero") {
     }
 }
 
-FL_TEST_CASE("FFTBins - linear bins copy/move preserve data") {
+FL_TEST_CASE("Bins - linear bins copy/move preserve data") {
     auto samples = generateSine(1000.0f);
-    fl::FFTBins bins(16);
-    fl::FFT fft;
+    fl::audio::fft::Bins bins(16);
+    fl::audio::fft::FFT fft;
     fft.run(samples, &bins);
 
     // Copy constructor
-    fl::FFTBins copy(bins);
+    fl::audio::fft::Bins copy(bins);
     FL_CHECK_EQ(copy.linear().size(), bins.linear().size());
     for (fl::size i = 0; i < bins.linear().size(); ++i) {
         FL_CHECK_EQ(copy.linear()[i], bins.linear()[i]);
@@ -647,17 +647,17 @@ FL_TEST_CASE("FFTBins - linear bins copy/move preserve data") {
     FL_CHECK_EQ(copy.linearFmax(), bins.linearFmax());
 
     // Move constructor
-    fl::FFTBins moved(fl::move(copy));
+    fl::audio::fft::Bins moved(fl::move(copy));
     FL_CHECK_EQ(moved.linear().size(), bins.linear().size());
     for (fl::size i = 0; i < bins.linear().size(); ++i) {
         FL_CHECK_EQ(moved.linear()[i], bins.linear()[i]);
     }
 }
 
-FL_TEST_CASE("FFTBins - linear bins clear resets") {
+FL_TEST_CASE("Bins - linear bins clear resets") {
     auto samples = generateSine(1000.0f);
-    fl::FFTBins bins(16);
-    fl::FFT fft;
+    fl::audio::fft::Bins bins(16);
+    fl::audio::fft::FFT fft;
     fft.run(samples, &bins);
 
     FL_CHECK_GT(bins.linear().size(), 0u);
@@ -719,8 +719,8 @@ bool isNaNCheck(float x) { return !(x == x); }
 
 FL_TEST_CASE("Binning adversarial - LOG_REBIN peak accuracy per bin") {
     const int bands = 16;
-    const float fmin = fl::FFT_Args::DefaultMinFrequency();
-    const float fmax = fl::FFT_Args::DefaultMaxFrequency();
+    const float fmin = fl::audio::fft::Args::DefaultMinFrequency();
+    const float fmax = fl::audio::fft::Args::DefaultMaxFrequency();
     float logRatio = fl::logf(fmax / fmin);
 
     int mismatches = 0;
@@ -730,9 +730,9 @@ FL_TEST_CASE("Binning adversarial - LOG_REBIN peak accuracy per bin") {
                             static_cast<float>(bands - 1));
 
         auto samples = makeAdversarialSine(centerFreq);
-        fl::FFTBins bins(bands);
-        fl::FFT_Args args(512, bands, fmin, fmax, 44100, fl::FFTMode::LOG_REBIN);
-        fl::FFTImpl fft(args);
+        fl::audio::fft::Bins bins(bands);
+        fl::audio::fft::Args args(512, bands, fmin, fmax, 44100, fl::audio::fft::Mode::LOG_REBIN);
+        fl::audio::fft::Impl fft(args);
         fft.run(samples, &bins);
 
         int peakBin = findPeakBin(bins.raw());
@@ -751,8 +751,8 @@ FL_TEST_CASE("Binning adversarial - LOG_REBIN peak accuracy per bin") {
 
 FL_TEST_CASE("Binning adversarial - CQ_OCTAVE peak accuracy per bin") {
     const int bands = 16;
-    const float fmin = fl::FFT_Args::DefaultMinFrequency();
-    const float fmax = fl::FFT_Args::DefaultMaxFrequency();
+    const float fmin = fl::audio::fft::Args::DefaultMinFrequency();
+    const float fmax = fl::audio::fft::Args::DefaultMaxFrequency();
     float logRatio = fl::logf(fmax / fmin);
 
     int mismatches = 0;
@@ -762,9 +762,9 @@ FL_TEST_CASE("Binning adversarial - CQ_OCTAVE peak accuracy per bin") {
                             static_cast<float>(bands - 1));
 
         auto samples = makeAdversarialSine(centerFreq);
-        fl::FFTBins bins(bands);
-        fl::FFT_Args args(512, bands, fmin, fmax, 44100, fl::FFTMode::CQ_OCTAVE);
-        fl::FFTImpl fft(args);
+        fl::audio::fft::Bins bins(bands);
+        fl::audio::fft::Args args(512, bands, fmin, fmax, 44100, fl::audio::fft::Mode::CQ_OCTAVE);
+        fl::audio::fft::Impl fft(args);
         fft.run(samples, &bins);
 
         int peakBin = findPeakBin(bins.raw());
@@ -785,8 +785,8 @@ FL_TEST_CASE("Binning adversarial - CQ_OCTAVE peak accuracy per bin") {
 
 FL_TEST_CASE("Binning adversarial - LOG_REBIN vs CQ_OCTAVE peak agreement") {
     const int bands = 16;
-    const float fmin = fl::FFT_Args::DefaultMinFrequency();
-    const float fmax = fl::FFT_Args::DefaultMaxFrequency();
+    const float fmin = fl::audio::fft::Args::DefaultMinFrequency();
+    const float fmax = fl::audio::fft::Args::DefaultMaxFrequency();
 
     float testFreqs[] = {200.0f, 300.0f, 500.0f, 800.0f, 1200.0f,
                          2000.0f, 3000.0f, 4000.0f};
@@ -795,14 +795,14 @@ FL_TEST_CASE("Binning adversarial - LOG_REBIN vs CQ_OCTAVE peak agreement") {
     for (float freq : testFreqs) {
         auto samples = makeAdversarialSine(freq);
 
-        fl::FFTBins logBins(bands);
-        fl::FFT_Args logArgs(512, bands, fmin, fmax, 44100, fl::FFTMode::LOG_REBIN);
-        fl::FFTImpl logFft(logArgs);
+        fl::audio::fft::Bins logBins(bands);
+        fl::audio::fft::Args logArgs(512, bands, fmin, fmax, 44100, fl::audio::fft::Mode::LOG_REBIN);
+        fl::audio::fft::Impl logFft(logArgs);
         logFft.run(samples, &logBins);
 
-        fl::FFTBins cqBins(bands);
-        fl::FFT_Args cqArgs(512, bands, fmin, fmax, 44100, fl::FFTMode::CQ_OCTAVE);
-        fl::FFTImpl cqFft(cqArgs);
+        fl::audio::fft::Bins cqBins(bands);
+        fl::audio::fft::Args cqArgs(512, bands, fmin, fmax, 44100, fl::audio::fft::Mode::CQ_OCTAVE);
+        fl::audio::fft::Impl cqFft(cqArgs);
         cqFft.run(samples, &cqBins);
 
         int logPeak = findPeakBin(logBins.raw());
@@ -832,11 +832,11 @@ FL_TEST_CASE("Binning adversarial - LOG_REBIN vs CQ_OCTAVE peak agreement") {
 
 FL_TEST_CASE("Binning adversarial - LOG_REBIN monotonicity sweep") {
     const int bands = 16;
-    const float fmin = fl::FFT_Args::DefaultMinFrequency();
-    const float fmax = fl::FFT_Args::DefaultMaxFrequency();
+    const float fmin = fl::audio::fft::Args::DefaultMinFrequency();
+    const float fmax = fl::audio::fft::Args::DefaultMaxFrequency();
 
-    fl::FFT_Args args(512, bands, fmin, fmax, 44100, fl::FFTMode::LOG_REBIN);
-    fl::FFTImpl fft(args);
+    fl::audio::fft::Args args(512, bands, fmin, fmax, 44100, fl::audio::fft::Mode::LOG_REBIN);
+    fl::audio::fft::Impl fft(args);
 
     const int numSteps = 30;
     float logRatio = fl::logf(fmax / fmin);
@@ -847,7 +847,7 @@ FL_TEST_CASE("Binning adversarial - LOG_REBIN monotonicity sweep") {
         float freq = fmin * fl::expf(logRatio * static_cast<float>(s) /
                                      static_cast<float>(numSteps - 1));
         auto samples = makeAdversarialSine(freq);
-        fl::FFTBins bins(bands);
+        fl::audio::fft::Bins bins(bands);
         fft.run(samples, &bins);
 
         int peak = findPeakBin(bins.raw());
@@ -864,11 +864,11 @@ FL_TEST_CASE("Binning adversarial - LOG_REBIN monotonicity sweep") {
 
 FL_TEST_CASE("Binning adversarial - CQ_OCTAVE monotonicity sweep") {
     const int bands = 16;
-    const float fmin = fl::FFT_Args::DefaultMinFrequency();
-    const float fmax = fl::FFT_Args::DefaultMaxFrequency();
+    const float fmin = fl::audio::fft::Args::DefaultMinFrequency();
+    const float fmax = fl::audio::fft::Args::DefaultMaxFrequency();
 
-    fl::FFT_Args args(512, bands, fmin, fmax, 44100, fl::FFTMode::CQ_OCTAVE);
-    fl::FFTImpl fft(args);
+    fl::audio::fft::Args args(512, bands, fmin, fmax, 44100, fl::audio::fft::Mode::CQ_OCTAVE);
+    fl::audio::fft::Impl fft(args);
 
     const int numSteps = 30;
     float logRatio = fl::logf(fmax / fmin);
@@ -879,7 +879,7 @@ FL_TEST_CASE("Binning adversarial - CQ_OCTAVE monotonicity sweep") {
         float freq = fmin * fl::expf(logRatio * static_cast<float>(s) /
                                      static_cast<float>(numSteps - 1));
         auto samples = makeAdversarialSine(freq);
-        fl::FFTBins bins(bands);
+        fl::audio::fft::Bins bins(bands);
         fft.run(samples, &bins);
 
         int peak = findPeakBin(bins.raw());
@@ -900,8 +900,8 @@ FL_TEST_CASE("Binning adversarial - LOG_REBIN energy bias check") {
     // Test that LOG_REBIN doesn't have extreme energy bias across bins.
     // Feed one sine per bin center, record peak energy in its expected bin.
     const int bands = 16;
-    const float fmin = fl::FFT_Args::DefaultMinFrequency();
-    const float fmax = fl::FFT_Args::DefaultMaxFrequency();
+    const float fmin = fl::audio::fft::Args::DefaultMinFrequency();
+    const float fmax = fl::audio::fft::Args::DefaultMaxFrequency();
     float logRatio = fl::logf(fmax / fmin);
 
     float peakEnergies[16] = {};
@@ -916,9 +916,9 @@ FL_TEST_CASE("Binning adversarial - LOG_REBIN energy bias check") {
         float freq = fl::sqrtf(edgeB * edgeB1); // geometric center
 
         auto samples = makeAdversarialSine(freq, 512, 44100.0f, 20000.0f);
-        fl::FFTBins bins(bands);
-        fl::FFT_Args args(512, bands, fmin, fmax, 44100, fl::FFTMode::LOG_REBIN);
-        fl::FFTImpl fft(args);
+        fl::audio::fft::Bins bins(bands);
+        fl::audio::fft::Args args(512, bands, fmin, fmax, 44100, fl::audio::fft::Mode::LOG_REBIN);
+        fl::audio::fft::Impl fft(args);
         fft.run(samples, &bins);
 
         FL_REQUIRE_EQ(bins.raw().size(), static_cast<fl::size>(bands));
@@ -956,17 +956,17 @@ FL_TEST_CASE("Binning adversarial - LOG_REBIN energy bias check") {
 
 FL_TEST_CASE("Binning adversarial - two-tone separation LOG_REBIN") {
     const int bands = 16;
-    const float fmin = fl::FFT_Args::DefaultMinFrequency();
-    const float fmax = fl::FFT_Args::DefaultMaxFrequency();
+    const float fmin = fl::audio::fft::Args::DefaultMinFrequency();
+    const float fmax = fl::audio::fft::Args::DefaultMaxFrequency();
 
     float logRatio = fl::logf(fmax / fmin);
     float freq1 = fmin * fl::expf(logRatio * 3.0f / 15.0f);
     float freq2 = fmin * fl::expf(logRatio * 12.0f / 15.0f);
 
     auto samples = makeTwoTone(freq1, freq2);
-    fl::FFTBins bins(bands);
-    fl::FFT_Args args(512, bands, fmin, fmax, 44100, fl::FFTMode::LOG_REBIN);
-    fl::FFTImpl fft(args);
+    fl::audio::fft::Bins bins(bands);
+    fl::audio::fft::Args args(512, bands, fmin, fmax, 44100, fl::audio::fft::Mode::LOG_REBIN);
+    fl::audio::fft::Impl fft(args);
     fft.run(samples, &bins);
 
     // Find two largest peaks
@@ -996,11 +996,11 @@ FL_TEST_CASE("Binning adversarial - two-tone separation LOG_REBIN") {
 FL_TEST_CASE("Binning adversarial - odd band count 7 LOG_REBIN") {
     const int bands = 7;
     auto samples = makeAdversarialSine(1000.0f);
-    fl::FFTBins bins(bands);
-    fl::FFT_Args args(512, bands, fl::FFT_Args::DefaultMinFrequency(),
-                      fl::FFT_Args::DefaultMaxFrequency(), 44100,
-                      fl::FFTMode::LOG_REBIN);
-    fl::FFTImpl fft(args);
+    fl::audio::fft::Bins bins(bands);
+    fl::audio::fft::Args args(512, bands, fl::audio::fft::Args::DefaultMinFrequency(),
+                      fl::audio::fft::Args::DefaultMaxFrequency(), 44100,
+                      fl::audio::fft::Mode::LOG_REBIN);
+    fl::audio::fft::Impl fft(args);
     fft.run(samples, &bins);
 
     FL_CHECK_EQ(bins.raw().size(), static_cast<fl::size>(bands));
@@ -1018,11 +1018,11 @@ FL_TEST_CASE("Binning adversarial - odd band count 7 LOG_REBIN") {
 FL_TEST_CASE("Binning adversarial - odd band count 13 CQ_OCTAVE") {
     const int bands = 13;
     auto samples = makeAdversarialSine(1000.0f);
-    fl::FFTBins bins(bands);
-    fl::FFT_Args args(512, bands, fl::FFT_Args::DefaultMinFrequency(),
-                      fl::FFT_Args::DefaultMaxFrequency(), 44100,
-                      fl::FFTMode::CQ_OCTAVE);
-    fl::FFTImpl fft(args);
+    fl::audio::fft::Bins bins(bands);
+    fl::audio::fft::Args args(512, bands, fl::audio::fft::Args::DefaultMinFrequency(),
+                      fl::audio::fft::Args::DefaultMaxFrequency(), 44100,
+                      fl::audio::fft::Mode::CQ_OCTAVE);
+    fl::audio::fft::Impl fft(args);
     fft.run(samples, &bins);
 
     FL_CHECK_EQ(bins.raw().size(), static_cast<fl::size>(bands));
@@ -1041,12 +1041,12 @@ FL_TEST_CASE("Binning adversarial - odd band count 13 CQ_OCTAVE") {
 
 FL_TEST_CASE("Binning adversarial - bin boundary frequency assignment") {
     const int bands = 16;
-    const float fmin = fl::FFT_Args::DefaultMinFrequency();
-    const float fmax = fl::FFT_Args::DefaultMaxFrequency();
+    const float fmin = fl::audio::fft::Args::DefaultMinFrequency();
+    const float fmax = fl::audio::fft::Args::DefaultMaxFrequency();
     float logRatio = fl::logf(fmax / fmin);
 
-    fl::FFT_Args args(512, bands, fmin, fmax, 44100, fl::FFTMode::LOG_REBIN);
-    fl::FFTImpl fft(args);
+    fl::audio::fft::Args args(512, bands, fmin, fmax, 44100, fl::audio::fft::Mode::LOG_REBIN);
+    fl::audio::fft::Impl fft(args);
 
     for (int b = 0; b < bands - 1; ++b) {
         float centerB = fmin * fl::expf(logRatio * static_cast<float>(b) /
@@ -1056,7 +1056,7 @@ FL_TEST_CASE("Binning adversarial - bin boundary frequency assignment") {
         float boundary = fl::sqrtf(centerB * centerB1);
 
         auto samples = makeAdversarialSine(boundary);
-        fl::FFTBins bins(bands);
+        fl::audio::fft::Bins bins(bands);
         fft.run(samples, &bins);
 
         int peak = findPeakBin(bins.raw());
@@ -1074,12 +1074,12 @@ FL_TEST_CASE("Binning adversarial - bin boundary frequency assignment") {
 
 FL_TEST_CASE("Binning adversarial - sine at fmin lands in bin 0") {
     const int bands = 16;
-    auto samples = makeAdversarialSine(fl::FFT_Args::DefaultMinFrequency());
-    fl::FFTBins bins(bands);
-    fl::FFT_Args args(512, bands, fl::FFT_Args::DefaultMinFrequency(),
-                      fl::FFT_Args::DefaultMaxFrequency(), 44100,
-                      fl::FFTMode::LOG_REBIN);
-    fl::FFTImpl fft(args);
+    auto samples = makeAdversarialSine(fl::audio::fft::Args::DefaultMinFrequency());
+    fl::audio::fft::Bins bins(bands);
+    fl::audio::fft::Args args(512, bands, fl::audio::fft::Args::DefaultMinFrequency(),
+                      fl::audio::fft::Args::DefaultMaxFrequency(), 44100,
+                      fl::audio::fft::Mode::LOG_REBIN);
+    fl::audio::fft::Impl fft(args);
     fft.run(samples, &bins);
     int peak = findPeakBin(bins.raw());
     FL_CHECK_LE(peak, 1);
@@ -1087,12 +1087,12 @@ FL_TEST_CASE("Binning adversarial - sine at fmin lands in bin 0") {
 
 FL_TEST_CASE("Binning adversarial - sine at fmax lands in last bin") {
     const int bands = 16;
-    auto samples = makeAdversarialSine(fl::FFT_Args::DefaultMaxFrequency());
-    fl::FFTBins bins(bands);
-    fl::FFT_Args args(512, bands, fl::FFT_Args::DefaultMinFrequency(),
-                      fl::FFT_Args::DefaultMaxFrequency(), 44100,
-                      fl::FFTMode::LOG_REBIN);
-    fl::FFTImpl fft(args);
+    auto samples = makeAdversarialSine(fl::audio::fft::Args::DefaultMaxFrequency());
+    fl::audio::fft::Bins bins(bands);
+    fl::audio::fft::Args args(512, bands, fl::audio::fft::Args::DefaultMinFrequency(),
+                      fl::audio::fft::Args::DefaultMaxFrequency(), 44100,
+                      fl::audio::fft::Mode::LOG_REBIN);
+    fl::audio::fft::Impl fft(args);
     fft.run(samples, &bins);
     int peak = findPeakBin(bins.raw());
     FL_CHECK_GE(peak, bands - 2);
@@ -1100,14 +1100,14 @@ FL_TEST_CASE("Binning adversarial - sine at fmax lands in last bin") {
 
 FL_TEST_CASE("Binning adversarial - sine below fmin has minimal energy") {
     const int bands = 16;
-    const float fmin = fl::FFT_Args::DefaultMinFrequency();
-    const float fmax = fl::FFT_Args::DefaultMaxFrequency();
+    const float fmin = fl::audio::fft::Args::DefaultMinFrequency();
+    const float fmax = fl::audio::fft::Args::DefaultMaxFrequency();
 
-    fl::FFT_Args args(512, bands, fmin, fmax, 44100, fl::FFTMode::LOG_REBIN);
-    fl::FFTImpl fft(args);
+    fl::audio::fft::Args args(512, bands, fmin, fmax, 44100, fl::audio::fft::Mode::LOG_REBIN);
+    fl::audio::fft::Impl fft(args);
 
     auto belowSamples = makeAdversarialSine(20.0f);
-    fl::FFTBins belowBins(bands);
+    fl::audio::fft::Bins belowBins(bands);
     fft.run(belowSamples, &belowBins);
 
     float totalBelow = 0.0f;
@@ -1116,7 +1116,7 @@ FL_TEST_CASE("Binning adversarial - sine below fmin has minimal energy") {
     }
 
     auto inRangeSamples = makeAdversarialSine(1000.0f);
-    fl::FFTBins inRangeBins(bands);
+    fl::audio::fft::Bins inRangeBins(bands);
     fft.run(inRangeSamples, &inRangeBins);
 
     float totalInRange = 0.0f;
@@ -1135,17 +1135,17 @@ FL_TEST_CASE("Binning adversarial - sine below fmin has minimal energy") {
 
 FL_TEST_CASE("Binning adversarial - freqToBin matches actual LOG_REBIN peak") {
     const int bands = 16;
-    const float fmin = fl::FFT_Args::DefaultMinFrequency();
-    const float fmax = fl::FFT_Args::DefaultMaxFrequency();
+    const float fmin = fl::audio::fft::Args::DefaultMinFrequency();
+    const float fmax = fl::audio::fft::Args::DefaultMaxFrequency();
 
     float testFreqs[] = {200.0f, 400.0f, 800.0f, 1500.0f, 3000.0f, 4500.0f};
     int mismatches = 0;
 
     for (float freq : testFreqs) {
         auto samples = makeAdversarialSine(freq);
-        fl::FFTBins bins(bands);
-        fl::FFT_Args args(512, bands, fmin, fmax, 44100, fl::FFTMode::LOG_REBIN);
-        fl::FFTImpl fft(args);
+        fl::audio::fft::Bins bins(bands);
+        fl::audio::fft::Args args(512, bands, fmin, fmax, 44100, fl::audio::fft::Mode::LOG_REBIN);
+        fl::audio::fft::Impl fft(args);
         fft.run(samples, &bins);
 
         int actualPeak = findPeakBin(bins.raw());
@@ -1169,16 +1169,16 @@ FL_TEST_CASE("Binning adversarial - freqToBin matches actual LOG_REBIN peak") {
 
 FL_TEST_CASE("Binning adversarial - 64 bins CQ_OCTAVE peak accuracy") {
     const int bands = 64;
-    const float fmin = fl::FFT_Args::DefaultMinFrequency();
-    const float fmax = fl::FFT_Args::DefaultMaxFrequency();
+    const float fmin = fl::audio::fft::Args::DefaultMinFrequency();
+    const float fmax = fl::audio::fft::Args::DefaultMaxFrequency();
 
     float testFreqs[] = {200.0f, 500.0f, 1000.0f, 2000.0f, 4000.0f};
 
     for (float freq : testFreqs) {
         auto samples = makeAdversarialSine(freq);
-        fl::FFTBins bins(bands);
-        fl::FFT_Args args(512, bands, fmin, fmax, 44100, fl::FFTMode::CQ_OCTAVE);
-        fl::FFTImpl fft(args);
+        fl::audio::fft::Bins bins(bands);
+        fl::audio::fft::Args args(512, bands, fmin, fmax, 44100, fl::audio::fft::Mode::CQ_OCTAVE);
+        fl::audio::fft::Impl fft(args);
         fft.run(samples, &bins);
 
         FL_CHECK_EQ(bins.raw().size(), static_cast<fl::size>(bands));
@@ -1201,8 +1201,8 @@ FL_TEST_CASE("Binning adversarial - 64 bins CQ_OCTAVE peak accuracy") {
 
 FL_TEST_CASE("Binning adversarial - no NaN in any output for edge signals") {
     const int bands = 16;
-    const float fmin = fl::FFT_Args::DefaultMinFrequency();
-    const float fmax = fl::FFT_Args::DefaultMaxFrequency();
+    const float fmin = fl::audio::fft::Args::DefaultMinFrequency();
+    const float fmax = fl::audio::fft::Args::DefaultMaxFrequency();
 
     fl::vector<fl::i16> silence(512, 0);
     fl::vector<fl::i16> dc(512, 32767);
@@ -1215,14 +1215,14 @@ FL_TEST_CASE("Binning adversarial - no NaN in any output for edge signals") {
 
     fl::vector<fl::i16>* signals[] = {&silence, &dc, &impulse, &nyquist};
     const char* names[] = {"silence", "DC", "impulse", "nyquist"};
-    fl::FFTMode modes[] = {fl::FFTMode::LOG_REBIN, fl::FFTMode::CQ_OCTAVE};
+    fl::audio::fft::Mode modes[] = {fl::audio::fft::Mode::LOG_REBIN, fl::audio::fft::Mode::CQ_OCTAVE};
     const char* modeNames[] = {"LOG_REBIN", "CQ_OCTAVE"};
 
     for (int m = 0; m < 2; ++m) {
         for (int s = 0; s < 4; ++s) {
-            fl::FFTBins bins(bands);
-            fl::FFT_Args args(512, bands, fmin, fmax, 44100, modes[m]);
-            fl::FFTImpl fft(args);
+            fl::audio::fft::Bins bins(bands);
+            fl::audio::fft::Args args(512, bands, fmin, fmax, 44100, modes[m]);
+            fl::audio::fft::Impl fft(args);
             fft.run(*signals[s], &bins);
 
             for (int i = 0; i < bands; ++i) {
@@ -1247,9 +1247,9 @@ FL_TEST_CASE("Binning adversarial - narrow frequency range 1000-2000 Hz") {
 
     auto samples = makeAdversarialSine(1414.0f);
 
-    fl::FFTBins logBins(bands);
-    fl::FFT_Args logArgs(512, bands, 1000.0f, 2000.0f, 44100, fl::FFTMode::LOG_REBIN);
-    fl::FFTImpl logFft(logArgs);
+    fl::audio::fft::Bins logBins(bands);
+    fl::audio::fft::Args logArgs(512, bands, 1000.0f, 2000.0f, 44100, fl::audio::fft::Mode::LOG_REBIN);
+    fl::audio::fft::Impl logFft(logArgs);
     logFft.run(samples, &logBins);
 
     FL_CHECK_EQ(logBins.raw().size(), static_cast<fl::size>(bands));
@@ -1260,9 +1260,9 @@ FL_TEST_CASE("Binning adversarial - narrow frequency range 1000-2000 Hz") {
         FL_CHECK_FALSE(isNaNCheck(logBins.raw()[i]));
     }
 
-    fl::FFTBins cqBins(bands);
-    fl::FFT_Args cqArgs(512, bands, 1000.0f, 2000.0f, 44100, fl::FFTMode::CQ_OCTAVE);
-    fl::FFTImpl cqFft(cqArgs);
+    fl::audio::fft::Bins cqBins(bands);
+    fl::audio::fft::Args cqArgs(512, bands, 1000.0f, 2000.0f, 44100, fl::audio::fft::Mode::CQ_OCTAVE);
+    fl::audio::fft::Impl cqFft(cqArgs);
     cqFft.run(samples, &cqBins);
 
     FL_CHECK_EQ(cqBins.raw().size(), static_cast<fl::size>(bands));
@@ -1279,11 +1279,11 @@ FL_TEST_CASE("Binning adversarial - narrow frequency range 1000-2000 Hz") {
 FL_TEST_CASE("Binning adversarial - LOG_REBIN energy concentration") {
     const int bands = 16;
     auto samples = makeAdversarialSine(1000.0f);
-    fl::FFTBins bins(bands);
-    fl::FFT_Args args(512, bands, fl::FFT_Args::DefaultMinFrequency(),
-                      fl::FFT_Args::DefaultMaxFrequency(), 44100,
-                      fl::FFTMode::LOG_REBIN);
-    fl::FFTImpl fft(args);
+    fl::audio::fft::Bins bins(bands);
+    fl::audio::fft::Args args(512, bands, fl::audio::fft::Args::DefaultMinFrequency(),
+                      fl::audio::fft::Args::DefaultMaxFrequency(), 44100,
+                      fl::audio::fft::Mode::LOG_REBIN);
+    fl::audio::fft::Impl fft(args);
     fft.run(samples, &bins);
 
     float totalEnergy = 0.0f;
@@ -1306,11 +1306,11 @@ FL_TEST_CASE("Binning adversarial - LOG_REBIN energy concentration") {
 FL_TEST_CASE("Binning adversarial - binToFreq/freqToBin roundtrip LOG_REBIN") {
     const int bands = 16;
     auto samples = makeAdversarialSine(1000.0f);
-    fl::FFTBins bins(bands);
-    fl::FFT_Args args(512, bands, fl::FFT_Args::DefaultMinFrequency(),
-                      fl::FFT_Args::DefaultMaxFrequency(), 44100,
-                      fl::FFTMode::LOG_REBIN);
-    fl::FFTImpl fft(args);
+    fl::audio::fft::Bins bins(bands);
+    fl::audio::fft::Args args(512, bands, fl::audio::fft::Args::DefaultMinFrequency(),
+                      fl::audio::fft::Args::DefaultMaxFrequency(), 44100,
+                      fl::audio::fft::Mode::LOG_REBIN);
+    fl::audio::fft::Impl fft(args);
     fft.run(samples, &bins);
 
     for (int i = 0; i < bands; ++i) {
@@ -1320,82 +1320,82 @@ FL_TEST_CASE("Binning adversarial - binToFreq/freqToBin roundtrip LOG_REBIN") {
     }
 }
 
-FL_TEST_CASE("FFT_Args::resolveModeEnums") {
+FL_TEST_CASE("Args::resolveModeEnums") {
     const int N = 512;
-    const float fmin = fl::FFT_Args::DefaultMinFrequency();
-    const float fmax = fl::FFT_Args::DefaultMaxFrequency();
+    const float fmin = fl::audio::fft::Args::DefaultMinFrequency();
+    const float fmax = fl::audio::fft::Args::DefaultMaxFrequency();
 
     // AUTO mode + AUTO window, <=32 bins → LOG_REBIN + BLACKMAN_HARRIS
     {
-        fl::FFTMode mode = fl::FFTMode::AUTO;
-        fl::FFTWindow window = fl::FFTWindow::AUTO;
-        fl::FFT_Args::resolveModeEnums(mode, window, 16, N, fmin, fmax);
-        FL_CHECK_EQ(static_cast<int>(mode), static_cast<int>(fl::FFTMode::LOG_REBIN));
-        FL_CHECK_EQ(static_cast<int>(window), static_cast<int>(fl::FFTWindow::BLACKMAN_HARRIS));
+        fl::audio::fft::Mode mode = fl::audio::fft::Mode::AUTO;
+        fl::audio::fft::Window window = fl::audio::fft::Window::AUTO;
+        fl::audio::fft::Args::resolveModeEnums(mode, window, 16, N, fmin, fmax);
+        FL_CHECK_EQ(static_cast<int>(mode), static_cast<int>(fl::audio::fft::Mode::LOG_REBIN));
+        FL_CHECK_EQ(static_cast<int>(window), static_cast<int>(fl::audio::fft::Window::BLACKMAN_HARRIS));
     }
 
     // AUTO mode + AUTO window, >32 bins → CQ mode + HANNING
     {
-        fl::FFTMode mode = fl::FFTMode::AUTO;
-        fl::FFTWindow window = fl::FFTWindow::AUTO;
-        fl::FFT_Args::resolveModeEnums(mode, window, 64, N, fmin, fmax);
+        fl::audio::fft::Mode mode = fl::audio::fft::Mode::AUTO;
+        fl::audio::fft::Window window = fl::audio::fft::Window::AUTO;
+        fl::audio::fft::Args::resolveModeEnums(mode, window, 64, N, fmin, fmax);
         // Should be CQ_NAIVE or CQ_OCTAVE depending on kernel conditioning
-        FL_CHECK(mode == fl::FFTMode::CQ_NAIVE || mode == fl::FFTMode::CQ_OCTAVE);
-        FL_CHECK_EQ(static_cast<int>(window), static_cast<int>(fl::FFTWindow::HANNING));
+        FL_CHECK(mode == fl::audio::fft::Mode::CQ_NAIVE || mode == fl::audio::fft::Mode::CQ_OCTAVE);
+        FL_CHECK_EQ(static_cast<int>(window), static_cast<int>(fl::audio::fft::Window::HANNING));
     }
 
     // Explicit LOG_REBIN + AUTO window → BLACKMAN_HARRIS
     {
-        fl::FFTMode mode = fl::FFTMode::LOG_REBIN;
-        fl::FFTWindow window = fl::FFTWindow::AUTO;
-        fl::FFT_Args::resolveModeEnums(mode, window, 16, N, fmin, fmax);
-        FL_CHECK_EQ(static_cast<int>(mode), static_cast<int>(fl::FFTMode::LOG_REBIN));
-        FL_CHECK_EQ(static_cast<int>(window), static_cast<int>(fl::FFTWindow::BLACKMAN_HARRIS));
+        fl::audio::fft::Mode mode = fl::audio::fft::Mode::LOG_REBIN;
+        fl::audio::fft::Window window = fl::audio::fft::Window::AUTO;
+        fl::audio::fft::Args::resolveModeEnums(mode, window, 16, N, fmin, fmax);
+        FL_CHECK_EQ(static_cast<int>(mode), static_cast<int>(fl::audio::fft::Mode::LOG_REBIN));
+        FL_CHECK_EQ(static_cast<int>(window), static_cast<int>(fl::audio::fft::Window::BLACKMAN_HARRIS));
     }
 
     // Explicit CQ_OCTAVE + AUTO window → HANNING
     {
-        fl::FFTMode mode = fl::FFTMode::CQ_OCTAVE;
-        fl::FFTWindow window = fl::FFTWindow::AUTO;
-        fl::FFT_Args::resolveModeEnums(mode, window, 16, N, fmin, fmax);
-        FL_CHECK_EQ(static_cast<int>(mode), static_cast<int>(fl::FFTMode::CQ_OCTAVE));
-        FL_CHECK_EQ(static_cast<int>(window), static_cast<int>(fl::FFTWindow::HANNING));
+        fl::audio::fft::Mode mode = fl::audio::fft::Mode::CQ_OCTAVE;
+        fl::audio::fft::Window window = fl::audio::fft::Window::AUTO;
+        fl::audio::fft::Args::resolveModeEnums(mode, window, 16, N, fmin, fmax);
+        FL_CHECK_EQ(static_cast<int>(mode), static_cast<int>(fl::audio::fft::Mode::CQ_OCTAVE));
+        FL_CHECK_EQ(static_cast<int>(window), static_cast<int>(fl::audio::fft::Window::HANNING));
     }
 
     // Explicit CQ_HYBRID + AUTO window → BLACKMAN_HARRIS
     {
-        fl::FFTMode mode = fl::FFTMode::CQ_HYBRID;
-        fl::FFTWindow window = fl::FFTWindow::AUTO;
-        fl::FFT_Args::resolveModeEnums(mode, window, 16, N, fmin, fmax);
-        FL_CHECK_EQ(static_cast<int>(mode), static_cast<int>(fl::FFTMode::CQ_HYBRID));
-        FL_CHECK_EQ(static_cast<int>(window), static_cast<int>(fl::FFTWindow::BLACKMAN_HARRIS));
+        fl::audio::fft::Mode mode = fl::audio::fft::Mode::CQ_HYBRID;
+        fl::audio::fft::Window window = fl::audio::fft::Window::AUTO;
+        fl::audio::fft::Args::resolveModeEnums(mode, window, 16, N, fmin, fmax);
+        FL_CHECK_EQ(static_cast<int>(mode), static_cast<int>(fl::audio::fft::Mode::CQ_HYBRID));
+        FL_CHECK_EQ(static_cast<int>(window), static_cast<int>(fl::audio::fft::Window::BLACKMAN_HARRIS));
     }
 
     // Explicit CQ_NAIVE + AUTO window → HANNING
     {
-        fl::FFTMode mode = fl::FFTMode::CQ_NAIVE;
-        fl::FFTWindow window = fl::FFTWindow::AUTO;
-        fl::FFT_Args::resolveModeEnums(mode, window, 16, N, fmin, fmax);
-        FL_CHECK_EQ(static_cast<int>(mode), static_cast<int>(fl::FFTMode::CQ_NAIVE));
-        FL_CHECK_EQ(static_cast<int>(window), static_cast<int>(fl::FFTWindow::HANNING));
+        fl::audio::fft::Mode mode = fl::audio::fft::Mode::CQ_NAIVE;
+        fl::audio::fft::Window window = fl::audio::fft::Window::AUTO;
+        fl::audio::fft::Args::resolveModeEnums(mode, window, 16, N, fmin, fmax);
+        FL_CHECK_EQ(static_cast<int>(mode), static_cast<int>(fl::audio::fft::Mode::CQ_NAIVE));
+        FL_CHECK_EQ(static_cast<int>(window), static_cast<int>(fl::audio::fft::Window::HANNING));
     }
 
     // Non-AUTO values are preserved
     {
-        fl::FFTMode mode = fl::FFTMode::LOG_REBIN;
-        fl::FFTWindow window = fl::FFTWindow::HANNING;
-        fl::FFT_Args::resolveModeEnums(mode, window, 16, N, fmin, fmax);
-        FL_CHECK_EQ(static_cast<int>(mode), static_cast<int>(fl::FFTMode::LOG_REBIN));
-        FL_CHECK_EQ(static_cast<int>(window), static_cast<int>(fl::FFTWindow::HANNING));
+        fl::audio::fft::Mode mode = fl::audio::fft::Mode::LOG_REBIN;
+        fl::audio::fft::Window window = fl::audio::fft::Window::HANNING;
+        fl::audio::fft::Args::resolveModeEnums(mode, window, 16, N, fmin, fmax);
+        FL_CHECK_EQ(static_cast<int>(mode), static_cast<int>(fl::audio::fft::Mode::LOG_REBIN));
+        FL_CHECK_EQ(static_cast<int>(window), static_cast<int>(fl::audio::fft::Window::HANNING));
     }
 
     // NONE window is preserved
     {
-        fl::FFTMode mode = fl::FFTMode::AUTO;
-        fl::FFTWindow window = fl::FFTWindow::NONE;
-        fl::FFT_Args::resolveModeEnums(mode, window, 16, N, fmin, fmax);
-        FL_CHECK_EQ(static_cast<int>(mode), static_cast<int>(fl::FFTMode::LOG_REBIN));
-        FL_CHECK_EQ(static_cast<int>(window), static_cast<int>(fl::FFTWindow::NONE));
+        fl::audio::fft::Mode mode = fl::audio::fft::Mode::AUTO;
+        fl::audio::fft::Window window = fl::audio::fft::Window::NONE;
+        fl::audio::fft::Args::resolveModeEnums(mode, window, 16, N, fmin, fmax);
+        FL_CHECK_EQ(static_cast<int>(mode), static_cast<int>(fl::audio::fft::Mode::LOG_REBIN));
+        FL_CHECK_EQ(static_cast<int>(window), static_cast<int>(fl::audio::fft::Window::NONE));
     }
 }
 

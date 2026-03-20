@@ -1,6 +1,6 @@
 #include "fl/audio/audio_reactive.h"
 #include "fl/audio/audio_processor.h"
-#include "fl/audio/detectors/equalizer.h"
+#include "fl/audio/detector/equalizer.h"
 #include "fl/audio/input.h"
 #include "audio/test_helpers.hpp"
 #include "fl/audio/audio.h"
@@ -17,23 +17,23 @@ FL_TEST_FILE(FL_FILEPATH) {
 using namespace fl;
 using namespace fl::test;
 
-FL_TEST_CASE("AudioReactive basic functionality") {
+FL_TEST_CASE("audio::Reactive basic functionality") {
     // Test basic initialization
-    AudioReactive audio;
-    AudioReactiveConfig config;
+    audio::Reactive audio;
+    audio::ReactiveConfig config;
     config.sampleRate = 22050;
     config.gain = 128;
-    // AGC removed — gain is now controlled via AudioProcessor::setGain()
+    // AGC removed — gain is now controlled via Processor::setGain()
     
     audio.begin(config);
     
     // Check initial state
-    const AudioData& data = audio.getData();
+    const audio::Data& data = audio.getData();
     FL_CHECK(data.volume == 0.0f);
     FL_CHECK(data.volumeRaw == 0.0f);
     FL_CHECK_FALSE(data.beatDetected);
     
-    // Test adding samples - Create AudioSample and add it
+    // Test adding samples - Create audio::Sample and add it
     // Reduced from 1000 to 500 samples for performance (still provides excellent coverage)
     fl::vector<int16_t> samples;
     samples.reserve(500);
@@ -45,29 +45,29 @@ FL_TEST_CASE("AudioReactive basic functionality") {
         samples.push_back(sample);
     }
     
-    // Create AudioSample from our generated samples with timestamp
-    AudioSampleImplPtr impl = fl::make_shared<AudioSampleImpl>();
+    // Create audio::Sample from our generated samples with timestamp
+    audio::SampleImplPtr impl = fl::make_shared<audio::SampleImpl>();
     uint32_t testTimestamp = 1234567; // Test timestamp value
     impl->assign(samples.begin(), samples.end(), testTimestamp);
-    AudioSample audioSample(impl);
+    audio::Sample audioSample(impl);
     
-    // Process the audio sample directly (timestamp comes from AudioSample)
+    // Process the audio sample directly (timestamp comes from audio::Sample)
     audio.processSample(audioSample);
     
     // Check that we detected some audio
-    const AudioData& processedData = audio.getData();
+    const audio::Data& processedData = audio.getData();
     FL_CHECK(processedData.volume > 0.0f);
     
-    // Verify that the timestamp was properly captured from the AudioSample
+    // Verify that the timestamp was properly captured from the audio::Sample
     FL_CHECK(processedData.timestamp == testTimestamp);
     
-    // Verify that the AudioSample correctly stores and returns its timestamp
+    // Verify that the audio::Sample correctly stores and returns its timestamp
     FL_CHECK(audioSample.timestamp() == testTimestamp);
 }
 
-FL_TEST_CASE("AudioReactive convenience functions") {
-    AudioReactive audio;
-    AudioReactiveConfig config;
+FL_TEST_CASE("audio::Reactive convenience functions") {
+    audio::Reactive audio;
+    audio::ReactiveConfig config;
     config.sampleRate = 22050;
     audio.begin(config);
     
@@ -86,11 +86,11 @@ FL_TEST_CASE("AudioReactive convenience functions") {
     (void)beat; // Suppress unused variable warning
 }
 
-FL_TEST_CASE("AudioReactive enhanced beat detection") {
-    AudioReactive audio;
-    AudioReactiveConfig config;
-    // Use 44100 Hz to match AudioSample::fft() default sample rate.
-    // AudioSample::fft() currently hardcodes 44100 Hz (see TODO in audio.cpp.hpp).
+FL_TEST_CASE("audio::Reactive enhanced beat detection") {
+    audio::Reactive audio;
+    audio::ReactiveConfig config;
+    // Use 44100 Hz to match Sample::fft() default sample rate.
+    // Sample::fft() currently hardcodes 44100 Hz (see TODO in audio.cpp.hpp).
     config.sampleRate = 44100;
     config.enableSpectralFlux = true;
     config.enableMultiBand = true;
@@ -121,7 +121,7 @@ FL_TEST_CASE("AudioReactive enhanced beat detection") {
 
     // Create a bass-heavy sample (low frequency)
     // Use 200 Hz which is within the CQ kernel range (fmin=90 Hz)
-    // and 512 samples to match FFT default sample count
+    // and 512 samples to match audio::fft::FFT default sample count
     fl::vector<int16_t> bassySamples;
     bassySamples.reserve(512);
 
@@ -132,24 +132,24 @@ FL_TEST_CASE("AudioReactive enhanced beat detection") {
         bassySamples.push_back(sample);
     }
     
-    // Create AudioSample
-    AudioSampleImplPtr impl = fl::make_shared<AudioSampleImpl>();
+    // Create audio::Sample
+    audio::SampleImplPtr impl = fl::make_shared<audio::SampleImpl>();
     uint32_t timestamp = 1000;
     impl->assign(bassySamples.begin(), bassySamples.end(), timestamp);
-    AudioSample bassySample(impl);
+    audio::Sample bassySample(impl);
     
     // Process the sample
     audio.processSample(bassySample);
     
     // Check that we detected some bass energy
-    const AudioData& data = audio.getData();
+    const audio::Data& data = audio.getData();
     FL_CHECK(data.bassEnergy > 0.0f);
     FL_CHECK(data.spectralFlux >= 0.0f);
 }
 
-FL_TEST_CASE("AudioReactive multi-band beat detection") {
-    AudioReactive audio;
-    AudioReactiveConfig config;
+FL_TEST_CASE("audio::Reactive multi-band beat detection") {
+    audio::Reactive audio;
+    audio::ReactiveConfig config;
     config.enableMultiBand = true;
     config.bassThreshold = 0.05f;  // Lower thresholds for testing
     config.midThreshold = 0.05f;
@@ -174,17 +174,17 @@ FL_TEST_CASE("AudioReactive multi-band beat detection") {
         loudSamples.push_back(sample);
     }
     
-    // Create AudioSample
-    AudioSampleImplPtr impl = fl::make_shared<AudioSampleImpl>();
+    // Create audio::Sample
+    audio::SampleImplPtr impl = fl::make_shared<audio::SampleImpl>();
     uint32_t timestamp = 2000;
     impl->assign(loudSamples.begin(), loudSamples.end(), timestamp);
-    AudioSample loudSample(impl);
+    audio::Sample loudSample(impl);
     
     // Process a quiet sample first to establish baseline
     fl::vector<int16_t> quietSamples(1000, 100); // Very quiet
-    AudioSampleImplPtr quietImpl = fl::make_shared<AudioSampleImpl>();
+    audio::SampleImplPtr quietImpl = fl::make_shared<audio::SampleImpl>();
     quietImpl->assign(quietSamples.begin(), quietSamples.end(), 1500);
-    AudioSample quietSample(quietImpl);
+    audio::Sample quietSample(quietImpl);
     audio.processSample(quietSample);
     
     // Now process loud sample (should trigger beats due to energy increase)
@@ -196,9 +196,9 @@ FL_TEST_CASE("AudioReactive multi-band beat detection") {
     FL_CHECK(audio.getTrebleEnergy() > 0.0f);
 }
 
-FL_TEST_CASE("AudioReactive spectral flux detection") {
-    AudioReactive audio;
-    AudioReactiveConfig config;
+FL_TEST_CASE("audio::Reactive spectral flux detection") {
+    audio::Reactive audio;
+    audio::ReactiveConfig config;
     config.enableSpectralFlux = true;
     config.spectralFluxThreshold = 0.01f; // Low threshold for testing
     
@@ -225,17 +225,17 @@ FL_TEST_CASE("AudioReactive spectral flux detection") {
     }
     
     // Process first sample
-    AudioSampleImplPtr impl1 = fl::make_shared<AudioSampleImpl>();
+    audio::SampleImplPtr impl1 = fl::make_shared<audio::SampleImpl>();
     impl1->assign(sample1.begin(), sample1.end(), 3000);
-    AudioSample audioSample1(impl1);
+    audio::Sample audioSample1(impl1);
     audio.processSample(audioSample1);
     
     float firstFlux = audio.getSpectralFlux();
     
     // Process second sample (different frequency content should create flux)
-    AudioSampleImplPtr impl2 = fl::make_shared<AudioSampleImpl>();
+    audio::SampleImplPtr impl2 = fl::make_shared<audio::SampleImpl>();
     impl2->assign(sample2.begin(), sample2.end(), 3100);
-    AudioSample audioSample2(impl2);
+    audio::Sample audioSample2(impl2);
     audio.processSample(audioSample2);
     
     float secondFlux = audio.getSpectralFlux();
@@ -247,9 +247,9 @@ FL_TEST_CASE("AudioReactive spectral flux detection") {
     (void)firstFlux; // Suppress unused variable warning
 }
 
-FL_TEST_CASE("AudioReactive perceptual weighting") {
-    AudioReactive audio;
-    AudioReactiveConfig config;
+FL_TEST_CASE("audio::Reactive perceptual weighting") {
+    audio::Reactive audio;
+    audio::ReactiveConfig config;
     config.sampleRate = 22050;
     
     audio.begin(config);
@@ -265,15 +265,15 @@ FL_TEST_CASE("AudioReactive perceptual weighting") {
         samples.push_back(sample);
     }
     
-    AudioSampleImplPtr impl = fl::make_shared<AudioSampleImpl>();
+    audio::SampleImplPtr impl = fl::make_shared<audio::SampleImpl>();
     impl->assign(samples.begin(), samples.end(), 4000);
-    AudioSample audioSample(impl);
+    audio::Sample audioSample(impl);
     
     // Process sample (perceptual weighting should be applied automatically)
     audio.processSample(audioSample);
     
     // Check that processing completed without errors
-    const AudioData& data = audio.getData();
+    const audio::Data& data = audio.getData();
     FL_CHECK(data.volume >= 0.0f);
     FL_CHECK(data.timestamp == 4000);
     
@@ -288,9 +288,9 @@ FL_TEST_CASE("AudioReactive perceptual weighting") {
     FL_CHECK(hasNonZeroBins);
 }
 
-FL_TEST_CASE("AudioReactive configuration validation") {
-    AudioReactive audio;
-    AudioReactiveConfig config;
+FL_TEST_CASE("audio::Reactive configuration validation") {
+    audio::Reactive audio;
+    audio::ReactiveConfig config;
     
     // Test different configuration combinations
     config.enableSpectralFlux = false;
@@ -299,9 +299,9 @@ FL_TEST_CASE("AudioReactive configuration validation") {
     
     // Should work without enhanced features
     fl::vector<int16_t> samples(1000, 1000);
-    AudioSampleImplPtr impl = fl::make_shared<AudioSampleImpl>();
+    audio::SampleImplPtr impl = fl::make_shared<audio::SampleImpl>();
     impl->assign(samples.begin(), samples.end(), 5000);
-    AudioSample audioSample(impl);
+    audio::Sample audioSample(impl);
     
     audio.processSample(audioSample);
     
@@ -312,7 +312,7 @@ FL_TEST_CASE("AudioReactive configuration validation") {
     FL_CHECK_FALSE(audio.isTrebleBeat());
 }
 
-FL_TEST_CASE("AudioReactive circular_buffer functionality") {
+FL_TEST_CASE("audio::Reactive circular_buffer functionality") {
     // Test the circular_buffer template directly
     circular_buffer<float, 8> buffer;
     
@@ -355,27 +355,27 @@ FL_TEST_CASE("AudioReactive circular_buffer functionality") {
     FL_CHECK_EQ(buffer.size(), 0);
 }
 
-FL_TEST_CASE("AudioSample - default constructor") {
-    AudioSample sample;
+FL_TEST_CASE("audio::Sample - default constructor") {
+    audio::Sample sample;
     FL_CHECK_FALSE(sample.isValid());
     FL_CHECK_EQ(sample.size(), 0u);
 }
 
-FL_TEST_CASE("AudioSample - span constructor") {
+FL_TEST_CASE("audio::Sample - span constructor") {
     fl::vector<fl::i16> data;
     data.reserve(512);
     for (int i = 0; i < 512; ++i) {
         float phase = 2.0f * 3.14159265f * 440.0f * i / 44100.0f;
         data.push_back(static_cast<fl::i16>(16000.0f * fl::sinf(phase)));
     }
-    AudioSample sample(data, 12345);
+    audio::Sample sample(data, 12345);
     FL_CHECK(sample.isValid());
     FL_CHECK_EQ(sample.size(), 512u);
     FL_CHECK_EQ(sample.timestamp(), 12345u);
     FL_CHECK_EQ(sample.pcm().size(), 512u);
 }
 
-FL_TEST_CASE("AudioSample - zcf for sine wave vs noise") {
+FL_TEST_CASE("audio::Sample - zcf for sine wave vs noise") {
     // Pure sine → low ZCF
     fl::vector<fl::i16> sineSamples;
     sineSamples.reserve(512);
@@ -383,7 +383,7 @@ FL_TEST_CASE("AudioSample - zcf for sine wave vs noise") {
         float phase = 2.0f * 3.14159265f * 440.0f * i / 44100.0f;
         sineSamples.push_back(static_cast<fl::i16>(16000.0f * fl::sinf(phase)));
     }
-    AudioSample sineSample(sineSamples, 0);
+    audio::Sample sineSample(sineSamples, 0);
     float sineZcf = sineSample.zcf();
     FL_CHECK_GE(sineZcf, 0.0f);
     FL_CHECK_LT(sineZcf, 0.1f);
@@ -394,15 +394,15 @@ FL_TEST_CASE("AudioSample - zcf for sine wave vs noise") {
     for (int i = 0; i < 512; ++i) {
         noiseSamples.push_back(static_cast<fl::i16>((i % 2 == 0) ? 10000 : -10000));
     }
-    AudioSample noiseSample(noiseSamples, 0);
+    audio::Sample noiseSample(noiseSamples, 0);
     float noiseZcf = noiseSample.zcf();
     FL_CHECK_GT(noiseZcf, 0.3f);
 }
 
-FL_TEST_CASE("AudioSample - rms for known signal") {
+FL_TEST_CASE("audio::Sample - rms for known signal") {
     // Silence → RMS = 0
     fl::vector<fl::i16> silence(512, 0);
-    AudioSample silentSample(silence, 0);
+    audio::Sample silentSample(silence, 0);
     FL_CHECK_EQ(silentSample.rms(), 0.0f);
 
     // Constant amplitude ±8000 → RMS = 8000
@@ -411,45 +411,45 @@ FL_TEST_CASE("AudioSample - rms for known signal") {
     for (int i = 0; i < 512; ++i) {
         constant.push_back(static_cast<fl::i16>((i % 2 == 0) ? 8000 : -8000));
     }
-    AudioSample constSample(constant, 0);
+    audio::Sample constSample(constant, 0);
     float rms = constSample.rms();
     FL_CHECK_GT(rms, 7000.0f);
     FL_CHECK_LT(rms, 9000.0f);
 }
 
-FL_TEST_CASE("AudioSample - fft produces output") {
+FL_TEST_CASE("audio::Sample - fft produces output") {
     fl::vector<fl::i16> data;
     data.reserve(512);
     for (int i = 0; i < 512; ++i) {
         float phase = 2.0f * 3.14159265f * 1000.0f * i / 44100.0f;
         data.push_back(static_cast<fl::i16>(16000.0f * fl::sinf(phase)));
     }
-    AudioSample sample(data, 0);
-    FFTBins bins(16);
+    audio::Sample sample(data, 0);
+    audio::fft::Bins bins(16);
     sample.fft(&bins);
     FL_CHECK_GT(bins.raw().size(), 0u);
 }
 
-FL_TEST_CASE("AudioSample - copy and equality") {
+FL_TEST_CASE("audio::Sample - copy and equality") {
     fl::vector<fl::i16> data;
     data.reserve(100);
     for (int i = 0; i < 100; ++i) {
         data.push_back(static_cast<fl::i16>(i * 100));
     }
-    AudioSample original(data, 999);
-    AudioSample copy(original);
+    audio::Sample original(data, 999);
+    audio::Sample copy(original);
     FL_CHECK(copy.isValid());
     FL_CHECK(original == copy);
     FL_CHECK_FALSE(original != copy);
     FL_CHECK_EQ(copy.timestamp(), 999u);
     FL_CHECK_EQ(copy.size(), 100u);
 
-    AudioSample empty;
+    audio::Sample empty;
     FL_CHECK(original != empty);
 }
-FL_TEST_CASE("AudioReactive - full pipeline DC removal and gain") {
-    AudioReactive audio;
-    AudioReactiveConfig config;
+FL_TEST_CASE("audio::Reactive - full pipeline DC removal and gain") {
+    audio::Reactive audio;
+    audio::ReactiveConfig config;
     config.sampleRate = 22050;
     config.enableSignalConditioning = true;
 
@@ -469,7 +469,7 @@ FL_TEST_CASE("AudioReactive - full pipeline DC removal and gain") {
             if (val < -32768) val = -32768;
             samples.push_back(static_cast<i16>(val));
         }
-        AudioSample audioSample = createSample(samples, iter * 100);
+        audio::Sample audioSample = createSample(samples, iter * 100);
         audio.processSample(audioSample);
     }
 
@@ -483,9 +483,9 @@ FL_TEST_CASE("AudioReactive - full pipeline DC removal and gain") {
 }
 
 // INT-2: Pipeline with silence - no NaN, no crash
-FL_TEST_CASE("AudioReactive - silence pipeline no NaN") {
-    AudioReactive audio;
-    AudioReactiveConfig config;
+FL_TEST_CASE("audio::Reactive - silence pipeline no NaN") {
+    audio::Reactive audio;
+    audio::ReactiveConfig config;
     config.sampleRate = 22050;
     config.enableSignalConditioning = true;
 
@@ -495,7 +495,7 @@ FL_TEST_CASE("AudioReactive - silence pipeline no NaN") {
     // Feed 20 frames of silence
     for (int iter = 0; iter < 20; ++iter) {
         vector<i16> silence(512, 0);
-        AudioSample audioSample = createSample(silence, iter * 100);
+        audio::Sample audioSample = createSample(silence, iter * 100);
         audio.processSample(audioSample);
     }
 
@@ -506,9 +506,9 @@ FL_TEST_CASE("AudioReactive - silence pipeline no NaN") {
 }
 
 // INT-3: Musical beat detection actually processes audio
-FL_TEST_CASE("AudioReactive - musical beat detection processes audio") {
-    AudioReactive audio;
-    AudioReactiveConfig config;
+FL_TEST_CASE("audio::Reactive - musical beat detection processes audio") {
+    audio::Reactive audio;
+    audio::ReactiveConfig config;
     config.sampleRate = 22050;
     config.enableMusicalBeatDetection = true;
     config.enableSpectralFlux = true;
@@ -523,7 +523,7 @@ FL_TEST_CASE("AudioReactive - musical beat detection processes audio") {
         float amplitude = (iter % 4 == 0) ? 15000.0f : 1000.0f;
         vector<i16> samples = generateSineWave(512, 440.0f, 22050.0f,
                                                static_cast<i16>(amplitude));
-        AudioSample audioSample = createSample(samples, iter * 23);
+        audio::Sample audioSample = createSample(samples, iter * 23);
         audio.processSample(audioSample);
     }
 
@@ -543,9 +543,9 @@ FL_TEST_CASE("AudioReactive - musical beat detection processes audio") {
 }
 
 // INT-4: Multi-band beat detection actually processes audio
-FL_TEST_CASE("AudioReactive - multi-band beat detection processes audio") {
-    AudioReactive audio;
-    AudioReactiveConfig config;
+FL_TEST_CASE("audio::Reactive - multi-band beat detection processes audio") {
+    audio::Reactive audio;
+    audio::ReactiveConfig config;
     config.sampleRate = 22050;
     config.enableMultiBandBeats = true;
     config.enableSpectralFlux = true;
@@ -564,7 +564,7 @@ FL_TEST_CASE("AudioReactive - multi-band beat detection processes audio") {
             // Quiet
             samples = generateSineWave(512, 100.0f, 22050.0f, 500);
         }
-        AudioSample audioSample = createSample(samples, iter * 23);
+        audio::Sample audioSample = createSample(samples, iter * 23);
         audio.processSample(audioSample);
     }
 
@@ -577,11 +577,11 @@ FL_TEST_CASE("AudioReactive - multi-band beat detection processes audio") {
 }
 
 // Keep: Pipeline with all middleware enabled (tightened)
-FL_TEST_CASE("AudioReactive - all middleware enabled processes correctly") {
-    AudioReactive audio;
-    AudioReactiveConfig config;
-    // AudioSample::fft() hardcodes DefaultSampleRate (44100), so the config
-    // must match to avoid frequency-label mismatch (TODO: fix AudioSample).
+FL_TEST_CASE("audio::Reactive - all middleware enabled processes correctly") {
+    audio::Reactive audio;
+    audio::ReactiveConfig config;
+    // Sample::fft() hardcodes DefaultSampleRate (44100), so the config
+    // must match to avoid frequency-label mismatch (TODO: fix audio::Sample).
     config.sampleRate = 44100;
     config.enableLogBinSpacing = true;
     config.enableSpectralEqualizer = true;
@@ -591,17 +591,17 @@ FL_TEST_CASE("AudioReactive - all middleware enabled processes correctly") {
     audio.begin(config);
 
     // Process 10 frames of 700Hz sine at high amplitude.
-    // Sample rate must be 44100 to match AudioSample::fft()'s hardcoded rate.
+    // Sample rate must be 44100 to match Sample::fft()'s hardcoded rate.
     // Amplitude 25000 ensures signal passes the noise gate threshold.
     for (int iter = 0; iter < 10; ++iter) {
         vector<i16> samples = generateSineWave(512, 700.0f, 44100.0f, 25000);
-        AudioSample audioSample = createSample(samples, iter * 100);
+        audio::Sample audioSample = createSample(samples, iter * 100);
         audio.processSample(audioSample);
     }
 
     const auto& data = audio.getData();
     FL_CHECK_GT(data.volume, 0.0f);
-    // Verify FFT pipeline produces energy in at least one band.
+    // Verify audio::fft::FFT pipeline produces energy in at least one band.
     // Specific band energies depend on CQ bin layout vs FrequencyBinMapper
     // constants — checking total energy is more robust.
     float totalEnergy = data.bassEnergy + data.midEnergy + data.trebleEnergy;
@@ -615,9 +615,9 @@ FL_TEST_CASE("AudioReactive - all middleware enabled processes correctly") {
     FL_CHECK_GT(nfStats.samplesProcessed, 0u);
 }
 
-FL_TEST_CASE("AudioReactive - FrequencyBinMapper is always active") {
-    AudioReactive audio;
-    AudioReactiveConfig config;
+FL_TEST_CASE("audio::Reactive - FrequencyBinMapper is always active") {
+    audio::Reactive audio;
+    audio::ReactiveConfig config;
 
     // Verify log bin spacing is enabled by default
     FL_CHECK(config.enableLogBinSpacing == true);
@@ -627,7 +627,7 @@ FL_TEST_CASE("AudioReactive - FrequencyBinMapper is always active") {
 
     // Process a sample to verify mapper works
     vector<i16> samples = generateSineWave(512, 1000.0f, 22050.0f, 8000);
-    AudioSample audioSample = createSample(samples, 1000);
+    audio::Sample audioSample = createSample(samples, 1000);
     audio.processSample(audioSample);
 
     // Verify frequency bins are populated
@@ -645,9 +645,9 @@ FL_TEST_CASE("AudioReactive - FrequencyBinMapper is always active") {
     FL_CHECK(hasBinData);
 }
 
-FL_TEST_CASE("AudioReactive - SpectralEqualizer disabled by default") {
-    AudioReactive audio;
-    AudioReactiveConfig config;
+FL_TEST_CASE("audio::Reactive - SpectralEqualizer disabled by default") {
+    audio::Reactive audio;
+    audio::ReactiveConfig config;
 
     // Verify spectral equalizer is disabled by default
     FL_CHECK_FALSE(config.enableSpectralEqualizer);
@@ -656,7 +656,7 @@ FL_TEST_CASE("AudioReactive - SpectralEqualizer disabled by default") {
 
     // Process a sample - should work without EQ
     vector<i16> samples = generateSineWave(512, 1000.0f, 22050.0f, 8000);
-    AudioSample audioSample = createSample(samples, 1000);
+    audio::Sample audioSample = createSample(samples, 1000);
     audio.processSample(audioSample);
 
     const auto& data = audio.getData();
@@ -672,9 +672,9 @@ FL_TEST_CASE("AudioReactive - SpectralEqualizer disabled by default") {
     FL_CHECK(hasBinData);
 }
 
-FL_TEST_CASE("AudioReactive - Log bin spacing uses sample rate") {
-    AudioReactive audio;
-    AudioReactiveConfig config;
+FL_TEST_CASE("audio::Reactive - Log bin spacing uses sample rate") {
+    audio::Reactive audio;
+    audio::ReactiveConfig config;
     config.sampleRate = 16000;
     config.enableLogBinSpacing = true;
 
@@ -682,7 +682,7 @@ FL_TEST_CASE("AudioReactive - Log bin spacing uses sample rate") {
 
     // Generate a sine wave in the mid-frequency range (500 Hz)
     vector<i16> samples = generateSineWave(512, 500.0f, 16000.0f, 10000);
-    AudioSample audioSample = createSample(samples, 2000);
+    audio::Sample audioSample = createSample(samples, 2000);
     audio.processSample(audioSample);
 
     // Verify frequency bins are populated
@@ -700,9 +700,9 @@ FL_TEST_CASE("AudioReactive - Log bin spacing uses sample rate") {
     FL_CHECK(hasBinData);
 }
 
-FL_TEST_CASE("AudioReactive - Linear bin spacing fallback") {
-    AudioReactive audio;
-    AudioReactiveConfig config;
+FL_TEST_CASE("audio::Reactive - Linear bin spacing fallback") {
+    audio::Reactive audio;
+    audio::ReactiveConfig config;
     config.sampleRate = 22050;
     config.enableLogBinSpacing = false;  // Use linear spacing
 
@@ -710,7 +710,7 @@ FL_TEST_CASE("AudioReactive - Linear bin spacing fallback") {
 
     // Generate a sine wave
     vector<i16> samples = generateSineWave(512, 1000.0f, 22050.0f, 8000);
-    AudioSample audioSample = createSample(samples, 3000);
+    audio::Sample audioSample = createSample(samples, 3000);
     audio.processSample(audioSample);
 
     // Verify frequency bins are populated
@@ -728,9 +728,9 @@ FL_TEST_CASE("AudioReactive - Linear bin spacing fallback") {
     FL_CHECK(hasBinData);
 }
 
-FL_TEST_CASE("AudioReactive - SpectralEqualizer integration") {
-    AudioReactive audio;
-    AudioReactiveConfig config;
+FL_TEST_CASE("audio::Reactive - SpectralEqualizer integration") {
+    audio::Reactive audio;
+    audio::ReactiveConfig config;
     config.sampleRate = 22050;
     config.enableSpectralEqualizer = true;  // Enable EQ
 
@@ -738,7 +738,7 @@ FL_TEST_CASE("AudioReactive - SpectralEqualizer integration") {
 
     // Generate a sine wave
     vector<i16> samples = generateSineWave(512, 1000.0f, 22050.0f, 8000);
-    AudioSample audioSample = createSample(samples, 4000);
+    audio::Sample audioSample = createSample(samples, 4000);
     audio.processSample(audioSample);
 
     // Verify frequency bins are populated (EQ modifies values but doesn't zero them out)
@@ -755,9 +755,9 @@ FL_TEST_CASE("AudioReactive - SpectralEqualizer integration") {
     FL_CHECK(hasBinData);
 }
 
-FL_TEST_CASE("AudioReactive - SpectralEqualizer lazy creation") {
-    AudioReactive audio;
-    AudioReactiveConfig config;
+FL_TEST_CASE("audio::Reactive - SpectralEqualizer lazy creation") {
+    audio::Reactive audio;
+    audio::ReactiveConfig config;
     config.sampleRate = 22050;
     config.enableSpectralEqualizer = false;  // Start with EQ disabled
 
@@ -765,7 +765,7 @@ FL_TEST_CASE("AudioReactive - SpectralEqualizer lazy creation") {
 
     // Process a sample without EQ
     vector<i16> samples1 = generateSineWave(512, 1000.0f, 22050.0f, 8000);
-    AudioSample audioSample1 = createSample(samples1, 5000);
+    audio::Sample audioSample1 = createSample(samples1, 5000);
     audio.processSample(audioSample1);
 
     const auto& data1 = audio.getData();
@@ -777,7 +777,7 @@ FL_TEST_CASE("AudioReactive - SpectralEqualizer lazy creation") {
 
     // Process another sample with EQ
     vector<i16> samples2 = generateSineWave(512, 1000.0f, 22050.0f, 8000);
-    AudioSample audioSample2 = createSample(samples2, 6000);
+    audio::Sample audioSample2 = createSample(samples2, 6000);
     audio.processSample(audioSample2);
 
     const auto& data2 = audio.getData();
@@ -793,9 +793,9 @@ FL_TEST_CASE("AudioReactive - SpectralEqualizer lazy creation") {
     FL_CHECK(hasBinData);
 }
 
-FL_TEST_CASE("AudioReactive - Band energies use mapper") {
-    AudioReactive audio;
-    AudioReactiveConfig config;
+FL_TEST_CASE("audio::Reactive - Band energies use mapper") {
+    audio::Reactive audio;
+    audio::ReactiveConfig config;
     config.sampleRate = 22050;
     config.enableLogBinSpacing = true;
 
@@ -804,7 +804,7 @@ FL_TEST_CASE("AudioReactive - Band energies use mapper") {
     // Generate a low-frequency sine wave (100 Hz) with high amplitude
     // This should produce energy in the bass range
     vector<i16> samples = generateSineWave(512, 100.0f, 22050.0f, 15000);
-    AudioSample audioSample = createSample(samples, 7000);
+    audio::Sample audioSample = createSample(samples, 7000);
     audio.processSample(audioSample);
 
     // Check that bassEnergy > 0
@@ -823,9 +823,9 @@ FL_TEST_CASE("AudioReactive - Band energies use mapper") {
     FL_CHECK(hasBassData);
 }
 
-FL_TEST_CASE("AudioReactive - Multiple frequency ranges") {
-    AudioReactive audio;
-    AudioReactiveConfig config;
+FL_TEST_CASE("audio::Reactive - Multiple frequency ranges") {
+    audio::Reactive audio;
+    audio::ReactiveConfig config;
     config.sampleRate = 22050;
     config.enableLogBinSpacing = true;
 
@@ -833,7 +833,7 @@ FL_TEST_CASE("AudioReactive - Multiple frequency ranges") {
 
     // Process bass frequency (100 Hz)
     vector<i16> bassSamples = generateSineWave(512, 100.0f, 22050.0f, 10000);
-    AudioSample bassAudio = createSample(bassSamples, 8000);
+    audio::Sample bassAudio = createSample(bassSamples, 8000);
     audio.processSample(bassAudio);
 
     const auto& bassData = audio.getData();
@@ -841,10 +841,10 @@ FL_TEST_CASE("AudioReactive - Multiple frequency ranges") {
     FL_CHECK(bassEnergy1 > 0.0f);
 
     // Process mid frequency (370 Hz at 22050 sampleRate).
-    // AudioSample::fft() uses 44100 Hz internally, so the FFT interprets
+    // Sample::fft() uses 44100 Hz internally, so the audio::fft::FFT interprets
     // this as ~740 Hz, which lands in CQ bins 6-7 (the mid range).
     vector<i16> midSamples = generateSineWave(512, 370.0f, 22050.0f, 15000);
-    AudioSample midAudio = createSample(midSamples, 9000);
+    audio::Sample midAudio = createSample(midSamples, 9000);
     audio.processSample(midAudio);
 
     const auto& midData = audio.getData();
@@ -853,7 +853,7 @@ FL_TEST_CASE("AudioReactive - Multiple frequency ranges") {
 
     // Process treble frequency (8000 Hz)
     vector<i16> trebleSamples = generateSineWave(512, 8000.0f, 22050.0f, 10000);
-    AudioSample trebleAudio = createSample(trebleSamples, 10000);
+    audio::Sample trebleAudio = createSample(trebleSamples, 10000);
     audio.processSample(trebleAudio);
 
     const auto& trebleData = audio.getData();
@@ -861,9 +861,9 @@ FL_TEST_CASE("AudioReactive - Multiple frequency ranges") {
     FL_CHECK(trebleEnergy > 0.0f);
 }
 
-FL_TEST_CASE("AudioReactive - Frequency bin consistency with mapper") {
-    AudioReactive audio;
-    AudioReactiveConfig config;
+FL_TEST_CASE("audio::Reactive - Frequency bin consistency with mapper") {
+    audio::Reactive audio;
+    audio::ReactiveConfig config;
     config.sampleRate = 22050;
     config.enableLogBinSpacing = true;
 
@@ -885,7 +885,7 @@ FL_TEST_CASE("AudioReactive - Frequency bin consistency with mapper") {
         complexSamples[i] = static_cast<i16>(mixed);
     }
 
-    AudioSample complexAudio = createSample(complexSamples, 11000);
+    audio::Sample complexAudio = createSample(complexSamples, 11000);
     audio.processSample(complexAudio);
 
     // Verify all frequency bands have energy
@@ -904,11 +904,11 @@ FL_TEST_CASE("AudioReactive - Frequency bin consistency with mapper") {
     FL_CHECK(nonZeroBins > 0);
 }
 
-FL_TEST_CASE("AudioReactive - Pipeline with all middleware enabled") {
-    AudioReactive audio;
-    AudioReactiveConfig config;
-    // AudioSample::fft() hardcodes DefaultSampleRate (44100), so the config
-    // must match to avoid frequency-label mismatch (TODO: fix AudioSample).
+FL_TEST_CASE("audio::Reactive - Pipeline with all middleware enabled") {
+    audio::Reactive audio;
+    audio::ReactiveConfig config;
+    // Sample::fft() hardcodes DefaultSampleRate (44100), so the config
+    // must match to avoid frequency-label mismatch (TODO: fix audio::Sample).
     config.sampleRate = 44100;
     config.enableLogBinSpacing = true;
     config.enableSpectralEqualizer = true;
@@ -919,10 +919,10 @@ FL_TEST_CASE("AudioReactive - Pipeline with all middleware enabled") {
     audio.begin(config);
 
     // Process multiple samples to let middleware converge.
-    // Use 700Hz sine at 44100 Hz (matches AudioSample::fft()) with high amplitude.
+    // Use 700Hz sine at 44100 Hz (matches Sample::fft()) with high amplitude.
     for (int iter = 0; iter < 10; ++iter) {
         vector<i16> samples = generateSineWave(512, 700.0f, 44100.0f, 25000);
-        AudioSample audioSample = createSample(samples, iter * 100);
+        audio::Sample audioSample = createSample(samples, iter * 100);
         audio.processSample(audioSample);
     }
 
@@ -930,7 +930,7 @@ FL_TEST_CASE("AudioReactive - Pipeline with all middleware enabled") {
     const auto& data = audio.getData();
     FL_CHECK(data.volume > 0.0f);
 
-    // Verify FFT pipeline produces energy in at least one band
+    // Verify audio::fft::FFT pipeline produces energy in at least one band
     float totalEnergy = data.bassEnergy + data.midEnergy + data.trebleEnergy;
     FL_CHECK(totalEnergy > 0.0f);
 
@@ -951,9 +951,9 @@ FL_TEST_CASE("AudioReactive - Pipeline with all middleware enabled") {
     }
     FL_CHECK(hasBinData);
 }
-FL_TEST_CASE("AudioReactive - Signal conditioning integration enabled by default") {
-    AudioReactive audio;
-    AudioReactiveConfig config;
+FL_TEST_CASE("audio::Reactive - Signal conditioning integration enabled by default") {
+    audio::Reactive audio;
+    audio::ReactiveConfig config;
     // Signal conditioning should be enabled by default
     FL_CHECK(config.enableSignalConditioning == true);
     FL_CHECK(config.enableNoiseFloorTracking == true);
@@ -962,16 +962,16 @@ FL_TEST_CASE("AudioReactive - Signal conditioning integration enabled by default
 
     // Process a sample - should work without signal conditioning
     vector<i16> samples = generateSineWave(1000, 1000.0f, 22050.0f, 8000);
-    AudioSample audioSample = createSample(samples, 1000);
+    audio::Sample audioSample = createSample(samples, 1000);
     audio.processSample(audioSample);
 
     const auto& data = audio.getData();
     FL_CHECK(data.volume > 0.0f);
 }
 
-FL_TEST_CASE("AudioReactive - Enable signal conditioning") {
-    AudioReactive audio;
-    AudioReactiveConfig config;
+FL_TEST_CASE("audio::Reactive - Enable signal conditioning") {
+    audio::Reactive audio;
+    audio::ReactiveConfig config;
     config.enableSignalConditioning = true;
 
     config.enableNoiseFloorTracking = false;
@@ -986,7 +986,7 @@ FL_TEST_CASE("AudioReactive - Enable signal conditioning") {
         biasedSamples[i] = static_cast<i16>(biased);
     }
 
-    AudioSample biasedAudio = createSample(biasedSamples, 2000);
+    audio::Sample biasedAudio = createSample(biasedSamples, 2000);
     audio.processSample(biasedAudio);
 
     // Signal conditioning should have removed DC bias
@@ -998,9 +998,9 @@ FL_TEST_CASE("AudioReactive - Enable signal conditioning") {
     FL_CHECK(data.volume > 0.0f);
 }
 
-FL_TEST_CASE("AudioReactive - Enable auto gain") {
-    AudioReactive audio;
-    AudioReactiveConfig config;
+FL_TEST_CASE("audio::Reactive - Enable auto gain") {
+    audio::Reactive audio;
+    audio::ReactiveConfig config;
     config.enableSignalConditioning = false;
 
     config.enableNoiseFloorTracking = false;
@@ -1009,7 +1009,7 @@ FL_TEST_CASE("AudioReactive - Enable auto gain") {
     // Process several quiet samples to let AGC converge
     for (int i = 0; i < 10; ++i) {
         vector<i16> quietSamples = generateSineWave(500, 1000.0f, 22050.0f, 1000);
-        AudioSample quietAudio = createSample(quietSamples, i * 100);
+        audio::Sample quietAudio = createSample(quietSamples, i * 100);
         audio.processSample(quietAudio);
     }
 
@@ -1018,9 +1018,9 @@ FL_TEST_CASE("AudioReactive - Enable auto gain") {
     FL_CHECK(data.volume >= 0.0f);
 }
 
-FL_TEST_CASE("AudioReactive - Enable noise floor tracking") {
-    AudioReactive audio;
-    AudioReactiveConfig config;
+FL_TEST_CASE("audio::Reactive - Enable noise floor tracking") {
+    audio::Reactive audio;
+    audio::ReactiveConfig config;
     config.enableSignalConditioning = false;
 
     config.enableNoiseFloorTracking = true;
@@ -1029,7 +1029,7 @@ FL_TEST_CASE("AudioReactive - Enable noise floor tracking") {
     // Process several samples to build noise floor estimate
     for (int i = 0; i < 10; ++i) {
         vector<i16> samples = generateSineWave(500, 1000.0f, 22050.0f, 3000);
-        AudioSample audioSample = createSample(samples, i * 100);
+        audio::Sample audioSample = createSample(samples, i * 100);
         audio.processSample(audioSample);
     }
 
@@ -1042,9 +1042,9 @@ FL_TEST_CASE("AudioReactive - Enable noise floor tracking") {
     FL_CHECK(data.volume > 0.0f);
 }
 
-FL_TEST_CASE("AudioReactive - Full signal conditioning pipeline") {
-    AudioReactive audio;
-    AudioReactiveConfig config;
+FL_TEST_CASE("audio::Reactive - Full signal conditioning pipeline") {
+    audio::Reactive audio;
+    audio::ReactiveConfig config;
     config.enableSignalConditioning = true;
 
     config.enableNoiseFloorTracking = true;
@@ -1065,7 +1065,7 @@ FL_TEST_CASE("AudioReactive - Full signal conditioning pipeline") {
             samples[i] = static_cast<i16>(biased);
         }
 
-        AudioSample audioSample = createSample(samples, iter * 100);
+        audio::Sample audioSample = createSample(samples, iter * 100);
         audio.processSample(audioSample);
     }
 
@@ -1084,9 +1084,9 @@ FL_TEST_CASE("AudioReactive - Full signal conditioning pipeline") {
     FL_CHECK(scStats.dcOffset != 0);  // Should have detected DC offset
 }
 
-FL_TEST_CASE("AudioReactive - Stats pointers null when disabled") {
-    AudioReactive audio;
-    AudioReactiveConfig config;
+FL_TEST_CASE("audio::Reactive - Stats pointers null when disabled") {
+    audio::Reactive audio;
+    audio::ReactiveConfig config;
     config.enableSignalConditioning = false;
 
     config.enableNoiseFloorTracking = false;
@@ -1094,7 +1094,7 @@ FL_TEST_CASE("AudioReactive - Stats pointers null when disabled") {
 
     // Process a sample
     vector<i16> samples = generateSineWave(500, 1000.0f, 22050.0f, 5000);
-    AudioSample audioSample = createSample(samples, 1000);
+    audio::Sample audioSample = createSample(samples, 1000);
     audio.processSample(audioSample);
 
     // Stats should still be available (components exist but are disabled)
@@ -1106,9 +1106,9 @@ FL_TEST_CASE("AudioReactive - Stats pointers null when disabled") {
     FL_CHECK_EQ(nfStats.samplesProcessed, 0u);
 }
 
-FL_TEST_CASE("AudioReactive - Signal conditioning with spikes") {
-    AudioReactive audio;
-    AudioReactiveConfig config;
+FL_TEST_CASE("audio::Reactive - Signal conditioning with spikes") {
+    audio::Reactive audio;
+    audio::ReactiveConfig config;
     config.enableSignalConditioning = true;
     audio.begin(config);
 
@@ -1118,7 +1118,7 @@ FL_TEST_CASE("AudioReactive - Signal conditioning with spikes") {
         samples[i] = 25000;  // Inject spikes
     }
 
-    AudioSample audioSample = createSample(samples, 3000);
+    audio::Sample audioSample = createSample(samples, 3000);
     audio.processSample(audioSample);
 
     // Verify spikes were detected and rejected
@@ -1130,20 +1130,20 @@ FL_TEST_CASE("AudioReactive - Signal conditioning with spikes") {
     FL_CHECK(data.volume > 0.0f);
 }
 
-FL_TEST_CASE("AudioReactive - Backward compatibility") {
+FL_TEST_CASE("audio::Reactive - Backward compatibility") {
     // Test that existing code without signal conditioning still works
 
-    AudioReactive audio;
-    AudioReactiveConfig config;
+    audio::Reactive audio;
+    audio::ReactiveConfig config;
     config.sampleRate = 22050;
     config.gain = 128;
-    // AGC removed — gain is now controlled via AudioProcessor::setGain()  // Use old AGC, not new AutoGain
+    // AGC removed — gain is now controlled via Processor::setGain()  // Use old AGC, not new audio::AutoGain
     // Don't enable new signal conditioning features
     audio.begin(config);
 
     // Process samples the old way
     vector<i16> samples = generateSineWave(1000, 1000.0f, 22050.0f, 8000);
-    AudioSample audioSample = createSample(samples, 4000);
+    audio::Sample audioSample = createSample(samples, 4000);
     audio.processSample(audioSample);
 
     // Should work exactly as before
@@ -1152,9 +1152,9 @@ FL_TEST_CASE("AudioReactive - Backward compatibility") {
     FL_CHECK(data.frequencyBins[0] >= 0.0f);
 }
 
-FL_TEST_CASE("AudioProcessor - polling getters") {
-    // Test that AudioProcessor polling getters return valid values
-    AudioProcessor proc;
+FL_TEST_CASE("audio::Processor - polling getters") {
+    // Test that audio::Processor polling getters return valid values
+    audio::Processor proc;
 
     // Before any update, getters should return defaults (0.0f / false)
     FL_CHECK_EQ(proc.getVocalConfidence(), 0.0f);
@@ -1188,18 +1188,18 @@ FL_TEST_CASE("AudioProcessor - polling getters") {
         float phase = 2.0f * FL_M_PI * 440.0f * i / 44100.0f;
         samples.push_back(static_cast<int16_t>(10000.0f * fl::sinf(phase)));
     }
-    AudioSampleImplPtr impl = fl::make_shared<AudioSampleImpl>();
+    audio::SampleImplPtr impl = fl::make_shared<audio::SampleImpl>();
     impl->assign(samples.begin(), samples.end(), 1000);
-    AudioSample audioSample(impl);
+    audio::Sample audioSample(impl);
     proc.update(audioSample);
 
     // After processing, energy should be non-zero
     FL_CHECK_GT(proc.getEnergy(), 0.0f);
 }
 
-FL_TEST_CASE("AudioReactive - polling getters via AudioProcessor") {
-    AudioReactive audio;
-    AudioReactiveConfig config;
+FL_TEST_CASE("audio::Reactive - polling getters via audio::Processor") {
+    audio::Reactive audio;
+    audio::ReactiveConfig config;
     config.sampleRate = 44100;
     audio.begin(config);
 
@@ -1223,105 +1223,105 @@ FL_TEST_CASE("AudioReactive - polling getters via AudioProcessor") {
         float phase = 2.0f * FL_M_PI * 440.0f * i / 44100.0f;
         samples.push_back(static_cast<int16_t>(10000.0f * fl::sinf(phase)));
     }
-    AudioSample audioSample = createSample(samples, 1000);
+    audio::Sample audioSample = createSample(samples, 1000);
     audio.processSample(audioSample);
 
     // After processing, energy polling getter should reflect audio
     FL_CHECK_GT(audio.getEnergyLevel(), 0.0f);
 }
 
-// ===== AudioProcessor gain tests =====
+// ===== audio::Processor gain tests =====
 
-FL_TEST_CASE("AudioProcessor - default gain is 1.0") {
-    AudioProcessor proc;
+FL_TEST_CASE("audio::Processor - default gain is 1.0") {
+    audio::Processor proc;
     FL_CHECK_EQ(proc.getGain(), 1.0f);
 }
 
-FL_TEST_CASE("AudioProcessor - setGain/getGain roundtrip") {
-    AudioProcessor proc;
+FL_TEST_CASE("audio::Processor - setGain/getGain roundtrip") {
+    audio::Processor proc;
     proc.setGain(3.5f);
     FL_CHECK_EQ(proc.getGain(), 3.5f);
 }
 
-FL_TEST_CASE("AudioProcessor - gain amplifies energy") {
+FL_TEST_CASE("audio::Processor - gain amplifies energy") {
     // Use onEnergy callback to capture raw RMS (not normalized, which self-normalizes).
     float rawEnergy1 = 0.0f;
     float rawEnergy2 = 0.0f;
 
-    AudioProcessor proc1;
+    audio::Processor proc1;
     proc1.onEnergy([&](float rms) { rawEnergy1 = rms; });
     vector<i16> samples = generateSineWave(512, 440.0f, 44100.0f, 5000);
-    AudioSample s1 = createSample(samples, 100);
+    audio::Sample s1 = createSample(samples, 100);
     proc1.update(s1);
 
-    AudioProcessor proc2;
+    audio::Processor proc2;
     proc2.setGain(5.0f);
     proc2.onEnergy([&](float rms) { rawEnergy2 = rms; });
-    AudioSample s2 = createSample(samples, 200);
+    audio::Sample s2 = createSample(samples, 200);
     proc2.update(s2);
 
     FL_CHECK_GT(rawEnergy1, 0.0f);
     FL_CHECK_GT(rawEnergy2, rawEnergy1);
 }
 
-FL_TEST_CASE("AudioProcessor - gain zero silences") {
+FL_TEST_CASE("audio::Processor - gain zero silences") {
     float rawEnergy = -1.0f;
-    AudioProcessor proc;
+    audio::Processor proc;
     proc.setGain(0.0f);
     proc.onEnergy([&](float rms) { rawEnergy = rms; });
     vector<i16> samples = generateSineWave(512, 440.0f, 44100.0f, 16000);
-    AudioSample s = createSample(samples, 100);
+    audio::Sample s = createSample(samples, 100);
     proc.update(s);
     // Energy should be zero since gain zeroed out all samples
     FL_CHECK_EQ(rawEnergy, 0.0f);
 }
 
-FL_TEST_CASE("AudioProcessor - gain does not reset on reset()") {
-    AudioProcessor proc;
+FL_TEST_CASE("audio::Processor - gain does not reset on reset()") {
+    audio::Processor proc;
     proc.setGain(3.0f);
     proc.reset();
     FL_CHECK_EQ(proc.getGain(), 3.0f);
 }
 
-FL_TEST_CASE("AudioProcessor - equalizer autoGain default") {
-    AudioProcessor proc;
+FL_TEST_CASE("audio::Processor - equalizer autoGain default") {
+    audio::Processor proc;
     // Before any updates, equalizer autoGain should be 1.0
     FL_CHECK_EQ(proc.getEqAutoGain(), 1.0f);
 }
 
-FL_TEST_CASE("AudioProcessor - equalizer isSilence on silence") {
-    AudioProcessor proc;
+FL_TEST_CASE("audio::Processor - equalizer isSilence on silence") {
+    audio::Processor proc;
     // Prime the equalizer detector before feeding samples
     (void)proc.getEqIsSilence();
     // Feed 10 frames of silence
     for (int i = 0; i < 10; ++i) {
         vector<i16> silence(512, 0);
-        AudioSample s = createSample(silence, i * 100);
+        audio::Sample s = createSample(silence, i * 100);
         proc.update(s);
     }
     FL_CHECK(proc.getEqIsSilence());
 }
 
-FL_TEST_CASE("AudioProcessor - equalizer isSilence on loud signal") {
-    AudioProcessor proc;
+FL_TEST_CASE("audio::Processor - equalizer isSilence on loud signal") {
+    audio::Processor proc;
     // Prime the equalizer detector before feeding samples
     (void)proc.getEqIsSilence();
     // Feed 10 frames of loud sine
     for (int i = 0; i < 10; ++i) {
         vector<i16> samples = generateSineWave(512, 440.0f, 44100.0f, 16000);
-        AudioSample s = createSample(samples, i * 100);
+        audio::Sample s = createSample(samples, i * 100);
         proc.update(s);
     }
     FL_CHECK_FALSE(proc.getEqIsSilence());
 }
 
-FL_TEST_CASE("AudioProcessor - equalizer callback has autoGain and isSilence") {
-    AudioProcessor proc;
+FL_TEST_CASE("audio::Processor - equalizer callback has autoGain and isSilence") {
+    audio::Processor proc;
     bool callbackFired = false;
     float receivedAutoGain = 0.0f;
     bool receivedIsSilence = true;
 
-    proc.onEqualizer([&](const Equalizer& eq) {
+    proc.onEqualizer([&](const audio::detector::Equalizer& eq) {
         callbackFired = true;
         receivedAutoGain = eq.volumeNormFactor;
         receivedIsSilence = eq.isSilence;
@@ -1330,7 +1330,7 @@ FL_TEST_CASE("AudioProcessor - equalizer callback has autoGain and isSilence") {
     // Feed loud sine to trigger non-silence
     for (int i = 0; i < 5; ++i) {
         vector<i16> samples = generateSineWave(512, 440.0f, 44100.0f, 16000);
-        AudioSample s = createSample(samples, i * 100);
+        audio::Sample s = createSample(samples, i * 100);
         proc.update(s);
     }
 
@@ -1339,25 +1339,25 @@ FL_TEST_CASE("AudioProcessor - equalizer callback has autoGain and isSilence") {
     FL_CHECK_FALSE(receivedIsSilence);
 }
 
-FL_TEST_CASE("AudioProcessor - gain stacks with input gain") {
+FL_TEST_CASE("audio::Processor - gain stacks with input gain") {
     // Use onEnergy callback to observe raw RMS values.
     float rawEnergy1 = 0.0f;
     float rawEnergy2 = 0.0f;
     vector<i16> samples = generateSineWave(512, 440.0f, 44100.0f, 3000);
 
     // Sample with applyGain(2) + processor gain=1
-    AudioSample s1 = createSample(samples, 100);
+    audio::Sample s1 = createSample(samples, 100);
     s1.applyGain(2.0f);
 
-    AudioProcessor proc1;
+    audio::Processor proc1;
     proc1.onEnergy([&](float rms) { rawEnergy1 = rms; });
     proc1.update(s1);
 
     // Sample with applyGain(2) + processor gain=3
-    AudioSample s2 = createSample(samples, 200);
+    audio::Sample s2 = createSample(samples, 200);
     s2.applyGain(2.0f);
 
-    AudioProcessor proc2;
+    audio::Processor proc2;
     proc2.setGain(3.0f);
     proc2.onEnergy([&](float rms) { rawEnergy2 = rms; });
     proc2.update(s2);
@@ -1366,45 +1366,45 @@ FL_TEST_CASE("AudioProcessor - gain stacks with input gain") {
     FL_CHECK_GT(rawEnergy2, rawEnergy1);
 }
 
-// ===== AudioReactive gain tests =====
+// ===== audio::Reactive gain tests =====
 
-FL_TEST_CASE("AudioReactive - default gain is 1.0") {
-    AudioReactive audio;
+FL_TEST_CASE("audio::Reactive - default gain is 1.0") {
+    audio::Reactive audio;
     audio.begin();
     FL_CHECK_EQ(audio.getGain(), 1.0f);
 }
 
-FL_TEST_CASE("AudioReactive - setGain/getGain roundtrip") {
-    AudioReactive audio;
+FL_TEST_CASE("audio::Reactive - setGain/getGain roundtrip") {
+    audio::Reactive audio;
     audio.begin();
     audio.setGain(2.5f);
     FL_CHECK_EQ(audio.getGain(), 2.5f);
 }
 
-FL_TEST_CASE("AudioReactive - setGain before begin returns 1.0") {
-    AudioReactive audio;
-    // Before begin(), no AudioProcessor exists yet
+FL_TEST_CASE("audio::Reactive - setGain before begin returns 1.0") {
+    audio::Reactive audio;
+    // Before begin(), no audio::Processor exists yet
     FL_CHECK_EQ(audio.getGain(), 1.0f);
 }
 
-FL_TEST_CASE("AudioReactive - setGain affects processing") {
-    // setGain() affects the internal AudioProcessor path. The legacy
-    // AudioReactive volume pipeline uses the old u8 config gain separately.
+FL_TEST_CASE("audio::Reactive - setGain affects processing") {
+    // setGain() affects the internal audio::Processor path. The legacy
+    // audio::Reactive volume pipeline uses the old u8 config gain separately.
     // Verify gain has a measurable effect by applying gain before feeding
-    // to AudioReactive and comparing volumes through the legacy pipeline.
+    // to audio::Reactive and comparing volumes through the legacy pipeline.
     vector<i16> samples = generateSineWave(512, 440.0f, 44100.0f, 3000);
 
     // No external gain
-    AudioReactive audio1;
+    audio::Reactive audio1;
     audio1.begin();
-    AudioSample s1 = createSample(samples, 100);
+    audio::Sample s1 = createSample(samples, 100);
     audio1.processSample(s1);
     float vol1 = audio1.getVolume();
 
     // Apply external gain via applyGain before feeding
-    AudioReactive audio2;
+    audio::Reactive audio2;
     audio2.begin();
-    AudioSample s2 = createSample(samples, 200);
+    audio::Sample s2 = createSample(samples, 200);
     s2.applyGain(5.0f);
     audio2.processSample(s2);
     float vol2 = audio2.getVolume();
@@ -1412,23 +1412,23 @@ FL_TEST_CASE("AudioReactive - setGain affects processing") {
     FL_CHECK_GT(vol2, vol1);
 }
 
-// ===== AudioConfig gain tests =====
+// ===== audio::Config gain tests =====
 
-FL_TEST_CASE("AudioConfig - default gain is 1.0") {
-    AudioConfig config = AudioConfig::CreateInmp441(1, 2, 3, Left);
+FL_TEST_CASE("audio::Config - default gain is 1.0") {
+    audio::Config config = audio::Config::CreateInmp441(1, 2, 3, audio::Left);
     FL_CHECK_EQ(config.getGain(), 1.0f);
 }
 
-FL_TEST_CASE("AudioConfig - setGain/getGain roundtrip") {
-    AudioConfig config = AudioConfig::CreateInmp441(1, 2, 3, Left);
+FL_TEST_CASE("audio::Config - setGain/getGain roundtrip") {
+    audio::Config config = audio::Config::CreateInmp441(1, 2, 3, audio::Left);
     config.setGain(4.0f);
     FL_CHECK_EQ(config.getGain(), 4.0f);
 }
 
-FL_TEST_CASE("AudioConfig - gain persists across copy") {
-    AudioConfig config1 = AudioConfig::CreateInmp441(1, 2, 3, Left);
+FL_TEST_CASE("audio::Config - gain persists across copy") {
+    audio::Config config1 = audio::Config::CreateInmp441(1, 2, 3, audio::Left);
     config1.setGain(3.0f);
-    AudioConfig config2 = config1;
+    audio::Config config2 = config1;
     FL_CHECK_EQ(config2.getGain(), 3.0f);
 }
 
@@ -1443,15 +1443,15 @@ FL_TEST_CASE("AudioConfig - gain persists across copy") {
 
 FL_TEST_CASE("Silence - quiet single sine detected as silent") {
     // A single 440 Hz tone at amplitude 10 → RMS ≈ 7.07
-    AudioProcessor proc;
+    audio::Processor proc;
     bool lastIsSilence = false;
-    proc.onEqualizer([&](const Equalizer& eq) {
+    proc.onEqualizer([&](const audio::detector::Equalizer& eq) {
         lastIsSilence = eq.isSilence;
     });
 
     for (int i = 0; i < 10; ++i) {
         vector<i16> samples = generateSineWave(512, 440.0f, 44100.0f, 10);
-        AudioSample s = createSample(samples, i * 12);
+        audio::Sample s = createSample(samples, i * 12);
         proc.update(s);
     }
     FL_CHECK(lastIsSilence);
@@ -1460,9 +1460,9 @@ FL_TEST_CASE("Silence - quiet single sine detected as silent") {
 FL_TEST_CASE("Silence - quiet multi-frequency chord detected as silent") {
     // Simulate a quiet 3-note chord: 261 Hz (C4) + 329 Hz (E4) + 392 Hz (G4)
     // Each at amplitude 4, combined peak ≈ 12, RMS ≈ 8.5 → silence
-    AudioProcessor proc;
+    audio::Processor proc;
     bool lastIsSilence = false;
-    proc.onEqualizer([&](const Equalizer& eq) {
+    proc.onEqualizer([&](const audio::detector::Equalizer& eq) {
         lastIsSilence = eq.isSilence;
     });
 
@@ -1477,7 +1477,7 @@ FL_TEST_CASE("Silence - quiet multi-frequency chord detected as silent") {
             // Clamp (combined peak ≈ ±12, well within i16 range)
             samples.push_back(static_cast<i16>(val));
         }
-        AudioSample s = createSample(samples, iter * 12);
+        audio::Sample s = createSample(samples, iter * 12);
         proc.update(s);
     }
     FL_CHECK(lastIsSilence);
@@ -1486,9 +1486,9 @@ FL_TEST_CASE("Silence - quiet multi-frequency chord detected as silent") {
 FL_TEST_CASE("Silence - quiet bass + treble detected as silent") {
     // Simulate quiet bass (100 Hz) + treble (4000 Hz) at amplitude 5 each
     // Combined RMS ≈ sqrt(2) * 5 * 0.707 ≈ 5.0 → silence
-    AudioProcessor proc;
+    audio::Processor proc;
     bool lastIsSilence = false;
-    proc.onEqualizer([&](const Equalizer& eq) {
+    proc.onEqualizer([&](const audio::detector::Equalizer& eq) {
         lastIsSilence = eq.isSilence;
     });
 
@@ -1501,7 +1501,7 @@ FL_TEST_CASE("Silence - quiet bass + treble detected as silent") {
                       + 5.0f * fl::sinf(2.0f * FL_M_PI * 4000.0f * t);
             samples.push_back(static_cast<i16>(val));
         }
-        AudioSample s = createSample(samples, iter * 12);
+        audio::Sample s = createSample(samples, iter * 12);
         proc.update(s);
     }
     FL_CHECK(lastIsSilence);
@@ -1510,9 +1510,9 @@ FL_TEST_CASE("Silence - quiet bass + treble detected as silent") {
 FL_TEST_CASE("Silence - quiet frequency sweep detected as silent") {
     // Simulate a frequency sweep from 200 Hz to 2000 Hz at amplitude 8
     // RMS ≈ 8 * 0.707 ≈ 5.7 → silence
-    AudioProcessor proc;
+    audio::Processor proc;
     bool lastIsSilence = false;
-    proc.onEqualizer([&](const Equalizer& eq) {
+    proc.onEqualizer([&](const audio::detector::Equalizer& eq) {
         lastIsSilence = eq.isSilence;
     });
 
@@ -1527,7 +1527,7 @@ FL_TEST_CASE("Silence - quiet frequency sweep detected as silent") {
             float val = 8.0f * fl::sinf(2.0f * FL_M_PI * freq * t);
             samples.push_back(static_cast<i16>(val));
         }
-        AudioSample s = createSample(samples, iter * 12);
+        audio::Sample s = createSample(samples, iter * 12);
         proc.update(s);
     }
     FL_CHECK(lastIsSilence);
@@ -1536,15 +1536,15 @@ FL_TEST_CASE("Silence - quiet frequency sweep detected as silent") {
 FL_TEST_CASE("Silence - quiet noise bed detected as silent") {
     // Simulate very quiet pseudo-random noise at amplitude 6
     // RMS ≈ 6 * 0.577 ≈ 3.5 (uniform noise RMS = amp/sqrt(3)) → silence
-    AudioProcessor proc;
+    audio::Processor proc;
     bool lastIsSilence = false;
-    proc.onEqualizer([&](const Equalizer& eq) {
+    proc.onEqualizer([&](const audio::detector::Equalizer& eq) {
         lastIsSilence = eq.isSilence;
     });
 
     for (int iter = 0; iter < 10; ++iter) {
         vector<i16> noise = generateNoise(512, 6);
-        AudioSample s = createSample(noise, iter * 12);
+        audio::Sample s = createSample(noise, iter * 12);
         proc.update(s);
     }
     FL_CHECK(lastIsSilence);
@@ -1552,17 +1552,17 @@ FL_TEST_CASE("Silence - quiet noise bed detected as silent") {
 
 FL_TEST_CASE("Silence - quiet pulsed synth detected as silent") {
     // Simulate a synth pad that pulses: alternating between amplitude 12
-    // (RMS ≈ 8.5) and amplitude 2 (RMS ≈ 1.4). Both below threshold.
-    AudioProcessor proc;
+    // (RMS ≈ 8.5) and amplitude 2 (RMS ≈ 1.4). audio::Both below threshold.
+    audio::Processor proc;
     bool allSilent = true;
-    proc.onEqualizer([&](const Equalizer& eq) {
+    proc.onEqualizer([&](const audio::detector::Equalizer& eq) {
         if (!eq.isSilence) allSilent = false;
     });
 
     for (int iter = 0; iter < 20; ++iter) {
         i16 amp = (iter % 2 == 0) ? 12 : 2;
         vector<i16> samples = generateSineWave(512, 880.0f, 44100.0f, amp);
-        AudioSample s = createSample(samples, iter * 12);
+        audio::Sample s = createSample(samples, iter * 12);
         proc.update(s);
     }
     FL_CHECK(allSilent);
@@ -1570,15 +1570,15 @@ FL_TEST_CASE("Silence - quiet pulsed synth detected as silent") {
 
 FL_TEST_CASE("Silence - boundary: amplitude 13 still silent") {
     // Amplitude 13 → RMS ≈ 9.19 < 10.0 threshold → should be silent
-    AudioProcessor proc;
+    audio::Processor proc;
     bool lastIsSilence = false;
-    proc.onEqualizer([&](const Equalizer& eq) {
+    proc.onEqualizer([&](const audio::detector::Equalizer& eq) {
         lastIsSilence = eq.isSilence;
     });
 
     for (int i = 0; i < 10; ++i) {
         vector<i16> samples = generateSineWave(512, 1000.0f, 44100.0f, 13);
-        AudioSample s = createSample(samples, i * 12);
+        audio::Sample s = createSample(samples, i * 12);
         proc.update(s);
     }
     FL_CHECK(lastIsSilence);
@@ -1587,38 +1587,38 @@ FL_TEST_CASE("Silence - boundary: amplitude 13 still silent") {
 FL_TEST_CASE("Silence - loud signal NOT silent") {
     // Disable signal conditioning so the signal passes through cleanly.
     // Amplitude 500 → RMS ≈ 354, well above kSilenceThreshold = 10.
-    AudioProcessor proc;
+    audio::Processor proc;
     proc.setSignalConditioningEnabled(false);
     bool lastIsSilence = true;
-    proc.onEqualizer([&](const Equalizer& eq) {
+    proc.onEqualizer([&](const audio::detector::Equalizer& eq) {
         lastIsSilence = eq.isSilence;
     });
 
     for (int i = 0; i < 10; ++i) {
         vector<i16> samples = generateSineWave(512, 1000.0f, 44100.0f, 500);
-        AudioSample s = createSample(samples, i * 12);
+        audio::Sample s = createSample(samples, i * 12);
         proc.update(s);
     }
     FL_CHECK_FALSE(lastIsSilence);
 }
 
-FL_TEST_CASE("Silence - quiet music via AudioReactive polling getter") {
-    // End-to-end: quiet 440 Hz via AudioReactive → getEqIsSilence()
-    // This exercises the AudioReactive → AudioProcessor → EqualizerDetector path.
-    AudioReactive audio;
+FL_TEST_CASE("Silence - quiet music via audio::Reactive polling getter") {
+    // End-to-end: quiet 440 Hz via audio::Reactive → getEqIsSilence()
+    // This exercises the audio::Reactive → audio::Processor → audio::detector::EqualizerDetector path.
+    audio::Reactive audio;
     audio.begin();
     // Prime the equalizer detector by calling the getter
-    (void)audio.getGain(); // ensures AudioProcessor exists
+    (void)audio.getGain(); // ensures audio::Processor exists
 
-    // We need to use the AudioProcessor directly for the eq polling getter.
-    // AudioReactive doesn't expose getEqIsSilence(), but AudioProcessor does.
-    // Test via AudioProcessor instead.
-    AudioProcessor proc;
+    // We need to use the audio::Processor directly for the eq polling getter.
+    // audio::Reactive doesn't expose getEqIsSilence(), but audio::Processor does.
+    // Test via audio::Processor instead.
+    audio::Processor proc;
     (void)proc.getEqIsSilence(); // prime detector
 
     for (int i = 0; i < 10; ++i) {
         vector<i16> samples = generateSineWave(512, 440.0f, 44100.0f, 8);
-        AudioSample s = createSample(samples, i * 12);
+        audio::Sample s = createSample(samples, i * 12);
         proc.update(s);
     }
     FL_CHECK(proc.getEqIsSilence());
@@ -1626,15 +1626,15 @@ FL_TEST_CASE("Silence - quiet music via AudioReactive polling getter") {
 
 FL_TEST_CASE("Silence - loud music correctly NOT silent via callback") {
     // Sanity check: loud signal should NOT be reported as silent
-    AudioProcessor proc;
+    audio::Processor proc;
     bool lastIsSilence = true;
-    proc.onEqualizer([&](const Equalizer& eq) {
+    proc.onEqualizer([&](const audio::detector::Equalizer& eq) {
         lastIsSilence = eq.isSilence;
     });
 
     for (int i = 0; i < 10; ++i) {
         vector<i16> samples = generateSineWave(512, 440.0f, 44100.0f, 16000);
-        AudioSample s = createSample(samples, i * 12);
+        audio::Sample s = createSample(samples, i * 12);
         proc.update(s);
     }
     FL_CHECK_FALSE(lastIsSilence);
@@ -1652,8 +1652,8 @@ FL_TEST_CASE("Silence - loud music correctly NOT silent via callback") {
 //   Mid:    bins 4-10  (~320-2560 Hz)
 //   Treble: bins 11-15 (~2560-5120 Hz)
 
-/// Helper: assert every field in the Equalizer snapshot is in valid range
-static void checkEqBounds(const Equalizer& eq) {
+/// Helper: assert every field in the audio::detector::Equalizer snapshot is in valid range
+static void checkEqBounds(const audio::detector::Equalizer& eq) {
     FL_CHECK_GE(eq.bass, 0.0f);
     FL_CHECK_LE(eq.bass, 1.0f);
     FL_CHECK_GE(eq.mid, 0.0f);
@@ -1666,7 +1666,7 @@ static void checkEqBounds(const Equalizer& eq) {
     FL_CHECK_LE(eq.zcf, 1.0f);
     FL_CHECK_GE(eq.volumeNormFactor, 0.0f);
     // Check all 16 bins
-    for (int b = 0; b < Equalizer::kNumBins; ++b) {
+    for (int b = 0; b < audio::detector::Equalizer::kNumBins; ++b) {
         FL_CHECK_GE(eq.bins[b], 0.0f);
         FL_CHECK_LE(eq.bins[b], 1.0f);
     }
@@ -1680,16 +1680,16 @@ static void checkEqBounds(const Equalizer& eq) {
 
 FL_TEST_CASE("Loud - bass sine detected in bass band, all values bounded") {
     // 100 Hz sine at amplitude 16000 → should land in bass bins (0-3)
-    AudioProcessor proc;
-    Equalizer last;
-    proc.onEqualizer([&](const Equalizer& eq) {
+    audio::Processor proc;
+    audio::detector::Equalizer last;
+    proc.onEqualizer([&](const audio::detector::Equalizer& eq) {
         checkEqBounds(eq);
         last = eq;
     });
 
     for (int i = 0; i < 10; ++i) {
         vector<i16> samples = generateSineWave(512, 100.0f, 44100.0f, 16000);
-        AudioSample s = createSample(samples, i * 12);
+        audio::Sample s = createSample(samples, i * 12);
         proc.update(s);
     }
     FL_CHECK_FALSE(last.isSilence);
@@ -1699,16 +1699,16 @@ FL_TEST_CASE("Loud - bass sine detected in bass band, all values bounded") {
 
 FL_TEST_CASE("Loud - mid sine detected in mid band, all values bounded") {
     // 1000 Hz sine at amplitude 16000 → should land in mid bins (4-10)
-    AudioProcessor proc;
-    Equalizer last;
-    proc.onEqualizer([&](const Equalizer& eq) {
+    audio::Processor proc;
+    audio::detector::Equalizer last;
+    proc.onEqualizer([&](const audio::detector::Equalizer& eq) {
         checkEqBounds(eq);
         last = eq;
     });
 
     for (int i = 0; i < 10; ++i) {
         vector<i16> samples = generateSineWave(512, 1000.0f, 44100.0f, 16000);
-        AudioSample s = createSample(samples, i * 12);
+        audio::Sample s = createSample(samples, i * 12);
         proc.update(s);
     }
     FL_CHECK_FALSE(last.isSilence);
@@ -1718,16 +1718,16 @@ FL_TEST_CASE("Loud - mid sine detected in mid band, all values bounded") {
 
 FL_TEST_CASE("Loud - treble sine detected in treble band, all values bounded") {
     // 4000 Hz sine at amplitude 16000 → should land in treble bins (11-15)
-    AudioProcessor proc;
-    Equalizer last;
-    proc.onEqualizer([&](const Equalizer& eq) {
+    audio::Processor proc;
+    audio::detector::Equalizer last;
+    proc.onEqualizer([&](const audio::detector::Equalizer& eq) {
         checkEqBounds(eq);
         last = eq;
     });
 
     for (int i = 0; i < 10; ++i) {
         vector<i16> samples = generateSineWave(512, 4000.0f, 44100.0f, 16000);
-        AudioSample s = createSample(samples, i * 12);
+        audio::Sample s = createSample(samples, i * 12);
         proc.update(s);
     }
     FL_CHECK_FALSE(last.isSilence);
@@ -1737,9 +1737,9 @@ FL_TEST_CASE("Loud - treble sine detected in treble band, all values bounded") {
 
 FL_TEST_CASE("Loud - full spectrum chord, all bands active, all bounded") {
     // Bass (100 Hz) + Mid (1000 Hz) + Treble (4000 Hz), each at amp 8000
-    AudioProcessor proc;
-    Equalizer last;
-    proc.onEqualizer([&](const Equalizer& eq) {
+    audio::Processor proc;
+    audio::detector::Equalizer last;
+    proc.onEqualizer([&](const audio::detector::Equalizer& eq) {
         checkEqBounds(eq);
         last = eq;
     });
@@ -1757,7 +1757,7 @@ FL_TEST_CASE("Loud - full spectrum chord, all bands active, all bounded") {
             if (clamped < -32768) clamped = -32768;
             samples.push_back(static_cast<i16>(clamped));
         }
-        AudioSample s = createSample(samples, iter * 12);
+        audio::Sample s = createSample(samples, iter * 12);
         proc.update(s);
     }
     FL_CHECK_FALSE(last.isSilence);
@@ -1769,14 +1769,14 @@ FL_TEST_CASE("Loud - full spectrum chord, all bands active, all bounded") {
 
 FL_TEST_CASE("Loud - clipping-level signal never exceeds 1.0") {
     // Max amplitude i16 (32767) — worst-case clipping. Every frame.
-    AudioProcessor proc;
-    proc.onEqualizer([&](const Equalizer& eq) {
+    audio::Processor proc;
+    proc.onEqualizer([&](const audio::detector::Equalizer& eq) {
         checkEqBounds(eq);
     });
 
     for (int i = 0; i < 20; ++i) {
         vector<i16> samples = generateSineWave(512, 440.0f, 44100.0f, 32767);
-        AudioSample s = createSample(samples, i * 12);
+        audio::Sample s = createSample(samples, i * 12);
         proc.update(s);
     }
     // If we got here without checkEqBounds failing, all values stayed bounded.
@@ -1786,22 +1786,22 @@ FL_TEST_CASE("Loud - sudden spike after silence never exceeds 1.0") {
     // 10 frames of silence, then sudden max-amplitude burst.
     // This is the worst-case for adaptive normalization: the running max
     // is near zero, then a huge signal arrives. Bins must still clamp to 1.0.
-    AudioProcessor proc;
-    proc.onEqualizer([&](const Equalizer& eq) {
+    audio::Processor proc;
+    proc.onEqualizer([&](const audio::detector::Equalizer& eq) {
         checkEqBounds(eq);
     });
 
     // Silence phase
     for (int i = 0; i < 10; ++i) {
         vector<i16> silence(512, 0);
-        AudioSample s = createSample(silence, i * 12);
+        audio::Sample s = createSample(silence, i * 12);
         proc.update(s);
     }
 
     // Sudden loud burst
     for (int i = 10; i < 15; ++i) {
         vector<i16> loud = generateSineWave(512, 440.0f, 44100.0f, 30000);
-        AudioSample s = createSample(loud, i * 12);
+        audio::Sample s = createSample(loud, i * 12);
         proc.update(s);
     }
 }
@@ -1809,8 +1809,8 @@ FL_TEST_CASE("Loud - sudden spike after silence never exceeds 1.0") {
 FL_TEST_CASE("Loud - alternating silence and bursts never exceed 1.0") {
     // Rapidly alternating between silence and max-amplitude.
     // Stresses the adaptive filters with constant transients.
-    AudioProcessor proc;
-    proc.onEqualizer([&](const Equalizer& eq) {
+    audio::Processor proc;
+    proc.onEqualizer([&](const audio::detector::Equalizer& eq) {
         checkEqBounds(eq);
     });
 
@@ -1821,7 +1821,7 @@ FL_TEST_CASE("Loud - alternating silence and bursts never exceed 1.0") {
         } else {
             samples = generateSineWave(512, 1000.0f, 44100.0f, 32767);
         }
-        AudioSample s = createSample(samples, i * 12);
+        audio::Sample s = createSample(samples, i * 12);
         proc.update(s);
     }
 }
@@ -1830,9 +1830,9 @@ FL_TEST_CASE("Loud - DC offset signal bounded and not silent") {
     // A signal with massive DC offset (16000) + sine. Signal conditioning
     // removes DC, but the remaining signal should be detected as non-silent
     // and all values should stay bounded.
-    AudioProcessor proc;
-    Equalizer last;
-    proc.onEqualizer([&](const Equalizer& eq) {
+    audio::Processor proc;
+    audio::detector::Equalizer last;
+    proc.onEqualizer([&](const audio::detector::Equalizer& eq) {
         checkEqBounds(eq);
         last = eq;
     });
@@ -1847,7 +1847,7 @@ FL_TEST_CASE("Loud - DC offset signal bounded and not silent") {
             if (val < -32768) val = -32768;
             samples.push_back(static_cast<i16>(val));
         }
-        AudioSample s = createSample(samples, iter * 12);
+        audio::Sample s = createSample(samples, iter * 12);
         proc.update(s);
     }
     FL_CHECK_FALSE(last.isSilence);
@@ -1857,19 +1857,19 @@ FL_TEST_CASE("Loud - DC offset signal bounded and not silent") {
 FL_TEST_CASE("Loud - amplitude sweep ramps up, all values bounded") {
     // Amplitude ramps from 1000 to 32000 over 20 frames.
     // Tests that normalization tracks increasing signal without overflow.
-    AudioProcessor proc;
-    proc.onEqualizer([&](const Equalizer& eq) {
+    audio::Processor proc;
+    proc.onEqualizer([&](const audio::detector::Equalizer& eq) {
         checkEqBounds(eq);
     });
-    Equalizer last;
+    audio::detector::Equalizer last;
 
     for (int iter = 0; iter < 20; ++iter) {
         i16 amp = static_cast<i16>(1000 + iter * 1500);
         vector<i16> samples = generateSineWave(512, 800.0f, 44100.0f, amp);
-        AudioSample s = createSample(samples, iter * 12);
+        audio::Sample s = createSample(samples, iter * 12);
         proc.update(s);
         // Capture the last callback's result
-        proc.onEqualizer([&](const Equalizer& eq) { last = eq; });
+        proc.onEqualizer([&](const audio::detector::Equalizer& eq) { last = eq; });
     }
     FL_CHECK_FALSE(last.isSilence);
     FL_CHECK_GT(last.volume, 0.0f);
@@ -1878,16 +1878,16 @@ FL_TEST_CASE("Loud - amplitude sweep ramps up, all values bounded") {
 FL_TEST_CASE("Loud - multi-frequency noise bounded and not silent") {
     // White-ish noise at high amplitude. Should have energy spread
     // across bands, and all values must stay bounded.
-    AudioProcessor proc;
-    Equalizer last;
-    proc.onEqualizer([&](const Equalizer& eq) {
+    audio::Processor proc;
+    audio::detector::Equalizer last;
+    proc.onEqualizer([&](const audio::detector::Equalizer& eq) {
         checkEqBounds(eq);
         last = eq;
     });
 
     for (int iter = 0; iter < 10; ++iter) {
         vector<i16> noise = generateNoise(512, 16000);
-        AudioSample s = createSample(noise, iter * 12);
+        audio::Sample s = createSample(noise, iter * 12);
         proc.update(s);
     }
     FL_CHECK_FALSE(last.isSilence);
@@ -1902,36 +1902,36 @@ FL_TEST_CASE("Loud - low zcf for pure sine, higher zcf for noise") {
     // High-frequency noise should have higher zcf.
     // Use a high-frequency sine (near Nyquist) as the "noisy" signal
     // to avoid triggering signal conditioning artifacts.
-    Equalizer sineLast, noiseLast;
+    audio::detector::Equalizer sineLast, noiseLast;
 
     {
-        AudioProcessor proc;
-        proc.onEqualizer([&](const Equalizer& eq) {
+        audio::Processor proc;
+        proc.onEqualizer([&](const audio::detector::Equalizer& eq) {
             checkEqBounds(eq);
             sineLast = eq;
         });
         for (int i = 0; i < 10; ++i) {
             vector<i16> samples = generateSineWave(512, 440.0f, 44100.0f, 8000);
-            AudioSample s = createSample(samples, i * 12);
+            audio::Sample s = createSample(samples, i * 12);
             proc.update(s);
         }
     }
 
     {
         // Use generated noise (pseudo-random) — has high zcf naturally
-        AudioProcessor proc;
-        proc.onEqualizer([&](const Equalizer& eq) {
+        audio::Processor proc;
+        proc.onEqualizer([&](const audio::detector::Equalizer& eq) {
             checkEqBounds(eq);
             noiseLast = eq;
         });
         for (int i = 0; i < 10; ++i) {
             vector<i16> noise = generateNoise(512, 8000);
-            AudioSample s = createSample(noise, i * 12);
+            audio::Sample s = createSample(noise, i * 12);
             proc.update(s);
         }
     }
 
-    // Both should be non-silent (signal conditioning passes them through)
+    // audio::Both should be non-silent (signal conditioning passes them through)
     FL_CHECK_FALSE(sineLast.isSilence);
     FL_CHECK_FALSE(noiseLast.isSilence);
     // Noise should have higher zcf than a pure tone
@@ -1941,23 +1941,23 @@ FL_TEST_CASE("Loud - low zcf for pure sine, higher zcf for noise") {
 FL_TEST_CASE("Loud - gain amplified signal still bounded") {
     // Apply gain=10 to an already-loud signal. The gain causes internal
     // clamping but the equalizer output must still be in [0, 1].
-    AudioProcessor proc;
+    audio::Processor proc;
     proc.setGain(10.0f);
-    proc.onEqualizer([&](const Equalizer& eq) {
+    proc.onEqualizer([&](const audio::detector::Equalizer& eq) {
         checkEqBounds(eq);
     });
-    Equalizer last;
+    audio::detector::Equalizer last;
 
     for (int i = 0; i < 10; ++i) {
         vector<i16> samples = generateSineWave(512, 440.0f, 44100.0f, 16000);
-        AudioSample s = createSample(samples, i * 12);
+        audio::Sample s = createSample(samples, i * 12);
         proc.update(s);
     }
     // Should not crash and all values stay bounded (checked in callback).
 }
 
-FL_TEST_CASE("EqualizerConfig - default values match previous hardcoded") {
-    EqualizerConfig config;
+FL_TEST_CASE("audio::detector::EqualizerConfig - default values match previous hardcoded") {
+    audio::detector::EqualizerConfig config;
     FL_CHECK(config.minFreq == 60.0f);
     FL_CHECK(config.maxFreq == 5120.0f);
     FL_CHECK(config.smoothing == 0.05f);
@@ -1966,12 +1966,12 @@ FL_TEST_CASE("EqualizerConfig - default values match previous hardcoded") {
     FL_CHECK(config.silenceThreshold == 10.0f);
 }
 
-FL_TEST_CASE("AudioProcessor - configureEqualizer changes behavior") {
-    AudioProcessor proc;
+FL_TEST_CASE("audio::Processor - configureEqualizer changes behavior") {
+    audio::Processor proc;
 
     // Collect equalizer output with default config
     float defaultVolume = 0;
-    proc.onEqualizer([&](const Equalizer& eq) {
+    proc.onEqualizer([&](const audio::detector::Equalizer& eq) {
         defaultVolume = eq.volume;
     });
 
@@ -1985,10 +1985,10 @@ FL_TEST_CASE("AudioProcessor - configureEqualizer changes behavior") {
     // Now reconfigure with very fast normalization decay
     proc.reset();
     float fastDecayVolume = 0;
-    EqualizerConfig fast;
+    audio::detector::EqualizerConfig fast;
     fast.normDecay = 0.01f;  // Very fast decay
     proc.configureEqualizer(fast);
-    proc.onEqualizer([&](const Equalizer& eq) {
+    proc.onEqualizer([&](const audio::detector::Equalizer& eq) {
         fastDecayVolume = eq.volume;
     });
 
@@ -1997,23 +1997,23 @@ FL_TEST_CASE("AudioProcessor - configureEqualizer changes behavior") {
         proc.update(createSample(samples, i * 12));
     }
 
-    // Both should produce valid output (0-1 range)
+    // audio::Both should produce valid output (0-1 range)
     FL_CHECK(capturedDefault >= 0.0f);
     FL_CHECK(capturedDefault <= 1.0f);
     FL_CHECK(fastDecayVolume >= 0.0f);
     FL_CHECK(fastDecayVolume <= 1.0f);
 }
 
-FL_TEST_CASE("AudioProcessor - configureEqualizer silence threshold") {
-    AudioProcessor proc;
+FL_TEST_CASE("audio::Processor - configureEqualizer silence threshold") {
+    audio::Processor proc;
 
     // Configure with a very high silence threshold
-    EqualizerConfig config;
+    audio::detector::EqualizerConfig config;
     config.silenceThreshold = 50000.0f;  // Almost everything is "silent"
     proc.configureEqualizer(config);
 
     bool isSilence = false;
-    proc.onEqualizer([&](const Equalizer& eq) {
+    proc.onEqualizer([&](const audio::detector::Equalizer& eq) {
         isSilence = eq.isSilence;
     });
 
@@ -2027,7 +2027,7 @@ FL_TEST_CASE("AudioProcessor - configureEqualizer silence threshold") {
     FL_CHECK(isSilence == true);
 
     // Now reconfigure with a very low threshold
-    EqualizerConfig lowThresh;
+    audio::detector::EqualizerConfig lowThresh;
     lowThresh.silenceThreshold = 1.0f;
     proc.configureEqualizer(lowThresh);
 

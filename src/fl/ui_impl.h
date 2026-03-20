@@ -1,6 +1,6 @@
 #pragma once
 
-#include "fl/audio/audio_input.h"  // For AudioConfig  // IWYU pragma: keep
+#include "fl/audio/audio_input.h"  // For audio::Config  // IWYU pragma: keep
 #include "fl/stl/string.h"
 #include "fl/stl/url.h"
 #include "fl/stl/compiler_control.h"
@@ -232,15 +232,15 @@ class UIAudioImpl {
         FASTLED_UNUSED(name);
         FASTLED_UNUSED(url);
     }
-    UIAudioImpl(const fl::string& name, const fl::AudioConfig& config) {
+    UIAudioImpl(const fl::string& name, const fl::audio::Config& config) {
         FASTLED_UNUSED(name);
         FASTLED_UNUSED(config);
     }
     ~UIAudioImpl() {}
 
-    AudioSample next() {
+    audio::Sample next() {
         FASTLED_WARN("Audio sample not implemented");
-        return AudioSample();
+        return audio::Sample();
     }
 
     bool hasNext() {
@@ -252,7 +252,7 @@ class UIAudioImpl {
     void setGroup(const fl::string& groupName) { FASTLED_UNUSED(groupName); }
 
     // Stub: no underlying audio input on non-WASM platforms
-    fl::shared_ptr<IAudioInput> audioInput() { return nullptr; }
+    fl::shared_ptr<audio::IInput> audioInput() { return nullptr; }
 };
 #endif
 

@@ -1,6 +1,6 @@
 // @filter: (mem is high) and ((platform is teensy) or (platform is esp32))
 
-// Audio Reactive LEDs using FastLED.add(AudioConfig)
+// Audio Reactive LEDs using FastLED.add(Config)
 // Demonstrates the auto-pumped audio pipeline: mic → processor → callbacks → LEDs
 
 #include "FastLED.h"
@@ -14,14 +14,14 @@
 #define I2S_CLK 4
 
 CRGB leds[NUM_LEDS];
-fl::shared_ptr<fl::AudioProcessor> audio;
+fl::shared_ptr<fl::audio::Processor> audio;
 
 void setup() {
     Serial.begin(115200);
     FastLED.addLeds<WS2812B, LED_PIN, GRB>(leds, NUM_LEDS);
     FastLED.setBrightness(128);
 
-    auto config = fl::AudioConfig::CreateInmp441(I2S_WS, I2S_SD, I2S_CLK, fl::Right);
+    auto config = fl::audio::Config::CreateInmp441(I2S_WS, I2S_SD, I2S_CLK, fl::Right);
     audio = FastLED.add(config);
     audio->setGain(2.0f);  // Boost input by 2x
 

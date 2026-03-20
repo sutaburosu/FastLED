@@ -7,7 +7,7 @@
 #include "fl/ui.h"
 
 struct AudioReactive {
-    fl::shared_ptr<fl::AudioProcessor> processor;
+    fl::shared_ptr<fl::audio::Processor> processor;
     bool autoPump = false;
     uint32_t sampleCount = 0;
 

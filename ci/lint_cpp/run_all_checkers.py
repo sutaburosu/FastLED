@@ -48,7 +48,7 @@ from ci.lint_cpp.logging_in_iram_checker import LoggingInIramChecker
 from ci.lint_cpp.member_style_checker import MemberStyleChecker
 from ci.lint_cpp.namespace_platforms_checker import NamespacePlatformsChecker
 from ci.lint_cpp.native_platform_defines_checker import NativePlatformDefinesChecker
-from ci.lint_cpp.net_namespace_checker import NetNamespaceChecker
+from ci.lint_cpp.net_namespace_checker import SubdirNamespaceChecker
 from ci.lint_cpp.no_cpp_in_fl_checker import NoCppInFlChecker
 from ci.lint_cpp.no_namespace_fl_declaration import NamespaceFlDeclarationChecker
 from ci.lint_cpp.no_using_namespace_fl_in_headers import UsingNamespaceFlChecker
@@ -241,7 +241,12 @@ def create_checkers(
         CppHppHeaderPairChecker(),  # Checks that *.cpp.hpp files have corresponding *.h headers
         IwyuPragmaBlockChecker(all_headers=all_headers),
         BareUsingChecker(),  # Checks for bare using declarations in headers (unity build safety)
-        NetNamespaceChecker(),  # Checks fl/net/ headers use proper fl::net:: namespaces
+        SubdirNamespaceChecker(
+            "net"
+        ),  # Checks fl/net/ headers use proper fl::net:: namespaces
+        SubdirNamespaceChecker(
+            "audio"
+        ),  # Checks fl/audio/ headers use proper fl::audio:: namespaces
     ]
 
     # lib8tion/ directory checkers with STRICT enforcement

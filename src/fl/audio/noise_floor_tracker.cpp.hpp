@@ -3,6 +3,7 @@
 #include "fl/stl/math.h"
 
 namespace fl {
+namespace audio {
 
 NoiseFloorTracker::NoiseFloorTracker() {
     configure(NoiseFloorTrackerConfig{});
@@ -123,4 +124,5 @@ float NoiseFloorTracker::combineDomains(float timeLevel, float freqLevel) const 
     return (1.0f - w) * timeLevel + w * freqLevel;
 }
 
+} // namespace audio
 } // namespace fl
