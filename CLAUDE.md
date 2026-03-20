@@ -11,463 +11,74 @@
 | Writing/editing Python code | `agents/docs/python-standards.md` |
 | Editing meson.build files | `agents/docs/build-system.md` |
 | Running tests, Docker, WASM, QEMU | `agents/docs/testing-commands.md` |
+| Test-Driven Development (TDD) | Use `/tdd` or `/tdd-implement` skills |
 | Hardware validation / `bash validate` | `agents/docs/hardware-validation.md` |
 | Debugging a C++ crash | `agents/docs/debugging.md` |
 | Creating a new C++ linter | `agents/docs/linter-architecture.md` |
+| Detailed command reference | `agents/docs/commands-reference.md` |
+| Workflow and task management | `agents/docs/workflow.md` |
 
-**By what directory you're in:**
+**By directory:** `src/`/`tests/` → `agents/docs/cpp-standards.md` | `ci/` → `agents/docs/python-standards.md`, `agents/ci.md` | `tests/` → `agents/tests.md` | `examples/` → `agents/examples.md` | `meson.build` → `agents/docs/build-system.md`
 
-| Directory | Read |
-|-----------|------|
-| `src/`, `tests/` C++ files | `agents/docs/cpp-standards.md` |
-| `ci/` Python files | `agents/docs/python-standards.md`, `agents/ci.md` |
-| `tests/` | `agents/tests.md` |
-| `examples/` .ino files | `agents/examples.md` |
-| `meson.build` (any) | `agents/docs/build-system.md` |
+## Key Commands
 
-**Also see directory-specific guidelines:**
-- **CI/Build Tasks**: `agents/ci.md` - Python build system, compilation, MCP server tools
-- **Testing**: `agents/tests.md` - Unit tests, test execution, validation requirements, **test simplicity principles**
-- **Examples**: `agents/examples.md` - Arduino sketch compilation, .ino file rules
+**CRITICAL: Always use bash wrapper scripts (NOT direct Python invocation):**
 
-**When writing/updating tests, follow the Test Simplicity Principle in `agents/tests.md`:**
-- Keep tests as simple as possible
-- Avoid mocks and helper classes unless absolutely necessary
-- One focused test is better than many complex ones
-- See `tests/fl/timeout.cpp` for an example of simple, effective testing
+- `bash test` / `bash test --cpp` / `bash test TestName` — Run tests
+- `bash lint` — Code formatting/linting
+- `bash compile uno --examples Blink` — Compile for platform
+- `bash validate --parlio` — Live device testing (must specify driver)
+- `bash profile <function>` — Performance profiling
 
-## Key Commands (Cheat Sheet)
+**NEVER use:** `uv run python test.py` — use `bash test` or `uv run test.py`
+**FORBIDDEN:** `--no-fingerprint` (use `bash test --clean`), bare `pio`/`platformio`, bare `meson`/`ninja`/`clang++`
 
-**🚨 CRITICAL: Always use bash wrapper scripts (NOT direct Python invocation):**
-
-- `bash test` - Run all tests
-- `bash test --cpp` - C++ tests only
-- `bash test TestName` - Specific test (e.g., `bash test xypath`)
-- `bash lint` - Run code formatting/linting
-- `bash compile uno --examples Blink` - Compile for specific platform
-- `bash validate --parlio` - Live device testing (must specify driver)
-- `bash profile <function>` - Profile function performance with benchmarks (see Performance Profiling section)
-
-**Advanced (only when bash scripts don't provide needed functionality):**
-- `uv run ci/wasm_compile.py examples/Blink --just-compile` - WASM compilation
-- `uv run mcp_server.py` - Start MCP server
-
-**🚨 FORBIDDEN (unless directly requested by user or explicit evidence of fingerprint cache bug):**
-- `--no-fingerprint` flag - **STRONGLY DISCOURAGED**: Disables fingerprint caching, makes builds 10-100x slower
-  - Use `bash test --clean` instead if you suspect cache issues
-  - Only use if:
-    - User explicitly requests it (e.g., "run with --no-fingerprint")
-    - You have concrete evidence that fingerprint caching itself is broken (extremely rare)
-  - When user requests it, use override: `FL_AGENT_ALLOW_ALL_CMDS=1 bash test --no-fingerprint`
-
-**NEVER use:** `uv run python test.py` (always use `bash test` or `uv run test.py`)
-
-**Test disambiguation:**
-- Path-based: `bash test tests/fl/async` or `bash test examples/Blink`
-- Flag-based: `bash test async --cpp` or `bash test Async --examples`
-
-**Docker Testing (Linux Environment):**
-
-Run tests inside a Docker container for consistent Linux environment with ASAN/LSAN sanitizers:
-
-```bash
-# Run all C++ tests in Docker (implies --debug with sanitizers)
-bash test --docker
-
-# Run specific unit test in Docker
-bash test --docker tests/fl/async
-
-# Run with quick mode (no sanitizers, faster)
-bash test --docker --quick
-
-# Run with release mode (optimized)
-bash test --docker --build-mode release
-
-# Run only unit tests
-bash test --docker --unit
-
-# Run only examples
-bash test --docker --examples
-```
-
-**Notes:**
-- `--docker` implies `--debug` mode (ASAN/LSAN sanitizers enabled) unless `--quick` or `--build-mode` is specified
-- Warning shown: `⚠️  --docker implies --debug mode (sanitizers enabled). Use --quick or --build-mode release for faster builds.`
-- First run downloads Docker image and Python packages (cached for subsequent runs)
-- Uses named volumes for `.venv` and `.build` to persist between runs
-
-**⚠️ AI AGENTS: Avoid `bash test --docker` unless necessary** - Docker testing is slow (3-5 minutes per test). Use `uv run test.py` for quick local testing. Only use Docker when:
-- You need Linux-specific sanitizers (ASAN/LSAN) that aren't working locally
-- Reproducing CI failures that only occur in the Linux environment
-- Testing cross-platform compatibility issues
-
-**Other tools:**
-
-### fbuild (Default for ESP32-S3 and ESP32-C6)
-The project uses `fbuild` as the **default build system** for ESP32-S3 and ESP32-C6 (RISC-V) boards. fbuild provides:
-- **Daemon-based compilation** - Background process handles builds, survives agent interrupts
-- **Cached toolchains/frameworks** - Downloads and caches ESP32 toolchain, Arduino framework
-- **Direct esptool integration** - Fast uploads without PlatformIO overhead
-
-**Default behavior:**
-- **ESP32-S3 / ESP32-C6**: fbuild is used automatically (no flag needed)
-- **Other ESP32 variants**: PlatformIO is used by default
-
-**Usage via debug_attached.py:**
-```bash
-# ESP32-S3: fbuild is the default (no --use-fbuild needed)
-uv run ci/debug_attached.py esp32s3 --example Blink
-
-# Force PlatformIO on esp32s3/esp32c6
-uv run ci/debug_attached.py esp32s3 --example Blink --no-fbuild
-
-# Explicitly use fbuild on other ESP32 variants
-uv run ci/debug_attached.py esp32dev --use-fbuild --example Blink
-```
-
-**Build caching:** fbuild stores builds in `.fbuild/build/<env>/` and caches toolchains in `.fbuild/cache/`.
-
-### Test Disambiguation
-When multiple tests match a query, use these methods:
-
-**Path-based queries:**
-- `uv run test.py tests/fl/async` - Run unit test by path
-- `uv run test.py examples/Blink` - Run example by path
-
-**Flag-based filtering:**
-- `uv run test.py async --cpp` - Filter to unit tests only
-- `uv run test.py Async --examples` - Filter to examples only
-
-### Example Compilation (Host-Based)
-FastLED supports fast host-based compilation of `.ino` examples using Meson build system:
-
-**Quick Mode (Default - Fast Iteration):**
-- `uv run test.py --examples` - Compile and run all examples (quick mode, 80 examples in ~0.24s)
-- `uv run test.py --examples Blink DemoReel100` - Compile specific examples (quick mode)
-- `uv run test.py --examples --no-parallel` - Sequential compilation (easier debugging)
-- `uv run test.py --examples --verbose` - Show detailed compilation output
-- `uv run test.py --examples --clean` - Clean build cache and recompile
-
-**Debug Mode (Full Symbols + Sanitizers):**
-- `uv run test.py --examples --debug` - Compile all examples with debug symbols and sanitizers
-- `uv run test.py --examples Blink --debug` - Compile specific example in debug mode
-- `uv run test.py --examples Blink --debug --full` - Debug mode with execution
-- `uv run python ci/util/meson_example_runner.py Blink --debug` - Direct invocation (debug)
-
-**Release Mode (Optimized Production Builds):**
-- `uv run test.py --examples --build-mode release` - Compile all examples optimized
-- `uv run test.py --examples Blink --build-mode release` - Compile specific example (release)
-- `uv run python ci/util/meson_example_runner.py Blink --build-mode release` - Direct invocation (release)
-
-**Build Modes:**
-- **quick** (default): Light optimization with minimal debug info (`-O1 -g1`)
-  - Build directory: `.build/meson-quick/examples/`
-  - Binary size: Baseline (e.g., Blink: 2.8M)
-  - Use case: Fast iteration and testing
-
-- **debug**: Full symbols and sanitizers (`-O0 -g3 -fsanitize=address,undefined`)
-  - Build directory: `.build/meson-debug/examples/`
-  - Binary size: 3.3x larger (e.g., Blink: 9.1M)
-  - Sanitizers: AddressSanitizer (ASan) + UndefinedBehaviorSanitizer (UBSan)
-  - Use case: Debugging crashes, memory issues, undefined behavior
-  - Benefits: Detects buffer overflows, use-after-free, memory leaks, integer overflow, null dereference
-
-- **release**: Optimized production build (`-O2 -DNDEBUG`)
-  - Build directory: `.build/meson-release/examples/`
-  - Binary size: Smallest, 20% smaller than quick (e.g., Blink: 2.3M)
-  - Use case: Performance testing
-
-**Mode-Specific Directories:**
-- All three modes use separate build directories to enable caching and prevent flag conflicts
-- Switching modes does not invalidate other mode's cache (no cleanup overhead)
-- All modes can coexist simultaneously: `.build/meson-{quick,debug,release}/examples/`
-
-**Performance Notes:**
-- Host compilation is 60x+ faster than PlatformIO (2.2s vs 137s for single example)
-- All 80 examples compile in ~0.24s (394 examples/second) with PCH caching in quick/release modes
-- Debug mode is slower due to sanitizer instrumentation but maintains reasonable performance
-- PCH (precompiled headers) dramatically speeds up compilation by caching 986 dependencies
-- Examples execute with limited loop iterations (5 loops) for fast testing
-
-**Direct Invocation:**
-- `uv run python ci/util/meson_example_runner.py` - Compile all examples directly (quick mode)
-- `uv run python ci/util/meson_example_runner.py Blink --full` - Compile and execute specific example
-- `uv run python ci/util/meson_example_runner.py Blink --debug --full` - Debug mode with execution
-
-### WASM Development Workflow
-`bash run wasm <example>` - Compile WASM example and serve with live-server:
-
-**Usage:**
-- `bash run wasm AnimartrixRing` - Compile AnimartrixRing to WASM and serve with live-server
-- `bash run wasm Blink` - Compile Blink to WASM and serve with live-server
-
-**What it does:**
-1. Compiles the example to WASM using `bash compile wasm <example>`
-2. Serves the output directory (`examples/<example>/fastled_js/`) with live-server
-3. Opens browser automatically for interactive testing
-
-**Requirements:**
-- Install live-server: `npm install -g live-server`
-
-### Performance Profiling & Optimization
-`bash profile <function>` - Generate profiler and run performance benchmarks:
-
-**Quick Start:**
-```bash
-# Profile a function (local build, 20 iterations)
-bash profile sincos16
-
-# Profile in Docker (consistent environment, recommended)
-bash profile sincos16 --docker
-
-# More iterations for better statistics
-bash profile sincos16 --docker --iterations 50
-
-# With callgrind analysis (slower, detailed hotspots)
-bash profile sincos16 --docker --callgrind
-```
-
-**What it does:**
-1. **Generate profiler** - Creates `tests/profile/profile_<function>.cpp` from template
-2. **Build binary** - Compiles profiler with optimization flags
-3. **Run benchmarks** - Executes multiple iterations and collects timing data
-4. **Analyze results** - Computes statistics (best/median/worst/stdev)
-5. **Export for AI** - Creates `profile_<function>_results.ai.json` for AI consumption
-
-**Options:**
-- `--docker` - Run in Docker (consistent Linux environment, recommended)
-- `--iterations N` - Number of benchmark runs (default: 20)
-- `--build-mode MODE` - Build mode: quick, debug, release, profile (default: release)
-- `--no-generate` - Skip test generation (use existing profiler)
-- `--callgrind` - Run valgrind callgrind analysis (requires valgrind)
-
-**Output Files:**
-- `tests/profile/profile_<function>.cpp` - Generated profiler source (template, needs customization)
-- `profile_<function>_results.json` - Raw benchmark data (all iterations)
-- `profile_<function>_results.ai.json` - Statistical summary for AI analysis
-
-**Example Workflow (AI-Driven):**
-```
-User: "Optimize sincos16 with profile-guided optimization"
-
-AI Steps:
-1. bash profile sincos16 --docker --iterations 30
-2. [Reads profile_sincos16_results.ai.json]
-3. [Analyzes: median 47.8 ns/call]
-4. [Identifies: LUT bandwidth bottleneck via callgrind]
-5. [Creates optimized variant with smaller LUT]
-6. bash profile sincos16_optimized --docker
-7. [Results: 38.1 ns/call, 20% speedup]
-8. [Validates accuracy with generated tests]
-9. [Recommends: Apply optimization]
-```
-
-**⚠️ IMPORTANT: Generated profilers are TEMPLATES**
-- The generated code is a starting point that MUST be customized
-- You need to add appropriate test inputs for your function
-- Ensure the benchmark calls the target function correctly
-- Edit `tests/profile/profile_<function>.cpp` after generation
-
-**When to use:**
-- Function is performance-critical (hot path in rendering/effects)
-- User requests "optimize" or "profile-guided optimization"
-- Making algorithmic changes that affect speed
-- Comparing performance of different implementations
-
-**Integration with test.py:**
-Profile tests are built alongside regular tests but NOT executed by `uv run test.py`:
-```bash
-# Build profile tests
-uv run test.py profile_sincos16 --cpp --build-mode release --build
-
-# Run manually (use bash profile instead)
-.build/meson-release/tests/profile_sincos16.exe baseline
-```
-
-### Git Historian (Code Search)
-- `/git-historian keyword1 keyword2` - Search codebase and recent git history for keywords
-- `/git-historian "error handling" config` - Search for multi-word phrases (use quotes)
-- `/git-historian memory leak --paths src tests` - Limit search to specific directories
-- Searches both current code AND last 10 commits' diffs in under 4 seconds
-- `/code_review` - Run specialized code review checks on changes
+See `agents/docs/commands-reference.md` for Docker, fbuild, WASM, profiling, example compilation, and override mechanism.
+See `agents/docs/build-system.md` for full command execution rules and forbidden patterns.
 
 ## Core Rules (ALL AGENTS)
 
 ### Git and Code Publishing
-- **NEVER run git commit**: Do NOT create commits - user will commit when ready
-- **NEVER push code to remote**: Do NOT run `git push` or any command that pushes to remote repository
-- **User controls all git operations**: All git commit and push decisions are made by the user
-
-### Channel Engine DMA Wait Pattern
-- **`onBeginFrame()` / `show()` must wait for `poll() == READY` before starting a new frame** — use a simple `while (poll() != READY)` loop
-- **Do NOT branch on DRAINING or other intermediate states** inside the wait loop in `show()` or `onBeginFrame()`. The `poll()` method drives the state machine to READY; callers just wait for it.
-- **`onEndFrame()` may wait for READY *or* DRAINING** — after `show()` kicks off DMA, it's fine to return once DMA is running (DRAINING). `onBeginFrame()` will ensure READY before the next frame.
-- **Rationale**: Branching on intermediate states in the "wait for previous frame" path splits logic across multiple places and makes the code harder to reason about. The only place DRAINING is acceptable is `onEndFrame()`, which doesn't need to block until DMA fully completes.
-- **Reference**: See `src/fl/channels/README.md` → "DMA Wait Pattern" section
+- **NEVER run git commit or git push** — user controls all git operations
 
 ### Hook Error Policy
-- **ALWAYS stop and fix Write/Edit hook errors immediately**: When a PostToolUse hook (e.g., lint-on-save) reports errors after a Write or Edit, you MUST stop, investigate the violations, and fix them before writing the next file
-- **Do NOT ignore hook errors**: Hook errors are actionable feedback, not noise. Plowing ahead and creating more files with violations creates compounding debt
-- **Do NOT bypass hooks unless absolutely necessary**: Suppression comments (e.g., `// ok bare allocation`) are acceptable when the flagged pattern is intentional and correct. Disabling or skipping hooks is not
-- **IWYU errors may be deferred** when laying down multiple new files in a batch, since IWYU requires full compilation context that may not be available until all files exist
-- **Workflow**: Write file → hook fires → if error, fix immediately → re-lint to confirm → proceed to next file
+- **ALWAYS stop and fix Write/Edit hook errors immediately** before writing the next file
+- **IWYU errors may be deferred** when laying down multiple new files in a batch
 
 ### Error Fixing Policy
-- **ALWAYS fix encountered errors immediately**: When running tests or linting, fix ALL errors you encounter, even if they are pre-existing issues unrelated to your current task
-- **Rationale**: Leaving broken tests or linting errors creates technical debt and makes the codebase less maintainable
-- **Examples**:
-  - If a test suite shows 2 failing tests, fix them before completing your work
-  - If linting reveals errors in files you didn't modify, fix those errors
-  - If compilation fails due to pre-existing bugs, investigate and fix them
-- **Exception**: Only skip fixing errors if they are clearly outside the scope of the codebase (e.g., external dependency issues requiring upstream fixes)
+- **Fix ALL encountered errors immediately**, even pre-existing ones unrelated to your current task
 
 ### Command Execution
-- **Build commands**: ALWAYS use bash wrapper scripts (`bash test`, `bash compile`, `bash lint`)
-  - ✅ Use: `bash test`, `bash compile`, `bash lint`, `bash validate`
-  - ⚠️ Avoid: `uv run test.py` (only when bash scripts don't provide needed functionality)
-  - ❌ NEVER: `uv run python test.py` (always use bash scripts or `uv run test.py`)
-- **Python scripts**: When directly invoking Python (not for builds):
-  - Always use `uv run python script.py` (never just `python`)
-  - For build tools, prefer `uv run <script>` over `uv run python <script>`
-- **Stay in project root** - never `cd` to subdirectories
-- **Git-bash compatibility**: Commands work in git-bash on Windows
-- **NEVER use bare `pio` or `platformio` commands**: Direct PlatformIO commands are DANGEROUS and NOT ALLOWED
-  - Use: `bash compile`, `bash validate`, or `bash debug` instead
-  - Never use: `pio run`, `platformio run`, or any bare `pio`/`platformio` commands
-  - Rationale: Bare PlatformIO commands bypass critical safety checks and daemon-managed package installation
-- **NEVER use low-level build commands directly**: Do NOT run `meson`, `ninja`, `clang++`, or `gcc` for standard builds
-  - Use: `bash test`, `bash compile`, `bash lint` instead
-  - Never use: `meson setup builddir`, `ninja -C builddir`, `clang++ main.cpp -o main`
-  - Exception: Runtime debugging of already-built executables (e.g., `clang-tool-chain-lldb .build/runner.exe`) is allowed
-  - Exception: Compiler feature testing is allowed with override mechanism:
-    - ✅ **Recommended**: Use clang-tool-chain wrappers (no override needed)
-      - `clang-tool-chain-clang++ test.cpp -o test.exe` (C++)
-      - `clang-tool-chain-lldb test.exe` (debugger)
-    - ✅ **Alternative**: Use override for bare compiler commands
-      - `FL_AGENT_ALLOW_ALL_CMDS=1 clang++ test.cpp -o test.exe`
-      - `FL_AGENT_ALLOW_ALL_CMDS=1 ninja --version`
-    - ❌ NEVER: Bare toolchain commands without override (`clang++`, `gcc`, `lldb`, etc.)
-    - ❌ NEVER: Wrong invocation (`uv run clang-tool-chain clang++`)
-    - **Override mechanism**: Prefix command with `FL_AGENT_ALLOW_ALL_CMDS=1` to bypass forbidden command checks
-    - **When to use override**: Compiler feature testing, debugging build system issues, or when clang-tool-chain wrappers don't provide needed functionality
-    - Rationale: clang-tool-chain wrappers ensure consistent compiler versions; override allows flexibility for legitimate use cases
-  - Rationale: FastLED build system handles configuration, caching, dependencies, and platform-specific setup
-  - See: `agents/docs/build-system.md` for details
-- **NEVER manually delete build caches**: Do NOT use `rm -rf .build/` or delete build directories
-  - Use: `bash test --clean`, `bash compile --clean` instead of manual deletion
-  - Never use: `rm -rf .build/meson-quick`, `rm -rf .build && bash test`
-  - Rationale: Build system is self-healing and has special cache invalidation code
-  - **HIGHLY DISCOURAGED**: The build system will revalidate and self-heal on its own
-  - See: `agents/docs/build-system.md` for details
-- **NEVER disable fingerprint caching (unless directly requested)**: Do NOT use `--no-fingerprint` flag
-  - Use: `bash test --clean` if you suspect cache issues
-  - Never use: `--no-fingerprint` (makes builds 10-100x slower)
-  - Rationale: Fingerprint caching is critical performance optimization that tracks file changes correctly
-  - **STRONGLY DISCOURAGED**: Only use if:
-    - User explicitly requests it (e.g., "run with --no-fingerprint")
-    - You have concrete evidence fingerprint caching itself is broken (extremely rare)
-  - When user requests it, use override: `FL_AGENT_ALLOW_ALL_CMDS=1 bash test --no-fingerprint`
-  - See: `agents/docs/build-system.md` for details
-- **Platform compilation timeout**: Use minimum 15 minute timeout for platform builds (e.g., `bash compile --docker esp32s3`)
-- **NEVER disable zccache**: Do NOT set `ZCCACHE_DISABLE=1` or disable zccache in any way (see `agents/docs/build-system.md`)
+- **Always use bash wrapper scripts** (`bash test`, `bash compile`, `bash lint`, `bash validate`)
+- **Stay in project root** — never `cd` to subdirectories
+- **Python scripts**: Always use `uv run python script.py` (never bare `python`)
+- **Platform compilation timeout**: 15 minutes minimum for platform builds
+- **Override**: `FL_AGENT_ALLOW_ALL_CMDS=1` prefix bypasses forbidden command checks
+- See `agents/docs/build-system.md` for full rules
 
-### Override Mechanism for Forbidden Commands
-
-**⚠️ Use with caution - only for legitimate debugging and testing**
-
-All forbidden commands and patterns can be bypassed using the `FL_AGENT_ALLOW_ALL_CMDS=1` environment variable:
-
-**Usage:**
-- **Prefix command (recommended for AI agents):** `FL_AGENT_ALLOW_ALL_CMDS=1 <command>`
-- **Set in environment (for multiple commands):** `export FL_AGENT_ALLOW_ALL_CMDS=1`
-
-**Examples:**
-```bash
-# Compiler feature testing
-FL_AGENT_ALLOW_ALL_CMDS=1 clang++ test.cpp -o test.exe
-
-# Build system debugging
-FL_AGENT_ALLOW_ALL_CMDS=1 ninja --version
-FL_AGENT_ALLOW_ALL_CMDS=1 meson introspect .build/meson-quick
-
-# Cache debugging (still highly discouraged)
-FL_AGENT_ALLOW_ALL_CMDS=1 rm -rf .build/meson-quick
-```
-
-**When to use:**
-- ✅ Compiler feature testing (e.g., checking C++ standard support)
-- ✅ Build system debugging (e.g., inspecting build configuration)
-- ✅ Investigating specific build failures that require low-level access
-- ❌ **NOT for regular development** - always prefer bash wrapper scripts
-
-**How it works:**
-- Pre-command hook (`ci/hooks/check_forbidden_commands.py`) parses the environment variable from the command string
-- If `FL_AGENT_ALLOW_ALL_CMDS=1` is found, the forbidden command is allowed to proceed
-- See `ci/hooks/README.md` for complete documentation
-
-### C++ Span Convention
-- **`fl::span` auto-converts from containers**: When constructing from a `fl::vector` or similar container with `data()`/`size()`, pass the container directly instead of `fl::span<const T>(v.data(), v.size())`
-  - ✅ `AudioSample(data, timestamp)` or `fl::span<const fl::i16> s = myVector;`
-  - ❌ `AudioSample(fl::span<const fl::i16>(data.data(), data.size()), timestamp)`
-
-### JavaScript Code Standards
-- **After modifying any JavaScript files**: Always run `bash lint --js` to ensure proper formatting
+### Code Standards
+- **C++**: See `agents/docs/cpp-standards.md` (span convention, DMA patterns, naming, macros)
+- **JavaScript**: Run `bash lint --js` after modifying JS files
 
 ### Code Review Rule
-**ALL AGENTS: After making code changes, run `/code_review` to validate changes. This ensures compliance with project standards.**
+**ALL AGENTS: Run `/code-review` after making code changes.**
 
 ### Memory Refresh Rule
-**ALL AGENTS: Read the relevant AGENTS.md file before concluding work to refresh memory about current project rules and requirements.**
+**ALL AGENTS: Read the relevant agents doc before concluding work.**
 
-## Workflow Orchestration
+## Workflow
 
-### 1. Plan Mode Default
-- Enter plan mode for ANY non-trivial task (3+ steps or architectural decisions)
-- If something goes sideways, STOP and re-plan immediately — don't keep pushing
-- Use plan mode for verification steps, not just building
-- Write detailed specs upfront to reduce ambiguity
+See `agents/docs/workflow.md` for full workflow orchestration and task management.
 
-### 2. Subagent Strategy
-- Use subagents liberally to keep main context window clean
-- Offload research, exploration, and parallel analysis to subagents
-- For complex problems, throw more compute at it via subagents
-- One task per subagent for focused execution
-
-### 3. Self-Improvement Loop
-- After ANY correction from the user: update `agents/tasks/lessons.md` with the pattern
-- Write rules for yourself that prevent the same mistake
-- Ruthlessly iterate on these lessons until mistake rate drops
-- Review lessons at session start for relevant project
-
-### 4. Verification Before Done
-- Never mark a task complete without proving it works
-- Diff behavior between main and your changes when relevant
-- Ask yourself: "Would a staff engineer approve this?"
-- Run tests, check logs, demonstrate correctness
-
-### 5. Demand Elegance (Balanced)
-- For non-trivial changes: pause and ask "is there a more elegant way?"
-- If a fix feels hacky: "Knowing everything I know now, implement the elegant solution"
-- Skip this for simple, obvious fixes — don't over-engineer
-- Challenge your own work before presenting it
-
-### 6. Autonomous Bug Fixing
-- When given a bug report: just fix it. Don't ask for hand-holding
-- Point at logs, errors, failing tests — then resolve them
-- Zero context switching required from the user
-- Go fix failing CI tests without being told how
-
-## Task Management
-
-1. **Plan First**: Write plan to `agents/tasks/todo.md` with checkable items
-2. **Verify Plan**: Check in before starting implementation
-3. **Track Progress**: Mark items complete as you go
-4. **Explain Changes**: High-level summary at each step
-5. **Document Results**: Add review section to `agents/tasks/todo.md`
-6. **Capture Lessons**: Update `agents/tasks/lessons.md` after corrections
+- **Plan first** for non-trivial tasks (3+ steps) — use plan mode
+- **Subagents** for research, exploration, and parallel analysis
+- **Self-improvement**: Update `agents/tasks/lessons.md` after corrections
+- **Verify before done** — prove it works with tests, logs, demonstrations
+- **Test simplicity**: Keep tests simple, avoid mocks. See `agents/tests.md`
+- **TDD for features/bugs**: Use `/tdd` (guided cycle) or `/tdd-implement` (full feature). Write tests FIRST.
 
 ## Core Principles
 
-- **Simplicity First**: Make every change as simple as possible. Impact minimal code.
+- **Simplicity First**: Make every change as simple as possible. Minimal code impact.
 - **No Laziness**: Find root causes. No temporary fixes. Senior developer standards.
 - **Minimal Impact**: Changes should only touch what's necessary. Avoid introducing bugs.

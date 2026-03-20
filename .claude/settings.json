@@ -18,6 +18,21 @@
             "command": "ROOT=$(git rev-parse --show-superproject-working-tree 2>/dev/null); cd \"${ROOT:-$(git rev-parse --show-toplevel)}\" && uv run python ci/hooks/check_test_file_pairing.py"
           }
         ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "ROOT=$(git rev-parse --show-superproject-working-tree 2>/dev/null); cd \"${ROOT:-$(git rev-parse --show-toplevel)}\" && uv run python ci/hooks/tdd_guard.py",
+            "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "ROOT=$(git rev-parse --show-superproject-working-tree 2>/dev/null); cd \"${ROOT:-$(git rev-parse --show-toplevel)}\" && uv run python ci/hooks/protect_platform_headers.py",
+            "timeout": 10
+          }
+        ]
       }
     ],
     "PostToolUse": [
@@ -28,6 +43,11 @@
             "type": "command",
             "command": "ROOT=$(git rev-parse --show-superproject-working-tree 2>/dev/null); cd \"${ROOT:-$(git rev-parse --show-toplevel)}\" && uv run python ci/hooks/lint-on-save.py",
             "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": "ROOT=$(git rev-parse --show-superproject-working-tree 2>/dev/null); cd \"${ROOT:-$(git rev-parse --show-toplevel)}\" && uv run python ci/hooks/auto_test_suggest.py",
+            "timeout": 10
           }
         ]
       }
@@ -50,6 +70,28 @@
             "type": "command",
             "command": "ROOT=$(git rev-parse --show-superproject-working-tree 2>/dev/null); cd \"${ROOT:-$(git rev-parse --show-toplevel)}\" && uv run python ci/hooks/check-on-stop.py",
             "timeout": 600
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "ROOT=$(git rev-parse --show-superproject-working-tree 2>/dev/null); cd \"${ROOT:-$(git rev-parse --show-toplevel)}\" && uv run python ci/hooks/desktop_notify.py",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "ROOT=$(git rev-parse --show-superproject-working-tree 2>/dev/null); cd \"${ROOT:-$(git rev-parse --show-toplevel)}\" && uv run python ci/hooks/git_context.py",
+            "timeout": 10
           }
         ]
       }

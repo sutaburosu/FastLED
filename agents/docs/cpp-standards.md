@@ -108,6 +108,9 @@ The names make roles explicit: `.impl.cpp.hpp` = "implementation router, include
 - **Automatic span conversion**: `fl::span<T>` has implicit conversion constructors - you don't need explicit `fl::span<T>(...)` wrapping in function calls. Example:
   - Correct: `verifyPixels8bit(output, leds)` (implicit conversion)
   - Verbose: `verifyPixels8bit(output, fl::span<const CRGB>(leds, 3))` (unnecessary explicit wrapping)
+- **Container auto-conversion**: `fl::span` auto-converts from containers with `data()`/`size()`. Pass the container directly:
+  - ✅ `AudioSample(data, timestamp)` or `fl::span<const fl::i16> s = myVector;`
+  - ❌ `AudioSample(fl::span<const fl::i16>(data.data(), data.size()), timestamp)`
 - **Prefer passing and returning by span**: Use `fl::span<T>` or `fl::span<const T>` for function parameters and return types unless a copy of the source data is required:
   - Preferred: `fl::span<const uint8_t> getData()` (zero-copy view)
   - Preferred: `void process(fl::span<const CRGB> pixels)` (accepts arrays, vectors, etc.)
@@ -166,6 +169,13 @@ The names make roles explicit: `.impl.cpp.hpp` = "implementation router, include
 - **Exception**: Statics inside template functions are allowed (each template instantiation gets its own static, avoiding conflicts)
 - **Linter**: Enforced by `ci/lint_cpp/test_no_static_in_headers.py` for critical directories (`src/platforms/shared/`, `src/fl/`, `src/fx/`)
 - **Suppression**: Add `// okay static in header` comment if absolutely necessary (use sparingly)
+
+## Channel Engine DMA Wait Pattern
+- **`onBeginFrame()` / `show()` must wait for `poll() == READY` before starting a new frame** — use a simple `while (poll() != READY)` loop
+- **Do NOT branch on DRAINING or other intermediate states** inside the wait loop in `show()` or `onBeginFrame()`. The `poll()` method drives the state machine to READY; callers just wait for it.
+- **`onEndFrame()` may wait for READY *or* DRAINING** — after `show()` kicks off DMA, it's fine to return once DMA is running (DRAINING). `onBeginFrame()` will ensure READY before the next frame.
+- **Rationale**: Branching on intermediate states in the "wait for previous frame" path splits logic across multiple places and makes the code harder to reason about.
+- **Reference**: See `src/fl/channels/README.md` → "DMA Wait Pattern" section
 
 ## Naming Conventions
 - **Member variable naming**: All member variables in classes and structs MUST use mCamelCase (prefix with 'm'):

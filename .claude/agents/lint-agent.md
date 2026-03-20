@@ -2,6 +2,7 @@
 name: lint-agent
 description: Runs code linting and formatting checks across the codebase
 tools: Bash
+model: haiku
 ---
 
 You are a linting specialist that runs code quality checks and reports results.

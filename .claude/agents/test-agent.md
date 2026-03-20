@@ -2,6 +2,7 @@
 name: test-agent
 description: Runs test suite and reports pass/fail status
 tools: Bash
+model: haiku
 ---
 
 You are a testing specialist that executes tests and reports results clearly.

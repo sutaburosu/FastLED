@@ -28,6 +28,44 @@ PYTHON_EXTENSIONS = {".py"}
 JS_EXTENSIONS = {".js", ".ts"}
 SUPPORTED_EXTENSIONS = CPP_EXTENSIONS | PYTHON_EXTENSIONS | JS_EXTENSIONS
 
+# Cache for submodule paths (avoids spawning git on every save)
+_submodule_cache: list[str] | None = None
+
+
+def _get_submodule_paths() -> list[str]:
+    """Get list of submodule paths, cached after first call."""
+    global _submodule_cache
+    if _submodule_cache is not None:
+        return _submodule_cache
+    _submodule_cache = []
+    try:
+        result = subprocess.run(
+            [
+                "git",
+                "config",
+                "--file",
+                ".gitmodules",
+                "--get-regexp",
+                r"^submodule\..*\.path$",
+            ],
+            capture_output=True,
+            text=True,
+            cwd=str(PROJECT_ROOT),
+        )
+        if result.returncode == 0:
+            for line in result.stdout.strip().splitlines():
+                parts = line.split(None, 1)
+                if len(parts) == 2:
+                    _submodule_cache.append(parts[1].replace("\\", "/"))
+    except KeyboardInterrupt:
+        import _thread
+
+        _thread.interrupt_main()
+        raise
+    except Exception:
+        pass
+    return _submodule_cache
+
 
 def get_file_path_from_hook_input() -> str | None:
     """Extract file path from Claude Code hook JSON input."""
@@ -65,37 +103,13 @@ def main() -> int:
         return 0
 
     # Skip files inside git submodules (e.g., wiki/) to avoid endless loops
+    # Uses cached submodule paths to avoid spawning git on every save
     rel_path = os.path.relpath(file_path, PROJECT_ROOT)
-    try:
-        submodule_output = subprocess.run(
-            [
-                "git",
-                "config",
-                "--file",
-                ".gitmodules",
-                "--get-regexp",
-                r"^submodule\..*\.path$",
-            ],
-            capture_output=True,
-            text=True,
-            cwd=str(PROJECT_ROOT),
-        )
-        if submodule_output.returncode == 0:
-            for line in submodule_output.stdout.strip().splitlines():
-                # Format: "submodule.<name>.path <path>"
-                parts = line.split(None, 1)
-                if len(parts) == 2:
-                    sub_path = parts[1].replace("\\", "/")
-                    rel_norm = rel_path.replace("\\", "/")
-                    if rel_norm == sub_path or rel_norm.startswith(sub_path + "/"):
-                        return 0
-    except KeyboardInterrupt as ke:
-        import _thread
-
-        _thread.interrupt_main()
-        raise
-    except Exception:
-        pass
+    submodule_paths = _get_submodule_paths()
+    rel_norm = rel_path.replace("\\", "/")
+    for sub_path in submodule_paths:
+        if rel_norm == sub_path or rel_norm.startswith(sub_path + "/"):
+            return 0
 
     # Skip C++ files in examples directory (IWYU checks not applicable)
     if Path(file_path).suffix.lower() in CPP_EXTENSIONS:
