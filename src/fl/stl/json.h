@@ -287,16 +287,10 @@ public:
     // Zero-copy pointer accessors
     const json_array*        as_array()   const { return mValue ? mValue->as_array() : nullptr; }
     const json_object*       as_object()  const { return mValue ? mValue->as_object() : nullptr; }
-    const fl::vector<i16>*   as_audio()   const { return mValue ? mValue->as_audio() : nullptr; }
-    const fl::vector<u8>*    as_bytes()   const { return mValue ? mValue->as_bytes() : nullptr; }
-    const fl::vector<float>* as_floats()  const { return mValue ? mValue->as_floats() : nullptr; }
 
-    // Explicit copy methods - use when you need an owned copy or packed-array conversion
+    // Explicit copy methods - use when you need an owned copy or type conversion
     fl::optional<json_array>        clone_array()  const { return mValue ? mValue->clone_array() : fl::nullopt; }
     fl::optional<json_object>       clone_object() const { return mValue ? mValue->clone_object() : fl::nullopt; }
-    fl::optional<fl::vector<i16>>   clone_audio()  const { return mValue ? mValue->clone_audio() : fl::nullopt; }
-    fl::optional<fl::vector<u8>>    clone_bytes()  const { return mValue ? mValue->clone_bytes() : fl::nullopt; }
-    fl::optional<fl::vector<float>> clone_floats() const { return mValue ? mValue->clone_floats() : fl::nullopt; }
 
     // Copy packed-array elements into a caller-owned span with type conversion.
     // Returns number of elements copied (min of array size and span size).
@@ -304,6 +298,20 @@ public:
     template<typename T>
     size_t copy_to(fl::span<T> out) const {
         return mValue ? mValue->copy_to(out) : 0;
+    }
+
+    // Stream packed-array elements into an output iterator with type conversion.
+    // Use with fl::back_inserter(container) to append to any container.
+    // Returns number of elements written. Returns 0 if not a numeric array.
+    template<typename T, typename OutputIt>
+    size_t copy_to_output_iterator(OutputIt out) const {
+        return mValue ? mValue->template copy_to_output_iterator<T, OutputIt>(out) : 0;
+    }
+
+    // Overload for back_insert_iterator: T deduced from container's value_type
+    template<typename Container>
+    size_t copy_to_output_iterator(fl::back_insert_iterator<Container> out) const {
+        return mValue ? mValue->copy_to_output_iterator(out) : 0;
     }
 
     // NEW ERGONOMIC API: try_as<T>() - Explicit optional handling
@@ -376,26 +384,33 @@ private:
         return ptr ? fl::optional<T>(*ptr) : fl::nullopt;
     }
 
-    // Specialized vector types
+    // Specialized vector types - use copy_to_output_iterator for cross-type conversion
+    // e.g., try_as<vector<float>>() works on u8/i16/float packed arrays
     template<typename T>
     typename fl::enable_if<fl::is_same<T, fl::vector<i16>>::value, fl::optional<T>>::type
     as_impl() const {
-        auto ptr = mValue->as_audio();
-        return ptr ? fl::optional<T>(*ptr) : fl::nullopt;
+        if (!mValue->is_array()) return fl::nullopt;
+        T result;
+        size_t n = mValue->copy_to_output_iterator(fl::back_inserter(result));
+        return n > 0 ? fl::optional<T>(fl::move(result)) : fl::nullopt;
     }
 
     template<typename T>
     typename fl::enable_if<fl::is_same<T, fl::vector<u8>>::value, fl::optional<T>>::type
     as_impl() const {
-        auto ptr = mValue->as_bytes();
-        return ptr ? fl::optional<T>(*ptr) : fl::nullopt;
+        if (!mValue->is_array()) return fl::nullopt;
+        T result;
+        size_t n = mValue->copy_to_output_iterator(fl::back_inserter(result));
+        return n > 0 ? fl::optional<T>(fl::move(result)) : fl::nullopt;
     }
 
     template<typename T>
     typename fl::enable_if<fl::is_same<T, fl::vector<float>>::value, fl::optional<T>>::type
     as_impl() const {
-        auto ptr = mValue->as_floats();
-        return ptr ? fl::optional<T>(*ptr) : fl::nullopt;
+        if (!mValue->is_array()) return fl::nullopt;
+        T result;
+        size_t n = mValue->copy_to_output_iterator(fl::back_inserter(result));
+        return n > 0 ? fl::optional<T>(fl::move(result)) : fl::nullopt;
     }
 
     // Helper methods for getting default values for each type

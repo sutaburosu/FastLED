@@ -637,9 +637,10 @@ struct SizeVisitor {
     void operator()(const fl::string&) { result = 0; }
 };
 
-// Forward declarations for copy_to visitors (defined after json_value)
+// Forward declarations for visitors (defined after json_value)
 template<typename T> struct NumericExtractVisitor;
 template<typename T> struct CopyToVisitor;
+template<typename T, typename OutputIt> struct CopyToOutputIteratorVisitor;
 
 // The JSON node
 struct json_value {
@@ -966,9 +967,6 @@ struct json_value {
     // Zero-copy pointer accessors (non-const)
     json_array*           as_array()   { return data.ptr<json_array>(); }
     json_object*          as_object()  { return data.ptr<json_object>(); }
-    fl::vector<i16>*      as_audio()   { return data.ptr<fl::vector<i16>>(); }
-    fl::vector<u8>*       as_bytes()   { return data.ptr<fl::vector<u8>>(); }
-    fl::vector<float>*    as_floats()  { return data.ptr<fl::vector<float>>(); }
 
     // Const overloads
     fl::optional<bool> as_bool() const {
@@ -1035,9 +1033,6 @@ struct json_value {
     // Zero-copy pointer accessors (const)
     const json_array*           as_array()   const { return data.ptr<json_array>(); }
     const json_object*          as_object()  const { return data.ptr<json_object>(); }
-    const fl::vector<i16>*      as_audio()   const { return data.ptr<fl::vector<i16>>(); }
-    const fl::vector<u8>*       as_bytes()   const { return data.ptr<fl::vector<u8>>(); }
-    const fl::vector<float>*    as_floats()  const { return data.ptr<fl::vector<float>>(); }
 
     // Explicit copy methods - use when you need an owned copy or packed-array conversion
     fl::optional<json_array> clone_array() const {
@@ -1074,18 +1069,6 @@ struct json_value {
         auto ptr = data.ptr<json_object>();
         return ptr ? fl::optional<json_object>(*ptr) : fl::nullopt;
     }
-    fl::optional<fl::vector<i16>> clone_audio() const {
-        auto ptr = data.ptr<fl::vector<i16>>();
-        return ptr ? fl::optional<fl::vector<i16>>(*ptr) : fl::nullopt;
-    }
-    fl::optional<fl::vector<u8>> clone_bytes() const {
-        auto ptr = data.ptr<fl::vector<u8>>();
-        return ptr ? fl::optional<fl::vector<u8>>(*ptr) : fl::nullopt;
-    }
-    fl::optional<fl::vector<float>> clone_floats() const {
-        auto ptr = data.ptr<fl::vector<float>>();
-        return ptr ? fl::optional<fl::vector<float>>(*ptr) : fl::nullopt;
-    }
 
     // Copy packed-array elements into a caller-owned span with type conversion.
     // Returns number of elements copied (min of array size and span size).
@@ -1093,6 +1076,25 @@ struct json_value {
     template<typename T>
     size_t copy_to(fl::span<T> out) const {
         CopyToVisitor<T> visitor(out);
+        data.visit(visitor);
+        return visitor.result;
+    }
+
+    // Stream packed-array elements into an output iterator with type conversion.
+    // Use with fl::back_inserter(container) to append to any container.
+    // Returns number of elements written. Returns 0 if not a numeric array.
+    template<typename T, typename OutputIt>
+    size_t copy_to_output_iterator(OutputIt out) const {
+        CopyToOutputIteratorVisitor<T, OutputIt> visitor(out);
+        data.visit(visitor);
+        return visitor.result;
+    }
+
+    // Overload for back_insert_iterator: T deduced from container's value_type
+    template<typename Container>
+    size_t copy_to_output_iterator(fl::back_insert_iterator<Container> out) const {
+        using T = typename Container::value_type;
+        CopyToOutputIteratorVisitor<T, fl::back_insert_iterator<Container>> visitor(out);
         data.visit(visitor);
         return visitor.result;
     }
@@ -1643,6 +1645,55 @@ private:
             dst[i] = static_cast<T>(vec[i]);
         }
         result = n;
+    }
+};
+
+// Visitor to stream array elements into an output iterator with type conversion.
+// Works with fl::back_inserter(container) to append to any container.
+template<typename T, typename OutputIt>
+struct CopyToOutputIteratorVisitor {
+    OutputIt out;
+    size_t result;
+
+    explicit CopyToOutputIteratorVisitor(OutputIt o) : out(o), result(0) {}
+
+    template<typename U>
+    void accept(const U& value) { (*this)(value); }
+
+    // Packed vectors: element-wise static_cast
+    void operator()(const fl::vector<u8>& v)    { write_vec(v); }
+    void operator()(const fl::vector<i16>& v)   { write_vec(v); }
+    void operator()(const fl::vector<float>& v) { write_vec(v); }
+
+    // Generic json_array: visitor-based per-element extraction
+    void operator()(const json_array& arr) {
+        for (size_t i = 0; i < arr.size(); ++i) {
+            const auto& elem = arr[i];
+            if (!elem) { *out = T(0); ++out; ++result; continue; }
+            NumericExtractVisitor<T> nv;
+            elem->data.visit(nv);
+            *out = nv.result;
+            ++out;
+            ++result;
+        }
+    }
+
+    // Non-array types: nothing to write
+    void operator()(const fl::nullptr_t&) {}
+    void operator()(const bool&) {}
+    void operator()(const i64&) {}
+    void operator()(const float&) {}
+    void operator()(const fl::string&) {}
+    void operator()(const json_object&) {}
+
+private:
+    template<typename ElemT>
+    void write_vec(const fl::vector<ElemT>& vec) {
+        for (size_t i = 0; i < vec.size(); ++i) {
+            *out = static_cast<T>(vec[i]);
+            ++out;
+        }
+        result = vec.size();
     }
 };
 

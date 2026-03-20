@@ -90,6 +90,7 @@ class FL_ALIGN FixedVector {
     const T *memory() const { return mMemoryBlock.memory(); }
 
   public:
+    typedef T value_type;
     typedef T *iterator;
     typedef const T *const_iterator;
     // Constructor
@@ -432,6 +433,7 @@ class FL_ALIGN vector {
     Allocator mAlloc;
 
   public:
+    typedef T value_type;
     typedef T *iterator;
     typedef const T *const_iterator;
     typedef Allocator allocator_type;
@@ -1072,6 +1074,7 @@ class FL_ALIGN SortedHeapVector {
     fl::size mMaxSize = fl::size(-1);
 
   public:
+    typedef T value_type;
     typedef typename vector<T, Allocator>::iterator iterator;
     typedef typename vector<T, Allocator>::const_iterator const_iterator;
     typedef typename vector<T, Allocator>::reverse_iterator reverse_iterator;
@@ -1245,9 +1248,10 @@ class FL_ALIGN SortedHeapVector {
     const T *data() const { return mArray.data(); }
 };
 
-template <typename T, fl::size INLINED_SIZE> 
+template <typename T, fl::size INLINED_SIZE>
 class FL_ALIGN InlinedVector {
   public:
+    typedef T value_type;
     using iterator = typename FixedVector<T, INLINED_SIZE>::iterator;
     using const_iterator =
         typename FixedVector<T, INLINED_SIZE>::const_iterator;

@@ -77,6 +77,8 @@ protected:
 
 public:
     // Iterator traits
+    typedef Container container_type;
+    typedef typename Container::value_type container_value_type;
     typedef void value_type;
     typedef void difference_type;
     typedef void pointer;

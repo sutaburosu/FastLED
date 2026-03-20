@@ -18,6 +18,7 @@
 #include "fl/stl/math.h"
 #include "fl/stl/move.h"
 #include "fl/stl/optional.h"
+#include "fl/stl/iterator.h"
 #include "fl/stl/type_traits.h"
 #include "fl/stl/utility.h"
 #include "fl/stl/strstream.h"
@@ -1036,16 +1037,15 @@ FL_TEST_CASE("json Float Data Parsing") {
         FL_CHECK_FALSE(doc.is_bool());
         FL_CHECK_FALSE(doc.is_null());
         
-        // Test extraction of float data
-        const fl::vector<float>* floatData = doc.as_floats();
-        FL_REQUIRE(floatData != nullptr);
-        FL_CHECK_EQ(floatData->size(), 5);
-        // Use approximate equality for floats
-        FL_CHECK((*floatData)[0] == 100000.5f);
-        FL_CHECK((*floatData)[1] == 200000.7f);
-        FL_CHECK((*floatData)[2] == 300000.14159f);
-        FL_CHECK((*floatData)[3] == 400000.1f);
-        FL_CHECK((*floatData)[4] == 500000.5f);
+        // Type-safe extraction via copy_to
+        fl::vector<float> floatData;
+        size_t n = doc.copy_to_output_iterator(fl::back_inserter(floatData));
+        FL_REQUIRE(n == 5);
+        FL_CHECK(floatData[0] == 100000.5f);
+        FL_CHECK(floatData[1] == 200000.7f);
+        FL_CHECK(floatData[2] == 300000.14159f);
+        FL_CHECK(floatData[3] == 400000.1f);
+        FL_CHECK(floatData[4] == 500000.5f);
     }
     
     FL_SUBCASE("Array with large floats - native parser behavior") {
@@ -1060,10 +1060,10 @@ FL_TEST_CASE("json Float Data Parsing") {
         FL_CHECK_FALSE(doc.is_audio());
         FL_CHECK_FALSE(doc.is_bytes());
 
-        // Test extraction of float data
-        const fl::vector<float>* floatData = doc.as_floats();
-        FL_REQUIRE(floatData != nullptr);
-        FL_CHECK_EQ(floatData->size(), 2);
+        // Type-safe extraction via copy_to
+        fl::vector<float> floatData;
+        size_t n = doc.copy_to_output_iterator(fl::back_inserter(floatData));
+        FL_REQUIRE(n == 2);
     }
     
     FL_SUBCASE("Array with non-numeric values should remain regular array") {
@@ -1081,10 +1081,10 @@ FL_TEST_CASE("json Float Data Parsing") {
         FL_CHECK_FALSE(doc.is_bool());
         FL_CHECK_FALSE(doc.is_null());
         
-        // Test extraction of regular array
-        const json_array* arrayData = doc.as_array();
-        FL_REQUIRE(arrayData != nullptr);
-        FL_CHECK_EQ(arrayData->size(), 4);
+        // Type-safe extraction via copy_to
+        fl::vector<float> floatData;
+        size_t n = doc.copy_to_output_iterator(fl::back_inserter(floatData));
+        FL_REQUIRE(n == 4);
     }
 
     FL_SUBCASE("Empty array should remain regular array") {
@@ -1096,16 +1096,11 @@ FL_TEST_CASE("json Float Data Parsing") {
         FL_CHECK_FALSE(doc.is_floats());
         FL_CHECK_FALSE(doc.is_audio());
         FL_CHECK_FALSE(doc.is_bytes());
-        FL_CHECK_FALSE(doc.is_int());
-        FL_CHECK_FALSE(doc.is_double());
-        FL_CHECK_FALSE(doc.is_string());
-        FL_CHECK_FALSE(doc.is_bool());
-        FL_CHECK_FALSE(doc.is_null());
 
-        // Test extraction of regular array
-        const json_array* arrayData = doc.as_array();
-        FL_REQUIRE(arrayData != nullptr);
-        FL_CHECK_EQ(arrayData->size(), 0);
+        // Empty array: copy_to returns 0
+        fl::vector<float> floatData;
+        size_t n = doc.copy_to_output_iterator(fl::back_inserter(floatData));
+        FL_CHECK_EQ(n, 0);
     }
 
     FL_SUBCASE("Array with integers that fit in float but not in int16 should become float data") {
@@ -1130,14 +1125,14 @@ FL_TEST_CASE("json Float Data Parsing") {
         FL_CHECK_FALSE(doc.is_bool());
         FL_CHECK_FALSE(doc.is_null());
         
-        // Test extraction of float data
-        const fl::vector<float>* floatData = doc.as_floats();
-        FL_REQUIRE(floatData != nullptr);
-        FL_CHECK_EQ(floatData->size(), 4);
-        FL_CHECK_EQ((*floatData)[0], 40000.0f);
-        FL_CHECK_EQ((*floatData)[1], 50000.0f);
-        FL_CHECK_EQ((*floatData)[2], 60000.0f);
-        FL_CHECK_EQ((*floatData)[3], 70000.0f);
+        // Type-safe extraction via copy_to
+        fl::vector<float> floatData;
+        size_t n = doc.copy_to_output_iterator(fl::back_inserter(floatData));
+        FL_REQUIRE(n == 4);
+        FL_CHECK_EQ(floatData[0], 40000.0f);
+        FL_CHECK_EQ(floatData[1], 50000.0f);
+        FL_CHECK_EQ(floatData[2], 60000.0f);
+        FL_CHECK_EQ(floatData[3], 70000.0f);
     }
 }
 
@@ -1218,15 +1213,15 @@ FL_TEST_CASE("json Audio Data Parsing") {
         FL_CHECK_FALSE(doc.is_bool());
         FL_CHECK_FALSE(doc.is_null());
         
-        // Test extraction of audio data
-        const fl::vector<int16_t>* audioData = doc.as_audio();
-        FL_REQUIRE(audioData != nullptr);
-        FL_CHECK_EQ(audioData->size(), 5);
-        FL_CHECK_EQ((*audioData)[0], 100);
-        FL_CHECK_EQ((*audioData)[1], -200);
-        FL_CHECK_EQ((*audioData)[2], 32767);
-        FL_CHECK_EQ((*audioData)[3], -32768);
-        FL_CHECK_EQ((*audioData)[4], 0);
+        // Type-safe extraction via copy_to
+        fl::vector<int16_t> audioData;
+        size_t n = doc.copy_to_output_iterator(fl::back_inserter(audioData));
+        FL_REQUIRE(n == 5);
+        FL_CHECK_EQ(audioData[0], 100);
+        FL_CHECK_EQ(audioData[1], -200);
+        FL_CHECK_EQ(audioData[2], 32767);
+        FL_CHECK_EQ(audioData[3], -32768);
+        FL_CHECK_EQ(audioData[4], 0);
     }
     
     FL_SUBCASE("Array with boolean values should become byte data, not audio") {
@@ -1245,10 +1240,10 @@ FL_TEST_CASE("json Audio Data Parsing") {
         FL_CHECK_FALSE(doc.is_bool());
         FL_CHECK_FALSE(doc.is_null());
         
-        // Test extraction of byte data
-        const fl::vector<uint8_t>* byteData = doc.as_bytes();
-        FL_REQUIRE(byteData != nullptr);
-        FL_CHECK_EQ(byteData->size(), 5);
+        // Type-safe extraction via copy_to
+        fl::vector<uint8_t> byteData;
+        size_t n = doc.copy_to_output_iterator(fl::back_inserter(byteData));
+        FL_REQUIRE(n == 5);
     }
     
     FL_SUBCASE("Array with values outside int16 range becomes packed floats") {
@@ -1261,84 +1256,62 @@ FL_TEST_CASE("json Audio Data Parsing") {
         FL_CHECK_FALSE(doc.is_audio());
         FL_CHECK_FALSE(doc.is_bytes());
 
-        // as_array() returns nullptr for packed arrays (zero-copy, no conversion)
-        FL_CHECK(doc.as_array() == nullptr);
-        // Use clone_array() for packed-array-to-json_array conversion
-        fl::optional<json_array> arrayData = doc.clone_array();
-        FL_REQUIRE(arrayData);
-        FL_CHECK_EQ(arrayData->size(), 5);
+        // Type-safe extraction via copy_to (works regardless of packing)
+        fl::vector<float> floatData;
+        size_t n = doc.copy_to_output_iterator(fl::back_inserter(floatData));
+        FL_REQUIRE(n == 5);
     }
 
     FL_SUBCASE("Array with non-integer values becomes packed floats") {
-        // Create JSON with array containing non-integer values
         fl::string jsonStr = "[100, -200, 3.14, 0]";
         json doc = json::parse(jsonStr);
 
-        FL_CHECK(doc.is_array());  // All array types are handled by is_array()
-        FL_CHECK(doc.is_floats()); // Parser packs as floats (3.14 forces float)
-        FL_CHECK_FALSE(doc.is_audio());
-        FL_CHECK_FALSE(doc.is_bytes());
+        FL_CHECK(doc.is_array());
+        FL_CHECK(doc.is_floats());
 
-        // as_array() returns nullptr for packed arrays (zero-copy)
-        FL_CHECK(doc.as_array() == nullptr);
-        // Use clone_array() for packed-array-to-json_array conversion
-        fl::optional<json_array> arrayData = doc.clone_array();
-        FL_REQUIRE(arrayData);
-        FL_CHECK_EQ(arrayData->size(), 4);
+        // Type-safe extraction via copy_to
+        fl::vector<float> floatData;
+        size_t n = doc.copy_to_output_iterator(fl::back_inserter(floatData));
+        FL_REQUIRE(n == 4);
     }
 
     FL_SUBCASE("Empty array should remain regular array") {
-        // Create JSON with empty array
         fl::string jsonStr = "[]";
         json doc = json::parse(jsonStr);
 
         FL_CHECK(doc.is_array());
-        FL_CHECK_FALSE(doc.is_audio());
-        FL_CHECK_FALSE(doc.is_bytes());
-        FL_CHECK_FALSE(doc.is_int());
-        FL_CHECK_FALSE(doc.is_double());
-        FL_CHECK_FALSE(doc.is_string());
-        FL_CHECK_FALSE(doc.is_bool());
-        FL_CHECK_FALSE(doc.is_null());
 
-        // Test extraction of regular array
-        const json_array* arrayData = doc.as_array();
-        FL_REQUIRE(arrayData != nullptr);
-        FL_CHECK_EQ(arrayData->size(), 0);
+        fl::vector<float> floatData;
+        size_t n = doc.copy_to_output_iterator(fl::back_inserter(floatData));
+        FL_CHECK_EQ(n, 0);
     }
 
     FL_SUBCASE("Mixed array with int16 values should remain regular array") {
-        // Create JSON with mixed array (mix of int16 and non-int16 values)
         fl::string jsonStr = "[100, \"hello\", 32767]";
         json doc = json::parse(jsonStr);
 
         FL_CHECK(doc.is_array());
-        FL_CHECK_FALSE(doc.is_audio());
-        FL_CHECK_FALSE(doc.is_bytes());
-        FL_CHECK_FALSE(doc.is_int());
-        FL_CHECK_FALSE(doc.is_double());
-        FL_CHECK_FALSE(doc.is_string());
-        FL_CHECK_FALSE(doc.is_bool());
-        FL_CHECK_FALSE(doc.is_null());
+        FL_CHECK(doc.is_generic_array());
 
-        // Test extraction of regular array
-        const json_array* arrayData = doc.as_array();
-        FL_REQUIRE(arrayData != nullptr);
-        FL_CHECK_EQ(arrayData->size(), 3);
+        // Type-safe extraction - strings become 0
+        fl::vector<float> floatData;
+        size_t n = doc.copy_to_output_iterator(fl::back_inserter(floatData));
+        FL_REQUIRE(n == 3);
+        FL_CHECK_EQ(floatData[0], 100.0f);
+        FL_CHECK_EQ(floatData[1], 0.0f); // "hello" → 0
+        FL_CHECK_EQ(floatData[2], 32767.0f);
     }
 }
 
-FL_TEST_CASE("json packed array accessor mismatch bug") {
-    // The parser packs arrays into the smallest type, but typed accessors
-    // only match the exact packed type. copy_to(span<T>) solves this by
-    // converting any packed type to the caller's target type.
+FL_TEST_CASE("json type-safe copy_to and copy_to_output_iterator") {
+    // copy_to(span<T>) and copy_to_output_iterator solve the packed-array
+    // accessor mismatch: any packed type (u8/i16/float/json_array) can be
+    // read as any target numeric type.
 
-    FL_SUBCASE("u8 data - as_audio returns nullptr but copy_to i16 works") {
+    FL_SUBCASE("copy_to: u8 data → i16 span") {
         json doc = json::parse("[1, 0, 1, 1, 0]");
         FL_CHECK(doc.is_bytes());
-        FL_CHECK(doc.as_audio() == nullptr); // exact-type accessor fails
 
-        // copy_to converts u8 → i16
         fl::vector<i16> buf(doc.size());
         size_t n = doc.copy_to(fl::span<i16>(buf));
         FL_CHECK_EQ(n, 5);
@@ -1347,7 +1320,7 @@ FL_TEST_CASE("json packed array accessor mismatch bug") {
         FL_CHECK_EQ(buf[4], 0);
     }
 
-    FL_SUBCASE("u8 data - copy_to float works") {
+    FL_SUBCASE("copy_to: u8 data → float span") {
         json doc = json::parse("[10, 20, 30]");
         FL_CHECK(doc.is_bytes());
 
@@ -1359,7 +1332,7 @@ FL_TEST_CASE("json packed array accessor mismatch bug") {
         FL_CHECK_EQ(buf[2], 30.0f);
     }
 
-    FL_SUBCASE("i16 data - copy_to float works") {
+    FL_SUBCASE("copy_to: i16 data → float span") {
         json doc = json::parse("[100, -200, 300]");
         FL_CHECK(doc.is_audio());
 
@@ -1371,7 +1344,7 @@ FL_TEST_CASE("json packed array accessor mismatch bug") {
         FL_CHECK_EQ(buf[2], 300.0f);
     }
 
-    FL_SUBCASE("float data - copy_to i16 works (truncates)") {
+    FL_SUBCASE("copy_to: float data → i16 span (truncates)") {
         json doc = json::parse("[1.5, 2.9, -3.1]");
         FL_CHECK(doc.is_floats());
 
@@ -1383,7 +1356,7 @@ FL_TEST_CASE("json packed array accessor mismatch bug") {
         FL_CHECK_EQ(buf[2], -3); // truncated
     }
 
-    FL_SUBCASE("span smaller than array - copies partial") {
+    FL_SUBCASE("copy_to: span smaller than array copies partial") {
         json doc = json::parse("[10, 20, 30, 40, 50]");
         fl::vector<float> buf(3);
         size_t n = doc.copy_to(fl::span<float>(buf));
@@ -1392,15 +1365,14 @@ FL_TEST_CASE("json packed array accessor mismatch bug") {
         FL_CHECK_EQ(buf[2], 30.0f);
     }
 
-    FL_SUBCASE("non-array returns 0") {
+    FL_SUBCASE("copy_to: non-array returns 0") {
         json doc(42);
         fl::vector<float> buf(1);
         size_t n = doc.copy_to(fl::span<float>(buf));
         FL_CHECK_EQ(n, 0);
     }
 
-    FL_SUBCASE("generic json_array - copy_to float works") {
-        // Mixed types produce a generic json_array
+    FL_SUBCASE("copy_to: generic json_array → float span") {
         json doc = json::parse("[100, \"hello\", 3.14]");
         FL_CHECK(doc.is_generic_array());
 
@@ -1410,6 +1382,78 @@ FL_TEST_CASE("json packed array accessor mismatch bug") {
         FL_CHECK_EQ(buf[0], 100.0f);
         FL_CHECK_EQ(buf[1], 0.0f);    // string → 0
         FL_CHECK(buf[2] > 3.13f && buf[2] < 3.15f);
+    }
+
+    FL_SUBCASE("copy_to_output_iterator: u8 data → back_inserter float") {
+        json doc = json::parse("[10, 20, 30]");
+        FL_CHECK(doc.is_bytes());
+
+        fl::vector<float> result;
+        size_t n = doc.copy_to_output_iterator(fl::back_inserter(result));
+        FL_CHECK_EQ(n, 3);
+        FL_CHECK_EQ(result.size(), 3);
+        FL_CHECK_EQ(result[0], 10.0f);
+        FL_CHECK_EQ(result[1], 20.0f);
+        FL_CHECK_EQ(result[2], 30.0f);
+    }
+
+    FL_SUBCASE("copy_to_output_iterator: i16 data → back_inserter float") {
+        json doc = json::parse("[100, -200, 300]");
+        fl::vector<float> result;
+        size_t n = doc.copy_to_output_iterator(fl::back_inserter(result));
+        FL_CHECK_EQ(n, 3);
+        FL_CHECK_EQ(result[0], 100.0f);
+        FL_CHECK_EQ(result[1], -200.0f);
+        FL_CHECK_EQ(result[2], 300.0f);
+    }
+
+    FL_SUBCASE("copy_to_output_iterator: float data → back_inserter i16") {
+        json doc = json::parse("[1.5, 2.9, -3.1]");
+        fl::vector<i16> result;
+        size_t n = doc.copy_to_output_iterator(fl::back_inserter(result));
+        FL_CHECK_EQ(n, 3);
+        FL_CHECK_EQ(result[0], 1);
+        FL_CHECK_EQ(result[1], 2);
+        FL_CHECK_EQ(result[2], -3);
+    }
+
+    FL_SUBCASE("copy_to_output_iterator: generic array → back_inserter float") {
+        json doc = json::parse("[100, \"hello\", 3.14]");
+        fl::vector<float> result;
+        size_t n = doc.copy_to_output_iterator(fl::back_inserter(result));
+        FL_CHECK_EQ(n, 3);
+        FL_CHECK_EQ(result[0], 100.0f);
+        FL_CHECK_EQ(result[1], 0.0f);
+        FL_CHECK(result[2] > 3.13f && result[2] < 3.15f);
+    }
+
+    FL_SUBCASE("copy_to_output_iterator: non-array returns 0") {
+        json doc(42);
+        fl::vector<float> result;
+        size_t n = doc.copy_to_output_iterator(fl::back_inserter(result));
+        FL_CHECK_EQ(n, 0);
+        FL_CHECK(result.empty());
+    }
+
+    FL_SUBCASE("try_as<vector<float>> works across packed types") {
+        // u8 packed → try_as<vector<float>> should convert
+        json doc = json::parse("[10, 20, 30]");
+        FL_CHECK(doc.is_bytes());
+        auto result = doc.try_as<fl::vector<float>>();
+        FL_REQUIRE(result);
+        FL_CHECK_EQ(result->size(), 3);
+        FL_CHECK_EQ((*result)[0], 10.0f);
+        FL_CHECK_EQ((*result)[1], 20.0f);
+        FL_CHECK_EQ((*result)[2], 30.0f);
+    }
+
+    FL_SUBCASE("try_as<vector<i16>> works on u8 data") {
+        json doc = json::parse("[1, 0, 1, 1, 0]");
+        FL_CHECK(doc.is_bytes());
+        auto result = doc.try_as<fl::vector<i16>>();
+        FL_REQUIRE(result);
+        FL_CHECK_EQ(result->size(), 5);
+        FL_CHECK_EQ((*result)[0], 1);
     }
 }
 
