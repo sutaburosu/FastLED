@@ -27,28 +27,28 @@ void AutoGain::configure(const AutoGainConfig& config) {
 
 void AutoGain::resolvePreset() {
     switch (mConfig.preset) {
-    case AGCPreset_Normal:
+    case AGCPreset::AGCPreset_Normal:
         mPeakDecayTau = 3.3f;
         mKp = 0.6f;
         mKi = 1.7f;
         mGainFollowSlowTau = 12.3f;
         mGainFollowFastTau = 0.38f;
         break;
-    case AGCPreset_Vivid:
+    case AGCPreset::AGCPreset_Vivid:
         mPeakDecayTau = 1.3f;
         mKp = 1.5f;
         mKi = 1.85f;
         mGainFollowSlowTau = 8.2f;
         mGainFollowFastTau = 0.26f;
         break;
-    case AGCPreset_Lazy:
+    case AGCPreset::AGCPreset_Lazy:
         mPeakDecayTau = 6.7f;
         mKp = 0.65f;
         mKi = 1.2f;
         mGainFollowSlowTau = 16.4f;
         mGainFollowFastTau = 0.51f;
         break;
-    case AGCPreset_Custom:
+    case AGCPreset::AGCPreset_Custom:
         mPeakDecayTau = mConfig.peakDecayTau;
         mKp = mConfig.kp;
         mKi = mConfig.ki;

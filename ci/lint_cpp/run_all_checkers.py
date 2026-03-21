@@ -36,6 +36,7 @@ from ci.lint_cpp.cpp_hpp_header_pair_checker import CppHppHeaderPairChecker
 from ci.lint_cpp.cpp_hpp_includes_checker import CppHppIncludesChecker
 from ci.lint_cpp.cpp_include_checker import CppIncludeChecker
 from ci.lint_cpp.ctype_global_checker import CtypeGlobalChecker
+from ci.lint_cpp.enum_class_checker import EnumClassChecker
 from ci.lint_cpp.fastled_header_usage_checker import FastLEDHeaderUsageChecker
 from ci.lint_cpp.fl_is_defined_checker import FlIsDefinedChecker
 from ci.lint_cpp.headers_exist_checker import HeadersExistChecker
@@ -210,6 +211,7 @@ def create_checkers(
         NamespacePlatformsChecker(),
         IsHeaderIncludeChecker(),
         IwyuPragmaBlockChecker(all_headers=all_headers),
+        EnumClassChecker(),  # Checks for plain enum — use enum class for type safety
     ]
 
     # Native platform defines checker — runs on ALL src/ files (including third_party/)
@@ -252,6 +254,7 @@ def create_checkers(
         # NOTE: fl/math/ is NOT checked — types there intentionally live in fl::
         # namespace for backward compatibility. Using inline namespace math
         # causes cascading ambiguity with fl::detail, fl::simd, etc.
+        EnumClassChecker(),  # Checks for plain enum — use enum class for type safety
     ]
 
     # lib8tion/ directory checkers with STRICT enforcement

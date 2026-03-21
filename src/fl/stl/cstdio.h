@@ -19,7 +19,7 @@ template <typename> class function;  // Forward declaration for function templat
 /// Log level constants - higher values include more output
 /// Prefixed with FL_ to avoid macro collisions (e.g. NimBLE-Arduino's
 /// #define LOG_LEVEL_NONE).
-enum LogLevel : u8 {
+enum class LogLevel : u8 {
     FL_LOG_LEVEL_NONE  = 0,  ///< No logging (completely silent)
     FL_LOG_LEVEL_ERROR = 1,  ///< Only errors
     FL_LOG_LEVEL_WARN  = 2,  ///< Errors and warnings
@@ -33,7 +33,7 @@ u8 getLogLevel();
 
 /// Set the global log level
 /// @param level New log level (use LogLevel enum values)
-/// @note Setting to FL_LOG_LEVEL_NONE disables all logging output
+/// @note Setting to LogLevel::FL_LOG_LEVEL_NONE disables all logging output
 void setLogLevel(u8 level);
 
 // =============================================================================
@@ -65,7 +65,7 @@ class ScopedLogDisable {
 public:
     /// Constructor - saves current log level and disables logging
     ScopedLogDisable() : mPreviousLevel(getLogLevel()) {
-        setLogLevel(FL_LOG_LEVEL_NONE);
+        setLogLevel(static_cast<u8>(LogLevel::FL_LOG_LEVEL_NONE));
     }
 
     /// Destructor - restores previous log level
@@ -81,7 +81,7 @@ public:
     ScopedLogDisable(ScopedLogDisable&& other) noexcept
         : mPreviousLevel(other.mPreviousLevel) {
         // Mark other as "moved-from" by setting to current level (no-op restore)
-        other.mPreviousLevel = FL_LOG_LEVEL_NONE;
+        other.mPreviousLevel = static_cast<u8>(LogLevel::FL_LOG_LEVEL_NONE);
     }
     ScopedLogDisable& operator=(ScopedLogDisable&&) = delete;
 

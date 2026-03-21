@@ -30,7 +30,7 @@ template <
 	// "just works" over "fastest possible" here.
 	// https://www.pjrc.com/why-apa102-leds-have-trouble-at-24-mhz/
 	fl::u32 SPI_SPEED = DATA_RATE_MHZ(6),
-	fl::FiveBitGammaCorrectionMode GAMMA_CORRECTION_MODE = fl::kFiveBitGammaCorrectionMode_Null,
+	fl::FiveBitGammaCorrectionMode GAMMA_CORRECTION_MODE = fl::FiveBitGammaCorrectionMode::kFiveBitGammaCorrectionMode_Null,
 	fl::u32 START_FRAME = 0x00000000,
 	fl::u32 END_FRAME = 0xFF000000
 >
@@ -91,11 +91,11 @@ protected:
 	/// @copydoc CPixelLEDController::showPixels()
 	virtual void showPixels(PixelController<RGB_ORDER> & pixels) override {
 		switch (GAMMA_CORRECTION_MODE) {
-			case fl::kFiveBitGammaCorrectionMode_Null: {
+			case fl::FiveBitGammaCorrectionMode::kFiveBitGammaCorrectionMode_Null: {
 				showPixelsDefault(pixels);
 				break;
 			}
-			case fl::kFiveBitGammaCorrectionMode_BitShift: {
+			case fl::FiveBitGammaCorrectionMode::kFiveBitGammaCorrectionMode_BitShift: {
 				showPixelsGammaBitShift(pixels);
 				break;
 			}
@@ -185,9 +185,9 @@ private:
 		const CRGB colors_scale(scale_r, scale_g, scale_b);
 
 		// RGB reorder indices (compile-time constant from RGB_ORDER template param)
-		const fl::u8 b0_index = (RGB_ORDER >> 6) & 0x3;
-		const fl::u8 b1_index = (RGB_ORDER >> 3) & 0x3;
-		const fl::u8 b2_index = RGB_ORDER & 0x3;
+		const fl::u8 b0_index = (static_cast<int>(RGB_ORDER) >> 6) & 0x3;
+		const fl::u8 b1_index = (static_cast<int>(RGB_ORDER) >> 3) & 0x3;
+		const fl::u8 b2_index = static_cast<int>(RGB_ORDER) & 0x3;
 
 		mSPI.select();
 		startBoundary();
@@ -287,7 +287,7 @@ class APA102ControllerHD : public APA102Controller<
 	CLOCK_PIN,
 	RGB_ORDER,
 	SPI_SPEED,
-	fl::kFiveBitGammaCorrectionMode_BitShift,
+	fl::FiveBitGammaCorrectionMode::kFiveBitGammaCorrectionMode_BitShift,
 	fl::u32(0x00000000),
 	fl::u32(0x00000000)> {
 public:
@@ -311,7 +311,7 @@ class SK9822Controller : public APA102Controller<
 	CLOCK_PIN,
 	RGB_ORDER,
 	SPI_SPEED,
-	fl::kFiveBitGammaCorrectionMode_Null,
+	fl::FiveBitGammaCorrectionMode::kFiveBitGammaCorrectionMode_Null,
 	0x00000000,
 	0x00000000
 > {
@@ -333,7 +333,7 @@ class SK9822ControllerHD : public APA102Controller<
 	CLOCK_PIN,
 	RGB_ORDER,
 	SPI_SPEED,
-	fl::kFiveBitGammaCorrectionMode_BitShift,
+	fl::FiveBitGammaCorrectionMode::kFiveBitGammaCorrectionMode_BitShift,
 	0x00000000,
 	0x00000000
 > {
@@ -351,7 +351,7 @@ class HD107Controller : public APA102Controller<
 	CLOCK_PIN,
 	RGB_ORDER,
 	SPI_SPEED,
-	fl::kFiveBitGammaCorrectionMode_Null,
+	fl::FiveBitGammaCorrectionMode::kFiveBitGammaCorrectionMode_Null,
 	0x00000000,
 	0x00000000
 > {};

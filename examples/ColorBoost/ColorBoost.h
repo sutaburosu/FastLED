@@ -71,19 +71,19 @@ void setup() {
 
 fl::EaseType getEaseType(int value) {
     switch (value) {
-        case 0: return fl::EASE_NONE;
-        case 1: return fl::EASE_IN_QUAD;
-        case 2: return fl::EASE_OUT_QUAD;
-        case 3: return fl::EASE_IN_OUT_QUAD;
-        case 4: return fl::EASE_IN_CUBIC;
-        case 5: return fl::EASE_OUT_CUBIC;
-        case 6: return fl::EASE_IN_OUT_CUBIC;
-        case 7: return fl::EASE_IN_SINE;
-        case 8: return fl::EASE_OUT_SINE;
-        case 9: return fl::EASE_IN_OUT_SINE;
+        case 0: return fl::EaseType::EASE_NONE;
+        case 1: return fl::EaseType::EASE_IN_QUAD;
+        case 2: return fl::EaseType::EASE_OUT_QUAD;
+        case 3: return fl::EaseType::EASE_IN_OUT_QUAD;
+        case 4: return fl::EaseType::EASE_IN_CUBIC;
+        case 5: return fl::EaseType::EASE_OUT_CUBIC;
+        case 6: return fl::EaseType::EASE_IN_OUT_CUBIC;
+        case 7: return fl::EaseType::EASE_IN_SINE;
+        case 8: return fl::EaseType::EASE_OUT_SINE;
+        case 9: return fl::EaseType::EASE_IN_OUT_SINE;
     }
     FL_ASSERT(false, "Invalid ease type");
-    return fl::EASE_NONE;
+    return fl::EaseType::EASE_NONE;
 }
 
 // Animated rainbow wave effect (Pride2015), with matrix divided into three segments to compare:

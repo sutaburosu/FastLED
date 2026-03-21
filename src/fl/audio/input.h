@@ -22,13 +22,13 @@ namespace audio {
 
 // Note: Right now these are esp specific, but they are designed to migrate to a common api.
 
-enum Channel {
+enum class AudioChannel {
     Left = 0,
     Right = 1,
     Both = 2,  // Two microphones can be used to capture both channels with one AudioSource.
 };
 
-enum I2SCommFormat {
+enum class I2SCommFormat {
     Philips = 0X01,  // I2S communication I2S Philips standard, data launch at second BCK
     MSB = 0X02,  // I2S communication MSB alignment standard, data launch at first BCK
     PCMShort = 0x04,  // PCM Short standard, also known as DSP mode. The period of synchronization signal (WS) is 1 bck cycle.
@@ -41,7 +41,7 @@ struct ConfigI2S {
     int mPinSd;
     int mPinClk;
     int mI2sNum;
-    Channel mAudioChannel;
+    AudioChannel mAudioChannel;
     u16 mSampleRate;
     u8 mBitResolution;
     I2SCommFormat mCommFormat;
@@ -51,10 +51,10 @@ struct ConfigI2S {
         int pin_sd,
         int pin_clk,
         int i2s_num,
-        Channel mic_channel,
+        AudioChannel mic_channel,
         u16 sample_rate,
         u8 bit_resolution,
-        I2SCommFormat comm_format = Philips,
+        I2SCommFormat comm_format = I2SCommFormat::Philips,
         bool invert = false
     )
         : mPinWs(pin_ws), mPinSd(pin_sd), mPinClk(pin_clk),
@@ -86,7 +86,7 @@ struct ConfigPdm {
 // Teensy 4.x I2S2 pins:
 //   BCLK=4, MCLK=33, RX=5, LRCLK=3
 namespace TeensyI2S {
-    enum I2SPort {
+    enum class I2SPort {
         I2S1 = 0,  // Primary I2S (available on all Teensy 3.x and 4.x)
         I2S2 = 1   // Secondary I2S (Teensy 4.x only)
     };
@@ -95,13 +95,13 @@ namespace TeensyI2S {
     constexpr int getPinWS(I2SPort port) {
 #if defined(FL_IS_TEENSY_3X) || defined(FL_IS_TEENSY_35) || defined(FL_IS_TEENSY_36)
         // Teensy 3.x - only I2S1 available
-        return (port == I2S1) ? 23 : -1;
+        return (port == I2SPort::I2S1) ? 23 : -1;
 #elif defined(FL_IS_TEENSY_4X)
         // Teensy 4.x - I2S1 and I2S2 available
-        return (port == I2S1) ? 20 : 3;
+        return (port == I2SPort::I2S1) ? 20 : 3;
 #else
         // Unknown platform - evaluate parameter to avoid unused warning
-        return (port == I2S1 || port == I2S2) ? -1 : -1;
+        return (port == I2SPort::I2S1 || port == I2SPort::I2S2) ? -1 : -1;
 #endif
     }
 
@@ -109,13 +109,13 @@ namespace TeensyI2S {
     constexpr int getPinSD(I2SPort port) {
 #if defined(FL_IS_TEENSY_3X) || defined(FL_IS_TEENSY_35) || defined(FL_IS_TEENSY_36)
         // Teensy 3.x
-        return (port == I2S1) ? 13 : -1;
+        return (port == I2SPort::I2S1) ? 13 : -1;
 #elif defined(FL_IS_TEENSY_4X)
         // Teensy 4.x
-        return (port == I2S1) ? 8 : 5;
+        return (port == I2SPort::I2S1) ? 8 : 5;
 #else
         // Unknown platform - evaluate parameter to avoid unused warning
-        return (port == I2S1 || port == I2S2) ? -1 : -1;
+        return (port == I2SPort::I2S1 || port == I2SPort::I2S2) ? -1 : -1;
 #endif
     }
 
@@ -123,13 +123,13 @@ namespace TeensyI2S {
     constexpr int getPinCLK(I2SPort port) {
 #if defined(FL_IS_TEENSY_3X) || defined(FL_IS_TEENSY_35) || defined(FL_IS_TEENSY_36)
         // Teensy 3.x
-        return (port == I2S1) ? 9 : -1;
+        return (port == I2SPort::I2S1) ? 9 : -1;
 #elif defined(FL_IS_TEENSY_4X)
         // Teensy 4.x
-        return (port == I2S1) ? 21 : 4;
+        return (port == I2SPort::I2S1) ? 21 : 4;
 #else
         // Unknown platform - evaluate parameter to avoid unused warning
-        return (port == I2S1 || port == I2S2) ? -1 : -1;
+        return (port == I2SPort::I2S1 || port == I2SPort::I2S2) ? -1 : -1;
 #endif
     }
 }
@@ -137,7 +137,7 @@ namespace TeensyI2S {
 class Config : public fl::variant<ConfigI2S, ConfigPdm> {
 public:
     // The most common microphone on Amazon as of 2025-September.
-    static Config CreateInmp441(int pin_ws, int pin_sd, int pin_clk, Channel channel, u16 sample_rate = 44100ul, int i2s_num = 0) {
+    static Config CreateInmp441(int pin_ws, int pin_sd, int pin_clk, AudioChannel channel, u16 sample_rate = 44100ul, int i2s_num = 0) {
         ConfigI2S config(pin_ws, pin_sd, pin_clk, i2s_num, channel, sample_rate, 16);
         Config out(config);
         out.setMicProfile(MicProfile::INMP441);
@@ -146,10 +146,10 @@ public:
 
     // Factory method for Teensy I2S microphones (INMP441, ICS43432, SPH0645LM4H, etc.)
     // Teensy uses fixed hardware pins - see TeensyI2S namespace for pin assignments.
-    // Example: auto config = Config::CreateTeensyI2S(TeensyI2S::I2S1, Right, 44100);
+    // Example: auto config = AudioConfig::CreateTeensyI2S(TeensyI2S::I2S1, Right, 44100);
     static Config CreateTeensyI2S(
-        TeensyI2S::I2SPort port = TeensyI2S::I2S1,
-        Channel channel = Right,
+        TeensyI2S::I2SPort port = TeensyI2S::I2SPort::I2S1,
+        AudioChannel channel = AudioChannel::Right,
         u16 sample_rate = AUDIO_DEFAULT_SAMPLE_RATE,
         u8 bit_resolution = AUDIO_DEFAULT_BIT_RESOLUTION
     ) {
@@ -161,7 +161,7 @@ public:
             channel,
             sample_rate,
             bit_resolution,
-            Philips,                       // comm_format (Teensy uses I2S Philips)
+            I2SCommFormat::Philips,        // comm_format (Teensy uses I2S Philips)
             false                          // invert
         );
         return Config(config);

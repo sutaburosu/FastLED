@@ -76,8 +76,8 @@ fl::size_t ifstream::tellg() {
 ifstream& ifstream::seekg(fl::size_t pos, ios::seekdir dir) {
     if (mHandle && mHandle->is_open()) {
         seek_dir seek_direction =
-            (dir == ios::beg) ? seek_dir::beg :
-            (dir == ios::cur) ? seek_dir::cur : seek_dir::end;
+            (dir == ios::seekdir::beg) ? seek_dir::beg :
+            (dir == ios::seekdir::cur) ? seek_dir::cur : seek_dir::end;
         mHandle->seek(pos, seek_direction);
         updateState();
     }
@@ -309,8 +309,8 @@ fl::size_t fstream::tellg() {
 fstream& fstream::seekg(fl::size_t pos, ios::seekdir dir) {
     if (mHandle && mHandle->is_open()) {
         seek_dir seek_direction =
-            (dir == ios::beg) ? seek_dir::beg :
-            (dir == ios::cur) ? seek_dir::cur : seek_dir::end;
+            (dir == ios::seekdir::beg) ? seek_dir::beg :
+            (dir == ios::seekdir::cur) ? seek_dir::cur : seek_dir::end;
         mHandle->seek(pos, seek_direction);
         updateState();
     }

@@ -385,10 +385,10 @@ FL_TEST_CASE("edge cases") {
     }
 
     FL_SUBCASE("FL_UNUSED with enum") {
-        enum TestEnum { VALUE_A, VALUE_B, VALUE_C };
-        TestEnum unused_enum = VALUE_B;
+        enum class TestEnum { VALUE_A, VALUE_B, VALUE_C };
+        TestEnum unused_enum = TestEnum::VALUE_B;
         FL_UNUSED(unused_enum);
-        FL_CHECK(unused_enum == VALUE_B);
+        FL_CHECK(unused_enum == TestEnum::VALUE_B);
     }
 
     FL_SUBCASE("FL_UNUSED with lambda") {

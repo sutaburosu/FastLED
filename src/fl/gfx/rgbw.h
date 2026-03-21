@@ -10,7 +10,7 @@
 
 namespace fl {
 
-enum RGBW_MODE {
+enum class RGBW_MODE {
     kRGBWInvalid,
     kRGBWNullWhitePixel,
     kRGBWExactColors,
@@ -25,15 +25,15 @@ enum {
 
 struct Rgbw {
     explicit Rgbw(u16 white_color_temp = fl::kRGBWDefaultColorTemp,
-                  fl::RGBW_MODE rgbw_mode = fl::kRGBWExactColors,
-                  fl::EOrderW _w_placement = WDefault)
+                  fl::RGBW_MODE rgbw_mode = fl::RGBW_MODE::kRGBWExactColors,
+                  fl::EOrderW _w_placement = EOrderW::WDefault)
         : white_color_temp(white_color_temp), w_placement(_w_placement),
           rgbw_mode(rgbw_mode) {}
     u16 white_color_temp = kRGBWDefaultColorTemp;
-    fl::EOrderW w_placement = WDefault;
-    RGBW_MODE rgbw_mode = kRGBWExactColors;
+    fl::EOrderW w_placement = EOrderW::WDefault;
+    RGBW_MODE rgbw_mode = RGBW_MODE::kRGBWExactColors;
     FASTLED_FORCE_INLINE bool active() const {
-        return rgbw_mode != kRGBWInvalid;
+        return rgbw_mode != RGBW_MODE::kRGBWInvalid;
     }
 
     static u32 size_as_rgb(u32 num_of_rgbw_pixels) {
@@ -51,7 +51,7 @@ struct Rgbw {
 struct RgbwInvalid : public Rgbw {
     RgbwInvalid() {
         white_color_temp = kRGBWDefaultColorTemp;
-        rgbw_mode = kRGBWInvalid;
+        rgbw_mode = RGBW_MODE::kRGBWInvalid;
     }
     static Rgbw value() {
         RgbwInvalid invalid;
@@ -62,7 +62,7 @@ struct RgbwInvalid : public Rgbw {
 struct RgbwDefault : public Rgbw {
     RgbwDefault() {
         white_color_temp = kRGBWDefaultColorTemp;
-        rgbw_mode = kRGBWExactColors;
+        rgbw_mode = RGBW_MODE::kRGBWExactColors;
     }
     static Rgbw value() {
         RgbwDefault _default;
@@ -73,7 +73,7 @@ struct RgbwDefault : public Rgbw {
 struct RgbwWhiteIsOff : public Rgbw {
     RgbwWhiteIsOff() {
         white_color_temp = kRGBWDefaultColorTemp;
-        rgbw_mode = kRGBWNullWhitePixel;
+        rgbw_mode = RGBW_MODE::kRGBWNullWhitePixel;
     }
     static Rgbw value() {
         RgbwWhiteIsOff _default;
@@ -150,25 +150,25 @@ rgb_2_rgbw(RGBW_MODE mode, u16 w_color_temperature, u8 r, u8 g,
            u8 b, u8 r_scale, u8 g_scale, u8 b_scale,
            u8 *out_r, u8 *out_g, u8 *out_b, u8 *out_w) {
     switch (mode) {
-    case kRGBWInvalid:
-    case kRGBWNullWhitePixel:
+    case RGBW_MODE::kRGBWInvalid:
+    case RGBW_MODE::kRGBWNullWhitePixel:
         rgb_2_rgbw_null_white_pixel(w_color_temperature, r, g, b, r_scale,
                                     g_scale, b_scale, out_r, out_g, out_b,
                                     out_w);
         return;
-    case kRGBWExactColors:
+    case RGBW_MODE::kRGBWExactColors:
         rgb_2_rgbw_exact(w_color_temperature, r, g, b, r_scale, g_scale,
                          b_scale, out_r, out_g, out_b, out_w);
         return;
-    case kRGBWBoostedWhite:
+    case RGBW_MODE::kRGBWBoostedWhite:
         rgb_2_rgbw_white_boosted(w_color_temperature, r, g, b, r_scale, g_scale,
                                  b_scale, out_r, out_g, out_b, out_w);
         return;
-    case kRGBWMaxBrightness:
+    case RGBW_MODE::kRGBWMaxBrightness:
         rgb_2_rgbw_max_brightness(w_color_temperature, r, g, b, r_scale,
                                   g_scale, b_scale, out_r, out_g, out_b, out_w);
         return;
-    case kRGBWUserFunction:
+    case RGBW_MODE::kRGBWUserFunction:
         rgb_2_rgbw_user_function(w_color_temperature, r, g, b, r_scale, g_scale,
                                  b_scale, out_r, out_g, out_b, out_w);
         return;

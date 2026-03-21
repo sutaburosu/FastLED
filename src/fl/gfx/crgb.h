@@ -78,8 +78,8 @@ struct CRGB {
     // This function converts to HSV16, boosts the saturation, and converts back to RGB8.
     // Note that when both boost_saturation and boost_contrast are true the resulting
     // pixel will be nearly the same as if you had used gamma correction pow = 2.0.
-    CRGB colorBoost(EaseType saturation_function = EASE_NONE, EaseType luminance_function = EASE_NONE) const;
-    static void colorBoost(const CRGB* src, CRGB* dst, size_t count, EaseType saturation_function = EASE_NONE, EaseType luminance_function = EASE_NONE);
+    CRGB colorBoost(EaseType saturation_function = EaseType::EASE_NONE, EaseType luminance_function = EaseType::EASE_NONE) const;
+    static void colorBoost(const CRGB* src, CRGB* dst, size_t count, EaseType saturation_function = EaseType::EASE_NONE, EaseType luminance_function = EaseType::EASE_NONE);
 
     // Want to do advanced color manipulation in HSV and write back to CRGB?
     // You want to use HSV16, which is much better at preservering the color

@@ -19,7 +19,7 @@ typedef void (*FASTLED_NRF52_PWM_INTERRUPT_HANDLER)();
 //
 // See led_sysdefs_arm_nrf52.h for selection....
 //
-typedef enum _FASTLED_NRF52_ENABLED_PWM_INSTANCE {
+typedef enum _FASTLED_NRF52_ENABLED_PWM_INSTANCE { // ok plain enum
 #if defined(FASTLED_NRF52_ENABLE_PWM_INSTANCE0)
     FASTLED_NRF52_PWM0_INSTANCE_IDX,
 #endif

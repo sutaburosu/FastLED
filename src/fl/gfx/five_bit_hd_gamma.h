@@ -15,7 +15,7 @@ struct CRGBA5 {
     u8 brightness_5bit;
 };
 
-enum FiveBitGammaCorrectionMode {
+enum class FiveBitGammaCorrectionMode {
     kFiveBitGammaCorrectionMode_Null = 0,
     kFiveBitGammaCorrectionMode_BitShift = 1
 };

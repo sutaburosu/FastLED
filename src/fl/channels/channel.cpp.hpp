@@ -249,18 +249,18 @@ void writeUCS7604(fl::vector_psram<u8>* data, PixelIterator& pixelIterator,
     // Map encoder enum to UCS7604Mode
     UCS7604Mode mode;
     switch (encoder) {
-        case CLOCKLESS_ENCODER_UCS7604_8BIT:
-            mode = UCS7604_MODE_8BIT_800KHZ;
+        case ClocklessEncoder::CLOCKLESS_ENCODER_UCS7604_8BIT:
+            mode = UCS7604Mode::UCS7604_MODE_8BIT_800KHZ;
             break;
-        case CLOCKLESS_ENCODER_UCS7604_16BIT:
-            mode = UCS7604_MODE_16BIT_800KHZ;
+        case ClocklessEncoder::CLOCKLESS_ENCODER_UCS7604_16BIT:
+            mode = UCS7604Mode::UCS7604_MODE_16BIT_800KHZ;
             break;
-        case CLOCKLESS_ENCODER_UCS7604_16BIT_1600:
-            mode = UCS7604_MODE_16BIT_1600KHZ;
+        case ClocklessEncoder::CLOCKLESS_ENCODER_UCS7604_16BIT_1600:
+            mode = UCS7604Mode::UCS7604_MODE_16BIT_1600KHZ;
             break;
         default:
             // Should never happen — caller already checked
-            mode = UCS7604_MODE_16BIT_800KHZ;
+            mode = UCS7604Mode::UCS7604_MODE_16BIT_800KHZ;
             break;
     }
 
@@ -269,9 +269,9 @@ void writeUCS7604(fl::vector_psram<u8>* data, PixelIterator& pixelIterator,
 
     // Reorder current control values to match wire order (same logic as UCS7604ControllerT)
     u8 rgb_currents[3] = {current.r, current.g, current.b};
-    u8 pos0 = (rgbOrder >> 6) & 0x3;
-    u8 pos1 = (rgbOrder >> 3) & 0x3;
-    u8 pos2 = (rgbOrder >> 0) & 0x3;
+    u8 pos0 = (static_cast<int>(rgbOrder) >> 6) & 0x3;
+    u8 pos1 = (static_cast<int>(rgbOrder) >> 3) & 0x3;
+    u8 pos2 = (static_cast<int>(rgbOrder) >> 0) & 0x3;
     UCS7604CurrentControl wire_current(
         rgb_currents[pos0], rgb_currents[pos1], rgb_currents[pos2], current.w);
 
@@ -328,12 +328,12 @@ void Channel::showPixels(PixelController<RGB, 1, 0xFFFFFFFF> &pixels) {
         // Clockless chipsets: dispatch based on encoder type
         const ClocklessChipset* clockless = mChipset.ptr<ClocklessChipset>();
         switch (clockless->timing.encoder) {
-            case CLOCKLESS_ENCODER_WS2812:
+            case ClocklessEncoder::CLOCKLESS_ENCODER_WS2812:
                 pixelIterator.writeWS2812(&data);
                 break;
-            case CLOCKLESS_ENCODER_UCS7604_8BIT:
-            case CLOCKLESS_ENCODER_UCS7604_16BIT:
-            case CLOCKLESS_ENCODER_UCS7604_16BIT_1600:
+            case ClocklessEncoder::CLOCKLESS_ENCODER_UCS7604_8BIT:
+            case ClocklessEncoder::CLOCKLESS_ENCODER_UCS7604_16BIT:
+            case ClocklessEncoder::CLOCKLESS_ENCODER_UCS7604_16BIT_1600:
                 writeUCS7604(&data, pixelIterator, clockless->timing.encoder,
                              mSettings, mRgbOrder);
                 break;

@@ -223,9 +223,9 @@ FL_TEST_CASE("audio::AutoGain - presets produce different convergence speeds") {
         return agc.getGain();
     };
 
-    float gainNormal = runWithPreset(audio::AGCPreset_Normal);
-    float gainVivid = runWithPreset(audio::AGCPreset_Vivid);
-    float gainLazy = runWithPreset(audio::AGCPreset_Lazy);
+    float gainNormal = runWithPreset(audio::AGCPreset::AGCPreset_Normal);
+    float gainVivid = runWithPreset(audio::AGCPreset::AGCPreset_Vivid);
+    float gainLazy = runWithPreset(audio::AGCPreset::AGCPreset_Lazy);
 
     // Vivid should converge faster (higher gain after same frames) than Normal
     FL_CHECK_GT(gainVivid, gainNormal);
@@ -237,7 +237,7 @@ FL_TEST_CASE("audio::AutoGain - presets produce different convergence speeds") {
 FL_TEST_CASE("audio::AutoGain - slow convergence over first second") {
     audio::AutoGain agc;
     audio::AutoGainConfig config;
-    config.preset = audio::AGCPreset_Normal;
+    config.preset = audio::AGCPreset::AGCPreset_Normal;
     config.targetRMSLevel = 8000.0f;
     agc.configure(config);
 
@@ -259,7 +259,7 @@ FL_TEST_CASE("audio::AutoGain - slow convergence over first second") {
 FL_TEST_CASE("audio::AutoGain - cross-band stability with alternating levels") {
     audio::AutoGain agc;
     audio::AutoGainConfig config;
-    config.preset = audio::AGCPreset_Normal;
+    config.preset = audio::AGCPreset::AGCPreset_Normal;
     config.targetRMSLevel = 8000.0f;
     agc.configure(config);
 
@@ -682,8 +682,8 @@ FL_TEST_CASE("audio::AutoGain - vivid converges faster than normal") {
         return 500;
     };
 
-    int framesVivid = framesTo10Pct(audio::AGCPreset_Vivid);
-    int framesNormal = framesTo10Pct(audio::AGCPreset_Normal);
+    int framesVivid = framesTo10Pct(audio::AGCPreset::AGCPreset_Vivid);
+    int framesNormal = framesTo10Pct(audio::AGCPreset::AGCPreset_Normal);
 
     // Vivid should reach target in fewer or equal frames (faster response)
     FL_CHECK_LE(framesVivid, framesNormal);
@@ -720,9 +720,9 @@ FL_TEST_CASE("audio::AutoGain - all presets stable under alternating input") {
         return sumSq / n - mean * mean;
     };
 
-    float varLazy = measureVariance(audio::AGCPreset_Lazy);
-    float varNormal = measureVariance(audio::AGCPreset_Normal);
-    float varVivid = measureVariance(audio::AGCPreset_Vivid);
+    float varLazy = measureVariance(audio::AGCPreset::AGCPreset_Lazy);
+    float varNormal = measureVariance(audio::AGCPreset::AGCPreset_Normal);
+    float varVivid = measureVariance(audio::AGCPreset::AGCPreset_Vivid);
 
     // All presets should have low variance (stable) — variance < 0.01
     FL_CHECK_LT(varLazy, 0.01f);
@@ -734,7 +734,7 @@ FL_TEST_CASE("audio::AutoGain - custom preset matches manual values") {
     // Set Custom with Normal's constants
     audio::AutoGain agcCustom;
     audio::AutoGainConfig customConfig;
-    customConfig.preset = audio::AGCPreset_Custom;
+    customConfig.preset = audio::AGCPreset::AGCPreset_Custom;
     customConfig.peakDecayTau = 3.3f;
     customConfig.kp = 0.6f;
     customConfig.ki = 1.7f;
@@ -745,7 +745,7 @@ FL_TEST_CASE("audio::AutoGain - custom preset matches manual values") {
 
     audio::AutoGain agcNormal;
     audio::AutoGainConfig normalConfig;
-    normalConfig.preset = audio::AGCPreset_Normal;
+    normalConfig.preset = audio::AGCPreset::AGCPreset_Normal;
     normalConfig.targetRMSLevel = 8000.0f;
     agcNormal.configure(normalConfig);
 

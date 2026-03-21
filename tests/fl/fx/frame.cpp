@@ -45,11 +45,11 @@ FL_TEST_CASE("test blend by black") {
     FramePtr frame = fl::make_shared<Frame>(1);  // 1 pixels.
     frame->rgb()[0] = CRGB(255, 0, 0);  // Red
     CRGB out[1];
-    frame->draw(out, DRAW_MODE_BLEND_BY_MAX_BRIGHTNESS);
+    frame->draw(out, DrawMode::DRAW_MODE_BLEND_BY_MAX_BRIGHTNESS);
     FL_CHECK(out[0] == CRGB(255, 0, 0));  // full red because max luma is 255
     out[0] = CRGB(0, 0, 0);
     frame->rgb()[0] = CRGB(128, 0, 0);  // Red
-    frame->draw(out, DRAW_MODE_BLEND_BY_MAX_BRIGHTNESS);
+    frame->draw(out, DrawMode::DRAW_MODE_BLEND_BY_MAX_BRIGHTNESS);
     FL_CHECK(out[0] == CRGB(64, 0, 0));
 }
 

@@ -1151,7 +1151,7 @@ class FL_ALIGN SortedHeapVector {
         }
         mArray.insert(pos, value);
         if (result) {
-            *result = kInserted;
+            *result = InsertResult::kInserted;
         }
 
         return true;

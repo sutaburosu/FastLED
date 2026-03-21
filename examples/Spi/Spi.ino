@@ -10,7 +10,7 @@
 // Use explicit array initialization (AVR compiler requires this)
 int pins[] = {0, 1, 2, 5};
 
-fl::Spi spi_device(CLOCK_PIN, pins, fl::SPI_HW);
+fl::Spi spi_device(CLOCK_PIN, pins, fl::spi_output_mode_t::SPI_HW);
 
 void setup() {
     Serial.begin(115200);

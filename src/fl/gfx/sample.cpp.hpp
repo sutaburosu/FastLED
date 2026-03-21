@@ -8,7 +8,7 @@ namespace fl {
 
 CRGB sample(const CRGB *grid, const XYMap &xyMap, float x, float y,
             SampleMode mode) {
-    if (mode == SAMPLE_BILINEAR) {
+    if (mode == SampleMode::SAMPLE_BILINEAR) {
         return sampleBilinear(grid, xyMap, x, y);
     }
     return sampleNearest(grid, xyMap, x, y);

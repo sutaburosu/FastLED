@@ -15,9 +15,10 @@ using fl::RgbwDefault;
 using fl::RgbwWhiteIsOff;
 using fl::RGBW_MODE;
 using fl::kRGBWDefaultColorTemp;
-using fl::kRGBWInvalid;
-using fl::kRGBWNullWhitePixel;
-using fl::kRGBWExactColors;
-using fl::kRGBWBoostedWhite;
-using fl::kRGBWMaxBrightness;
-using fl::kRGBWUserFunction;
+// Backward-compat constexpr aliases for enum class values
+constexpr RGBW_MODE kRGBWInvalid = RGBW_MODE::kRGBWInvalid;
+constexpr RGBW_MODE kRGBWNullWhitePixel = RGBW_MODE::kRGBWNullWhitePixel;
+constexpr RGBW_MODE kRGBWExactColors = RGBW_MODE::kRGBWExactColors;
+constexpr RGBW_MODE kRGBWBoostedWhite = RGBW_MODE::kRGBWBoostedWhite;
+constexpr RGBW_MODE kRGBWMaxBrightness = RGBW_MODE::kRGBWMaxBrightness;
+constexpr RGBW_MODE kRGBWUserFunction = RGBW_MODE::kRGBWUserFunction;

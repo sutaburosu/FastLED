@@ -181,13 +181,13 @@ CRGB HSV16::ToRGB() const {
 CRGB HSV16::colorBoost(EaseType saturation_function, EaseType luminance_function) const {
     HSV16 hsv = *this;
     
-    if (saturation_function != EASE_NONE) {
+    if (saturation_function != EaseType::EASE_NONE) {
         u16 inv_sat = 65535 - hsv.s;
         inv_sat = ease16(saturation_function, inv_sat);
         hsv.s = (65535 - inv_sat);
     }
     
-    if (luminance_function != EASE_NONE) {
+    if (luminance_function != EaseType::EASE_NONE) {
         hsv.v = ease16(luminance_function, hsv.v);
     }
     

@@ -135,9 +135,9 @@ u8 WaveSimulation2D::getu8(fl::size x, fl::size y) const {
     if (mSim->getHalfDuplex()) {
         u16 v2 = static_cast<u16>(value);
         switch (mU8Mode) {
-        case WAVE_U8_MODE_LINEAR:
+        case U8EasingFunction::WAVE_U8_MODE_LINEAR:
             return half_duplex_blend_linear(v2);
-        case WAVE_U8_MODE_SQRT:
+        case U8EasingFunction::WAVE_U8_MODE_SQRT:
             return half_duplex_blend_sqrt_q15(v2);
         }
     }
@@ -338,9 +338,9 @@ i8 WaveSimulation1D::geti8(fl::size x) const {
 //     if (mSim->getHalfDuplex()) {
 //         u16 v2 = static_cast<u16>(value);
 //         switch (mU8Mode) {
-//             case WAVE_U8_MODE_LINEAR:
+//             case U8EasingFunction::WAVE_U8_MODE_LINEAR:
 //                 return half_duplex_blend_linear(v2);
-//             case WAVE_U8_MODE_SQRT:
+//             case U8EasingFunction::WAVE_U8_MODE_SQRT:
 //                 return half_duplex_blend_sqrt_q15(v2);
 //         }
 //     }
@@ -353,9 +353,9 @@ u8 WaveSimulation1D::getu8(fl::size x) const {
     if (mSim->getHalfDuplex()) {
         u16 v2 = static_cast<u16>(value);
         switch (mU8Mode) {
-        case WAVE_U8_MODE_LINEAR:
+        case U8EasingFunction::WAVE_U8_MODE_LINEAR:
             return half_duplex_blend_linear(v2);
-        case WAVE_U8_MODE_SQRT:
+        case U8EasingFunction::WAVE_U8_MODE_SQRT:
             return half_duplex_blend_sqrt_q15(v2);
         }
     }

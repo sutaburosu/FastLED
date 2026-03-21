@@ -53,7 +53,7 @@ fl::UISlider superSample("SuperSampleExponent", 1.f, 0.f, 3.f, 1.f);
 fl::UIGroup waveSimControls("Wave Simulation", slider, dampening, halfDuplex, superSample, xCyclical);
 fl::UIGroup triggerControls("Trigger Controls", button, autoTrigger, extraFrames);
 
-fl::WaveSimulation2D waveSim(WIDTH, HEIGHT, fl::SUPER_SAMPLE_4X);
+fl::WaveSimulation2D waveSim(WIDTH, HEIGHT, fl::SuperSample::SUPER_SAMPLE_4X);
 
 fl::XYMap xyMap(WIDTH, HEIGHT, IS_SERPINTINE);
 

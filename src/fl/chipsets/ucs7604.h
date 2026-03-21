@@ -146,9 +146,9 @@ protected:
         // Octal digits are read right-to-left in bit positions but left-to-right semantically
         // RGB (012 octal): wire position 0=R(0), 1=G(1), 2=B(2)
         // GRB (102 octal): wire position 0=G(1), 1=R(0), 2=B(2)
-        u8 pos0 = (RGB_ORDER >> 6) & 0x3;  // Wire position 0 (leftmost octal digit)
-        u8 pos1 = (RGB_ORDER >> 3) & 0x3;  // Wire position 1 (middle octal digit)
-        u8 pos2 = (RGB_ORDER >> 0) & 0x3;  // Wire position 2 (rightmost octal digit)
+        u8 pos0 = (static_cast<int>(RGB_ORDER) >> 6) & 0x3;  // Wire position 0 (leftmost octal digit)
+        u8 pos1 = (static_cast<int>(RGB_ORDER) >> 3) & 0x3;  // Wire position 1 (middle octal digit)
+        u8 pos2 = (static_cast<int>(RGB_ORDER) >> 0) & 0x3;  // Wire position 2 (rightmost octal digit)
 
         // Reorder: wire R gets current for channel at pos0, etc.
         u8 r_current = rgb_currents[pos0];  // Wire R (position 0)
@@ -184,13 +184,13 @@ protected:
 
 // now typedef the controllers
 template <int DATA_PIN, EOrder RGB_ORDER, template<int, typename, EOrder> class CLOCKLESS_CONTROLLER>
-using UCS7604Controller8bitT = UCS7604ControllerT<DATA_PIN, RGB_ORDER, fl::UCS7604_MODE_8BIT_800KHZ, fl::TIMING_UCS7604_800KHZ, CLOCKLESS_CONTROLLER>;
+using UCS7604Controller8bitT = UCS7604ControllerT<DATA_PIN, RGB_ORDER, fl::UCS7604Mode::UCS7604_MODE_8BIT_800KHZ, fl::TIMING_UCS7604_800KHZ, CLOCKLESS_CONTROLLER>;
 
 template <int DATA_PIN, EOrder RGB_ORDER, template<int, typename, EOrder> class CLOCKLESS_CONTROLLER>
-using UCS7604Controller16bitT = UCS7604ControllerT<DATA_PIN, RGB_ORDER, fl::UCS7604_MODE_16BIT_800KHZ, fl::TIMING_UCS7604_800KHZ, CLOCKLESS_CONTROLLER>;
+using UCS7604Controller16bitT = UCS7604ControllerT<DATA_PIN, RGB_ORDER, fl::UCS7604Mode::UCS7604_MODE_16BIT_800KHZ, fl::TIMING_UCS7604_800KHZ, CLOCKLESS_CONTROLLER>;
 
 template <int DATA_PIN, EOrder RGB_ORDER, template<int, typename, EOrder> class CLOCKLESS_CONTROLLER>
-using UCS7604Controller16bit1600T = UCS7604ControllerT<DATA_PIN, RGB_ORDER, fl::UCS7604_MODE_16BIT_1600KHZ, fl::TIMING_UCS7604_1600KHZ, CLOCKLESS_CONTROLLER>;
+using UCS7604Controller16bit1600T = UCS7604ControllerT<DATA_PIN, RGB_ORDER, fl::UCS7604Mode::UCS7604_MODE_16BIT_1600KHZ, fl::TIMING_UCS7604_1600KHZ, CLOCKLESS_CONTROLLER>;
 
 }  // namespace fl
 

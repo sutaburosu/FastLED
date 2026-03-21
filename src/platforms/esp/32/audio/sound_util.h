@@ -6,7 +6,7 @@
 
 namespace fl {
 
-enum MicType {
+enum MicType { // ok plain enum
     MicTypeInmp441,
 };
 

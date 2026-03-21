@@ -12,16 +12,16 @@ FL_TEST_FILE(FL_FILEPATH) {
 using namespace fl;
 // Common array of easing types with names used across multiple test cases
 static const fl::pair<fl::EaseType, const char*> ALL_EASING_TYPES[10] = {
-    {fl::EASE_NONE, "EASE_NONE"},
-    {fl::EASE_IN_QUAD, "EASE_IN_QUAD"},
-    {fl::EASE_OUT_QUAD, "EASE_OUT_QUAD"},
-    {fl::EASE_IN_OUT_QUAD, "EASE_IN_OUT_QUAD"},
-    {fl::EASE_IN_CUBIC, "EASE_IN_CUBIC"},
-    {fl::EASE_OUT_CUBIC, "EASE_OUT_CUBIC"},
-    {fl::EASE_IN_OUT_CUBIC, "EASE_IN_OUT_CUBIC"},
-    {fl::EASE_IN_SINE, "EASE_IN_SINE"},
-    {fl::EASE_OUT_SINE, "EASE_OUT_SINE"},
-    {fl::EASE_IN_OUT_SINE, "EASE_IN_OUT_SINE"}
+    {fl::EaseType::EASE_NONE, "EASE_NONE"},
+    {fl::EaseType::EASE_IN_QUAD, "EASE_IN_QUAD"},
+    {fl::EaseType::EASE_OUT_QUAD, "EASE_OUT_QUAD"},
+    {fl::EaseType::EASE_IN_OUT_QUAD, "EASE_IN_OUT_QUAD"},
+    {fl::EaseType::EASE_IN_CUBIC, "EASE_IN_CUBIC"},
+    {fl::EaseType::EASE_OUT_CUBIC, "EASE_OUT_CUBIC"},
+    {fl::EaseType::EASE_IN_OUT_CUBIC, "EASE_IN_OUT_CUBIC"},
+    {fl::EaseType::EASE_IN_SINE, "EASE_IN_SINE"},
+    {fl::EaseType::EASE_OUT_SINE, "EASE_OUT_SINE"},
+    {fl::EaseType::EASE_IN_OUT_SINE, "EASE_IN_OUT_SINE"}
 };
 static const size_t NUM_EASING_TYPES = sizeof(ALL_EASING_TYPES) / sizeof(ALL_EASING_TYPES[0]);
 

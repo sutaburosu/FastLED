@@ -33,7 +33,7 @@ namespace ios {
     static constexpr openmode app    = 0x20;  // Append mode
 
     // Seek direction
-    enum seekdir {
+    enum class seekdir {
         beg = 0,  // Beginning of file
         cur = 1,  // Current position
         end = 2   // End of file
@@ -121,7 +121,7 @@ public:
 
     fl::size_t tellg();
 
-    ifstream& seekg(fl::size_t pos, ios::seekdir dir = ios::beg);
+    ifstream& seekg(fl::size_t pos, ios::seekdir dir = ios::seekdir::beg);
 
     bool good() const { return mGood; }
     bool eof() const { return mEof; }
@@ -188,12 +188,12 @@ public:
     fl::size_t pos() const { return mHandle ? mHandle->pos() : 0; }
     fl::size_t bytesLeft() const { return bytes_left(); }
     bool seek(fl::size_t p) {
-        seekg(p, ios::beg);
+        seekg(p, ios::seekdir::beg);
         return good();
     }
     bool seek(fl::size_t p, seek_dir dir) {
-        ios::seekdir d = (dir == seek_dir::beg) ? ios::beg :
-                         (dir == seek_dir::cur) ? ios::cur : ios::end;
+        ios::seekdir d = (dir == seek_dir::beg) ? ios::seekdir::beg :
+                         (dir == seek_dir::cur) ? ios::seekdir::cur : ios::seekdir::end;
         seekg(p, d);
         return good();
     }
@@ -379,7 +379,7 @@ public:
 
     fl::size_t tellg();
 
-    fstream& seekg(fl::size_t pos, ios::seekdir dir = ios::beg);
+    fstream& seekg(fl::size_t pos, ios::seekdir dir = ios::seekdir::beg);
 
     bool good() const { return mGood; }
     bool eof() const { return mEof; }

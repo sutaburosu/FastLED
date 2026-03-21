@@ -10,7 +10,7 @@ namespace fl {
 class XYMap;
 
 /// Interpolation mode for sampling a 2D grid
-enum SampleMode {
+enum class SampleMode {
     SAMPLE_NEAREST,  ///< Nearest neighbor (fast, pixelated)
     SAMPLE_BILINEAR, ///< Bilinear interpolation (smooth)
 };
@@ -22,7 +22,7 @@ enum SampleMode {
 /// @param y Floating-point y coordinate
 /// @param mode Interpolation mode (default: SAMPLE_BILINEAR)
 CRGB sample(const CRGB *grid, const XYMap &xyMap, float x, float y,
-            SampleMode mode = SAMPLE_BILINEAR);
+            SampleMode mode = SampleMode::SAMPLE_BILINEAR);
 
 /// @brief Bilinear interpolation sample from a 2D CRGB grid.
 CRGB sampleBilinear(const CRGB *grid, const XYMap &xyMap, float x, float y);

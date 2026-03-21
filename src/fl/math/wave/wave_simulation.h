@@ -22,7 +22,7 @@ Based on works and code by Shawn Silverman.
 
 namespace fl {
 
-enum U8EasingFunction { WAVE_U8_MODE_LINEAR, WAVE_U8_MODE_SQRT };
+enum class U8EasingFunction { WAVE_U8_MODE_LINEAR, WAVE_U8_MODE_SQRT };
 
 // -----------------------------------------------------------------------------
 // New supersampled 1D simulation class.
@@ -104,7 +104,7 @@ class WaveSimulation1D {
     u32 mOuterLength; // Length of the downsampled simulation.
     u8 mExtraFrames = 0;
     u32 mMultiplier; // Supersampling multiplier (e.g., 2, 4, or 8).
-    U8EasingFunction mU8Mode = WAVE_U8_MODE_LINEAR;
+    U8EasingFunction mU8Mode = U8EasingFunction::WAVE_U8_MODE_LINEAR;
     // Internal high-resolution simulation.
     fl::unique_ptr<WaveSimulation1D_Real> mSim;
 };
@@ -202,7 +202,7 @@ class WaveSimulation2D {
     u32 mOuterHeight; // Height of the downsampled (outer) grid.
     u8 mExtraFrames = 0;
     u32 mMultiplier = 1; // Supersampling multiplier (e.g., 1, 2, 4, or 8).
-    U8EasingFunction mU8Mode = WAVE_U8_MODE_LINEAR;
+    U8EasingFunction mU8Mode = U8EasingFunction::WAVE_U8_MODE_LINEAR;
     bool mUseChangeGrid = false; // Whether to use change grid tracking (default: disabled for better visuals)
     // Internal high-resolution simulation.
     fl::unique_ptr<WaveSimulation2D_Real> mSim;

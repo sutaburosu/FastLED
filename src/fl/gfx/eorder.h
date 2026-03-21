@@ -10,7 +10,7 @@ namespace fl {
 /// is RGB.
 /// Within this enum, the red channel is 0, the green channel is 1, and the
 /// blue chanel is 2.
-enum EOrder {
+enum class EOrder {
 	RGB=0012,  ///< Red,   Green, Blue  (0012)
 	RBG=0021,  ///< Red,   Blue,  Green (0021)
 	GRB=0102,  ///< Green, Red,   Blue  (0102)
@@ -20,7 +20,7 @@ enum EOrder {
 };
 
 // After EOrder is applied this is where W is inserted for RGBW.
-enum EOrderW {
+enum class EOrderW {
 	W3 = 0x3,  ///< White is fourth
 	W2 = 0x2,  ///< White is third
 	W1 = 0x1,  ///< White is second

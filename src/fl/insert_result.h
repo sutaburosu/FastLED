@@ -7,7 +7,7 @@ namespace fl {
 // why an insert did or did not happen. Specifically, we want to differentiate
 // between failing to insert because the item already existed and when the
 // container was full.
-enum InsertResult {
+enum class InsertResult {
     kInserted = 0,
     kExists = 1,
     kMaxSize = 2,

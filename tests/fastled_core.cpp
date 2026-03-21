@@ -901,7 +901,7 @@ FL_TEST_CASE("Channel::applyConfig updates reconfigurable fields") {
     opts2.mCorrection = Typical8mmPixel;
     opts2.mTemperature = CRGB(200, 180, 160);
     opts2.mDitherMode = DISABLE_DITHER;
-    opts2.mRgbw = fl::Rgbw(fl::kRGBWExactColors);
+    opts2.mRgbw = fl::Rgbw(fl::kRGBWDefaultColorTemp, fl::RGBW_MODE::kRGBWExactColors);
 
     fl::ChannelConfig config2(99, timing, fl::span<CRGB>(leds2, 16), BGR, opts2);
 

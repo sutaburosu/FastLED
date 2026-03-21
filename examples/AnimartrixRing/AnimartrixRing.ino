@@ -47,7 +47,7 @@ CRGB leds[NUM_LEDS];
 
 // Animartrix 2D effect
 XYMap xymap = XYMap::constructRectangularGrid(GRID_WIDTH, GRID_HEIGHT);
-auto animartrix = fl::make_shared<fl::Animartrix>(xymap, fl::RGB_BLOBS5);
+auto animartrix = fl::make_shared<fl::Animartrix>(xymap, fl::AnimartrixAnim::RGB_BLOBS5);
 int currentAnimationIndex = 0;
 
 // ScreenMap for the ring - defines circular sampling positions using a lambda

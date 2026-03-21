@@ -9,7 +9,7 @@ namespace audio {
 
 /// AGC preset selection — derived from WLED Sound Reactive's proven approach.
 /// Normal/Vivid/Lazy control how quickly the AGC adapts to source-level changes.
-enum AGCPreset {
+enum class AGCPreset {
     AGCPreset_Normal, ///< Balanced: 3.3s peak decay, moderate PI gains
     AGCPreset_Vivid,  ///< Faster response: 1.3s peak decay, higher PI gains
     AGCPreset_Lazy,   ///< Slower, more stable: 6.7s peak decay, lower PI gains
@@ -37,7 +37,7 @@ struct AutoGainConfig {
     float targetRMSLevel = 8000.0f;
 
     /// AGC behavior preset (default: Normal)
-    AGCPreset preset = AGCPreset_Normal;
+    AGCPreset preset = AGCPreset::AGCPreset_Normal;
 
     // --- Custom PI tuning (only used when preset == AGCPreset_Custom) ---
 

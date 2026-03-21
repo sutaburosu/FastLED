@@ -116,9 +116,9 @@ void dumpRawEdgeTiming(fl::shared_ptr<fl::RxDevice> rx_channel,
 
 /// @brief Check if a timing config uses UCS7604 encoder
 static bool isUCS7604(const fl::ChipsetTimingConfig& timing) {
-    return timing.encoder == fl::CLOCKLESS_ENCODER_UCS7604_8BIT ||
-           timing.encoder == fl::CLOCKLESS_ENCODER_UCS7604_16BIT ||
-           timing.encoder == fl::CLOCKLESS_ENCODER_UCS7604_16BIT_1600;
+    return timing.encoder == fl::ClocklessEncoder::CLOCKLESS_ENCODER_UCS7604_8BIT ||
+           timing.encoder == fl::ClocklessEncoder::CLOCKLESS_ENCODER_UCS7604_16BIT ||
+           timing.encoder == fl::ClocklessEncoder::CLOCKLESS_ENCODER_UCS7604_16BIT_1600;
 }
 
 /// @brief Build expected UCS7604 encoded bytes from LED data
@@ -131,14 +131,14 @@ static fl::vector<uint8_t> buildExpectedUCS7604(fl::span<CRGB> leds, const fl::C
     // Map encoder to UCS7604Mode
     fl::UCS7604Mode mode;
     switch (timing.encoder) {
-        case fl::CLOCKLESS_ENCODER_UCS7604_8BIT:
-            mode = fl::UCS7604_MODE_8BIT_800KHZ;
+        case fl::ClocklessEncoder::CLOCKLESS_ENCODER_UCS7604_8BIT:
+            mode = fl::UCS7604Mode::UCS7604_MODE_8BIT_800KHZ;
             break;
-        case fl::CLOCKLESS_ENCODER_UCS7604_16BIT:
-            mode = fl::UCS7604_MODE_16BIT_800KHZ;
+        case fl::ClocklessEncoder::CLOCKLESS_ENCODER_UCS7604_16BIT:
+            mode = fl::UCS7604Mode::UCS7604_MODE_16BIT_800KHZ;
             break;
-        case fl::CLOCKLESS_ENCODER_UCS7604_16BIT_1600:
-            mode = fl::UCS7604_MODE_16BIT_1600KHZ;
+        case fl::ClocklessEncoder::CLOCKLESS_ENCODER_UCS7604_16BIT_1600:
+            mode = fl::UCS7604Mode::UCS7604_MODE_16BIT_1600KHZ;
             break;
         default:
             return expected;
@@ -153,7 +153,7 @@ static fl::vector<uint8_t> buildExpectedUCS7604(fl::span<CRGB> leds, const fl::C
 
     // For 16-bit modes, use default gamma 2.8
     fl::shared_ptr<const fl::Gamma8> gamma;
-    bool use_gamma = (mode != fl::UCS7604_MODE_8BIT_800KHZ);
+    bool use_gamma = (mode != fl::UCS7604Mode::UCS7604_MODE_8BIT_800KHZ);
     if (use_gamma) {
         gamma = fl::Gamma8::getOrCreate(2.8f);
     }

@@ -9,7 +9,7 @@
 
 namespace fl {
 
-enum ButtonStrategy {
+enum class ButtonStrategy {
     // High-low floating detection strategy: Sets pin to high, checks if high,
     // sets pin to low, checks if low. If both are true, pin is floating and
     // button is not pressed. Useful for detecting buttons without pull resistors.
@@ -29,7 +29,7 @@ enum ButtonStrategy {
 // api. Note that this class does not support analog mode nor pullups/pulldowns.
 class ButtonLowLevel {
   public:
-    ButtonLowLevel(int pin, ButtonStrategy strategy = kHighLowFloating);
+    ButtonLowLevel(int pin, ButtonStrategy strategy = ButtonStrategy::kHighLowFloating);
     ~ButtonLowLevel();
     ButtonLowLevel(const ButtonLowLevel &other) = default;
     ButtonLowLevel &operator=(const ButtonLowLevel &other) = delete;
@@ -42,7 +42,7 @@ class ButtonLowLevel {
 
   private:
     fl::DigitalPin mPin;
-    ButtonStrategy mStrategy = kHighLowFloating;
+    ButtonStrategy mStrategy = ButtonStrategy::kHighLowFloating;
 };
 
 // The default button type hooks into the FastLED EngineEvents to monitor

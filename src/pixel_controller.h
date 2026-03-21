@@ -46,17 +46,17 @@ FL_DISABLE_WARNING_FLOAT_CONVERSION
 /// @param X the byte's position in the output (0-2)
 /// @returns the color channel for that byte (0 = red, 1 = green, 2 = blue)
 /// @see EOrder
-#define RGB_BYTE(RO,X) (((RO)>>(3*(2-(X)))) & 0x3)
+#define RGB_BYTE(RO,X) ((static_cast<int>(RO)>>(3*(2-(X)))) & 0x3)
 
 /// Gets the color channel for byte 0.
 /// @see RGB_BYTE(RO,X)
-#define RGB_BYTE0(RO) ((RO>>6) & 0x3)
+#define RGB_BYTE0(RO) ((static_cast<int>(RO)>>6) & 0x3)
 /// Gets the color channel for byte 1.
 /// @see RGB_BYTE(RO,X)
-#define RGB_BYTE1(RO) ((RO>>3) & 0x3)
+#define RGB_BYTE1(RO) ((static_cast<int>(RO)>>3) & 0x3)
 /// Gets the color channel for byte 2.
 /// @see RGB_BYTE(RO,X)
-#define RGB_BYTE2(RO) ((RO) & 0x3)
+#define RGB_BYTE2(RO) (static_cast<int>(RO) & 0x3)
 
 // operator byte *(struct CRGB[] arr) { return (byte*)arr; }
 

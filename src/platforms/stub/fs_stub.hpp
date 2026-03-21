@@ -40,7 +40,7 @@ public:
         mFile.open(path.c_str(), fl::ios::binary | fl::ios::ate);
         if (mFile.is_open()) {
             mSize = mFile.tellg();
-            mFile.seekg(0, fl::ios::beg);
+            mFile.seekg(0, fl::ios::seekdir::beg);
         } else {
             mSize = 0;
         }
@@ -106,8 +106,8 @@ public:
         if (target > mSize) {
             return false;
         }
-        fl::ios::seekdir sdir = (dir == fl::seek_dir::beg) ? fl::ios::beg :
-                                (dir == fl::seek_dir::cur) ? fl::ios::cur : fl::ios::end;
+        fl::ios::seekdir sdir = (dir == fl::seek_dir::beg) ? fl::ios::seekdir::beg :
+                                (dir == fl::seek_dir::cur) ? fl::ios::seekdir::cur : fl::ios::seekdir::end;
         mFile.seekg(pos, sdir);
         mPos = target;
         return true;

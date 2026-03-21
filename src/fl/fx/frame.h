@@ -46,9 +46,9 @@ class Frame {
                      u8 amountOfFrame2);
     static void interpolate(const Frame &frame1, const Frame &frame2,
                             u8 amountofFrame2, fl::span<CRGB> pixels);
-    void draw(fl::span<CRGB> leds, DrawMode draw_mode = DRAW_MODE_OVERWRITE) const;
+    void draw(fl::span<CRGB> leds, DrawMode draw_mode = DrawMode::DRAW_MODE_OVERWRITE) const;
     void drawXY(fl::span<CRGB> leds, const XYMap &xyMap,
-                DrawMode draw_mode = DRAW_MODE_OVERWRITE) const;
+                DrawMode draw_mode = DrawMode::DRAW_MODE_OVERWRITE) const;
     void clear();
 
     // Codec functionality methods

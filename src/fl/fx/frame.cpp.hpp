@@ -48,12 +48,12 @@ Frame::~Frame() {
 void Frame::draw(fl::span<CRGB> leds, DrawMode draw_mode) const {
     if (!mRgb.empty()) {
         switch (draw_mode) {
-        case DRAW_MODE_BLEND:  // DRAW_MODE_BLEND is for gfx primitives; treat as overwrite for Frame
-        case DRAW_MODE_OVERWRITE: {
+        case DrawMode::DRAW_MODE_BLEND:  // DRAW_MODE_BLEND is for gfx primitives; treat as overwrite for Frame
+        case DrawMode::DRAW_MODE_OVERWRITE: {
             fl::memcpy(leds.data(), mRgb.data(), mPixelsCount * sizeof(CRGB));
             break;
         }
-        case DRAW_MODE_BLEND_BY_MAX_BRIGHTNESS: {
+        case DrawMode::DRAW_MODE_BLEND_BY_MAX_BRIGHTNESS: {
             for (size_t i = 0; i < mPixelsCount; ++i) {
                 leds[i] = CRGB::blendAlphaMaxChannel(mRgb[i], leds[i]);
             }
@@ -82,12 +82,12 @@ void Frame::drawXY(fl::span<CRGB> leds, const XYMap &xyMap, DrawMode draw_mode) 
                 continue;
             }
             switch (draw_mode) {
-            case DRAW_MODE_BLEND:  // gfx primitives only; treat as overwrite for Frame
-            case DRAW_MODE_OVERWRITE: {
+            case DrawMode::DRAW_MODE_BLEND:  // gfx primitives only; treat as overwrite for Frame
+            case DrawMode::DRAW_MODE_OVERWRITE: {
                 leds[out_idx] = mRgb[in_idx];
                 break;
             }
-            case DRAW_MODE_BLEND_BY_MAX_BRIGHTNESS: {
+            case DrawMode::DRAW_MODE_BLEND_BY_MAX_BRIGHTNESS: {
                 leds[out_idx] =
                     CRGB::blendAlphaMaxChannel(mRgb[in_idx], leds[in_idx]);
                 break;

@@ -14,9 +14,9 @@ namespace fl {
 /// chipset definitions and makes it available at runtime for driver configuration.
 struct ChipsetTimingConfig {
     constexpr ChipsetTimingConfig()
-        : t1_ns(0), t2_ns(0), t3_ns(0), reset_us(0), name("UNSET"), encoder(CLOCKLESS_ENCODER_WS2812) {}
+        : t1_ns(0), t2_ns(0), t3_ns(0), reset_us(0), name("UNSET"), encoder(ClocklessEncoder::CLOCKLESS_ENCODER_WS2812) {}
     constexpr ChipsetTimingConfig(u32 t1, u32 t2, u32 t3, u32 reset, const char* name = "UNNAMED CHIPSET",
-                                  ClocklessEncoder encoder = CLOCKLESS_ENCODER_WS2812)
+                                  ClocklessEncoder encoder = ClocklessEncoder::CLOCKLESS_ENCODER_WS2812)
         : t1_ns(t1), t2_ns(t2), t3_ns(t3), reset_us(reset), name(name), encoder(encoder) {}
     u32 t1_ns;      ///< T0H: High time for bit 0 (nanoseconds)
     u32 t2_ns;      ///< T1H-T0H: Additional high time for bit 1 (nanoseconds)
@@ -54,7 +54,7 @@ namespace detail {
 
     template <typename CHIPSET, bool HAS_ENCODER>
     struct get_encoder {
-        static constexpr ClocklessEncoder value = CLOCKLESS_ENCODER_WS2812;
+        static constexpr ClocklessEncoder value = ClocklessEncoder::CLOCKLESS_ENCODER_WS2812;
     };
     template <typename CHIPSET>
     struct get_encoder<CHIPSET, true> {
@@ -74,7 +74,7 @@ struct has_encoder {
 /// packages them into a runtime-accessible struct.
 ///
 /// If the CHIPSET type has a static ENCODER member (e.g., UCS7604 timing structs),
-/// it is propagated to the runtime config. Otherwise, CLOCKLESS_ENCODER_WS2812 is used.
+/// it is propagated to the runtime config. Otherwise, ClocklessEncoder::CLOCKLESS_ENCODER_WS2812 is used.
 ///
 /// @tparam CHIPSET Chipset timing trait (e.g., TIMING_WS2812_800KHZ)
 /// @return Runtime timing configuration for the chipset

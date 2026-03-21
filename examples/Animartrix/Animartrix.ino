@@ -74,7 +74,7 @@ Performence notes @64x64:
 
 #define NUM_LEDS (MATRIX_WIDTH * MATRIX_HEIGHT)
 
-#define FIRST_ANIMATION fl::POLAR_WAVES
+#define FIRST_ANIMATION fl::AnimartrixAnim::POLAR_WAVES
 
 // This is purely use for the web compiler to display the animartrix effects.
 // This small led was chosen because otherwise the bloom effect is too strong.
@@ -147,12 +147,12 @@ void setup() {
     colorOrder.onChanged([](fl::UIDropdown &dropdown) {
         int value = dropdown.as_int();
         switch(value) {
-            case 0: value = RGB; break;
-            case 1: value = RBG; break;
-            case 2: value = GRB; break;
-            case 3: value = GBR; break;
-            case 4: value = BRG; break;
-            case 5: value = BGR; break;
+            case 0: value = static_cast<int>(RGB); break;
+            case 1: value = static_cast<int>(RBG); break;
+            case 2: value = static_cast<int>(GRB); break;
+            case 3: value = static_cast<int>(GBR); break;
+            case 4: value = static_cast<int>(BRG); break;
+            case 5: value = static_cast<int>(BGR); break;
         }
         animartrix.setColorOrder(static_cast<fl::EOrder>(value));
     });

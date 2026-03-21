@@ -36,8 +36,8 @@ class Fx2dTo1d : public Fx1d {
   public:
     /// Interpolation mode for sampling the 2D grid
     enum InterpolationMode {
-        NEAREST = SAMPLE_NEAREST,   ///< Nearest neighbor (fast, pixelated)
-        BILINEAR = SAMPLE_BILINEAR, ///< Bilinear interpolation (smooth)
+        NEAREST = int(SampleMode::SAMPLE_NEAREST),   ///< Nearest neighbor (fast, pixelated)
+        BILINEAR = int(SampleMode::SAMPLE_BILINEAR), ///< Bilinear interpolation (smooth)
     };
 
     /// @brief Construct a 2D-to-1D sampling effect

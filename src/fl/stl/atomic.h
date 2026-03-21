@@ -35,7 +35,7 @@ using atomic_i32 = atomic<fl::i32>;
 
 // Forward declare memory_order enum (defined in platforms/shared/atomic.h for real atomics)
 #if !FASTLED_USE_REAL_ATOMICS
-enum memory_order {
+enum class memory_order {
     memory_order_relaxed,
     memory_order_acquire,
     memory_order_release,

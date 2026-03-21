@@ -30,26 +30,26 @@ struct I2SContext {
 };
 
 I2SContext make_context(const audio::ConfigI2S &config) {
-    auto detect_slot_mode = [](audio::Channel value) -> i2s_slot_mode_t {
+    auto detect_slot_mode = [](audio::AudioChannel value) -> i2s_slot_mode_t {
         switch (value) {
-        case Left:
+        case audio::AudioChannel::Left:
             return I2S_SLOT_MODE_MONO;
-        case Right:
+        case audio::AudioChannel::Right:
             return I2S_SLOT_MODE_MONO;
-        case Both:
+        case audio::AudioChannel::Both:
             return I2S_SLOT_MODE_STEREO;
         }
         FL_ASSERT(false, "Invalid mic channel");
         return I2S_SLOT_MODE_STEREO;
     };
 
-    auto detect_slot_mask = [](audio::Channel value) -> i2s_std_slot_mask_t {
+    auto detect_slot_mask = [](audio::AudioChannel value) -> i2s_std_slot_mask_t {
         switch (value) {
-        case Left:
+        case audio::AudioChannel::Left:
             return I2S_STD_SLOT_LEFT;
-        case Right:
+        case audio::AudioChannel::Right:
             return I2S_STD_SLOT_RIGHT;
-        case Both:
+        case audio::AudioChannel::Both:
             return I2S_STD_SLOT_BOTH;
         }
         FL_ASSERT(false, "Invalid mic channel");

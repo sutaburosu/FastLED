@@ -21,7 +21,7 @@ namespace fl {
 namespace fl {
 
 // Default log level is DEBUG (all logging enabled)
-static u8 gLogLevel = FL_LOG_LEVEL_DEBUG;
+static u8 gLogLevel = static_cast<u8>(LogLevel::FL_LOG_LEVEL_DEBUG);
 
 u8 getLogLevel() {
     return gLogLevel;
@@ -65,7 +65,7 @@ static read_handler_t& get_read_handler() {
 void print(const char* str) {
     if (!str) return;
     // Check global log level - if NONE, suppress all output
-    if (gLogLevel == FL_LOG_LEVEL_NONE) return;
+    if (gLogLevel == static_cast<u8>(LogLevel::FL_LOG_LEVEL_NONE)) return;
 
 #ifdef FASTLED_TESTING
     // Check for injected handler first
@@ -82,7 +82,7 @@ void print(const char* str) {
 void println(const char* str) {
     if (!str) return;
     // Check global log level - if NONE, suppress all output
-    if (gLogLevel == FL_LOG_LEVEL_NONE) return;
+    if (gLogLevel == static_cast<u8>(LogLevel::FL_LOG_LEVEL_NONE)) return;
 
 #ifdef FASTLED_TESTING
     // Check for injected handler first

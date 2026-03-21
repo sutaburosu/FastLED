@@ -1415,18 +1415,18 @@ FL_TEST_CASE("audio::Reactive - setGain affects processing") {
 // ===== audio::Config gain tests =====
 
 FL_TEST_CASE("audio::Config - default gain is 1.0") {
-    audio::Config config = audio::Config::CreateInmp441(1, 2, 3, audio::Left);
+    audio::Config config = audio::Config::CreateInmp441(1, 2, 3, audio::AudioChannel::Left);
     FL_CHECK_EQ(config.getGain(), 1.0f);
 }
 
 FL_TEST_CASE("audio::Config - setGain/getGain roundtrip") {
-    audio::Config config = audio::Config::CreateInmp441(1, 2, 3, audio::Left);
+    audio::Config config = audio::Config::CreateInmp441(1, 2, 3, audio::AudioChannel::Left);
     config.setGain(4.0f);
     FL_CHECK_EQ(config.getGain(), 4.0f);
 }
 
 FL_TEST_CASE("audio::Config - gain persists across copy") {
-    audio::Config config1 = audio::Config::CreateInmp441(1, 2, 3, audio::Left);
+    audio::Config config1 = audio::Config::CreateInmp441(1, 2, 3, audio::AudioChannel::Left);
     config1.setGain(3.0f);
     audio::Config config2 = config1;
     FL_CHECK_EQ(config2.getGain(), 3.0f);

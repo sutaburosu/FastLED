@@ -91,7 +91,7 @@ fl::UISlider changePalletTime("Noise - Time until next random Palette", 5, 1, 10
 fl::UISlider scale( "Noise - Scale", 20, 1, 100);
 fl::UIButton changePalette("Noise - Next Palette");
 fl::UIButton changeFx("Switch between Noise & fl::Animartrix");
-UINumberField fxIndex("fl::Animartrix - index", 0, 0, fl::NUM_ANIMATIONS);
+UINumberField fxIndex("fl::Animartrix - index", 0, 0, static_cast<int>(fl::AnimartrixAnim::NUM_ANIMATIONS));
 fl::UISlider timeSpeed("Time Speed", 1, -10, 10, .1);
 
 // Group related UI elements using fl::UIGroup template multi-argument constructor
@@ -100,7 +100,7 @@ fl::UIGroup animartrixControls("fl::Animartrix Controls", fxIndex, changeFx);
 fl::UIGroup displayControls("Display Controls", brightness, isOff, timeSpeed);
 
 // fl::Animartrix is a visualizer.
-fl::Animartrix animartrix(xyMap, fl::POLAR_WAVES);
+fl::Animartrix animartrix(xyMap, fl::AnimartrixAnim::POLAR_WAVES);
 
 // fl::FxEngine allows nice things like switching between visualizers.
 fl::FxEngine fxEngine(NUM_LEDS);

@@ -15,7 +15,7 @@ namespace fl {
 
 // Memory ordering constants for clarity
 // These map to __ATOMIC_* constants but are defined for documentation
-enum memory_order {
+enum memory_order { // ok plain enum
     memory_order_relaxed = __ATOMIC_RELAXED,
     memory_order_acquire = __ATOMIC_ACQUIRE,
     memory_order_release = __ATOMIC_RELEASE,

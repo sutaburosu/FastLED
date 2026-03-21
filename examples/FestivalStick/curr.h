@@ -112,55 +112,43 @@ fl::UIDropdown paletteDropdown("Color Palette", paletteOptions);
 fl::UIDropdown renderModeDropdown("Render Mode", renderModeOptions);
 
 
-// fl::array<fl::pair<int, fl::string>> easeInfo = {
-//     fl::pair(fl::EASE_IN_QUAD, "fl::EASE_IN_QUAD"),
-//     fl::pair(fl::EASE_OUT_QUAD, "fl::EASE_OUT_QUAD"),
-//     fl::pair(fl::EASE_IN_OUT_QUAD, "fl::EASE_IN_OUT_QUAD"),
-//     fl::pair(fl::EASE_IN_CUBIC, "fl::EASE_IN_CUBIC"),
-//     fl::pair(fl::EASE_OUT_CUBIC, "fl::EASE_OUT_CUBIC"),
-//     fl::pair(fl::EASE_IN_OUT_CUBIC, "fl::EASE_IN_OUT_CUBIC"),
-//     fl::pair(fl::EASE_IN_SINE, "fl::EASE_IN_SINE"),
-//     fl::pair(fl::EASE_OUT_SINE, "fl::EASE_OUT_SINE"),
-//     fl::pair(fl::EASE_IN_OUT_SINE, "fl::EASE_IN_OUT_SINE")
-// };
-
 
 fl::vector<fl::string> easeInfo = {
-    "fl::EASE_NONE",
-    "fl::EASE_IN_QUAD",
-    "fl::EASE_OUT_QUAD",
-    "fl::EASE_IN_OUT_QUAD",
-    "fl::EASE_IN_CUBIC",
-    "fl::EASE_OUT_CUBIC",
-    "fl::EASE_IN_OUT_CUBIC",
-    "fl::EASE_IN_SINE",
-    "fl::EASE_OUT_SINE",
-    "fl::EASE_IN_OUT_SINE"
+    "EASE_NONE",
+    "EASE_IN_QUAD",
+    "EASE_OUT_QUAD",
+    "EASE_IN_OUT_QUAD",
+    "EASE_IN_CUBIC",
+    "EASE_OUT_CUBIC",
+    "EASE_IN_OUT_CUBIC",
+    "EASE_IN_SINE",
+    "EASE_OUT_SINE",
+    "EASE_IN_OUT_SINE"
 };
 
 fl::EaseType getEaseType(fl::string value) {
-    if (value == "fl::EASE_NONE") {
-        return fl::EASE_NONE;
-    } else if (value == "fl::EASE_IN_QUAD") {
-        return fl::EASE_IN_QUAD;
-    } else if (value == "fl::EASE_OUT_QUAD") {
-        return fl::EASE_OUT_QUAD;
-    } else if (value == "fl::EASE_IN_OUT_QUAD") {
-        return fl::EASE_IN_OUT_QUAD;
-    } else if (value == "fl::EASE_IN_CUBIC") {
-        return fl::EASE_IN_CUBIC;
-    } else if (value == "fl::EASE_OUT_CUBIC") {
-        return fl::EASE_OUT_CUBIC;
-    } else if (value == "fl::EASE_IN_OUT_CUBIC") {
-        return fl::EASE_IN_OUT_CUBIC;
-    } else if (value == "fl::EASE_IN_SINE") {
-        return fl::EASE_IN_SINE;
-    } else if (value == "fl::EASE_OUT_SINE") {
-        return fl::EASE_OUT_SINE;
-    } else if (value == "fl::EASE_IN_OUT_SINE") {
-        return fl::EASE_IN_OUT_SINE;
+    if (value == "fl::EaseType::EASE_NONE") {
+        return fl::EaseType::EASE_NONE;
+    } else if (value == "EASE_IN_QUAD") {
+        return fl::EaseType::EASE_IN_QUAD;
+    } else if (value == "EASE_OUT_QUAD") {
+        return fl::EaseType::EASE_OUT_QUAD;
+    } else if (value == "EASE_IN_OUT_QUAD") {
+        return fl::EaseType::EASE_IN_OUT_QUAD;
+    } else if (value == "EASE_IN_CUBIC") {
+        return fl::EaseType::EASE_IN_CUBIC;
+    } else if (value == "EASE_OUT_CUBIC") {
+        return fl::EaseType::EASE_OUT_CUBIC;
+    } else if (value == "EASE_IN_OUT_CUBIC") {
+        return fl::EaseType::EASE_IN_OUT_CUBIC;
+    } else if (value == "EASE_IN_SINE") {
+        return fl::EaseType::EASE_IN_SINE;
+    } else if (value == "EASE_OUT_SINE") {
+        return fl::EaseType::EASE_OUT_SINE;
+    } else if (value == "EASE_IN_OUT_SINE") {
+        return fl::EaseType::EASE_IN_OUT_SINE;
     } else {
-        return fl::EASE_NONE;
+        return fl::EaseType::EASE_NONE;
     }
 }
 
@@ -244,7 +232,7 @@ fl::UIGroup colorBoostGroup("Color Boost", saturationFunction, luminanceFunction
 fl::UIGroup pointGraphicsGroup("Point Graphics Mode", speed, positionCoarse, positionFine, positionExtraFine, autoAdvance);
 
 // fl::Animartrix-related UI controls
-UINumberField animartrixIndex("fl::Animartrix Animation", 5, 0, fl::NUM_ANIMATIONS - 1);
+UINumberField animartrixIndex("fl::Animartrix Animation", 5, 0, static_cast<int>(fl::AnimartrixAnim::NUM_ANIMATIONS) - 1);
 UINumberField animartrixColorOrder("fl::Animartrix Color Order", 0, 0, 5);
 fl::UISlider animartrixTimeSpeed("fl::Animartrix Time Speed", 1, -10, 10, .1);
 
@@ -354,7 +342,7 @@ void setup() {
 
     // Initialize fl::Animartrix effect
     fl::XYMap animartrixXyMap = fl::XYMap::constructRectangularGrid(width, height, 0);
-    animartrix.reset(new fl::Animartrix(animartrixXyMap, fl::POLAR_WAVES));  // ok bare allocation
+    animartrix.reset(new fl::Animartrix(animartrixXyMap, fl::AnimartrixAnim::POLAR_WAVES));  // ok bare allocation
     fxEngine.reset(new fl::FxEngine(width * height));  // ok bare allocation
     fxEngine->addFx(*animartrix);
     

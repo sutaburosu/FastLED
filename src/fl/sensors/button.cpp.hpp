@@ -38,12 +38,12 @@ bool ButtonLowLevel::highLowFloating() {
 
 bool ButtonLowLevel::isPressed() {
     switch (mStrategy) {
-    case kHighLowFloating:
+    case ButtonStrategy::kHighLowFloating:
         return highLowFloating();
-    case kPullUp:
+    case ButtonStrategy::kPullUp:
         // Active-low: Button pulls pin to ground when pressed
         return !mPin.high();
-    case kPullDown:
+    case ButtonStrategy::kPullDown:
         // Active-high: Button pulls pin to VCC when pressed
         return mPin.high();
     default:
@@ -94,13 +94,13 @@ int Button::onClick(function<void()> callback) {
 void ButtonLowLevel::setStrategy(ButtonStrategy strategy) {
     mStrategy = strategy;
     switch (mStrategy) {
-    case kHighLowFloating:
+    case ButtonStrategy::kHighLowFloating:
         mPin.setPinMode(DigitalPin::kInput);
         break;
-    case kPullUp:
+    case ButtonStrategy::kPullUp:
         mPin.setPinMode(DigitalPin::kInputPullup);
         break;
-    case kPullDown:
+    case ButtonStrategy::kPullDown:
         mPin.setPinMode(DigitalPin::kInputPulldown);
         break;
     default:

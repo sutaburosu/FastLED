@@ -643,7 +643,7 @@ template<typename PixelT, typename Coord>
 inline void drawLine(Canvas<PixelT>& canvas, const PixelT& color,
                      Coord x0, Coord y0, Coord x1, Coord y1,
                      fl::DrawMode mode) {
-    if (mode == fl::DRAW_MODE_OVERWRITE)
+    if (mode == fl::DrawMode::DRAW_MODE_OVERWRITE)
         detail::drawLineCore<PixelT, Coord, true>(canvas, color, x0, y0, x1, y1);
     else
         detail::drawLineCore<PixelT, Coord, false>(canvas, color, x0, y0, x1, y1);
@@ -719,7 +719,7 @@ template<typename PixelT, typename Coord>
 inline void drawDisc(Canvas<PixelT>& canvas, const PixelT& color,
                      Coord cx, Coord cy, Coord r,
                      fl::DrawMode mode) {
-    if (mode == fl::DRAW_MODE_OVERWRITE)
+    if (mode == fl::DrawMode::DRAW_MODE_OVERWRITE)
         detail::drawDiscCore<PixelT, Coord, true>(canvas, color, cx, cy, r);
     else
         detail::drawDiscCore<PixelT, Coord, false>(canvas, color, cx, cy, r);
@@ -807,7 +807,7 @@ template<typename PixelT, typename Coord>
 inline void drawRing(Canvas<PixelT>& canvas, const PixelT& color,
                      Coord cx, Coord cy, Coord r, Coord thickness,
                      fl::DrawMode mode) {
-    if (mode == fl::DRAW_MODE_OVERWRITE)
+    if (mode == fl::DrawMode::DRAW_MODE_OVERWRITE)
         detail::drawRingCore<PixelT, Coord, true>(canvas, color, cx, cy, r, thickness);
     else
         detail::drawRingCore<PixelT, Coord, false>(canvas, color, cx, cy, r, thickness);
@@ -896,7 +896,7 @@ template<typename PixelT, typename Coord>
 inline void drawStrokeLine(Canvas<PixelT>& canvas, const PixelT& color,
                            Coord x0, Coord y0, Coord x1, Coord y1, Coord thickness,
                            LineCap cap, fl::DrawMode mode) {
-    if (mode == fl::DRAW_MODE_OVERWRITE)
+    if (mode == fl::DrawMode::DRAW_MODE_OVERWRITE)
         detail::drawStrokeLineCore<PixelT, Coord, true>(canvas, color, x0, y0, x1, y1, thickness, cap);
     else
         detail::drawStrokeLineCore<PixelT, Coord, false>(canvas, color, x0, y0, x1, y1, thickness, cap);

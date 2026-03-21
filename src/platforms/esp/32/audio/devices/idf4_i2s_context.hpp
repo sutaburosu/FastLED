@@ -32,13 +32,13 @@ struct I2SContext {
 };
 
 I2SContext make_context(const audio::ConfigI2S &config) {
-    auto convert_channel = [](audio::Channel value) -> int {
+    auto convert_channel = [](audio::AudioChannel value) -> int {
         switch (value) {
-        case Left:
+        case audio::AudioChannel::Left:
             return I2S_CHANNEL_FMT_ONLY_LEFT;
-        case Right:
+        case audio::AudioChannel::Right:
             return I2S_CHANNEL_FMT_ONLY_RIGHT;
-        case Both:
+        case audio::AudioChannel::Both:
             return I2S_CHANNEL_FMT_RIGHT_LEFT;
         }
         FL_ASSERT(false, "Invalid mic channel");

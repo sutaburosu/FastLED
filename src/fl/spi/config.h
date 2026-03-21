@@ -21,7 +21,7 @@ constexpr size_t MAX_SPI_LANES = 32;
 // ============================================================================
 
 /// @brief SPI output mode for multi-lane devices
-enum spi_output_mode_t : u8 {
+enum class spi_output_mode_t : u8 {
     SPI_AUTO = 0,  ///< Auto-selects best backend (DMA/bit-bang/ISR)
     SPI_HW,        ///< Use DMA-capable hardware (Async or Sync), supports 1/2/4/8 lanes depending on platform
     SPI_BITBANG,   ///< Use bit-bang software (Blocking)
@@ -44,7 +44,7 @@ struct SpiConfig {
     SpiConfig() = default;
 
     /// @brief Construct single-lane SPI config
-    SpiConfig(int clk, int data, u32 speed_hz = 0xffffffff, spi_output_mode_t output_mode = SPI_AUTO, u8 spi_mode = 0)
+    SpiConfig(int clk, int data, u32 speed_hz = 0xffffffff, spi_output_mode_t output_mode = spi_output_mode_t::SPI_AUTO, u8 spi_mode = 0)
         : clock_pin(clk)
         , clock_speed_hz(speed_hz)
         , output_mode(output_mode)
@@ -53,7 +53,7 @@ struct SpiConfig {
     }
 
     /// @brief Construct multi-lane SPI config
-    SpiConfig(int clk, fl::span<const int> pins, u32 speed_hz = 0xffffffff, spi_output_mode_t output_mode = SPI_AUTO, u8 spi_mode = 0)
+    SpiConfig(int clk, fl::span<const int> pins, u32 speed_hz = 0xffffffff, spi_output_mode_t output_mode = spi_output_mode_t::SPI_AUTO, u8 spi_mode = 0)
         : clock_pin(clk)
         , clock_speed_hz(speed_hz)
         , output_mode(output_mode)
@@ -70,7 +70,7 @@ struct SpiConfig {
     int clock_pin;                          ///< SCK pin number
     fl::vector<int> data_pins;              ///< Data pins (1 = single-lane, 2-8 = multi-lane)
     u32 clock_speed_hz = 0xffffffff;   ///< Clock frequency in Hz (0xffffffff = as fast as possible)
-    spi_output_mode_t output_mode = SPI_AUTO; ///< Output mode (auto/hw/bitbang/isr)
+    spi_output_mode_t output_mode = spi_output_mode_t::SPI_AUTO; ///< Output mode (auto/hw/bitbang/isr)
     u8 spi_mode = 0;                   ///< SPI mode 0-3 (CPOL/CPHA)
 };
 

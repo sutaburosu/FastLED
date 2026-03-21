@@ -178,7 +178,7 @@ FL_TEST_CASE("drawDisc overwrite mode") {
         canvas.drawDisc(CRGB(0, 0, 255), 15.5f, 15.5f, 5.0f);
         // Overwrite with red — center should be pure red, no blue
         canvas.drawDisc(CRGB(255, 0, 0), 15.5f, 15.5f, 5.0f,
-                        fl::DRAW_MODE_OVERWRITE);
+                        fl::DrawMode::DRAW_MODE_OVERWRITE);
         CRGB center = buffer[15 * 32 + 15];
         FL_CHECK_EQ(center.r, 255);
         FL_CHECK_EQ(center.b, 0);
@@ -193,7 +193,7 @@ FL_TEST_CASE("drawDisc overwrite mode") {
         fl::CanvasRGB c_ow(buf_ow, 32, 32);
         c_blend.drawDisc(CRGB(200, 100, 50), 15.5f, 15.5f, 8.0f);
         c_ow.drawDisc(CRGB(200, 100, 50), 15.5f, 15.5f, 8.0f,
-                       fl::DRAW_MODE_OVERWRITE);
+                       fl::DrawMode::DRAW_MODE_OVERWRITE);
         for (int i = 0; i < 1024; ++i) {
             FL_CHECK_EQ(buf_blend[i].r, buf_ow[i].r);
             FL_CHECK_EQ(buf_blend[i].g, buf_ow[i].g);
@@ -216,9 +216,9 @@ FL_TEST_CASE("drawDisc blend mode accumulates") {
         CRGB buffer[1024] = {};
         fl::CanvasRGB canvas(buffer, 32, 32);
         canvas.drawDisc(CRGB(100, 0, 0), 15.5f, 15.5f, 5.0f,
-                        fl::DRAW_MODE_OVERWRITE);
+                        fl::DrawMode::DRAW_MODE_OVERWRITE);
         canvas.drawDisc(CRGB(100, 0, 0), 15.5f, 15.5f, 5.0f,
-                        fl::DRAW_MODE_OVERWRITE);
+                        fl::DrawMode::DRAW_MODE_OVERWRITE);
         // Center should be exactly 100, not accumulated
         FL_CHECK_EQ(buffer[15 * 32 + 15].r, 100);
     }

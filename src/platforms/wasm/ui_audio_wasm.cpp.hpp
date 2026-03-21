@@ -22,7 +22,7 @@ static void initWasmAudio(const char* name, WasmAudioInput*& wasmInput,
         // Create the WASM audio input if it doesn't exist
         fl::string error;
         // Use dummy I2S config (config is ignored for WASM anyway)
-        audio::ConfigI2S dummyConfig(0, 0, 0, 0, fl::audio::Channel::Left, 44100, 16);
+        audio::ConfigI2S dummyConfig(0, 0, 0, 0, audio::AudioChannel::Left, 44100, 16);
         wasmInputOwner = wasm_create_audio_input(fl::audio::Config(dummyConfig), &error);
         if (wasmInputOwner) {
             wasmInputOwner->start();

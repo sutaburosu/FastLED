@@ -90,10 +90,8 @@ FL_TEST_CASE("Test FX2d Layered Blending") {
 }
 
 FL_TEST_CASE("Test FX2d Layered with XYMap") {
-    enum {
-        width = 2,
-        height = 2,
-    };
+    static constexpr int width = 2;
+    static constexpr int height = 2;
 
     fl::XYMap xyMapSerp = fl::XYMap::constructSerpentine(width, height);
     fl::XYMap xyRect = fl::XYMap::constructRectangularGrid(width, height);

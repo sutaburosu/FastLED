@@ -31,19 +31,19 @@ void blurGaussian(Canvas<RGB_T>& canvas);
 
 template<typename PixelT, typename Coord>
 void drawLine(Canvas<PixelT>& canvas, const PixelT& color, Coord x0, Coord y0, Coord x1, Coord y1,
-              fl::DrawMode mode = fl::DRAW_MODE_BLEND);
+              fl::DrawMode mode = fl::DrawMode::DRAW_MODE_BLEND);
 
 template<typename PixelT, typename Coord>
 void drawDisc(Canvas<PixelT>& canvas, const PixelT& color, Coord cx, Coord cy, Coord r,
-              fl::DrawMode mode = fl::DRAW_MODE_BLEND);
+              fl::DrawMode mode = fl::DrawMode::DRAW_MODE_BLEND);
 
 template<typename PixelT, typename Coord>
 void drawRing(Canvas<PixelT>& canvas, const PixelT& color, Coord cx, Coord cy, Coord r, Coord thickness,
-              fl::DrawMode mode = fl::DRAW_MODE_BLEND);
+              fl::DrawMode mode = fl::DrawMode::DRAW_MODE_BLEND);
 
 template<typename PixelT, typename Coord>
 void drawStrokeLine(Canvas<PixelT>& canvas, const PixelT& color, Coord x0, Coord y0, Coord x1, Coord y1,
-                    Coord thickness, LineCap cap, fl::DrawMode mode = fl::DRAW_MODE_BLEND);
+                    Coord thickness, LineCap cap, fl::DrawMode mode = fl::DrawMode::DRAW_MODE_BLEND);
 
 /// @brief Simple rectangular canvas for graphics operations
 /// Combines a pixel buffer with dimensions for cache-optimal drawing.
@@ -85,25 +85,25 @@ struct Canvas {
 
     template<typename Coord>
     inline void drawLine(const RGB_T& color, Coord x0, Coord y0, Coord x1, Coord y1,
-                         fl::DrawMode mode = fl::DRAW_MODE_BLEND) {
+                         fl::DrawMode mode = fl::DrawMode::DRAW_MODE_BLEND) {
         gfx::drawLine(*this, color, x0, y0, x1, y1, mode);
     }
 
     template<typename Coord>
     inline void drawDisc(const RGB_T& color, Coord cx, Coord cy, Coord r,
-                         fl::DrawMode mode = fl::DRAW_MODE_BLEND) {
+                         fl::DrawMode mode = fl::DrawMode::DRAW_MODE_BLEND) {
         gfx::drawDisc(*this, color, cx, cy, r, mode);
     }
 
     template<typename Coord>
     inline void drawRing(const RGB_T& color, Coord cx, Coord cy, Coord r, Coord thickness,
-                         fl::DrawMode mode = fl::DRAW_MODE_BLEND) {
+                         fl::DrawMode mode = fl::DrawMode::DRAW_MODE_BLEND) {
         gfx::drawRing(*this, color, cx, cy, r, thickness, mode);
     }
 
     template<typename Coord>
     inline void drawStrokeLine(const RGB_T& color, Coord x0, Coord y0, Coord x1, Coord y1, Coord thickness,
-                               LineCap cap = LineCap::FLAT, fl::DrawMode mode = fl::DRAW_MODE_BLEND) {
+                               LineCap cap = LineCap::FLAT, fl::DrawMode mode = fl::DrawMode::DRAW_MODE_BLEND) {
         gfx::drawStrokeLine(*this, color, x0, y0, x1, y1, thickness, cap, mode);
     }
 };

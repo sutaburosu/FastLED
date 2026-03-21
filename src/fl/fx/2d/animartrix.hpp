@@ -27,7 +27,7 @@ namespace fl {
 
 FASTLED_SHARED_PTR(Animartrix);
 
-enum AnimartrixAnim {
+enum class AnimartrixAnim {
     RGB_BLOBS5 = 0,
     RGB_BLOBS4,
     RGB_BLOBS3,
@@ -96,58 +96,58 @@ static IAnimartrix2Viz* makeViz() { return new T(); }  // ok bare allocation
 
 // The animation dispatch table
 static const AnimartrixEntry ANIMATION_TABLE[] = {
-    {RGB_BLOBS5, "RGB_BLOBS5", &makeViz<RGB_Blobs5>},
-    {RGB_BLOBS4, "RGB_BLOBS4", &makeViz<RGB_Blobs4>},
-    {RGB_BLOBS3, "RGB_BLOBS3", &makeViz<RGB_Blobs3>},
-    {RGB_BLOBS2, "RGB_BLOBS2", &makeViz<RGB_Blobs2>},
-    {RGB_BLOBS, "RGB_BLOBS", &makeViz<RGB_Blobs>},
-    {POLAR_WAVES, "POLAR_WAVES", &makeViz<Polar_Waves>},
-    {SLOW_FADE, "SLOW_FADE", &makeViz<Slow_Fade>},
-    {ZOOM2, "ZOOM2", &makeViz<Zoom2>},
-    {ZOOM, "ZOOM", &makeViz<Zoom>},
-    {HOT_BLOB, "HOT_BLOB", &makeViz<Hot_Blob>},
-    {SPIRALUS2, "SPIRALUS2", &makeViz<Spiralus2>},
-    {SPIRALUS, "SPIRALUS", &makeViz<Spiralus>},
-    {YVES, "YVES", &makeViz<Yves>},
-    {SCALEDEMO1, "SCALEDEMO1", &makeViz<Scaledemo1>},
-    {LAVA1, "LAVA1", &makeViz<Lava1>},
-    {CALEIDO3, "CALEIDO3", &makeViz<Caleido3>},
-    {CALEIDO2, "CALEIDO2", &makeViz<Caleido2>},
-    {CALEIDO1, "CALEIDO1", &makeViz<Caleido3>},  // Note: same as original - Caleido1 maps to Caleido3
-    {DISTANCE_EXPERIMENT, "DISTANCE_EXPERIMENT", &makeViz<Distance_Experiment>},
-    {CENTER_FIELD, "CENTER_FIELD", &makeViz<Center_Field>},
-    {WAVES, "WAVES", &makeViz<Waves>},
-    {CHASING_SPIRALS, "CHASING_SPIRALS", &makeViz<Chasing_Spirals_Q31_SIMD>}, // Optimized: SIMD sincos32
-    {ROTATING_BLOB, "ROTATING_BLOB", &makeViz<Rotating_Blob>},
-    {RINGS, "RINGS", &makeViz<Rings>},
-    {COMPLEX_KALEIDO, "COMPLEX_KALEIDO", &makeViz<Complex_Kaleido>},
-    {COMPLEX_KALEIDO_2, "COMPLEX_KALEIDO_2", &makeViz<Complex_Kaleido_2>},
-    {COMPLEX_KALEIDO_3, "COMPLEX_KALEIDO_3", &makeViz<Complex_Kaleido_3>},
-    {COMPLEX_KALEIDO_4, "COMPLEX_KALEIDO_4", &makeViz<Complex_Kaleido_4>},
-    {COMPLEX_KALEIDO_5, "COMPLEX_KALEIDO_5", &makeViz<Complex_Kaleido_5>},
-    {COMPLEX_KALEIDO_6, "COMPLEX_KALEIDO_6", &makeViz<Complex_Kaleido_6>},
-    {WATER, "WATER", &makeViz<Water>},
-    {PARAMETRIC_WATER, "PARAMETRIC_WATER", &makeViz<Parametric_Water>},
-    {MODULE_EXPERIMENT1, "MODULE_EXPERIMENT1", &makeViz<Module_Experiment1>},
-    {MODULE_EXPERIMENT2, "MODULE_EXPERIMENT2", &makeViz<Module_Experiment2>},
-    {MODULE_EXPERIMENT3, "MODULE_EXPERIMENT3", &makeViz<Module_Experiment3>},
-    {MODULE_EXPERIMENT4, "MODULE_EXPERIMENT4", &makeViz<Module_Experiment4>},
-    {MODULE_EXPERIMENT5, "MODULE_EXPERIMENT5", &makeViz<Module_Experiment5>},
-    {MODULE_EXPERIMENT6, "MODULE_EXPERIMENT6", &makeViz<Module_Experiment6>},
-    {MODULE_EXPERIMENT7, "MODULE_EXPERIMENT7", &makeViz<Module_Experiment7>},
-    {MODULE_EXPERIMENT8, "MODULE_EXPERIMENT8", &makeViz<Module_Experiment8>},
-    {MODULE_EXPERIMENT9, "MODULE_EXPERIMENT9", &makeViz<Module_Experiment9>},
-    {MODULE_EXPERIMENT10, "MODULE_EXPERIMENT10", &makeViz<Module_Experiment10>},
-    {MODULE_EXPERIMENT_SM1, "MODULE_EXPERIMENT_SM1", &makeViz<SpiralMatrix1>},
-    {MODULE_EXPERIMENT_SM2, "MODULE_EXPERIMENT_SM2", &makeViz<SpiralMatrix2>},
-    {MODULE_EXPERIMENT_SM3, "MODULE_EXPERIMENT_SM3", &makeViz<SpiralMatrix3>},
-    {MODULE_EXPERIMENT_SM4, "MODULE_EXPERIMENT_SM4", &makeViz<SpiralMatrix4>},
-    {MODULE_EXPERIMENT_SM5, "MODULE_EXPERIMENT_SM5", &makeViz<SpiralMatrix5>},
-    {MODULE_EXPERIMENT_SM6, "MODULE_EXPERIMENT_SM6", &makeViz<SpiralMatrix6>},
-    {MODULE_EXPERIMENT_SM8, "MODULE_EXPERIMENT_SM8", &makeViz<SpiralMatrix8>},
-    {MODULE_EXPERIMENT_SM9, "MODULE_EXPERIMENT_SM9", &makeViz<SpiralMatrix9>},
-    {MODULE_EXPERIMENT_SM10, "MODULE_EXPERIMENT_SM10", &makeViz<SpiralMatrix10>},
-    {FLUFFY_BLOBS, "FLUFFY_BLOBS", &makeViz<Fluffy_Blobs>},
+    {AnimartrixAnim::RGB_BLOBS5, "RGB_BLOBS5", &makeViz<RGB_Blobs5>},
+    {AnimartrixAnim::RGB_BLOBS4, "RGB_BLOBS4", &makeViz<RGB_Blobs4>},
+    {AnimartrixAnim::RGB_BLOBS3, "RGB_BLOBS3", &makeViz<RGB_Blobs3>},
+    {AnimartrixAnim::RGB_BLOBS2, "RGB_BLOBS2", &makeViz<RGB_Blobs2>},
+    {AnimartrixAnim::RGB_BLOBS, "RGB_BLOBS", &makeViz<RGB_Blobs>},
+    {AnimartrixAnim::POLAR_WAVES, "POLAR_WAVES", &makeViz<Polar_Waves>},
+    {AnimartrixAnim::SLOW_FADE, "SLOW_FADE", &makeViz<Slow_Fade>},
+    {AnimartrixAnim::ZOOM2, "ZOOM2", &makeViz<Zoom2>},
+    {AnimartrixAnim::ZOOM, "ZOOM", &makeViz<Zoom>},
+    {AnimartrixAnim::HOT_BLOB, "HOT_BLOB", &makeViz<Hot_Blob>},
+    {AnimartrixAnim::SPIRALUS2, "SPIRALUS2", &makeViz<Spiralus2>},
+    {AnimartrixAnim::SPIRALUS, "SPIRALUS", &makeViz<Spiralus>},
+    {AnimartrixAnim::YVES, "YVES", &makeViz<Yves>},
+    {AnimartrixAnim::SCALEDEMO1, "SCALEDEMO1", &makeViz<Scaledemo1>},
+    {AnimartrixAnim::LAVA1, "LAVA1", &makeViz<Lava1>},
+    {AnimartrixAnim::CALEIDO3, "CALEIDO3", &makeViz<Caleido3>},
+    {AnimartrixAnim::CALEIDO2, "CALEIDO2", &makeViz<Caleido2>},
+    {AnimartrixAnim::CALEIDO1, "CALEIDO1", &makeViz<Caleido3>},  // Note: same as original - Caleido1 maps to Caleido3
+    {AnimartrixAnim::DISTANCE_EXPERIMENT, "DISTANCE_EXPERIMENT", &makeViz<Distance_Experiment>},
+    {AnimartrixAnim::CENTER_FIELD, "CENTER_FIELD", &makeViz<Center_Field>},
+    {AnimartrixAnim::WAVES, "WAVES", &makeViz<Waves>},
+    {AnimartrixAnim::CHASING_SPIRALS, "CHASING_SPIRALS", &makeViz<Chasing_Spirals_Q31_SIMD>}, // Optimized: SIMD sincos32
+    {AnimartrixAnim::ROTATING_BLOB, "ROTATING_BLOB", &makeViz<Rotating_Blob>},
+    {AnimartrixAnim::RINGS, "RINGS", &makeViz<Rings>},
+    {AnimartrixAnim::COMPLEX_KALEIDO, "COMPLEX_KALEIDO", &makeViz<Complex_Kaleido>},
+    {AnimartrixAnim::COMPLEX_KALEIDO_2, "COMPLEX_KALEIDO_2", &makeViz<Complex_Kaleido_2>},
+    {AnimartrixAnim::COMPLEX_KALEIDO_3, "COMPLEX_KALEIDO_3", &makeViz<Complex_Kaleido_3>},
+    {AnimartrixAnim::COMPLEX_KALEIDO_4, "COMPLEX_KALEIDO_4", &makeViz<Complex_Kaleido_4>},
+    {AnimartrixAnim::COMPLEX_KALEIDO_5, "COMPLEX_KALEIDO_5", &makeViz<Complex_Kaleido_5>},
+    {AnimartrixAnim::COMPLEX_KALEIDO_6, "COMPLEX_KALEIDO_6", &makeViz<Complex_Kaleido_6>},
+    {AnimartrixAnim::WATER, "WATER", &makeViz<Water>},
+    {AnimartrixAnim::PARAMETRIC_WATER, "PARAMETRIC_WATER", &makeViz<Parametric_Water>},
+    {AnimartrixAnim::MODULE_EXPERIMENT1, "MODULE_EXPERIMENT1", &makeViz<Module_Experiment1>},
+    {AnimartrixAnim::MODULE_EXPERIMENT2, "MODULE_EXPERIMENT2", &makeViz<Module_Experiment2>},
+    {AnimartrixAnim::MODULE_EXPERIMENT3, "MODULE_EXPERIMENT3", &makeViz<Module_Experiment3>},
+    {AnimartrixAnim::MODULE_EXPERIMENT4, "MODULE_EXPERIMENT4", &makeViz<Module_Experiment4>},
+    {AnimartrixAnim::MODULE_EXPERIMENT5, "MODULE_EXPERIMENT5", &makeViz<Module_Experiment5>},
+    {AnimartrixAnim::MODULE_EXPERIMENT6, "MODULE_EXPERIMENT6", &makeViz<Module_Experiment6>},
+    {AnimartrixAnim::MODULE_EXPERIMENT7, "MODULE_EXPERIMENT7", &makeViz<Module_Experiment7>},
+    {AnimartrixAnim::MODULE_EXPERIMENT8, "MODULE_EXPERIMENT8", &makeViz<Module_Experiment8>},
+    {AnimartrixAnim::MODULE_EXPERIMENT9, "MODULE_EXPERIMENT9", &makeViz<Module_Experiment9>},
+    {AnimartrixAnim::MODULE_EXPERIMENT10, "MODULE_EXPERIMENT10", &makeViz<Module_Experiment10>},
+    {AnimartrixAnim::MODULE_EXPERIMENT_SM1, "MODULE_EXPERIMENT_SM1", &makeViz<SpiralMatrix1>},
+    {AnimartrixAnim::MODULE_EXPERIMENT_SM2, "MODULE_EXPERIMENT_SM2", &makeViz<SpiralMatrix2>},
+    {AnimartrixAnim::MODULE_EXPERIMENT_SM3, "MODULE_EXPERIMENT_SM3", &makeViz<SpiralMatrix3>},
+    {AnimartrixAnim::MODULE_EXPERIMENT_SM4, "MODULE_EXPERIMENT_SM4", &makeViz<SpiralMatrix4>},
+    {AnimartrixAnim::MODULE_EXPERIMENT_SM5, "MODULE_EXPERIMENT_SM5", &makeViz<SpiralMatrix5>},
+    {AnimartrixAnim::MODULE_EXPERIMENT_SM6, "MODULE_EXPERIMENT_SM6", &makeViz<SpiralMatrix6>},
+    {AnimartrixAnim::MODULE_EXPERIMENT_SM8, "MODULE_EXPERIMENT_SM8", &makeViz<SpiralMatrix8>},
+    {AnimartrixAnim::MODULE_EXPERIMENT_SM9, "MODULE_EXPERIMENT_SM9", &makeViz<SpiralMatrix9>},
+    {AnimartrixAnim::MODULE_EXPERIMENT_SM10, "MODULE_EXPERIMENT_SM10", &makeViz<SpiralMatrix10>},
+    {AnimartrixAnim::FLUFFY_BLOBS, "FLUFFY_BLOBS", &makeViz<Fluffy_Blobs>},
 };
 
 struct AnimartrixAnimInfo {
@@ -156,18 +156,18 @@ struct AnimartrixAnimInfo {
 };
 
 inline fl::string getAnimartrixName(int animation) {
-    if (animation < 0 || animation >= NUM_ANIMATIONS) {
+    if (animation < 0 || animation >= static_cast<int>(AnimartrixAnim::NUM_ANIMATIONS)) {
         return "UNKNOWN";
     }
     return ANIMATION_TABLE[animation].name;
 }
 
 inline int getAnimartrixCount() {
-    return NUM_ANIMATIONS;
+    return static_cast<int>(AnimartrixAnim::NUM_ANIMATIONS);
 }
 
 inline AnimartrixAnimInfo getAnimartrixInfo(int index) {
-    if (index < 0 || index >= NUM_ANIMATIONS) {
+    if (index < 0 || index >= static_cast<int>(AnimartrixAnim::NUM_ANIMATIONS)) {
         return {-1, "UNKNOWN"};
     }
     return {static_cast<int>(ANIMATION_TABLE[index].anim),
@@ -242,17 +242,17 @@ class Animartrix : public Fx2d {
         mCtx.leds = nullptr;
     }
 
-    int fxNum() const { return NUM_ANIMATIONS; }
+    int fxNum() const { return static_cast<int>(AnimartrixAnim::NUM_ANIMATIONS); }
 
     void fxSet(int fx) {
         int curr = fxGet();
         if (fx < 0) {
             fx = curr + fx;
             if (fx < 0) {
-                fx = NUM_ANIMATIONS - 1;
+                fx = static_cast<int>(AnimartrixAnim::NUM_ANIMATIONS) - 1;
             }
         }
-        fx = fx % NUM_ANIMATIONS;
+        fx = fx % static_cast<int>(AnimartrixAnim::NUM_ANIMATIONS);
         mCurrentAnimation = static_cast<AnimartrixAnim>(fx);
         FASTLED_DBG("Setting animation to " << getAnimartrixName(static_cast<int>(mCurrentAnimation)));
     }
@@ -268,7 +268,7 @@ class Animartrix : public Fx2d {
 
     static fl::vector<fl::pair<int, fl::string>> getAnimationList() {
         fl::vector<fl::pair<int, fl::string>> list;
-        for (int i = 0; i < NUM_ANIMATIONS; i++) {
+        for (int i = 0; i < static_cast<int>(AnimartrixAnim::NUM_ANIMATIONS); i++) {
             AnimartrixAnimInfo info = getAnimartrixInfo(i);
             list.push_back(fl::make_pair(info.id, fl::string(info.name)));
         }
@@ -276,9 +276,9 @@ class Animartrix : public Fx2d {
     }
 
   private:
-    AnimartrixAnim mPrevAnimation = NUM_ANIMATIONS;
-    AnimartrixAnim mCurrentAnimation = RGB_BLOBS5;
-    EOrder mColorOrder = RGB;
+    AnimartrixAnim mPrevAnimation = AnimartrixAnim::NUM_ANIMATIONS;
+    AnimartrixAnim mCurrentAnimation = AnimartrixAnim::RGB_BLOBS5;
+    EOrder mColorOrder = EOrder::RGB;
     Context mCtx;
     fl::unique_ptr<IAnimartrix2Viz> mViz;
 };

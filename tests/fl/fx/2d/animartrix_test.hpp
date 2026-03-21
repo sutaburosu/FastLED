@@ -13,8 +13,8 @@ FL_TEST_CASE("Animartrix determinism") {
     XYMap xy1 = XYMap::constructRectangularGrid(W, H);
     XYMap xy2 = XYMap::constructRectangularGrid(W, H);
 
-    Animartrix fx1(xy1, RGB_BLOBS);
-    Animartrix fx2(xy2, RGB_BLOBS);
+    Animartrix fx1(xy1, AnimartrixAnim::RGB_BLOBS);
+    Animartrix fx2(xy2, AnimartrixAnim::RGB_BLOBS);
 
     CRGB leds1[N] = {};
     CRGB leds2[N] = {};

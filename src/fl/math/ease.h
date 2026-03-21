@@ -23,7 +23,7 @@ u16 gamma_2_8(u8 value);
 extern const u16 GAMMA_2_8_LUT[256];
 
 
-enum EaseType {
+enum class EaseType {
     EASE_NONE,
     EASE_IN_QUAD,
     EASE_OUT_QUAD,
@@ -130,72 +130,72 @@ void ease8(EaseType type, u8* src, u8* dst, u8 count);
 
 inline u16 ease16(EaseType type, u16 i) {
     switch (type) {
-        case EASE_NONE: return i;
-        case EASE_IN_QUAD: return easeInQuad16(i);
-        case EASE_OUT_QUAD: return easeOutQuad16(i);
-        case EASE_IN_OUT_QUAD: return easeInOutQuad16(i);
-        case EASE_IN_CUBIC: return easeInCubic16(i);
-        case EASE_OUT_CUBIC: return easeOutCubic16(i);
-        case EASE_IN_OUT_CUBIC: return easeInOutCubic16(i);
-        case EASE_IN_SINE: return easeInSine16(i);
-        case EASE_OUT_SINE: return easeOutSine16(i);
-        case EASE_IN_OUT_SINE: return easeInOutSine16(i);
+        case EaseType::EASE_NONE: return i;
+        case EaseType::EASE_IN_QUAD: return easeInQuad16(i);
+        case EaseType::EASE_OUT_QUAD: return easeOutQuad16(i);
+        case EaseType::EASE_IN_OUT_QUAD: return easeInOutQuad16(i);
+        case EaseType::EASE_IN_CUBIC: return easeInCubic16(i);
+        case EaseType::EASE_OUT_CUBIC: return easeOutCubic16(i);
+        case EaseType::EASE_IN_OUT_CUBIC: return easeInOutCubic16(i);
+        case EaseType::EASE_IN_SINE: return easeInSine16(i);
+        case EaseType::EASE_OUT_SINE: return easeOutSine16(i);
+        case EaseType::EASE_IN_OUT_SINE: return easeInOutSine16(i);
         default: return i;
     }
 }
 
 inline void ease16(EaseType type, u16* src, u16* dst, u16 count) {
     switch (type) {
-        case EASE_NONE: return;
-        case EASE_IN_QUAD: {
+        case EaseType::EASE_NONE: return;
+        case EaseType::EASE_IN_QUAD: {
             for (u16 i = 0; i < count; i++) {
                 dst[i] = easeInQuad16(src[i]);
             }
             break;
         }
-        case EASE_OUT_QUAD: {
+        case EaseType::EASE_OUT_QUAD: {
             for (u16 i = 0; i < count; i++) {
                 dst[i] = easeOutQuad16(src[i]);
             }
             break;
         }
-        case EASE_IN_OUT_QUAD: {
+        case EaseType::EASE_IN_OUT_QUAD: {
             for (u16 i = 0; i < count; i++) {  
                 dst[i] = easeInOutQuad16(src[i]);
             }
             break;
         }
-        case EASE_IN_CUBIC: {
+        case EaseType::EASE_IN_CUBIC: {
             for (u16 i = 0; i < count; i++) {
                 dst[i] = easeInCubic16(src[i]);
             }
             break;
         }
-        case EASE_OUT_CUBIC: {
+        case EaseType::EASE_OUT_CUBIC: {
             for (u16 i = 0; i < count; i++) {
                 dst[i] = easeOutCubic16(src[i]);
             }
             break;
         }
-        case EASE_IN_OUT_CUBIC: {
+        case EaseType::EASE_IN_OUT_CUBIC: {
             for (u16 i = 0; i < count; i++) {
                 dst[i] = easeInOutCubic16(src[i]);
             }
             break;
         }
-        case EASE_IN_SINE: {
+        case EaseType::EASE_IN_SINE: {
             for (u16 i = 0; i < count; i++) {
                 dst[i] = easeInSine16(src[i]);
             }
             break;
         }
-        case EASE_OUT_SINE: {
+        case EaseType::EASE_OUT_SINE: {
             for (u16 i = 0; i < count; i++) {
                 dst[i] = easeOutSine16(src[i]);
             }
             break;
         }
-        case EASE_IN_OUT_SINE: {
+        case EaseType::EASE_IN_OUT_SINE: {
             for (u16 i = 0; i < count; i++) {
                 dst[i] = easeInOutSine16(src[i]);
             }
@@ -206,72 +206,72 @@ inline void ease16(EaseType type, u16* src, u16* dst, u16 count) {
 
 inline u8 ease8(EaseType type, u8 i) {
     switch (type) {
-        case EASE_NONE: return i;
-        case EASE_IN_QUAD: return easeInQuad8(i);
-        case EASE_OUT_QUAD: return easeOutQuad8(i);
-        case EASE_IN_OUT_QUAD: return easeInOutQuad8(i);
-        case EASE_IN_CUBIC: return easeInCubic8(i);
-        case EASE_OUT_CUBIC: return easeOutCubic8(i);
-        case EASE_IN_OUT_CUBIC: return easeInOutCubic8(i);
-        case EASE_IN_SINE: return easeInSine8(i);
-        case EASE_OUT_SINE: return easeOutSine8(i);
-        case EASE_IN_OUT_SINE: return easeInOutSine8(i);
+        case EaseType::EASE_NONE: return i;
+        case EaseType::EASE_IN_QUAD: return easeInQuad8(i);
+        case EaseType::EASE_OUT_QUAD: return easeOutQuad8(i);
+        case EaseType::EASE_IN_OUT_QUAD: return easeInOutQuad8(i);
+        case EaseType::EASE_IN_CUBIC: return easeInCubic8(i);
+        case EaseType::EASE_OUT_CUBIC: return easeOutCubic8(i);
+        case EaseType::EASE_IN_OUT_CUBIC: return easeInOutCubic8(i);
+        case EaseType::EASE_IN_SINE: return easeInSine8(i);
+        case EaseType::EASE_OUT_SINE: return easeOutSine8(i);
+        case EaseType::EASE_IN_OUT_SINE: return easeInOutSine8(i);
         default: return i;
     }
 }
 
 inline void ease8(EaseType type, u8* src, u8* dst, u8 count) {
     switch (type) {
-        case EASE_NONE: return;
-        case EASE_IN_QUAD: {
+        case EaseType::EASE_NONE: return;
+        case EaseType::EASE_IN_QUAD: {
             for (u8 i = 0; i < count; i++) {
                 dst[i] = easeInQuad8(src[i]);
             }
             break;
         }
-        case EASE_OUT_QUAD: {
+        case EaseType::EASE_OUT_QUAD: {
             for (u8 i = 0; i < count; i++) {
                 dst[i] = easeOutQuad8(src[i]);
             }
             break;
         }
-        case EASE_IN_OUT_QUAD: {
+        case EaseType::EASE_IN_OUT_QUAD: {
             for (u8 i = 0; i < count; i++) {
                 dst[i] = easeInOutQuad8(src[i]);
             }
             break;
         }
-        case EASE_IN_CUBIC: {
+        case EaseType::EASE_IN_CUBIC: {
             for (u8 i = 0; i < count; i++) {
                 dst[i] = easeInCubic8(src[i]);
             }
             break;
         }
-        case EASE_OUT_CUBIC: {
+        case EaseType::EASE_OUT_CUBIC: {
             for (u8 i = 0; i < count; i++) {
                 dst[i] = easeOutCubic8(src[i]);
             }
             break;
         }
-        case EASE_IN_OUT_CUBIC: {
+        case EaseType::EASE_IN_OUT_CUBIC: {
             for (u8 i = 0; i < count; i++) {
                 dst[i] = easeInOutCubic8(src[i]);
             }
             break;
         }
-        case EASE_IN_SINE: {
+        case EaseType::EASE_IN_SINE: {
             for (u8 i = 0; i < count; i++) {
                 dst[i] = easeInSine8(src[i]);
             }
             break;
         }
-        case EASE_OUT_SINE: {
+        case EaseType::EASE_OUT_SINE: {
             for (u8 i = 0; i < count; i++) {
                 dst[i] = easeOutSine8(src[i]);
             }
             break;
         }
-        case EASE_IN_OUT_SINE: {
+        case EaseType::EASE_IN_OUT_SINE: {
             for (u8 i = 0; i < count; i++) {
                 dst[i] = easeInOutSine8(src[i]);
             }

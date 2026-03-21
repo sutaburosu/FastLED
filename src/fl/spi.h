@@ -60,7 +60,7 @@ public:
     /// @param output_mode Output mode (SPI_HW for hardware, SPI_BITBANG/SPI_ISR for software)
     /// @param clock_speed_hz Clock speed in Hz (0xffffffff = as fast as possible)
     Spi(int clock_pin, fl::span<const int> data_pins,
-        spi_output_mode_t output_mode = SPI_HW,
+        spi_output_mode_t output_mode = spi_output_mode_t::SPI_HW,
         u32 clock_speed_hz = 0xffffffff);
 
     /// @brief Construct from SpiConfig

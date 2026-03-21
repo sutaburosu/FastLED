@@ -24,7 +24,7 @@
 namespace fl {
 
 /// @brief UCS7604 protocol configuration modes
-enum UCS7604Mode {
+enum class UCS7604Mode {
     UCS7604_MODE_8BIT_800KHZ = 0x03,
     UCS7604_MODE_16BIT_800KHZ = 0x8B,
     UCS7604_MODE_16BIT_1600KHZ = 0x9B // not implemented because of timing difference.
@@ -212,7 +212,7 @@ void encodeUCS7604(PixelIterator& pixel_iter, size_t num_leds, OutputIterator ou
 
     // Calculate bytes per LED based on mode and RGB/RGBW
     size_t bytes_per_led;
-    if (mode == UCS7604_MODE_8BIT_800KHZ) {
+    if (mode == UCS7604Mode::UCS7604_MODE_8BIT_800KHZ) {
         bytes_per_led = is_rgbw ? 4 : 3;
     } else {
         bytes_per_led = is_rgbw ? 8 : 6;
@@ -232,7 +232,7 @@ void encodeUCS7604(PixelIterator& pixel_iter, size_t num_leds, OutputIterator ou
     }
 
     // Encode LED data based on mode and RGB/RGBW
-    if (mode == UCS7604_MODE_8BIT_800KHZ) {
+    if (mode == UCS7604Mode::UCS7604_MODE_8BIT_800KHZ) {
         if (is_rgbw) {
             auto range = makeScaledPixelRangeRGBW(&pixel_iter);
             encodeUCS7604_8bit_RGBW(range.first, range.second, out);

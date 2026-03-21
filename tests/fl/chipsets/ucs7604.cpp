@@ -301,7 +301,7 @@ fl::span<const uint8_t> testUCS7604Controller(fl::span<const CRGB> leds) {
 
     fl::span<const uint8_t> captured;
 
-    if (MODE == fl::UCS7604_MODE_8BIT_800KHZ) {
+    if (MODE == fl::UCS7604Mode::UCS7604_MODE_8BIT_800KHZ) {
         // Test 8-bit mode - controller accepts RGB_ORDER and converts to RGB wire order internally
         static UCS7604TestController8bit<TEST_PIN, RGB_ORDER> controller;
 
@@ -344,7 +344,7 @@ FL_TEST_CASE("UCS7604 8-bit - RGB color order") {
         RGBW8(0x00, 0x00, 0xFF, 0x00)
     };
 
-    fl::span<const uint8_t> output = testUCS7604Controller<RGB, fl::UCS7604_MODE_8BIT_800KHZ>(leds);
+    fl::span<const uint8_t> output = testUCS7604Controller<RGB, fl::UCS7604Mode::UCS7604_MODE_8BIT_800KHZ>(leds);
 
     // Verify total size: 15 (preamble) + 0 (padding) + 12 (3 LEDs * 4 bytes) = 27
     FL_REQUIRE_EQ(output.size(), 27);
@@ -370,7 +370,7 @@ FL_TEST_CASE("UCS7604 8-bit - GRB color order") {
         RGBW8(0x00, 0x00, 0xFF, 0x00)   // Blue as GRB -> Blue
     };
 
-    fl::span<const uint8_t> output = testUCS7604Controller<GRB, fl::UCS7604_MODE_8BIT_800KHZ>(leds);
+    fl::span<const uint8_t> output = testUCS7604Controller<GRB, fl::UCS7604Mode::UCS7604_MODE_8BIT_800KHZ>(leds);
 
     // Verify total size: 15 (preamble) + 0 (padding) + 12 (3 LEDs * 4 bytes) = 27
     FL_REQUIRE_EQ(output.size(), 27);
@@ -396,7 +396,7 @@ FL_TEST_CASE("UCS7604 8-bit - BRG color order") {
         RGBW8(0xFF, 0x00, 0x00, 0x00)   // Blue as BRG -> Red
     };
 
-    fl::span<const uint8_t> output = testUCS7604Controller<BRG, fl::UCS7604_MODE_8BIT_800KHZ>(leds);
+    fl::span<const uint8_t> output = testUCS7604Controller<BRG, fl::UCS7604Mode::UCS7604_MODE_8BIT_800KHZ>(leds);
 
     // Verify total size: 15 (preamble) + 0 (padding) + 12 (3 LEDs * 4 bytes) = 27
     FL_REQUIRE_EQ(output.size(), 27);
@@ -424,7 +424,7 @@ FL_TEST_CASE("UCS7604 16-bit - RGB color order") {
         RGBW16(g0, g0, g127, g0)   // Blue
     };
 
-    fl::span<const uint8_t> output = testUCS7604Controller<RGB, fl::UCS7604_MODE_16BIT_800KHZ>(leds);
+    fl::span<const uint8_t> output = testUCS7604Controller<RGB, fl::UCS7604Mode::UCS7604_MODE_16BIT_800KHZ>(leds);
 
     // Verify total size: 15 (preamble) + 0 (padding) + 24 (3 LEDs * 8 bytes) = 39
     FL_REQUIRE_EQ(output.size(), 39);
@@ -453,7 +453,7 @@ FL_TEST_CASE("UCS7604 16-bit - GRB color order") {
         RGBW16(g0, g0, g127, g0)   // Blue as GRB -> Blue at wire
     };
 
-    fl::span<const uint8_t> output = testUCS7604Controller<GRB, fl::UCS7604_MODE_16BIT_800KHZ>(leds);
+    fl::span<const uint8_t> output = testUCS7604Controller<GRB, fl::UCS7604Mode::UCS7604_MODE_16BIT_800KHZ>(leds);
 
     // Verify total size: 15 (preamble) + 0 (padding) + 24 (3 LEDs * 8 bytes) = 39
     FL_REQUIRE_EQ(output.size(), 39);
@@ -1183,16 +1183,16 @@ FL_TEST_CASE("UCS7604 per-controller gamma override via setGamma") {
 FL_TEST_CASE("UCS7604 channel encoder tag propagation") {
     // Verify makeTimingConfig propagates the ENCODER field
     auto ws_config = makeTimingConfig<TIMING_WS2812_800KHZ>();
-    FL_CHECK(ws_config.encoder == CLOCKLESS_ENCODER_WS2812);
+    FL_CHECK(ws_config.encoder == ClocklessEncoder::CLOCKLESS_ENCODER_WS2812);
 
     auto ucs_16bit_config = makeTimingConfig<TIMING_UCS7604_800KHZ>();
-    FL_CHECK(ucs_16bit_config.encoder == CLOCKLESS_ENCODER_UCS7604_16BIT);
+    FL_CHECK(ucs_16bit_config.encoder == ClocklessEncoder::CLOCKLESS_ENCODER_UCS7604_16BIT);
 
     auto ucs_1600_config = makeTimingConfig<TIMING_UCS7604_1600KHZ>();
-    FL_CHECK(ucs_1600_config.encoder == CLOCKLESS_ENCODER_UCS7604_16BIT_1600);
+    FL_CHECK(ucs_1600_config.encoder == ClocklessEncoder::CLOCKLESS_ENCODER_UCS7604_16BIT_1600);
 
     auto ucs_8bit_config = makeTimingConfig<TIMING_UCS7604_8BIT_800KHZ>();
-    FL_CHECK(ucs_8bit_config.encoder == CLOCKLESS_ENCODER_UCS7604_8BIT);
+    FL_CHECK(ucs_8bit_config.encoder == ClocklessEncoder::CLOCKLESS_ENCODER_UCS7604_8BIT);
 }
 
 FL_TEST_CASE("UCS7604 channel preamble in encoded data") {
