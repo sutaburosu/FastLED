@@ -245,9 +245,11 @@ def create_wrapper(example_name: str, sketch_cache_dir: Path) -> Path:
     if not ino_file.exists():
         raise FileNotFoundError(f"Example not found: {ino_file}")
 
-    # Discover additional .cpp files in the example directory (sorted for determinism)
+    # Discover additional .cpp files in the example directory tree (sorted for determinism)
     extra_cpps = sorted(
-        f for f in example_dir.glob("*.cpp") if f.name != f"{example_name}.ino"
+        f
+        for f in example_dir.rglob("*.cpp")
+        if f.name != f"{example_name}.ino" and ".build" not in f.parts
     )
 
     wrapper_path = sketch_cache_dir / f"{example_name}_wrapper.cpp"
@@ -556,11 +558,12 @@ def compile_sketch(
         wrapper_mtime = wrapper_path.stat().st_mtime
         ino_mtime = ino_file.stat().st_mtime if ino_file.exists() else 0
         lib_mtime = library_archive.stat().st_mtime if library_archive.exists() else 0
-        # Check additional .cpp/.h files in the example directory
+        # Check additional .cpp/.h files in the example directory tree
         extra_mtime = 0.0
         for ext in ("*.cpp", "*.h"):
-            for f in example_dir.glob(ext):
-                extra_mtime = max(extra_mtime, f.stat().st_mtime)
+            for f in example_dir.rglob(ext):
+                if ".build" not in f.parts:
+                    extra_mtime = max(extra_mtime, f.stat().st_mtime)
         if (
             wrapper_mtime <= object_mtime
             and ino_mtime <= object_mtime

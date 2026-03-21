@@ -24,6 +24,133 @@ EXCLUDED_TEST_FILES = {
     "doctest_main.cpp",  # Test framework entry point
 }
 
+# Pre-existing test files that don't match source paths.
+# These are grandfathered in — new tests MUST have an exact source match.
+# Fix these incrementally by renaming/moving to match their source file.
+_LEGACY_ALLOWLIST: set[str] = {
+    "tests/fastled_core.cpp",
+    "tests/fl/active_strip_data_json.cpp",
+    "tests/fl/align.cpp",
+    "tests/fl/alloca.hpp",
+    "tests/fl/assume_aligned.hpp",
+    "tests/fl/audio.cpp",
+    "tests/fl/audio/detector/downbeat_synthetic.hpp",
+    "tests/fl/audio/detector/vocal_real_audio.hpp",
+    "tests/fl/audio/fft.cpp",
+    "tests/fl/audio/gain.hpp",
+    "tests/fl/audio/test_helpers.hpp",
+    "tests/fl/audio_reactive.cpp",
+    "tests/fl/audio_url.cpp",
+    "tests/fl/base64.cpp",
+    "tests/fl/bytestream.cpp",
+    "tests/fl/channels/channel_data_padding.cpp",
+    "tests/fl/channels/channel_manager.cpp",
+    "tests/fl/channels/channels.cpp",
+    "tests/fl/channels/spi_channel.cpp",
+    "tests/fl/channels/wave8_spi.cpp",
+    "tests/fl/chipsets/hd108_chipset.cpp",
+    "tests/fl/circular_buffer.cpp",
+    "tests/fl/clamp.cpp",
+    "tests/fl/codec/decode_file.hpp",
+    "tests/fl/compiler_control.cpp",
+    "tests/fl/corkscrew.cpp",
+    "tests/fl/coroutine.cpp",
+    "tests/fl/detail/async_logger_error_detection.hpp",
+    "tests/fl/detail/async_logger_output.hpp",
+    "tests/fl/downscale.cpp",
+    "tests/fl/ease.cpp",
+    "tests/fl/eorder.hpp",
+    "tests/fl/file_system.cpp",
+    "tests/fl/filter.cpp",
+    "tests/fl/fixed_point.cpp",
+    "tests/fl/fltest_self_test.cpp",
+    "tests/fl/force_inline.cpp",
+    "tests/fl/fx/2d/animartrix_test.hpp",
+    "tests/fl/fx/engine.cpp",
+    "tests/fl/geometry.cpp",
+    "tests/fl/gfx/alpha.cpp",
+    "tests/fl/gfx/draw_disc.hpp",
+    "tests/fl/gfx/draw_disc_16.hpp",
+    "tests/fl/gfx/draw_line.hpp",
+    "tests/fl/gfx/draw_ring.hpp",
+    "tests/fl/gfx/draw_thick_line.hpp",
+    "tests/fl/gfx/perf_primitives.hpp",
+    "tests/fl/grid.hpp",
+    "tests/fl/hash.cpp",
+    "tests/fl/hsv16.cpp",
+    "tests/fl/hsv2rgb_accuracy.cpp",
+    "tests/fl/insert_result.hpp",
+    "tests/fl/isr.cpp",
+    "tests/fl/json.cpp",
+    "tests/fl/line_simplification.cpp",
+    "tests/fl/log.cpp",
+    "tests/fl/lut.cpp",
+    "tests/fl/map_range.hpp",
+    "tests/fl/memory.cpp",
+    "tests/fl/noise_range.cpp",
+    "tests/fl/noise_ring.cpp",
+    "tests/fl/numeric_limits.hpp",
+    "tests/fl/pin.cpp",
+    "tests/fl/power_estimation.cpp",
+    "tests/fl/rectangular_draw_buffer.cpp",
+    "tests/fl/scope_exit.cpp",
+    "tests/fl/screenmap.cpp",
+    "tests/fl/simd.cpp",
+    "tests/fl/sin32.hpp",
+    "tests/fl/slice.cpp",
+    "tests/fl/splat.hpp",
+    "tests/fl/stl/allocator_move.cpp",
+    "tests/fl/stl/asio/http/chunked_encoding.cpp",
+    "tests/fl/stl/asio/http/http_promise.cpp",
+    "tests/fl/stl/asio/http/stream_client.cpp",
+    "tests/fl/stl/asio/http/stream_server.cpp",
+    "tests/fl/stl/asio/http/stream_transport.cpp",
+    "tests/fl/stl/asio/test_endpoint.cpp",
+    "tests/fl/stl/asio/test_error_code.cpp",
+    "tests/fl/stl/asio/test_tcp_acceptor.cpp",
+    "tests/fl/stl/asio/test_tcp_socket.cpp",
+    "tests/fl/stl/cstdint.cpp",
+    "tests/fl/stl/delay.cpp",
+    "tests/fl/stl/function_list.cpp",
+    "tests/fl/stl/math.cpp",
+    "tests/fl/stl/qsort.cpp",
+    "tests/fl/stl/random.cpp",
+    "tests/fl/stl/strstream_integers.cpp",
+    "tests/fl/stl/test_file_handle.cpp",
+    "tests/fl/string_view.cpp",
+    "tests/fl/thread_local.cpp",
+    "tests/fl/tile2x2.hpp",
+    "tests/fl/transform.cpp",
+    "tests/fl/traverse_grid.hpp",
+    "tests/fl/trig8.cpp",
+    "tests/fl/types.cpp",
+    "tests/fl/unordered_map_lru.hpp",
+    "tests/fl/unused.cpp",
+    "tests/fl/url.cpp",
+    "tests/fl/video/video.cpp",
+    "tests/fl/xymap.cpp",
+    "tests/fl/xymap.hpp",
+    "tests/fl/xypath.cpp",
+    "tests/platforms/esp/32/drivers/i2s/i2s_lcd_cam_mock.cpp",
+    "tests/platforms/esp/32/drivers/lcd_cam/lcd_rgb_mock.cpp",
+    "tests/platforms/esp/32/drivers/parlio/parlio_driver.cpp",
+    "tests/platforms/esp/32/drivers/rmt/rmt_5/rmt5_channel_driver.cpp",
+    "tests/platforms/esp/32/drivers/rmt/rmt_5/rmt5_nibble_lut.cpp",
+    "tests/platforms/esp/32/drivers/spi/channel_driver_spi_routing.cpp",
+    "tests/platforms/esp/32/drivers/spi/spi_batching_logic.cpp",
+    "tests/platforms/esp/32/drivers/spi/spi_peripheral.cpp",
+    "tests/platforms/esp/32/interrupts/riscv_interrupts.cpp",
+    "tests/platforms/platform_init.cpp",
+    "tests/platforms/shared/active_strip_data/stub_led_capture.cpp",
+    "tests/platforms/shared/blend8.cpp",
+    "tests/platforms/shared/clockless_block_generic.cpp",
+    "tests/platforms/shared/fl_init_verification.cpp",
+    "tests/platforms/shared/lcd50.cpp",
+    "tests/platforms/shared/serial_printf.cpp",
+    "tests/platforms/shared/sketch_runner.cpp",
+    "tests/platforms/shared/spi_force_software.cpp",
+}
+
 
 class TestPathStructureChecker(FileContentChecker):
     """Checker class for test file path structure validation."""
@@ -89,17 +216,11 @@ class TestPathStructureChecker(FileContentChecker):
         ):
             return []
 
-        # Also check if any source file exists in the same directory as the test
-        # This handles consolidated test files that test multiple sources in one directory
-        expected_dir = SRC_ROOT / rel_from_tests.parent
-        if expected_dir.is_dir():
-            has_sources = any(
-                f.suffix in (".h", ".hpp") or f.name.endswith(".cpp.hpp")
-                for f in expected_dir.iterdir()
-                if f.is_file()
-            )
-            if has_sources:
-                return []
+        # Skip legacy allowlisted files (pre-existing mismatches)
+        rel_posix = rel_from_tests.as_posix()
+        legacy_key = f"tests/{rel_posix}"
+        if legacy_key in _LEGACY_ALLOWLIST:
+            return []
 
         # Check if file has "// ok standalone" comment in first few lines
         for line in file_content.lines[:5]:  # Check first 5 lines
