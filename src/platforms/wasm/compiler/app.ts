@@ -525,10 +525,21 @@ async function loadThreeJs() {
     };
 }
 
+// Dynamically load a non-module script and wait for it to complete
+function loadScript(src: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = src;
+        script.onload = () => resolve();
+        script.onerror = () => reject(new Error(`Failed to load script: ${src}`));
+        document.head.appendChild(script);
+    });
+}
+
 // load fastled when the window is loaded.
 async function runFastLED() {
-    // Load the FastLED module.
-    const threeJs = await loadThreeJs();
+    // Load Emscripten-generated fastled.js and Three.js modules in parallel
+    const [, threeJs] = await Promise.all([loadScript('fastled.js'), loadThreeJs()]);
     const options = {
         canvasId: "myCanvas",
         uiControlsId: "ui-controls",
