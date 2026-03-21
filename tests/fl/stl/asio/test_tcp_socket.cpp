@@ -1,3 +1,4 @@
+// ok standalone
 #ifdef FASTLED_HAS_NETWORKING
 
 #include "fl/stl/asio/error_code.h"

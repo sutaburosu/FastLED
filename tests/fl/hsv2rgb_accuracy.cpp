@@ -1,3 +1,4 @@
+// ok standalone
 #include "hsv2rgb.h"
 #include "fl/stl/cstddef.h"
 #include "fl/stl/algorithm.h"

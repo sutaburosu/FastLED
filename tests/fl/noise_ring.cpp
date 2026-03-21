@@ -1,3 +1,4 @@
+// ok standalone
 #include "noise_test_helpers.h"
 #include "test.h"
 

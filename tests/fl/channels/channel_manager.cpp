@@ -1,3 +1,4 @@
+// ok standalone
 /// @file channel_manager.cpp
 /// @brief Tests for ChannelManager priority-based driver selection
 

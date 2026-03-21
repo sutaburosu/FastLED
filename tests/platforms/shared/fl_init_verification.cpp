@@ -1,3 +1,4 @@
+// ok standalone
 #include "platforms/shared/spi_hw_1.h"
 #include "platforms/shared/spi_hw_2.h"
 #include "platforms/shared/spi_hw_4.h"

@@ -1,3 +1,4 @@
+// ok standalone
 // Tests for promise-based rpc()/rpcStream() API on HttpStreamTransport
 // Uses MockHttpServer + MockHttpClient + Remote (same pattern as rpc_http_stream.cpp)
 

@@ -1,3 +1,4 @@
+// ok standalone
 /// @file spi_channel.cpp
 /// @brief Tests for SPI chipset channel creation and configuration
 ///

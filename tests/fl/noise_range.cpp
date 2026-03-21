@@ -1,3 +1,4 @@
+// ok standalone
 #include "noise.h"
 #include "fl/stl/stdint.h"
 #include "test.h"

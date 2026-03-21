@@ -1,3 +1,4 @@
+// ok standalone
 // Unit tests for sketch runner functionality
 
 #include "test.h"

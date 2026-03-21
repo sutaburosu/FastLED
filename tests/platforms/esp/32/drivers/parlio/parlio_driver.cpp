@@ -1,3 +1,4 @@
+// ok standalone
 /// @file parlio_driver.cpp
 /// @brief Comprehensive unit tests for PARLIO driver subsystem
 ///

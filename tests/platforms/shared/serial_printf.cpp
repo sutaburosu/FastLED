@@ -1,3 +1,4 @@
+// ok standalone
 // Test for Serial.printf functionality on stub platform
 #include "platforms/stub/Arduino.h"
 #include "test.h"

@@ -1,3 +1,4 @@
+// ok standalone
 #include "fl/stl/cstddef.h"
 #include "fl/stl/stdint.h"
 #include "test.h"

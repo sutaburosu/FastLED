@@ -1,3 +1,4 @@
+// ok standalone
 /// @file test_spi_peripheral.cpp
 /// @brief Unit tests for SPI peripheral mock implementation
 ///

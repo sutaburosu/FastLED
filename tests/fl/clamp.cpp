@@ -1,3 +1,4 @@
+// ok standalone
 // ok cpp include
 #include "fl/math/math.h"
 #include "fl/stl/stdint.h"

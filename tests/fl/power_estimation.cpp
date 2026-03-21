@@ -1,3 +1,4 @@
+// ok standalone
 #include "test.h"
 #include "FastLED.h"
 #include "power_mgt.h"

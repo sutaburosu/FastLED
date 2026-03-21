@@ -1,3 +1,4 @@
+// ok standalone
 /// @file async_logger_error_detection.cpp
 /// @brief Test that async logger detects when logging is not enabled
 ///

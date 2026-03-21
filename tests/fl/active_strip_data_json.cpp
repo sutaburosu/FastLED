@@ -1,3 +1,4 @@
+// ok standalone
 #include "fl/stl/json.h"
 #include "platforms/shared/active_strip_data/active_strip_data.h"
 #include "FastLED.h"

@@ -1,3 +1,4 @@
+// ok standalone
 /// @file spi_batching_logic.cpp
 /// @brief Unit tests for SPI batching logic validation
 ///

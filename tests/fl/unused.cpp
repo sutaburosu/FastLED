@@ -1,3 +1,4 @@
+// ok standalone
 #include "fl/stl/compiler_control.h"
 #include "test.h"
 #include "fl/stl/int.h"
