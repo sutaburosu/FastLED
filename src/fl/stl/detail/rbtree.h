@@ -254,7 +254,7 @@ private:
             return nullptr;
         }
 
-        mAlloc.construct(newNode, node->data, node->color, parent);
+        mAlloc.construct(newNode, node->color, parent, node->data);
         newNode->left = copyTree(node->left, newNode);
         newNode->right = copyTree(node->right, newNode);
         return newNode;
@@ -282,7 +282,7 @@ private:
             return fl::pair<iterator, bool>(iterator(nullptr, this), false);
         }
 
-        mAlloc.construct(newNode, fl::forward<U>(value), Color::kRed, parent);
+        mAlloc.construct(newNode, Color::kRed, parent, fl::forward<U>(value));
         
         if (parent == nullptr) {
             mRoot = newNode;

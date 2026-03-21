@@ -605,6 +605,81 @@ void test_map_front_back() {
     FL_CHECK(back_pair.second == 300);
 }
 
+// Move-tracking item that allows copies but tracks them.
+// Unlike TestItem (which deletes copies), this type lets us verify that
+// containers USE move semantics even if they don't require move-only types.
+struct MoveTrackItem {
+    int value;
+    int move_count = 0;
+    int copy_count = 0;
+
+    MoveTrackItem() : value(0) {}
+    explicit MoveTrackItem(int v) : value(v) {}
+
+    MoveTrackItem(MoveTrackItem&& other) noexcept
+        : value(other.value), move_count(other.move_count + 1),
+          copy_count(other.copy_count) {
+        other.move_count++;
+    }
+
+    MoveTrackItem& operator=(MoveTrackItem&& other) noexcept {
+        value = other.value;
+        move_count = other.move_count + 1;
+        copy_count = other.copy_count;
+        other.move_count++;
+        return *this;
+    }
+
+    MoveTrackItem(const MoveTrackItem& other)
+        : value(other.value), move_count(other.move_count),
+          copy_count(other.copy_count + 1) {}
+
+    MoveTrackItem& operator=(const MoveTrackItem& other) {
+        value = other.value;
+        move_count = other.move_count;
+        copy_count = other.copy_count + 1;
+        return *this;
+    }
+
+    bool operator==(const MoveTrackItem& other) const {
+        return value == other.value;
+    }
+};
+
+// Move semantics verification for map containers.
+// Inserts values via move and verifies no copies occurred on the hot path.
+template<typename Map>
+void test_map_move_semantics() {
+    Map m;
+
+    // Insert via move-constructed pair
+    MoveTrackItem item1(42);
+    int initial_move_count = item1.move_count;
+    m.insert(fl::pair<int, MoveTrackItem>(1, fl::move(item1)));
+    FL_CHECK(item1.move_count > initial_move_count);
+    FL_CHECK(m.size() == 1);
+
+    // Insert another
+    m.insert(fl::pair<int, MoveTrackItem>(2, MoveTrackItem(99)));
+    FL_CHECK(m.size() == 2);
+
+    // Find and verify values were moved, not copied
+    auto it1 = m.find(1);
+    FL_CHECK(it1 != m.end());
+    FL_CHECK(it1->second.value == 42);
+    FL_CHECK(it1->second.copy_count == 0);
+
+    auto it2 = m.find(2);
+    FL_CHECK(it2 != m.end());
+    FL_CHECK(it2->second.value == 99);
+    FL_CHECK(it2->second.copy_count == 0);
+
+    // Erase and verify
+    m.erase(1);
+    FL_CHECK(m.size() == 1);
+    FL_CHECK(m.find(1) == m.end());
+}
+
 // ============================================================================
 // PATTERN 2: CONCRETE CONTAINER TYPE (Specific Element Types)
 // ============================================================================
@@ -1326,6 +1401,15 @@ FL_TEST_CASE("map front and back access") {
     // Only flat_map (vector-based) supports front()/back()
     // Tree-based maps (map, unordered_map, multi_map) and unsorted_map_fixed do not support these
     FL_SUBCASE("fl::flat_map") { test_map_front_back<fl::flat_map<int, int>>(); }
+}
+
+FL_TEST_CASE("map move semantics - values inserted via move, no copies") {
+    FL_SUBCASE("fl::map") { test_map_move_semantics<fl::map<int, MoveTrackItem>>(); }
+    FL_SUBCASE("fl::flat_map") { test_map_move_semantics<fl::flat_map<int, MoveTrackItem>>(); }
+    FL_SUBCASE("fl::unordered_map") { test_map_move_semantics<fl::unordered_map<int, MoveTrackItem>>(); }
+    FL_SUBCASE("fl::multi_map") { test_map_move_semantics<fl::multi_map<int, MoveTrackItem>>(); }
+    // NOTE: fl::unsorted_map_fixed uses insert(key, value) not insert(pair),
+    // normalized wrapper doesn't support move-only tracking
 }
 
 // ============================================================================

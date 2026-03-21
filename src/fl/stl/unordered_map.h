@@ -1004,7 +1004,7 @@ class FL_ALIGN unordered_map {
         for (fl::size i = 0; i < cap; ++i) {
             if (is_occupied(i)) {
                 if (pos != i) {
-                    _buckets[pos] = _buckets[i];
+                    _buckets[pos] = fl::move(_buckets[i]);
                     mark_empty(i);
                     mark_occupied(pos);
                 }
@@ -1041,13 +1041,13 @@ class FL_ALIGN unordered_map {
             FASTLED_ASSERT(!tmp,
                            "unordered_map::rehash_inline_no_resize: invalid tmp");
             if (idx >= _size) {
-                // directly copy it now
-                _buckets[idx] = e;
+                // directly move it now
+                _buckets[idx] = fl::move(e);
                 continue;
             }
-            tmp = e;
+            tmp = fl::move(e);
             occupied.set(idx);
-            _buckets[idx] = *tmp.ptr();
+            _buckets[idx] = fl::move(*tmp.ptr());
             while (!tmp.empty()) {
                 // we have to find a place for temp.
                 // find new position for tmp.
@@ -1065,12 +1065,12 @@ class FL_ALIGN unordered_map {
                 occupied.set(new_idx);
                 if (new_idx < _size) {
                     // we have to swap the entry at new_idx with tmp
-                    fl::optional<Entry> tmp2 = _buckets[new_idx];
-                    _buckets[new_idx] = *tmp.ptr();
-                    tmp = tmp2;
+                    fl::optional<Entry> tmp2 = fl::move(_buckets[new_idx]);
+                    _buckets[new_idx] = fl::move(*tmp.ptr());
+                    tmp = fl::move(tmp2);
                 } else {
                     // we can just move tmp to new_idx
-                    _buckets[new_idx] = *tmp.ptr();
+                    _buckets[new_idx] = fl::move(*tmp.ptr());
                     tmp.reset();
                 }
             }
