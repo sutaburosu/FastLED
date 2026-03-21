@@ -49,6 +49,8 @@
 #else
     // IWYU pragma: begin_keep
     #include <sys/socket.h>
+    #include <sys/select.h>
+    #include <sys/time.h>
     #include <netinet/in.h>
     #include <netdb.h>
     #include <unistd.h>

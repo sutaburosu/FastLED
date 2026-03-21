@@ -58,7 +58,7 @@ def install_playwright_browsers():
         sys.exit(1)
 
 
-def _find_free_port(start: int = 8080) -> int:
+def _find_free_port(start: int = 9123) -> int:
     """Find a free TCP port starting from `start`."""
     for port in range(start, start + 100):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -131,7 +131,7 @@ async def main() -> None:
 
     install_playwright_browsers()
     # Find a free port starting from 8080
-    port = _find_free_port(8080)
+    port = _find_free_port()
     console.print(f"[dim]Using port: {port}[/dim]")
 
     # Start the HTTP server
