@@ -26,8 +26,6 @@ _WHITELISTED_SUFFIXES: tuple[str, ...] = (
     "fl/stl/shared_ptr.cpp.hpp",
     "fl/stl/scoped_ptr.h",
     "fl/stl/weak_ptr.h",
-    # Legacy array smart pointer
-    "fl/scoped_array.h",
     # String holder (uses malloc/realloc/free internally)
     "fl/stl/detail/string_holder.cpp.hpp",
     # Memory introspection

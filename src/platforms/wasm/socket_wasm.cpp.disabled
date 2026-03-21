@@ -490,7 +490,7 @@ bool initialize_wasm_sockets() {
     }
     
     // Initialize statistics
-    fl::memfill(&g_stats, 0, sizeof(g_stats));
+    fl::memset(&g_stats, 0, sizeof(g_stats));
     
     g_initialized = true;
     return true;
@@ -516,7 +516,7 @@ WasmSocketStats get_wasm_socket_stats() {
 }
 
 void reset_wasm_socket_stats() {
-    fl::memfill(&g_stats, 0, sizeof(g_stats));
+    fl::memset(&g_stats, 0, sizeof(g_stats));
 }
 
 //=============================================================================

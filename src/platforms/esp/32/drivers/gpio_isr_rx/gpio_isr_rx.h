@@ -13,7 +13,7 @@
 #include "fl/stl/stdint.h"
 #include "fl/stl/shared_ptr.h"
 #include "fl/stl/span.h"
-#include "fl/result.h"
+#include "fl/stl/result.h"
 #include "fl/rx_device.h"
 
 namespace fl {
@@ -163,7 +163,7 @@ public:
      * Converts edge timestamps to pulse durations, then decodes pulses to bytes
      * using the provided timing thresholds.
      */
-    virtual fl::Result<u32, DecodeError> decode(const ChipsetTiming4Phase &timing,
+    virtual fl::result<u32, DecodeError> decode(const ChipsetTiming4Phase &timing,
                                                        fl::span<u8> out) override = 0;
 
     /**

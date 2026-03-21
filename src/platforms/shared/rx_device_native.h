@@ -56,7 +56,7 @@ public:
     /// @param timing 4-phase timing thresholds for bit detection
     /// @param out Output buffer to write decoded bytes
     /// @return Result with total bytes decoded, or DecodeError
-    fl::Result<u32, DecodeError> decode(const ChipsetTiming4Phase& timing,
+    fl::result<u32, DecodeError> decode(const ChipsetTiming4Phase& timing,
                                         fl::span<u8> out) override;
 
     /// @brief Get raw edge timings (for debugging)

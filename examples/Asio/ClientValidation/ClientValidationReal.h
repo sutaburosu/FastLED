@@ -75,7 +75,7 @@ void test_json_endpoint() {
     FL_WARN("\n=== Test 1: GET /json (Slideshow Data) ===");
 
     fl::promise<fl::net::http::Response> promise = fl::net::http::fetch_get("http://localhost:8081/json");
-    fl::result<fl::net::http::Response> result = fl::await_top_level(promise);
+    fl::promise_result<fl::net::http::Response> result = fl::await_top_level(promise);
 
     if (!result.ok()) {
         FL_WARN("✗ FAILED: " << result.error_message());
@@ -125,7 +125,7 @@ void test_get_endpoint() {
     FL_WARN("\n=== Test 2: GET /get (Request Echo) ===");
 
     fl::promise<fl::net::http::Response> promise = fl::net::http::fetch_get("http://localhost:8081/get");
-    fl::result<fl::net::http::Response> result = fl::await_top_level(promise);
+    fl::promise_result<fl::net::http::Response> result = fl::await_top_level(promise);
 
     if (!result.ok()) {
         FL_WARN("✗ FAILED: " << result.error_message());
@@ -170,7 +170,7 @@ void test_ping_endpoint() {
     FL_WARN("\n=== Test 3: GET /ping (Health Check) ===");
 
     fl::promise<fl::net::http::Response> promise = fl::net::http::fetch_get("http://localhost:8081/ping");
-    fl::result<fl::net::http::Response> result = fl::await_top_level(promise);
+    fl::promise_result<fl::net::http::Response> result = fl::await_top_level(promise);
 
     if (!result.ok()) {
         FL_WARN("✗ FAILED: " << result.error_message());

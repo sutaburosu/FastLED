@@ -8,7 +8,7 @@
 #include "fl/math/math.h"
 #include "fl/stl/compiler_control.h"
 #include "fl/math/math.h"
-#include "fl/leds.h"
+#include "fl/gfx/leds.h"
 #include "fl/math/grid.h"
 #include "fl/math/screenmap.h"
 #include "fl/stl/shared_ptr.h"  // For shared_ptr

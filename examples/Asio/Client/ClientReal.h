@@ -17,7 +17,7 @@
 /// - Non-blocking, event-driven pattern
 ///
 /// APPROACH 2: fl::await_top_level() pattern for synchronous-style async code
-/// - Uses explicit types: fl::promise<T>, fl::result<T>, fl::optional<T>
+/// - Uses explicit types: fl::promise<T>, fl::promise_result<T>, fl::optional<T>
 /// - Blocks until async operation completes (only safe in Arduino loop()!)
 /// - More traditional imperative programming style
 ///
@@ -28,7 +28,7 @@
 /// 
 /// Key Types You'll Learn:
 /// * fl::promise<T>        - Represents a future value of type T
-/// * fl::result<T>  - Wraps either a successful T value or an Error
+/// * fl::promise_result<T>  - Wraps either a successful T value or an Error
 /// * fl::net::http::Response          - HTTP response with status, headers, and body
 /// * fl::net::http::FetchOptions      - Configuration object for HTTP requests
 /// * fl::optional<T>       - May or may not contain a value of type T
@@ -52,7 +52,7 @@
 /// Await-based approach:
 /// ```cpp
 /// fl::promise<fl::net::http::Response> promise = fl::net::http::fetch_get("http://example.com");
-/// fl::result<fl::net::http::Response> result = fl::await_top_level(promise);
+/// fl::promise_result<fl::net::http::Response> result = fl::await_top_level(promise);
 /// if (result.ok()) {
 ///     const fl::net::http::Response& response = result.value();
 ///     // Use response...
@@ -174,10 +174,10 @@ void test_await_approach() {
     // This promise represents the future HTTP response
     fl::promise<fl::net::http::Response> http_promise = fl::net::http::fetch_get("http://fastled.io", request_config);
     
-    // TUTORIAL: await_top_level() returns fl::result<fl::net::http::Response>
+    // TUTORIAL: await_top_level() returns fl::promise_result<fl::net::http::Response>
     // result wraps either a successful response OR an Error - never both!
     // CRITICAL: await_top_level() blocks until completion - ONLY safe in Arduino loop()!
-    fl::result<fl::net::http::Response> result = fl::await_top_level(http_promise);
+    fl::promise_result<fl::net::http::Response> result = fl::await_top_level(http_promise);
     
     // TUTORIAL: Check if the result contains a successful response
     if (result.ok()) {
@@ -291,8 +291,8 @@ void test_json_await() {
     fl::promise<fl::net::http::Response> json_promise = fl::net::http::fetch_get("https://httpbin.org/get");
     
     // TUTORIAL: await_top_level() converts promise to result
-    // fl::result<fl::net::http::Response> contains either response or error
-    fl::result<fl::net::http::Response> result = fl::await_top_level(json_promise);
+    // fl::promise_result<fl::net::http::Response> contains either response or error
+    fl::promise_result<fl::net::http::Response> result = fl::await_top_level(json_promise);
     
     if (result.ok()) {
         // TUTORIAL: Extract the response from the result

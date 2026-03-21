@@ -1,7 +1,7 @@
 #include "fl/stl/stdint.h"
 
 #include "fl/gfx/draw_visitor.h"
-#include "fl/leds.h"
+#include "fl/gfx/leds.h"
 #include "fl/gfx/raster_sparse.h"
 #include "fl/gfx/tile2x2.h"
 

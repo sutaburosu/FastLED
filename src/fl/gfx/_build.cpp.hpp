@@ -8,6 +8,7 @@
 #include "fl/gfx/corkscrew.cpp.hpp"
 #include "fl/gfx/downscale.cpp.hpp"
 #include "fl/gfx/fill.cpp.hpp"
+#include "fl/gfx/leds.cpp.hpp"
 #include "fl/gfx/raster_sparse.cpp.hpp"
 #include "fl/gfx/rectangular_draw_buffer.cpp.hpp"
 #include "fl/gfx/rgbw.cpp.hpp"

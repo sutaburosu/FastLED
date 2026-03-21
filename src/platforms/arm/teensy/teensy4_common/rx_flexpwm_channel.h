@@ -35,7 +35,7 @@ class FlexPwmRxChannel : public RxDevice {
     bool begin(const RxConfig &config) override;
     bool finished() const override;
     RxWaitResult wait(u32 timeout_ms) override;
-    fl::Result<u32, DecodeError> decode(const ChipsetTiming4Phase &timing,
+    fl::result<u32, DecodeError> decode(const ChipsetTiming4Phase &timing,
                                         fl::span<u8> out) override;
     size_t getRawEdgeTimes(fl::span<EdgeTime> out,
                            size_t offset = 0) override;

@@ -193,25 +193,25 @@ bool async_has_tasks();
 /// auto explicit_result = fl::await_top_level<response>(promise);
 /// @endcode
 template<typename T>
-fl::result<T> await_top_level(fl::promise<T> promise) {
+fl::promise_result<T> await_top_level(fl::promise<T> promise) {
     // Handle invalid promises
     if (!promise.valid()) {
-        return fl::result<T>(Error("Invalid promise"));
+        return fl::promise_result<T>(Error("Invalid promise"));
     }
 
     // If already completed, return immediately
     if (promise.is_completed()) {
         if (promise.is_resolved()) {
-            return fl::result<T>(promise.value());
+            return fl::promise_result<T>(promise.value());
         } else {
-            return fl::result<T>(promise.error());
+            return fl::promise_result<T>(promise.error());
         }
     }
 
     // Track recursion depth to prevent infinite loops
     int& await_depth = detail::await_depth_tls();
     if (await_depth > 10) {
-        return fl::result<T>(Error("await_top_level recursion limit exceeded - possible infinite loop"));
+        return fl::promise_result<T>(Error("await_top_level recursion limit exceeded - possible infinite loop"));
     }
 
     ++await_depth;
@@ -239,14 +239,14 @@ fl::result<T> await_top_level(fl::promise<T> promise) {
 
     // Check for timeout
     if (pump_count >= max_pump_iterations) {
-        return fl::result<T>(Error("await_top_level timeout - promise did not complete"));
+        return fl::promise_result<T>(Error("await_top_level timeout - promise did not complete"));
     }
 
     // Return the result
     if (promise.is_resolved()) {
-        return fl::result<T>(promise.value());
+        return fl::promise_result<T>(promise.value());
     } else {
-        return fl::result<T>(promise.error());
+        return fl::promise_result<T>(promise.error());
     }
 }
 
@@ -325,7 +325,7 @@ namespace fl {
 /// });
 /// @endcode
 template<typename T>
-inline fl::result<T> await(fl::promise<T> promise) {
+inline fl::promise_result<T> await(fl::promise<T> promise) {
     return fl::platforms::await(promise);
 }
 

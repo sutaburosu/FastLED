@@ -27,7 +27,7 @@ Workflow:
 #include "fl/stl/assert.h"
 #include "fl/gfx/corkscrew.h"
 #include "fl/math/grid.h"
-#include "fl/leds.h"
+#include "fl/gfx/leds.h"
 #include "fl/math/math.h"
 #include "fl/math/screenmap.h"
 #include "fl/stl/sstream.h"

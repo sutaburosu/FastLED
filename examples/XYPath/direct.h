@@ -23,7 +23,7 @@ all the UI elements you see below.
 #include "fl/ui.h"
 #include "fl/gfx/xypath.h"
 #include "fl/fx/time.h"
-#include "fl/leds.h"
+#include "fl/gfx/leds.h"
 
 #include "src/xypaths.h"
 

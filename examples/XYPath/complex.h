@@ -112,7 +112,7 @@ float getAnimationTime(uint32_t now) {
     return pointf + transition.value();
 }
 
-void clearLeds() { fl::memfill(leds, 0, NUM_LEDS * sizeof(fl::CRGB)); }
+void clearLeds() { fl::memset(leds, 0, NUM_LEDS * sizeof(fl::CRGB)); }
 
 void loop() {
     // Your code here

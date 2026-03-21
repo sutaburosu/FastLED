@@ -7,7 +7,7 @@
 // String functions: strlen, strcmp, strncmp, strcpy, strncpy, strcat, strncat,
 //                   strstr, strchr, strrchr, strspn, strcspn, strpbrk, strtok
 // Memory functions: memcpy, memcmp, memmove, memset, memchr
-// Legacy functions: memfill, memcopy
+// Legacy functions: memcopy
 //
 // Note: PROGMEM functions (_P variants) are platform-specific (AVR only)
 // and are not tested in this host-based test suite.
@@ -666,17 +666,17 @@ FL_TEST_CASE("fl::memchr") {
 // Legacy Function Tests
 // ============================================================================
 
-FL_TEST_CASE("fl::memfill") {
-    FL_SUBCASE("memfill is alias for memset") {
+FL_TEST_CASE("fl::memset legacy alias removed") {
+    FL_SUBCASE("memset works") {
         char buffer[10];
-        fl::memfill(buffer, 'X', 5);
+        fl::memset(buffer, 'X', 5);
         FL_CHECK_EQ(buffer[0], 'X');
         FL_CHECK_EQ(buffer[4], 'X');
     }
 
     FL_SUBCASE("return value is destination") {
         char buffer[10];
-        void* result = fl::memfill(buffer, 0, 10);
+        void* result = fl::memset(buffer, 0, 10);
         FL_CHECK_EQ(result, static_cast<void*>(buffer));
     }
 }

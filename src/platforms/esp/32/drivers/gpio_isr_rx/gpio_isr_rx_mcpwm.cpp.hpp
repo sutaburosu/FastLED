@@ -222,7 +222,7 @@ inline bool isResetPulse(u32 duration_ns, const ChipsetTiming4Phase &timing) {
  * Note: Edge detection/filtering must happen upstream when edges are stored.
  * This function assumes continuous LOW samples at the beginning have been skipped.
  */
-fl::Result<u32, DecodeError> decodeEdgeTimestamps(const ChipsetTiming4Phase &timing,
+fl::result<u32, DecodeError> decodeEdgeTimestamps(const ChipsetTiming4Phase &timing,
                                                          fl::span<const EdgeTimestamp> edges,
                                                          fl::span<u8> bytes_out) {
     const size_t edge_count = edges.size();
@@ -230,12 +230,12 @@ fl::Result<u32, DecodeError> decodeEdgeTimestamps(const ChipsetTiming4Phase &tim
 
     if (edge_count == 0) {
         FL_WARN("decodeEdgeTimestamps: edges span is empty");
-        return fl::Result<u32, DecodeError>::failure(DecodeError::INVALID_ARGUMENT);
+        return fl::result<u32, DecodeError>::failure(DecodeError::INVALID_ARGUMENT);
     }
 
     if (bytes_capacity == 0) {
         FL_WARN("decodeEdgeTimestamps: bytes_out span is empty");
-        return fl::Result<u32, DecodeError>::failure(DecodeError::INVALID_ARGUMENT);
+        return fl::result<u32, DecodeError>::failure(DecodeError::INVALID_ARGUMENT);
     }
 
     FL_DBG("decodeEdgeTimestamps: decoding " << edge_count << " edges into buffer of " << bytes_capacity << " bytes");
@@ -273,7 +273,7 @@ fl::Result<u32, DecodeError> decodeEdgeTimestamps(const ChipsetTiming4Phase &tim
                     out_ptr[bytes_decoded++] = current_byte;
                 } else {
                     FL_WARN("decodeEdgeTimestamps: buffer overflow");
-                    return fl::Result<u32, DecodeError>::failure(DecodeError::BUFFER_OVERFLOW);
+                    return fl::result<u32, DecodeError>::failure(DecodeError::BUFFER_OVERFLOW);
                 }
             }
             break;
@@ -320,7 +320,7 @@ fl::Result<u32, DecodeError> decodeEdgeTimestamps(const ChipsetTiming4Phase &tim
         if (bit_index == 8) {
             if (bytes_decoded >= bytes_capacity) {
                 FL_WARN("decodeEdgeTimestamps: buffer overflow at byte " << bytes_decoded);
-                return fl::Result<u32, DecodeError>::failure(DecodeError::BUFFER_OVERFLOW);
+                return fl::result<u32, DecodeError>::failure(DecodeError::BUFFER_OVERFLOW);
             }
             out_ptr[bytes_decoded++] = current_byte;
             current_byte = 0;
@@ -337,7 +337,7 @@ fl::Result<u32, DecodeError> decodeEdgeTimestamps(const ChipsetTiming4Phase &tim
         if (bytes_decoded < bytes_capacity) {
             out_ptr[bytes_decoded++] = current_byte;
         } else {
-            return fl::Result<u32, DecodeError>::failure(DecodeError::BUFFER_OVERFLOW);
+            return fl::result<u32, DecodeError>::failure(DecodeError::BUFFER_OVERFLOW);
         }
     }
 
@@ -347,10 +347,10 @@ fl::Result<u32, DecodeError> decodeEdgeTimestamps(const ChipsetTiming4Phase &tim
     size_t total_pulses = edge_count / 2;
     if (total_pulses > 0 && error_count >= (total_pulses / 10)) {
         FL_WARN("decodeEdgeTimestamps: high error rate: " << error_count << "/" << total_pulses);
-        return fl::Result<u32, DecodeError>::failure(DecodeError::HIGH_ERROR_RATE);
+        return fl::result<u32, DecodeError>::failure(DecodeError::HIGH_ERROR_RATE);
     }
 
-    return fl::Result<u32, DecodeError>::success(bytes_decoded);
+    return fl::result<u32, DecodeError>::success(bytes_decoded);
 }
 
 } // anonymous namespace
@@ -710,13 +710,13 @@ public:
         return fl::span<const EdgeTimestamp>(result_ptr, count);
     }
 
-    fl::Result<u32, DecodeError> decode(const ChipsetTiming4Phase &timing,
+    fl::result<u32, DecodeError> decode(const ChipsetTiming4Phase &timing,
                                                fl::span<u8> out) override {
         // Get captured edges
         fl::span<const EdgeTimestamp> edges = getEdges();
 
         if (edges.empty()) {
-            return fl::Result<u32, DecodeError>::failure(DecodeError::INVALID_ARGUMENT);
+            return fl::result<u32, DecodeError>::failure(DecodeError::INVALID_ARGUMENT);
         }
 
         // Use the edge timestamp decoder (ported from gpio_isr_rx.cpp.disabled)

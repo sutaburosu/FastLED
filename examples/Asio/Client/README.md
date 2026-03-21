@@ -18,7 +18,7 @@ The example **cycles through all 4 approaches** every 10 seconds with LED feedba
 **All types are explicitly declared** (no `auto`) to help you understand FastLED's async type system:
 
 - `fl::promise<T>` - Represents a future value
-- `fl::result<T>` - Wraps success value or error
+- `fl::promise_result<T>` - Wraps success value or error
 - `fl::response` - HTTP response with status/headers/body
 - `fl::optional<T>` - May or may not contain a value
 - `fl::Error` - Error information
@@ -100,7 +100,7 @@ Synchronous-style code that blocks until completion:
 
 ```cpp
 fl::promise<fl::response> promise = fl::fetch_get("http://fastled.io");
-fl::result<fl::response> result = fl::await_top_level(promise);
+fl::promise_result<fl::response> result = fl::await_top_level(promise);
 
 if (result.ok()) {
     const fl::response& response = result.value();
@@ -145,7 +145,7 @@ Await pattern with JSON responses:
 
 ```cpp
 fl::promise<fl::response> promise = fl::fetch_get("https://httpbin.org/get");
-fl::result<fl::response> result = fl::await_top_level(promise);
+fl::promise_result<fl::response> result = fl::await_top_level(promise);
 
 if (result.ok() && result.value().is_json()) {
     fl::json data = result.value().json();
@@ -196,7 +196,7 @@ Represents future value:
 - `promise<T>& then(callback)` - Success handler
 - `promise<T>& catch_(callback)` - Error handler
 
-### fl::result<T>
+### fl::promise_result<T>
 
 Wraps success or error:
 
@@ -255,7 +255,7 @@ fetch_get(url).then([](const fl::response& r) {
 
 **Await-based:**
 ```cpp
-fl::result<fl::response> result = fl::await_top_level(fetch_get(url));
+fl::promise_result<fl::response> result = fl::await_top_level(fetch_get(url));
 if (!result.ok()) {
     FL_WARN("Request failed: " << result.error_message());
 }

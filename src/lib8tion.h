@@ -25,7 +25,7 @@
 
 
 #if !defined(FL_IS_AVR)
-// memmove, memcpy, and memset are defined in lib8tion/memmove.h and fl/memfill.h
+// memmove, memcpy, and memset are defined in lib8tion/memmove.h and fl/stl/cstring.h
 #endif // end of !defined(FL_IS_AVR)
 
 /// @defgroup lib8tion Fast Math Functions

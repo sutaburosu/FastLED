@@ -98,11 +98,6 @@ const void* memchr(const void* s, int c, size_t n) noexcept;
 // Legacy compatibility functions (aliases)
 // ============================================================================
 
-// fl::memfill - legacy name for memset
-inline void* memfill(void* s, int c, size_t n) noexcept {
-    return memset(s, c, n);
-}
-
 // fl::memcopy - legacy name for memcpy
 inline void* memcopy(void* dest, const void* src, size_t n) noexcept {
     return memcpy(dest, src, n);

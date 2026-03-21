@@ -171,7 +171,7 @@ void shiftUp() {
         fl::memcopy(row1, row2, WIDTH * sizeof(fl::CRGB));
     }
     fl::CRGB* row = &framebuffer[frameBufferXY(0, 0)];
-    fl::memfill(row, 0, sizeof(fl::CRGB) * WIDTH);
+    fl::memset(row, 0, sizeof(fl::CRGB) * WIDTH);
 }
 
 

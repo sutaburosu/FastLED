@@ -247,19 +247,19 @@ inline int decodeBit(RmtSymbol symbol, const ChipsetTiming4Phase &timing,
  * @param start_low Pin idle state: true=LOW (detect rising edge), false=HIGH
  * (detect falling edge)
  */
-fl::Result<u32, DecodeError>
+fl::result<u32, DecodeError>
 decodeRmtSymbols(const ChipsetTiming4Phase &timing, u32 resolution_hz,
                  fl::span<const RmtSymbol> symbols, fl::span<u8> bytes_out,
                  bool start_low = true) {
     if (symbols.empty()) {
         FL_WARN("decodeRmtSymbols: symbols span is empty");
-        return fl::Result<u32, DecodeError>::failure(
+        return fl::result<u32, DecodeError>::failure(
             DecodeError::INVALID_ARGUMENT);
     }
 
     if (bytes_out.empty()) {
         FL_WARN("decodeRmtSymbols: bytes_out span is empty");
-        return fl::Result<u32, DecodeError>::failure(
+        return fl::result<u32, DecodeError>::failure(
             DecodeError::INVALID_ARGUMENT);
     }
 
@@ -482,7 +482,7 @@ decodeRmtSymbols(const ChipsetTiming4Phase &timing, u32 resolution_hz,
     // Determine error type and return Result
     if (buffer_overflow) {
         FL_WARN("decodeRmtSymbols: buffer overflow - output buffer too small");
-        return fl::Result<u32, DecodeError>::failure(
+        return fl::result<u32, DecodeError>::failure(
             DecodeError::BUFFER_OVERFLOW);
     }
 
@@ -490,11 +490,11 @@ decodeRmtSymbols(const ChipsetTiming4Phase &timing, u32 resolution_hz,
         FL_WARN("decodeRmtSymbols: high error rate: "
                 << error_count << "/" << symbols.size() << " symbols ("
                 << (100 * error_count / symbols.size()) << "%)");
-        return fl::Result<u32, DecodeError>::failure(
+        return fl::result<u32, DecodeError>::failure(
             DecodeError::HIGH_ERROR_RATE);
     }
 
-    return fl::Result<u32, DecodeError>::success(bytes_decoded);
+    return fl::result<u32, DecodeError>::success(bytes_decoded);
 }
 
 /**
@@ -502,7 +502,7 @@ decodeRmtSymbols(const ChipsetTiming4Phase &timing, u32 resolution_hz,
  * Internal implementation - not exposed in public header
  */
 template <typename OutputIteratorUint8>
-fl::Result<u32, DecodeError>
+fl::result<u32, DecodeError>
 decodeRmtSymbols(const ChipsetTiming4Phase &timing, u32 resolution_hz,
                  fl::span<const RmtSymbol> symbols, OutputIteratorUint8 out,
                  bool start_low = true) {
@@ -516,7 +516,7 @@ decodeRmtSymbols(const ChipsetTiming4Phase &timing, u32 resolution_hz,
     auto result =
         decodeRmtSymbols(timing, resolution_hz, symbols, chunk_span, start_low);
     if (!result.ok()) {
-        return fl::Result<u32, DecodeError>::failure(result.error());
+        return fl::result<u32, DecodeError>::failure(result.error());
     }
 
     u32 bytes_decoded = result.value();
@@ -526,7 +526,7 @@ decodeRmtSymbols(const ChipsetTiming4Phase &timing, u32 resolution_hz,
         *out++ = chunk_buffer[i];
     }
 
-    return fl::Result<u32, DecodeError>::success(bytes_decoded);
+    return fl::result<u32, DecodeError>::success(bytes_decoded);
 }
 
 } // anonymous namespace
@@ -834,13 +834,13 @@ class RmtRxChannelImpl : public RmtRxChannel {
 
     u32 getResolutionHz() const override { return mResolutionHz; }
 
-    fl::Result<u32, DecodeError> decode(const ChipsetTiming4Phase &timing,
+    fl::result<u32, DecodeError> decode(const ChipsetTiming4Phase &timing,
                                              fl::span<u8> out) override {
         // Get received symbols (spurious symbols already filtered by wait())
         fl::span<const RmtSymbol> symbols = getReceivedSymbols();
 
         if (symbols.empty()) {
-            return fl::Result<u32, DecodeError>::failure(
+            return fl::result<u32, DecodeError>::failure(
                 DecodeError::INVALID_ARGUMENT);
         }
 

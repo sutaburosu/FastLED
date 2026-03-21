@@ -13,7 +13,7 @@
 #include "fl/stl/vector.h"
 #include "fl/stl/array.h"
 #include "fl/stl/iterator.h"
-#include "fl/result.h"
+#include "fl/stl/result.h"
 #include "fl/rx_device.h"
 
 // RMT symbol is a 32-bit value (union with duration0/level0/duration1/level1 bitfields)
@@ -203,7 +203,7 @@ public:
      * }
      * @endcode
      */
-    virtual fl::Result<u32, DecodeError> decode(const ChipsetTiming4Phase &timing,
+    virtual fl::result<u32, DecodeError> decode(const ChipsetTiming4Phase &timing,
                                                        fl::span<u8> out) override = 0;
 
     /**

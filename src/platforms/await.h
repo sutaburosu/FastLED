@@ -25,23 +25,23 @@ namespace platforms {
 /// @brief Await promise completion using platform-agnostic polling
 /// @tparam T The type of value the promise resolves to
 /// @param promise The promise to await
-/// @return A result<T> containing either the resolved value or an error
+/// @return A promise_result<T> containing either the resolved value or an error
 ///
 /// Polls the promise in a loop, yielding to the platform scheduler between
 /// checks via ICoroutineRuntime::suspendMainthread(). This method is safe to call
 /// from any execution context (main thread, coroutine, worker thread).
 template<typename T>
-fl::result<T> await(fl::promise<T> promise) {
+fl::promise_result<T> await(fl::promise<T> promise) {
     // Validate promise
     if (!promise.valid()) {
-        return fl::result<T>(Error("Invalid promise"));
+        return fl::promise_result<T>(Error("Invalid promise"));
     }
 
     // If already completed, return immediately
     if (promise.is_completed()) {
         return promise.is_resolved()
-            ? fl::result<T>(promise.value())
-            : fl::result<T>(promise.error());
+            ? fl::promise_result<T>(promise.value())
+            : fl::promise_result<T>(promise.error());
     }
 
     auto& runtime = ICoroutineRuntime::instance();
@@ -55,8 +55,8 @@ fl::result<T> await(fl::promise<T> promise) {
 
     // Promise completed, return result
     return promise.is_resolved()
-        ? fl::result<T>(promise.value())
-        : fl::result<T>(promise.error());
+        ? fl::promise_result<T>(promise.value())
+        : fl::promise_result<T>(promise.error());
 }
 
 } // namespace platforms

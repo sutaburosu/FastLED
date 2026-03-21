@@ -49,7 +49,7 @@ struct Message
         , data2(0)
         , valid(false)
     {
-        fl::memfill(sysexArray, 0, sSysExMaxSize * sizeof(DataByte));
+        fl::memset(sysexArray, 0, sSysExMaxSize * sizeof(DataByte));
     }
 
     /*! The maximum size for the System Exclusive array.

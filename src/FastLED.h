@@ -211,7 +211,7 @@ using fl::degrees;
 #include "chipsets.h"
 #include "fl/system/engine_events.h"
 
-#include "fl/leds.h"
+#include "fl/gfx/leds.h"
 
 // clockless.h removed - BulkClockless API has been superseded by Channel API
 
@@ -1493,7 +1493,7 @@ extern CFastLED FastLED;
 #include "fl/gfx/clear.h"
 
 // Leds has a CRGB block and an XYMap
-#include "fl/leds.h"
+#include "fl/gfx/leds.h"
 
 #include "fl/spi.h"  // SPI device and multi-lane SPI support (1-16 lanes)
 

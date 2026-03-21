@@ -30,7 +30,7 @@
 
 #include "fl/stl/vector.h"
 #include "fl/system/log.h"
-#include "fl/result.h"
+#include "fl/stl/result.h"
 #include "fl/stl/cstring.h"
 
 // IWYU pragma: begin_keep
@@ -213,11 +213,11 @@ static inline bool isGapPulse(u32 low_ns,
 /// Polarity-aware decoder: uses the HIGH/LOW labels from the gap-aware
 /// edge builder. Edges come in HIGH/LOW pairs representing one bit each.
 /// If polarity is wrong (noise), skip and resync on the next HIGH edge.
-static fl::Result<u32, DecodeError>
+static fl::result<u32, DecodeError>
 decodeEdges(const ChipsetTiming4Phase &timing,
             fl::span<const EdgeTime> edges, fl::span<u8> bytes_out) {
     if (edges.size() == 0 || bytes_out.size() == 0) {
-        return fl::Result<u32, DecodeError>::success(0);
+        return fl::result<u32, DecodeError>::success(0);
     }
 
     u32 byte_index = 0;
@@ -254,7 +254,7 @@ decodeEdges(const ChipsetTiming4Phase &timing,
 
         if (bit_count == 8) {
             if (byte_index >= bytes_out.size()) {
-                return fl::Result<u32, DecodeError>::failure(
+                return fl::result<u32, DecodeError>::failure(
                     DecodeError::BUFFER_OVERFLOW);
             }
             bytes_out[byte_index++] = current_byte;
@@ -286,11 +286,11 @@ decodeEdges(const ChipsetTiming4Phase &timing,
     // Check error rate (>10% is considered too high)
     if (total_bits > 0 &&
         (error_count * 10) > total_bits) {
-        return fl::Result<u32, DecodeError>::failure(
+        return fl::result<u32, DecodeError>::failure(
             DecodeError::HIGH_ERROR_RATE);
     }
 
-    return fl::Result<u32, DecodeError>::success(byte_index);
+    return fl::result<u32, DecodeError>::success(byte_index);
 }
 
 } // anonymous namespace
@@ -307,7 +307,7 @@ class FlexPwmRxChannelImpl : public FlexPwmRxChannel {
     bool begin(const RxConfig &config) override;
     bool finished() const override;
     RxWaitResult wait(u32 timeout_ms) override;
-    fl::Result<u32, DecodeError> decode(const ChipsetTiming4Phase &timing,
+    fl::result<u32, DecodeError> decode(const ChipsetTiming4Phase &timing,
                                         fl::span<u8> out) override;
     size_t getRawEdgeTimes(fl::span<EdgeTime> out,
                            size_t offset = 0) override;
@@ -708,13 +708,13 @@ void FlexPwmRxChannelImpl::buildEdgeTimesFromCaptures() {
 // decode()
 // ---------------------------------------------------------------------------
 
-fl::Result<u32, DecodeError>
+fl::result<u32, DecodeError>
 FlexPwmRxChannelImpl::decode(const ChipsetTiming4Phase &timing,
                               fl::span<u8> out) {
     buildEdgeTimesFromCaptures();
 
     if (mEdges.size() == 0) {
-        return fl::Result<u32, DecodeError>::success(0);
+        return fl::result<u32, DecodeError>::success(0);
     }
 
     fl::span<const EdgeTime> edge_span(mEdges.data(), mEdges.size());

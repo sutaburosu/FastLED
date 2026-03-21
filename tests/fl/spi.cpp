@@ -10,7 +10,7 @@
 #include "test.h"
 #include "fl/system/log.h"
 #include "fl/promise.h"
-#include "fl/result.h"
+#include "fl/stl/result.h"
 #include "fl/stl/span.h"
 #include "fl/spi/config.h"
 #include "fl/spi/device.h"
@@ -61,30 +61,30 @@ FL_TEST_CASE("Lazy Init - SPI stub instances are registered") {
 }
 
 // ============================================================================
-// fl::Result<T> Tests
+// fl::result<T> Tests
 // ============================================================================
 
-FL_TEST_CASE("fl::Result<void, SPIError> basic operations") {
+FL_TEST_CASE("fl::result<void, SPIError> basic operations") {
     FL_SUBCASE("Default construction creates failure state") {
-        fl::Result<void, SPIError> r;
+        fl::result<void, SPIError> r;
         FL_CHECK(!r.ok());
         FL_CHECK(r.error() == SPIError::NOT_INITIALIZED);
     }
 
     FL_SUBCASE("Success creation") {
-        fl::Result<void, SPIError> r = fl::Result<void, SPIError>::success();
+        fl::result<void, SPIError> r = fl::result<void, SPIError>::success();
         FL_CHECK(r.ok());
         FL_CHECK(static_cast<bool>(r));  // Explicit bool conversion
     }
 
     FL_SUBCASE("Failure creation with error code") {
-        fl::Result<void, SPIError> r = fl::Result<void, SPIError>::failure(SPIError::BUFFER_TOO_LARGE);
+        fl::result<void, SPIError> r = fl::result<void, SPIError>::failure(SPIError::BUFFER_TOO_LARGE);
         FL_CHECK(!r.ok());
         FL_CHECK(r.error() == SPIError::BUFFER_TOO_LARGE);
     }
 
     FL_SUBCASE("Failure creation with error code and message") {
-        fl::Result<void, SPIError> r = fl::Result<void, SPIError>::failure(SPIError::ALLOCATION_FAILED, "Out of memory");
+        fl::result<void, SPIError> r = fl::result<void, SPIError>::failure(SPIError::ALLOCATION_FAILED, "Out of memory");
         FL_CHECK(!r.ok());
         FL_CHECK(r.error() == SPIError::ALLOCATION_FAILED);
         FL_CHECK(r.message() != nullptr);
@@ -92,33 +92,33 @@ FL_TEST_CASE("fl::Result<void, SPIError> basic operations") {
     }
 }
 
-FL_TEST_CASE("fl::Result<int> value type operations") {
+FL_TEST_CASE("fl::result<int> value type operations") {
     FL_SUBCASE("Success with value") {
-        fl::Result<int, SPIError> r = fl::Result<int, SPIError>::success(42);
+        fl::result<int, SPIError> r = fl::result<int, SPIError>::success(42);
         FL_CHECK(r.ok());
         FL_CHECK(r.value() == 42);
     }
 
     FL_SUBCASE("Failure with no value") {
-        fl::Result<int, SPIError> r = fl::Result<int, SPIError>::failure(SPIError::BUSY, "Device busy");
+        fl::result<int, SPIError> r = fl::result<int, SPIError>::failure(SPIError::BUSY, "Device busy");
         FL_CHECK(!r.ok());
         FL_CHECK(r.error() == SPIError::BUSY);
         FL_CHECK(r.message() != nullptr);
     }
 
     FL_SUBCASE("Value modification") {
-        fl::Result<int, SPIError> r = fl::Result<int, SPIError>::success(10);
+        fl::result<int, SPIError> r = fl::result<int, SPIError>::success(10);
         r.value() = 20;
         FL_CHECK(r.value() == 20);
     }
 }
 
-FL_TEST_CASE("fl::Result<Transaction, SPIError> example usage") {
+FL_TEST_CASE("fl::result<Transaction, SPIError> example usage") {
     // This tests that Result works with complex types
     // (Transaction will be properly implemented in later iterations)
 
     FL_SUBCASE("Failure case") {
-        fl::Result<int, SPIError> r = fl::Result<int, SPIError>::failure(SPIError::NOT_INITIALIZED);
+        fl::result<int, SPIError> r = fl::result<int, SPIError>::failure(SPIError::NOT_INITIALIZED);
         FL_CHECK(!r.ok());
         FL_CHECK(!static_cast<bool>(r));  // Bool conversion
     }
@@ -247,15 +247,15 @@ FL_TEST_CASE("Device initialization with begin()") {
     //     uint8_t data[4] = {1, 2, 3, 4};
     //     uint8_t buffer[4] = {0};
     //
-    //     fl::Result<void, SPIError> write_result = spi.write(data, 4);
+    //     fl::result<void, SPIError> write_result = spi.write(data, 4);
     //     FL_CHECK(!write_result.ok());
     //     FL_CHECK(write_result.error() == SPIError::NOT_INITIALIZED);
     //
-    //     fl::Result<void, SPIError> read_result = spi.read(buffer, 4);
+    //     fl::result<void, SPIError> read_result = spi.read(buffer, 4);
     //     FL_CHECK(!read_result.ok());
     //     FL_CHECK(read_result.error() == SPIError::NOT_INITIALIZED);
     //
-    //     fl::Result<void, SPIError> transfer_result = spi.transfer(data, buffer, 4);
+    //     fl::result<void, SPIError> transfer_result = spi.transfer(data, buffer, 4);
     //     FL_CHECK(!transfer_result.ok());
     //     FL_CHECK(transfer_result.error() == SPIError::NOT_INITIALIZED);
     // }
@@ -376,11 +376,11 @@ FL_TEST_CASE("Device write operations") {
         Config cfg(14, 15);
         Device spi(cfg);
 
-        fl::Result<void, SPIError> begin_result = spi.begin();
+        fl::result<void, SPIError> begin_result = spi.begin();
         FL_REQUIRE(begin_result.ok());
 
         uint8_t data[4] = {0xAA, 0xBB, 0xCC, 0xDD};
-        fl::Result<void, SPIError> write_result = spi.write(data, 4);
+        fl::result<void, SPIError> write_result = spi.write(data, 4);
 
         FL_CHECK(write_result.ok());
         FL_CHECK(!spi.isBusy());  // Should be complete after blocking write
@@ -393,7 +393,7 @@ FL_TEST_CASE("Device write operations") {
         Device spi(cfg);
 
         uint8_t data[4] = {1, 2, 3, 4};
-        fl::Result<void, SPIError> result = spi.write(data, 4);
+        fl::result<void, SPIError> result = spi.write(data, 4);
 
         FL_CHECK(!result.ok());
         FL_CHECK(result.error() == SPIError::NOT_INITIALIZED);
@@ -404,7 +404,7 @@ FL_TEST_CASE("Device write operations") {
         Device spi(cfg);
         spi.begin();
 
-        fl::Result<void, SPIError> result = spi.write(nullptr, 4);
+        fl::result<void, SPIError> result = spi.write(nullptr, 4);
 
         FL_CHECK(!result.ok());
         FL_CHECK(result.error() == SPIError::ALLOCATION_FAILED);
@@ -418,7 +418,7 @@ FL_TEST_CASE("Device write operations") {
         spi.begin();
 
         uint8_t data[4] = {1, 2, 3, 4};
-        fl::Result<void, SPIError> result = spi.write(data, 0);
+        fl::result<void, SPIError> result = spi.write(data, 0);
 
         FL_CHECK(!result.ok());
         FL_CHECK(result.error() == SPIError::ALLOCATION_FAILED);
@@ -434,10 +434,10 @@ FL_TEST_CASE("Device write operations") {
         uint8_t data1[4] = {0x11, 0x22, 0x33, 0x44};
         uint8_t data2[8] = {0x55, 0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC};
 
-        fl::Result<void, SPIError> result1 = spi.write(data1, 4);
+        fl::result<void, SPIError> result1 = spi.write(data1, 4);
         FL_CHECK(result1.ok());
 
-        fl::Result<void, SPIError> result2 = spi.write(data2, 8);
+        fl::result<void, SPIError> result2 = spi.write(data2, 8);
         FL_CHECK(result2.ok());
 
         spi.end();
@@ -450,19 +450,19 @@ FL_TEST_CASE("Device write operations") {
 
         // Small buffer
         uint8_t small[2] = {0x01, 0x02};
-        fl::Result<void, SPIError> result_small = spi.write(small, 2);
+        fl::result<void, SPIError> result_small = spi.write(small, 2);
         FL_CHECK(result_small.ok());
 
         // Medium buffer
         uint8_t medium[64];
         for (size_t i = 0; i < 64; i++) medium[i] = static_cast<uint8_t>(i);
-        fl::Result<void, SPIError> result_medium = spi.write(medium, 64);
+        fl::result<void, SPIError> result_medium = spi.write(medium, 64);
         FL_CHECK(result_medium.ok());
 
         // Large buffer
         uint8_t large[256];
         for (size_t i = 0; i < 256; i++) large[i] = static_cast<uint8_t>(i);
-        fl::Result<void, SPIError> result_large = spi.write(large, 256);
+        fl::result<void, SPIError> result_large = spi.write(large, 256);
         FL_CHECK(result_large.ok());
 
         spi.end();
@@ -572,7 +572,7 @@ FL_TEST_CASE("Device busy state and waitComplete") {
         spi.begin();
 
         uint8_t data[4] = {1, 2, 3, 4};
-        fl::Result<Transaction, SPIError> result = spi.writeAsync(data, 4);
+        fl::result<Transaction, SPIError> result = spi.writeAsync(data, 4);
         if (!result.ok()) {
             FL_DBG("writeAsync failed with error: " << result.error());
         }
@@ -613,7 +613,7 @@ FL_TEST_CASE("Device read operations") {
         spi.begin();
 
         uint8_t buffer[4] = {0xFF, 0xFF, 0xFF, 0xFF};
-        fl::Result<void, SPIError> result = spi.read(buffer, 4);
+        fl::result<void, SPIError> result = spi.read(buffer, 4);
 
         FL_CHECK(result.ok());
         // Note: Current implementation fills buffer with 0x00 until hardware RX is supported
@@ -630,7 +630,7 @@ FL_TEST_CASE("Device read operations") {
         Device spi(cfg);
 
         uint8_t buffer[4];
-        fl::Result<void, SPIError> result = spi.read(buffer, 4);
+        fl::result<void, SPIError> result = spi.read(buffer, 4);
 
         FL_CHECK(!result.ok());
         FL_CHECK(result.error() == SPIError::NOT_INITIALIZED);
@@ -641,7 +641,7 @@ FL_TEST_CASE("Device read operations") {
         Device spi(cfg);
         spi.begin();
 
-        fl::Result<void, SPIError> result = spi.read(nullptr, 4);
+        fl::result<void, SPIError> result = spi.read(nullptr, 4);
 
         FL_CHECK(!result.ok());
         FL_CHECK(result.error() == SPIError::ALLOCATION_FAILED);
@@ -655,7 +655,7 @@ FL_TEST_CASE("Device read operations") {
         spi.begin();
 
         uint8_t buffer[4];
-        fl::Result<void, SPIError> result = spi.read(buffer, 0);
+        fl::result<void, SPIError> result = spi.read(buffer, 0);
 
         FL_CHECK(!result.ok());
         FL_CHECK(result.error() == SPIError::ALLOCATION_FAILED);
@@ -671,10 +671,10 @@ FL_TEST_CASE("Device read operations") {
         uint8_t buffer1[2];
         uint8_t buffer2[4];
 
-        fl::Result<void, SPIError> result1 = spi.read(buffer1, 2);
+        fl::result<void, SPIError> result1 = spi.read(buffer1, 2);
         FL_CHECK(result1.ok());
 
-        fl::Result<void, SPIError> result2 = spi.read(buffer2, 4);
+        fl::result<void, SPIError> result2 = spi.read(buffer2, 4);
         FL_CHECK(result2.ok());
 
         spi.end();
@@ -718,7 +718,7 @@ FL_TEST_CASE("Device transfer operations") {
         uint8_t tx_data[4] = {0xAA, 0xBB, 0xCC, 0xDD};
         uint8_t rx_buffer[4] = {0xFF, 0xFF, 0xFF, 0xFF};
 
-        fl::Result<void, SPIError> result = spi.transfer(tx_data, rx_buffer, 4);
+        fl::result<void, SPIError> result = spi.transfer(tx_data, rx_buffer, 4);
 
         FL_CHECK(result.ok());
         // Note: Current implementation fills RX buffer with 0x00 until hardware RX is supported
@@ -738,7 +738,7 @@ FL_TEST_CASE("Device transfer operations") {
         uint8_t tx_data[4] = {1, 2, 3, 4};
         uint8_t rx_buffer[4];
 
-        fl::Result<void, SPIError> result = spi.transfer(tx_data, rx_buffer, 4);
+        fl::result<void, SPIError> result = spi.transfer(tx_data, rx_buffer, 4);
 
         FL_CHECK(!result.ok());
         FL_CHECK(result.error() == SPIError::NOT_INITIALIZED);
@@ -750,7 +750,7 @@ FL_TEST_CASE("Device transfer operations") {
         spi.begin();
 
         uint8_t rx_buffer[4];
-        fl::Result<void, SPIError> result = spi.transfer(nullptr, rx_buffer, 4);
+        fl::result<void, SPIError> result = spi.transfer(nullptr, rx_buffer, 4);
 
         FL_CHECK(!result.ok());
         FL_CHECK(result.error() == SPIError::ALLOCATION_FAILED);
@@ -764,7 +764,7 @@ FL_TEST_CASE("Device transfer operations") {
         spi.begin();
 
         uint8_t tx_data[4] = {1, 2, 3, 4};
-        fl::Result<void, SPIError> result = spi.transfer(tx_data, nullptr, 4);
+        fl::result<void, SPIError> result = spi.transfer(tx_data, nullptr, 4);
 
         FL_CHECK(!result.ok());
         FL_CHECK(result.error() == SPIError::ALLOCATION_FAILED);
@@ -779,7 +779,7 @@ FL_TEST_CASE("Device transfer operations") {
 
         uint8_t tx_data[4] = {1, 2, 3, 4};
         uint8_t rx_buffer[4];
-        fl::Result<void, SPIError> result = spi.transfer(tx_data, rx_buffer, 0);
+        fl::result<void, SPIError> result = spi.transfer(tx_data, rx_buffer, 0);
 
         FL_CHECK(!result.ok());
         FL_CHECK(result.error() == SPIError::ALLOCATION_FAILED);
@@ -797,10 +797,10 @@ FL_TEST_CASE("Device transfer operations") {
         uint8_t tx2[4] = {0xAA, 0xBB, 0xCC, 0xDD};
         uint8_t rx2[4];
 
-        fl::Result<void, SPIError> result1 = spi.transfer(tx1, rx1, 2);
+        fl::result<void, SPIError> result1 = spi.transfer(tx1, rx1, 2);
         FL_CHECK(result1.ok());
 
-        fl::Result<void, SPIError> result2 = spi.transfer(tx2, rx2, 4);
+        fl::result<void, SPIError> result2 = spi.transfer(tx2, rx2, 4);
         FL_CHECK(result2.ok());
 
         spi.end();
@@ -839,7 +839,7 @@ FL_TEST_CASE("Device transfer operations") {
         uint8_t tx_data[4] = {0x12, 0x34, 0x56, 0x78};
         uint8_t rx_buffer[4];
 
-        fl::Result<void, SPIError> result = spi.transfer(tx_data, rx_buffer, 4);
+        fl::result<void, SPIError> result = spi.transfer(tx_data, rx_buffer, 4);
         FL_CHECK(result.ok());
 
         // We can't directly verify that TX data was transmitted since we don't have
@@ -863,7 +863,7 @@ FL_TEST_CASE("Device writeAsync operations") {
         FL_REQUIRE(!begin_result);  // Must succeed for test to continue
 
         uint8_t data[4] = {0x01, 0x02, 0x03, 0x04};
-        fl::Result<Transaction, SPIError> result = spi.writeAsync(data, 4);
+        fl::result<Transaction, SPIError> result = spi.writeAsync(data, 4);
 
         FL_REQUIRE(result.ok());  // Must succeed to safely access value()
 
@@ -882,7 +882,7 @@ FL_TEST_CASE("Device writeAsync operations") {
         Device spi(cfg);
 
         uint8_t data[4] = {0x01, 0x02, 0x03, 0x04};
-        fl::Result<Transaction, SPIError> result = spi.writeAsync(data, 4);
+        fl::result<Transaction, SPIError> result = spi.writeAsync(data, 4);
 
         FL_CHECK(!result.ok());
         FL_CHECK(result.error() == SPIError::NOT_INITIALIZED);
@@ -893,7 +893,7 @@ FL_TEST_CASE("Device writeAsync operations") {
         Device spi(cfg);
         spi.begin();
 
-        fl::Result<Transaction, SPIError> result = spi.writeAsync(nullptr, 4);
+        fl::result<Transaction, SPIError> result = spi.writeAsync(nullptr, 4);
 
         FL_CHECK(!result.ok());
         FL_CHECK(result.error() == SPIError::ALLOCATION_FAILED);
@@ -907,7 +907,7 @@ FL_TEST_CASE("Device writeAsync operations") {
         spi.begin();
 
         uint8_t data[4] = {0x01, 0x02, 0x03, 0x04};
-        fl::Result<Transaction, SPIError> result = spi.writeAsync(data, 0);
+        fl::result<Transaction, SPIError> result = spi.writeAsync(data, 0);
 
         FL_CHECK(!result.ok());
         FL_CHECK(result.error() == SPIError::ALLOCATION_FAILED);
@@ -922,7 +922,7 @@ FL_TEST_CASE("Device writeAsync operations") {
 
         // First async write
         uint8_t data1[4] = {0x01, 0x02, 0x03, 0x04};
-        fl::Result<Transaction, SPIError> result1 = spi.writeAsync(data1, 4);
+        fl::result<Transaction, SPIError> result1 = spi.writeAsync(data1, 4);
         FL_CHECK(result1.ok());
         Transaction txn1 = fl::move(result1.value());
         FL_CHECK(txn1.wait());
@@ -930,7 +930,7 @@ FL_TEST_CASE("Device writeAsync operations") {
 
         // Second async write (after first completes)
         uint8_t data2[4] = {0x05, 0x06, 0x07, 0x08};
-        fl::Result<Transaction, SPIError> result2 = spi.writeAsync(data2, 4);
+        fl::result<Transaction, SPIError> result2 = spi.writeAsync(data2, 4);
         FL_CHECK(result2.ok());
         Transaction txn2 = fl::move(result2.value());
         FL_CHECK(txn2.wait());
@@ -946,7 +946,7 @@ FL_TEST_CASE("Device writeAsync operations") {
 
         // Small buffer
         uint8_t small[2] = {0x01, 0x02};
-        fl::Result<Transaction, SPIError> r1 = spi.writeAsync(small, 2);
+        fl::result<Transaction, SPIError> r1 = spi.writeAsync(small, 2);
         FL_CHECK(r1.ok());
         Transaction t1 = fl::move(r1.value());
         FL_CHECK(t1.wait());
@@ -954,7 +954,7 @@ FL_TEST_CASE("Device writeAsync operations") {
         // Medium buffer
         uint8_t medium[64];
         for (size_t i = 0; i < 64; i++) medium[i] = i & 0xFF;
-        fl::Result<Transaction, SPIError> r2 = spi.writeAsync(medium, 64);
+        fl::result<Transaction, SPIError> r2 = spi.writeAsync(medium, 64);
         FL_CHECK(r2.ok());
         Transaction t2 = fl::move(r2.value());
         FL_CHECK(t2.wait());
@@ -962,7 +962,7 @@ FL_TEST_CASE("Device writeAsync operations") {
         // Large buffer
         uint8_t large[256];
         for (size_t i = 0; i < 256; i++) large[i] = i & 0xFF;
-        fl::Result<Transaction, SPIError> r3 = spi.writeAsync(large, 256);
+        fl::result<Transaction, SPIError> r3 = spi.writeAsync(large, 256);
         FL_CHECK(r3.ok());
         Transaction t3 = fl::move(r3.value());
         FL_CHECK(t3.wait());
@@ -978,14 +978,14 @@ FL_TEST_CASE("Device writeAsync operations") {
         uint8_t data[4] = {0x01, 0x02, 0x03, 0x04};
 
         {
-            fl::Result<Transaction, SPIError> result = spi.writeAsync(data, 4);
+            fl::result<Transaction, SPIError> result = spi.writeAsync(data, 4);
             FL_CHECK(result.ok());
             Transaction txn = fl::move(result.value());
             // Transaction destructor will auto-wait
         }
 
         // After transaction is destroyed, we should be able to start another
-        fl::Result<Transaction, SPIError> result2 = spi.writeAsync(data, 4);
+        fl::result<Transaction, SPIError> result2 = spi.writeAsync(data, 4);
         FL_CHECK(result2.ok());
 
         spi.end();
@@ -1006,7 +1006,7 @@ FL_TEST_CASE("Device readAsync operations") {
         spi.begin();
 
         uint8_t buffer[4];
-        fl::Result<Transaction, SPIError> result = spi.readAsync(buffer, 4);
+        fl::result<Transaction, SPIError> result = spi.readAsync(buffer, 4);
 
         FL_CHECK(result.ok());
 
@@ -1027,7 +1027,7 @@ FL_TEST_CASE("Device readAsync operations") {
         Device spi(cfg);
 
         uint8_t buffer[4];
-        fl::Result<Transaction, SPIError> result = spi.readAsync(buffer, 4);
+        fl::result<Transaction, SPIError> result = spi.readAsync(buffer, 4);
 
         FL_CHECK(!result.ok());
         FL_CHECK(result.error() == SPIError::NOT_INITIALIZED);
@@ -1038,7 +1038,7 @@ FL_TEST_CASE("Device readAsync operations") {
         Device spi(cfg);
         spi.begin();
 
-        fl::Result<Transaction, SPIError> result = spi.readAsync(nullptr, 4);
+        fl::result<Transaction, SPIError> result = spi.readAsync(nullptr, 4);
 
         FL_CHECK(!result.ok());
         FL_CHECK(result.error() == SPIError::ALLOCATION_FAILED);
@@ -1052,7 +1052,7 @@ FL_TEST_CASE("Device readAsync operations") {
         spi.begin();
 
         uint8_t buffer[4];
-        fl::Result<Transaction, SPIError> result = spi.readAsync(buffer, 0);
+        fl::result<Transaction, SPIError> result = spi.readAsync(buffer, 0);
 
         FL_CHECK(!result.ok());
         FL_CHECK(result.error() == SPIError::ALLOCATION_FAILED);
@@ -1077,7 +1077,7 @@ FL_TEST_CASE("Device transferAsync operations") {
 
         uint8_t tx_data[4] = {0x12, 0x34, 0x56, 0x78};
         uint8_t rx_buffer[4];
-        fl::Result<Transaction, SPIError> result = spi.transferAsync(tx_data, rx_buffer, 4);
+        fl::result<Transaction, SPIError> result = spi.transferAsync(tx_data, rx_buffer, 4);
 
         FL_CHECK(result.ok());
 
@@ -1100,7 +1100,7 @@ FL_TEST_CASE("Device transferAsync operations") {
 
         uint8_t tx_data[4] = {0x01, 0x02, 0x03, 0x04};
         uint8_t rx_buffer[4];
-        fl::Result<Transaction, SPIError> result = spi.transferAsync(tx_data, rx_buffer, 4);
+        fl::result<Transaction, SPIError> result = spi.transferAsync(tx_data, rx_buffer, 4);
 
         FL_CHECK(!result.ok());
         FL_CHECK(result.error() == SPIError::NOT_INITIALIZED);
@@ -1112,7 +1112,7 @@ FL_TEST_CASE("Device transferAsync operations") {
         spi.begin();
 
         uint8_t rx_buffer[4];
-        fl::Result<Transaction, SPIError> result = spi.transferAsync(nullptr, rx_buffer, 4);
+        fl::result<Transaction, SPIError> result = spi.transferAsync(nullptr, rx_buffer, 4);
 
         FL_CHECK(!result.ok());
         FL_CHECK(result.error() == SPIError::ALLOCATION_FAILED);
@@ -1126,7 +1126,7 @@ FL_TEST_CASE("Device transferAsync operations") {
         spi.begin();
 
         uint8_t tx_data[4] = {0x01, 0x02, 0x03, 0x04};
-        fl::Result<Transaction, SPIError> result = spi.transferAsync(tx_data, nullptr, 4);
+        fl::result<Transaction, SPIError> result = spi.transferAsync(tx_data, nullptr, 4);
 
         FL_CHECK(!result.ok());
         FL_CHECK(result.error() == SPIError::ALLOCATION_FAILED);
@@ -1141,7 +1141,7 @@ FL_TEST_CASE("Device transferAsync operations") {
 
         uint8_t tx_data[4] = {0x01, 0x02, 0x03, 0x04};
         uint8_t rx_buffer[4];
-        fl::Result<Transaction, SPIError> result = spi.transferAsync(tx_data, rx_buffer, 0);
+        fl::result<Transaction, SPIError> result = spi.transferAsync(tx_data, rx_buffer, 0);
 
         FL_CHECK(!result.ok());
         FL_CHECK(result.error() == SPIError::ALLOCATION_FAILED);
@@ -1162,7 +1162,7 @@ FL_TEST_CASE("Transaction lifecycle") {
         spi.begin();
 
         uint8_t data[4] = {0x01, 0x02, 0x03, 0x04};
-        fl::Result<Transaction, SPIError> result = spi.writeAsync(data, 4);
+        fl::result<Transaction, SPIError> result = spi.writeAsync(data, 4);
         FL_CHECK(result.ok());
 
         Transaction txn = fl::move(result.value());
@@ -1183,7 +1183,7 @@ FL_TEST_CASE("Transaction lifecycle") {
         spi.begin();
 
         uint8_t data[4] = {0x01, 0x02, 0x03, 0x04};
-        fl::Result<Transaction, SPIError> result = spi.writeAsync(data, 4);
+        fl::result<Transaction, SPIError> result = spi.writeAsync(data, 4);
         FL_CHECK(result.ok());
 
         Transaction txn = fl::move(result.value());
@@ -1206,7 +1206,7 @@ FL_TEST_CASE("Transaction lifecycle") {
         spi.begin();
 
         uint8_t data[4] = {0x01, 0x02, 0x03, 0x04};
-        fl::Result<Transaction, SPIError> result = spi.writeAsync(data, 4);
+        fl::result<Transaction, SPIError> result = spi.writeAsync(data, 4);
         FL_CHECK(result.ok());
 
         Transaction txn = fl::move(result.value());
@@ -1224,7 +1224,7 @@ FL_TEST_CASE("Transaction lifecycle") {
         spi.begin();
 
         uint8_t data[4] = {0x01, 0x02, 0x03, 0x04};
-        fl::Result<Transaction, SPIError> result = spi.writeAsync(data, 4);
+        fl::result<Transaction, SPIError> result = spi.writeAsync(data, 4);
         FL_CHECK(result.ok());
 
         Transaction txn1 = fl::move(result.value());

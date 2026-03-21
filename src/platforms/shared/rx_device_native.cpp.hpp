@@ -106,12 +106,12 @@ void NativeRxDevice::onEdge(bool high, u32 duration_ns) {
 ///
 /// Bit 0: T0H ∈ [t0h_min, t0h_max], T0L ∈ [t0l_min, t0l_max]
 /// Bit 1: T1H ∈ [t1h_min, t1h_max], T1L ∈ [t1l_min, t1l_max]
-fl::Result<u32, DecodeError> NativeRxDevice::decode(const ChipsetTiming4Phase& timing,
+fl::result<u32, DecodeError> NativeRxDevice::decode(const ChipsetTiming4Phase& timing,
                                                      fl::span<u8> out) {
     size_t edge_count = mEdges.size();
     if (edge_count == 0) {
         FL_WARN("NativeRxDevice::decode: No edges recorded for pin " << mPin);
-        return fl::Result<u32, DecodeError>::failure(DecodeError::INVALID_ARGUMENT);
+        return fl::result<u32, DecodeError>::failure(DecodeError::INVALID_ARGUMENT);
     }
 
     size_t bytes_written = 0;
@@ -176,7 +176,7 @@ fl::Result<u32, DecodeError> NativeRxDevice::decode(const ChipsetTiming4Phase& t
             // Byte complete
             if (bytes_written >= out.size()) {
                 // Buffer overflow
-                return fl::Result<u32, DecodeError>::failure(DecodeError::BUFFER_OVERFLOW);
+                return fl::result<u32, DecodeError>::failure(DecodeError::BUFFER_OVERFLOW);
             }
             out[bytes_written++] = current_byte;
             current_byte = 0;
@@ -189,10 +189,10 @@ fl::Result<u32, DecodeError> NativeRxDevice::decode(const ChipsetTiming4Phase& t
     // Check error rate
     if (bytes_written > 0 && error_count * 10 > bytes_written * 8) {
         // More than 10% errors
-        return fl::Result<u32, DecodeError>::failure(DecodeError::HIGH_ERROR_RATE);
+        return fl::result<u32, DecodeError>::failure(DecodeError::HIGH_ERROR_RATE);
     }
 
-    return fl::Result<u32, DecodeError>::success(static_cast<u32>(bytes_written));
+    return fl::result<u32, DecodeError>::success(static_cast<u32>(bytes_written));
 }
 
 size_t NativeRxDevice::getRawEdgeTimes(fl::span<EdgeTime> out, size_t offset) {

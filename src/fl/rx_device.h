@@ -5,7 +5,7 @@
 
 #include "fl/stl/stdint.h"
 #include "fl/stl/optional.h"
-#include "fl/result.h"
+#include "fl/stl/result.h"
 #include "fl/stl/cstddef.h"
 
 namespace fl {
@@ -309,7 +309,7 @@ public:
      * @param out Output span to write decoded bytes
      * @return Result with total bytes decoded, or error
      */
-    virtual fl::Result<u32, DecodeError> decode(const ChipsetTiming4Phase &timing,
+    virtual fl::result<u32, DecodeError> decode(const ChipsetTiming4Phase &timing,
                                                        fl::span<u8> out) = 0;
 
     /**

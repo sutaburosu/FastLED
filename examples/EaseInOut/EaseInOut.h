@@ -10,7 +10,7 @@
 
 #include <FastLED.h>
 #include "fl/math/ease.h"
-#include "fl/leds.h"
+#include "fl/gfx/leds.h"
 
 // Matrix configuration
 #define MATRIX_WIDTH 100

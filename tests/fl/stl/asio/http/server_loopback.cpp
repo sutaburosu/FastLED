@@ -54,7 +54,7 @@ int main() {
         server.update();  // Process any pending
 
         fl::promise<fl::net::http::Response> promise = fl::net::http::fetch_get("http://localhost:47801/");
-        fl::result<fl::net::http::Response> result = fl::await_top_level(promise);
+        fl::promise_result<fl::net::http::Response> result = fl::await_top_level(promise);
 
         if (!result.ok()) {
             FL_WARN("  ✗ FAILED: " << result.error_message());
@@ -82,7 +82,7 @@ int main() {
         server.update();
 
         fl::promise<fl::net::http::Response> promise = fl::net::http::fetch_get("http://localhost:47801/ping");
-        fl::result<fl::net::http::Response> result = fl::await_top_level(promise);
+        fl::promise_result<fl::net::http::Response> result = fl::await_top_level(promise);
 
         if (!result.ok()) {
             FL_WARN("  ✗ FAILED: " << result.error_message());
@@ -110,7 +110,7 @@ int main() {
         server.update();
 
         fl::promise<fl::net::http::Response> promise = fl::net::http::fetch_get("http://localhost:47801/test");
-        fl::result<fl::net::http::Response> result = fl::await_top_level(promise);
+        fl::promise_result<fl::net::http::Response> result = fl::await_top_level(promise);
 
         if (!result.ok()) {
             FL_WARN("  ✗ FAILED: " << result.error_message());
