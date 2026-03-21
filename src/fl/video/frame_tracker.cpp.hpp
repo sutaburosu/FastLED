@@ -1,8 +1,9 @@
-#include "fl/fx/video/frame_tracker.h"
+#include "fl/video/frame_tracker.h"
 #include "fl/stl/int.h"
 #include "fl/math/math.h"
 
 namespace fl {
+namespace video {
 
 FrameTracker::FrameTracker(float fps) {
     // Convert fps to microseconds per frame interval
@@ -38,4 +39,5 @@ fl::u32 FrameTracker::get_exact_timestamp_ms(fl::u32 frameNumber) const {
     return static_cast<fl::u32>(microseconds / 1000) + mStartTime;
 }
 
+} // namespace video
 } // namespace fl

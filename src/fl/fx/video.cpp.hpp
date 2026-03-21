@@ -7,17 +7,13 @@
 #include "fl/stl/string.h"
 #include "fl/system/log.h"
 #include "fl/fx/frame.h"
-#include "fl/fx/video/frame_interpolator.h"
-#include "fl/fx/video/pixel_stream.h"
-#include "fl/fx/video/video_impl.h"
+#include "fl/video/frame_interpolator.h"
+#include "fl/video/pixel_stream.h"
+#include "fl/video/video_impl.h"
 
 #define DBG FASTLED_DBG
 
 namespace fl {
-
-FASTLED_SHARED_PTR(PixelStream);
-FASTLED_SHARED_PTR(FrameInterpolator);
-FASTLED_SHARED_PTR(Frame);
 
 Video::Video() : Fx1d(0) {}
 

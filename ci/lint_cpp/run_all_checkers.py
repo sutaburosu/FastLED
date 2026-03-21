@@ -246,6 +246,9 @@ def create_checkers(
         SubdirNamespaceChecker(
             "net"
         ),  # Checks fl/net/ headers use proper fl::net:: namespaces
+        SubdirNamespaceChecker(
+            "video"
+        ),  # Checks fl/video/ headers use proper fl::video:: namespaces
         # NOTE: fl/math/ is NOT checked — types there intentionally live in fl::
         # namespace for backward compatibility. Using inline namespace math
         # causes cascading ambiguity with fl::detail, fl::simd, etc.

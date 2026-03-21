@@ -96,7 +96,7 @@ The following files were fixed to prevent Arduino macro conflicts:
 - `src/fl/hash_map_lru.h` - `(fl::numeric_limits<u32>::max)()`
 - `src/fl/noise_woryley.cpp.hpp` - `(fl::numeric_limits<i32>::max)()`
 - `src/fl/task.cpp.hpp` - `(numeric_limits<uint32_t>::max)()` (2 locations)
-- `src/fl/fx/video/pixel_stream.cpp.hpp` - `(fl::numeric_limits<int32_t>::max)()`
+- `src/fl/video/pixel_stream.cpp.hpp` - `(fl::numeric_limits<int32_t>::max)()`
 - `src/fl/spi/parallel_device.h` - Default parameter `(fl::numeric_limits<uint32_t>::max)()`
 - `src/fl/json.cpp.hpp` - Multiple `(max)()` and `(min)()` calls
 - `src/fl/traverse_grid.h` - 8 instances of `(max)()` in ternary expressions

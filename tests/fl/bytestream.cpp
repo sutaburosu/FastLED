@@ -2,7 +2,7 @@
 
 
 #include "fl/stl/detail/memory_file_handle.h"
-#include "fl/fx/video/pixel_stream.h"
+#include "fl/video/pixel_stream.h"
 #include "fl/stl/cstddef.h"
 #include "fl/stl/stdint.h"
 #include "fl/stl/span.h"

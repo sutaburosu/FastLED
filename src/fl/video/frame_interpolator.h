@@ -2,9 +2,10 @@
 
 #include "fl/stl/flat_map.h"
 #include "fl/stl/span.h"
-#include "fl/fx/video/frame_tracker.h"
+#include "fl/video/frame_tracker.h"
 
 namespace fl {
+namespace video {
 
 FASTLED_SHARED_PTR(FrameInterpolator);
 
@@ -102,4 +103,7 @@ class FrameInterpolator {
     FrameTracker mFrameTracker;
 };
 
+} // namespace video
+using FrameInterpolator = video::FrameInterpolator;
+using FrameInterpolatorPtr = video::FrameInterpolatorPtr;
 } // namespace fl

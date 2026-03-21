@@ -8,19 +8,21 @@
 namespace fl {
 class filebuf;
 class Frame;
-class FrameInterpolator;
-class PixelStream;
 class TimeWarp;
 
 using filebuf_ptr = fl::shared_ptr<filebuf>;
+FASTLED_SHARED_PTR(TimeWarp);
 } // namespace fl
 
 namespace fl {
+namespace video {
+
+class FrameInterpolator;
+class PixelStream;
 
 FASTLED_SHARED_PTR(VideoImpl);
 FASTLED_SHARED_PTR(FrameInterpolator);
-FASTLED_SHARED_PTR(PixelStream)
-FASTLED_SHARED_PTR(TimeWarp);
+FASTLED_SHARED_PTR(PixelStream);
 
 class VideoImpl {
   public:
@@ -58,10 +60,13 @@ class VideoImpl {
     PixelStreamPtr mStream;
     fl::u32 mPrevNow = 0;
     FrameInterpolatorPtr mFrameInterpolator;
-    TimeWarpPtr mTime;
+    fl::TimeWarpPtr mTime;
     fl::u32 mFadeInTime = 1000;
     fl::u32 mFadeOutTime = 1000;
     float mTimeScale = 1.0f;
 };
 
+} // namespace video
+using VideoImpl = video::VideoImpl;
+using VideoImplPtr = video::VideoImplPtr;
 } // namespace fl

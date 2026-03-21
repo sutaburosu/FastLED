@@ -9,6 +9,7 @@ using filebuf_ptr = fl::shared_ptr<filebuf>;
 } // namespace fl
 
 namespace fl {
+namespace video {
 
 FASTLED_SHARED_PTR(PixelStream);
 
@@ -55,4 +56,7 @@ class PixelStream {
     virtual ~PixelStream();
 };
 
+} // namespace video
+using PixelStream = video::PixelStream;
+using PixelStreamPtr = video::PixelStreamPtr;
 } // namespace fl

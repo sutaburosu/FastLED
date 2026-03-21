@@ -10,16 +10,21 @@
 
 namespace fl {
 
-struct CRGB; 
+struct CRGB;
 using CRGB = fl::CRGB;  // CRGB is now a typedef
 
 // Forward declare classes
 class filebuf;
 using filebuf_ptr = fl::shared_ptr<filebuf>;
 FASTLED_SHARED_PTR(Frame);
-FASTLED_SHARED_PTR(VideoImpl);
 FASTLED_SHARED_PTR(VideoFxWrapper);
 FASTLED_SHARED_PTR_NO_FWD(memorybuf);
+
+namespace video {
+class VideoImpl;
+} // namespace video
+using VideoImpl = video::VideoImpl;
+using VideoImplPtr = fl::shared_ptr<VideoImpl>;
 
 // Video represents a video file that can be played back on a LED strip.
 // The video file is expected to be a sequence of frames. Pass any filebuf

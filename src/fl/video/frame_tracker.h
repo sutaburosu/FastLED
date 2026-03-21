@@ -6,6 +6,7 @@
 // using namespace std;
 
 namespace fl {
+namespace video {
 
 // Tracks the current frame number based on the time elapsed since the start of
 // the animation.
@@ -30,4 +31,6 @@ class FrameTracker {
     fl::u32 mStartTime = 0;
 };
 
+} // namespace video
+using FrameTracker = video::FrameTracker;
 } // namespace fl

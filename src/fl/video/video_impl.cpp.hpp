@@ -1,16 +1,17 @@
 
 
-#include "fl/fx/video/video_impl.h"
+#include "fl/video/video_impl.h"
 
 #include "fl/stl/assert.h"
 #include "fl/math/math.h"
 #include "fl/system/log.h"
 #include "fl/system/file_system.h"
-#include "fl/fx/video/frame_interpolator.h"
-#include "fl/fx/video/pixel_stream.h"
+#include "fl/video/frame_interpolator.h"
+#include "fl/video/pixel_stream.h"
 #include "crgb.h"
 
 namespace fl {
+namespace video {
 
 VideoImpl::VideoImpl(size_t pixelsPerFrame, float fpsVideo,
                      size_t nFramesInBuffer)
@@ -352,4 +353,5 @@ bool VideoImpl::rewind() {
     return true;
 }
 
+} // namespace video
 } // namespace fl

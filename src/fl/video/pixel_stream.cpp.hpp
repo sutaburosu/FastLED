@@ -1,11 +1,12 @@
 
-#include "fl/fx/video/pixel_stream.h"
+#include "fl/video/pixel_stream.h"
 #include "fl/system/log.h"
 #include "fl/stl/limits.h"
 
 #define DBG FASTLED_DBG
 
 namespace fl {
+namespace video {
 
 PixelStream::PixelStream(int bytes_per_frame)
     : mbytesPerFrame(bytes_per_frame), mType(kFile) {}
@@ -158,4 +159,5 @@ size_t PixelStream::readBytes(u8 *dst, size_t len) {
     return bytesRead;
 }
 
+} // namespace video
 } // namespace fl

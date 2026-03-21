@@ -112,6 +112,10 @@ def MathNamespaceChecker() -> SubdirNamespaceChecker:  # noqa: N802
     return SubdirNamespaceChecker("math")
 
 
+def VideoNamespaceChecker() -> SubdirNamespaceChecker:  # noqa: N802
+    return SubdirNamespaceChecker("video")
+
+
 def main() -> None:
     """Run checker standalone for all registered subdirs."""
     import sys
@@ -122,7 +126,7 @@ def main() -> None:
     )
 
     had_violations = False
-    for subdir in ("net", "math"):
+    for subdir in ("net", "math", "video"):
         checker = SubdirNamespaceChecker(subdir)
         desc = f"fl/{subdir}/ headers with incorrect namespace"
         files = collect_files_to_check(

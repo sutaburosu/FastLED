@@ -14,6 +14,12 @@
 #include "test.h"
 #include "fl/system/file_system.h"
 #include "fl/gfx/crgb.h"
+#include "fl/fx/fx.h"
+#include "fl/fx/fx2d.h"
+#include "fl/stl/move.h"
+#include "fl/stl/string.h"
+#include "fl/math/xymap.h"
+#include "FastLED.h"
 
 FL_TEST_FILE(FL_FILEPATH) {
 
@@ -243,6 +249,53 @@ FL_TEST_CASE("video with end frame fadeout") {
         FL_REQUIRE_EQ(leds[i], CRGB(4, 4, 4));
     }
     #endif  //
+}
+
+// VideoFxWrapper tests
+
+namespace {
+
+FASTLED_SHARED_PTR(Fake2d);
+
+// Simple Fx2d object which writes a single red pixel to the first LED
+// with the red component being the intensity of the frame counter.
+class Fake2d : public fl::Fx2d {
+  public:
+    Fake2d() : Fx2d(XYMap::constructRectangularGrid(1,1)) {}
+
+    void draw(DrawContext context) override {
+        CRGB c = mColors[mFrameCounter % mColors.size()];
+        context.leds[0] = c;
+        mFrameCounter++;
+    }
+
+    bool hasFixedFrameRate(float *fps) const override {
+        *fps = 1;
+        return true;
+    }
+
+    fl::string fxName() const override { return "Fake2d"; }
+    uint8_t mFrameCounter = 0;
+    fl::FixedVector<CRGB, 5> mColors;
+};
+
+} // anonymous namespace
+
+FL_TEST_CASE("test_fixed_fps") {
+    Fake2dPtr fake = fl::make_shared<Fake2d>();
+    fake->mColors.push_back(CRGB(0, 0, 0));
+    fake->mColors.push_back(CRGB(255, 0, 0));
+    fl::VideoFxWrapper wrapper(fake);
+    wrapper.setFade(0, 0);
+    CRGB leds[1];
+    fl::Fx::DrawContext context(0, leds);
+    wrapper.draw(context);
+    FL_CHECK_EQ(1, fake->mFrameCounter);
+    FL_CHECK_EQ(leds[0], CRGB(0, 0, 0));
+    context.now = 500;
+    wrapper.draw(context);
+    FL_CHECK_EQ(2, fake->mFrameCounter);
+    FL_CHECK_EQ(leds[0], CRGB(127, 0, 0));
 }
 
 } // FL_TEST_FILE
