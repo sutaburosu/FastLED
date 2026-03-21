@@ -4,7 +4,6 @@
 
 #include "fl/stl/assert.h"  // IWYU pragma: keep
 #include "fl/stl/comparators.h"  // IWYU pragma: keep
-#include "fl/insert_result.h"
 #include "fl/stl/pair.h"
 #include "fl/stl/type_traits.h"  // IWYU pragma: keep
 #include "fl/stl/type_traits.h"  // IWYU pragma: keep
@@ -21,6 +20,8 @@ namespace fl {
 // replacement for std::map.
 template <typename Key, typename Value, fl::size N> class unsorted_map_fixed {
   public:
+    enum insert_result { inserted = 0, exists = 1, at_capacity = 2 };
+
     using PairKV = fl::pair<Key, Value>;
 
     typedef FixedVector<PairKV, N> VectorType;
@@ -121,49 +122,45 @@ template <typename Key, typename Value, fl::size N> class unsorted_map_fixed {
     }
 
     pair<bool, iterator> insert(const Key &key, const Value &value,
-                                InsertResult *result = nullptr) {
+                                insert_result *result = nullptr) {
         iterator it = find(key);
         if (it != end()) {
             if (result) {
-                *result = InsertResult::kExists;
+                *result = exists;
             }
-            // return false;
             return {false, it};
         }
         if (data.size() < N) {
             data.push_back(PairKV(key, value));
             if (result) {
-                *result = InsertResult::kInserted;
+                *result = inserted;
             }
-            // return true;
             return {true, data.end() - 1};
         }
         if (result) {
-            *result = InsertResult::kMaxSize;
+            *result = at_capacity;
         }
-        // return false;
         return {false, end()};
     }
 
-    // Move version of insert
     pair<bool, iterator> insert(Key &&key, Value &&value,
-                                InsertResult *result = nullptr) {
+                                insert_result *result = nullptr) {
         iterator it = find(key);
         if (it != end()) {
             if (result) {
-                *result = InsertResult::kExists;
+                *result = exists;
             }
             return {false, it};
         }
         if (data.size() < N) {
             data.push_back(PairKV(fl::move(key), fl::move(value)));
             if (result) {
-                *result = InsertResult::kInserted;
+                *result = inserted;
             }
             return {true, data.end() - 1};
         }
         if (result) {
-            *result = InsertResult::kMaxSize;
+            *result = at_capacity;
         }
         return {false, end()};
     }

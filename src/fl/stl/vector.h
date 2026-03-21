@@ -8,7 +8,6 @@
 #include "fl/stl/bit_cast.h"
 #include "fl/stl/functional.h"  // IWYU pragma: keep
 #include "fl/stl/initializer_list.h"  // IWYU pragma: keep
-#include "fl/insert_result.h"
 #include "fl/math/math.h"
 #include "fl/stl/cstring.h"
 #include "fl/stl/allocator.h"
@@ -1074,6 +1073,8 @@ class FL_ALIGN SortedHeapVector {
     fl::size mMaxSize = fl::size(-1);
 
   public:
+    enum insert_result { inserted = 0, exists = 1, at_capacity = 2 };
+
     typedef T value_type;
     typedef typename vector<T, Allocator>::iterator iterator;
     typedef typename vector<T, Allocator>::const_iterator const_iterator;
@@ -1130,30 +1131,25 @@ class FL_ALIGN SortedHeapVector {
     void reserve(fl::size n) { mArray.reserve(n); }
 
     // Insert while maintaining sort order
-    bool insert(const T &value, InsertResult *result = nullptr) {
+    bool insert(const T &value, insert_result *result = nullptr) {
         // Find insertion point using binary search
         iterator pos = lower_bound(value);
         if (pos != end() && !mLess(value, *pos) && !mLess(*pos, value)) {
-            // return false; // Already inserted.
             if (result) {
-                // *result = kExists;
-                *result = InsertResult::kExists;
+                *result = exists;
             }
-
             return false;
         }
         if (mArray.size() >= mMaxSize) {
-            // return false;  // Too full
             if (result) {
-                *result = InsertResult::kMaxSize;
+                *result = at_capacity;
             }
             return false;
         }
         mArray.insert(pos, value);
         if (result) {
-            *result = InsertResult::kInserted;
+            *result = inserted;
         }
-
         return true;
     }
 

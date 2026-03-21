@@ -6,7 +6,6 @@
 #include "fl/stl/pair.h"
 #include "fl/stl/vector.h"
 #include "fl/stl/allocator.h"
-#include "fl/insert_result.h"
 
 namespace fl {
 
@@ -25,6 +24,8 @@ template <typename Key, typename Value,
           typename Allocator = fl::allocator<fl::pair<Key, Value>>>
 class flat_map {
   public:
+    enum insert_result { inserted = 0, exists = 1, at_capacity = 2 };
+
     using key_type = Key;
     using mapped_type = Value;
     using value_type = fl::pair<Key, Value>;
@@ -280,36 +281,34 @@ class flat_map {
         return insert(fl::move(value)).first;
     }
 
-    // FastLED-style insert with InsertResult out parameter
-    bool insert(const Key& key, const Value& value, InsertResult* result = nullptr) {
+    bool insert(const Key& key, const Value& value, insert_result* result = nullptr) {
         auto it = lower_bound(key);
         if (it != end() && !mLess(key, it->first) && !mLess(it->first, key)) {
-            if (result) *result = InsertResult::kExists;
+            if (result) *result = exists;
             return false;
         }
         bool success = mData.insert(it, value_type(key, value));
         if (success) {
-            if (result) *result = InsertResult::kInserted;
+            if (result) *result = inserted;
             return true;
         }
-        if (result) *result = InsertResult::kMaxSize;
+        if (result) *result = at_capacity;
         return false;
     }
 
-    // Move version of insert with InsertResult out parameter
-    bool insert(Key&& key, Value&& value, InsertResult* result = nullptr) {
+    bool insert(Key&& key, Value&& value, insert_result* result = nullptr) {
         auto key_copy = key;
         auto it = lower_bound(key_copy);
         if (it != end() && !mLess(key_copy, it->first) && !mLess(it->first, key_copy)) {
-            if (result) *result = InsertResult::kExists;
+            if (result) *result = exists;
             return false;
         }
         bool success = mData.insert(it, value_type(fl::move(key), fl::move(value)));
         if (success) {
-            if (result) *result = InsertResult::kInserted;
+            if (result) *result = inserted;
             return true;
         }
-        if (result) *result = InsertResult::kMaxSize;
+        if (result) *result = at_capacity;
         return false;
     }
 

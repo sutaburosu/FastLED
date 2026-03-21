@@ -6,7 +6,6 @@
 #include "fl/stl/cstddef.h"
 #include "fl/stl/new.h"
 #include "test.h"
-#include "fl/insert_result.h"
 #include "fl/stl/allocator.h"
 #include "fl/stl/vector.h"
 #include "fl/stl/move.h"
@@ -441,10 +440,11 @@ FL_TEST_CASE("SortedVector") {
         vec.insert(4);
         vec.insert(5);  // Max size is 5
 
-        fl::InsertResult result;
+        fl::SortedHeapVector<int, Less>::insert_result result;
         vec.insert(6, &result);  // Try to insert into full vector
-        
-        FL_CHECK_EQ(fl::InsertResult::kMaxSize, result);  // Should return false
+
+        typedef fl::SortedHeapVector<int, Less> SHV;
+        FL_CHECK_EQ(SHV::at_capacity, result);  // Should return false
         FL_CHECK(vec.size() == 5);  // Size shouldn't change
         FL_CHECK(vec[4] == 5);  // Last element should still be 5
     }
