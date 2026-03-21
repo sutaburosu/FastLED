@@ -43,7 +43,8 @@ void HttpConnection::connect() {
 }
 
 void HttpConnection::disconnect() {
-    if (mState == ConnectionState::CONNECTED || mState == ConnectionState::CONNECTING) {
+    if (mState == ConnectionState::CONNECTED || mState == ConnectionState::CONNECTING ||
+        mState == ConnectionState::RECONNECTING) {
         transitionTo(ConnectionState::DISCONNECTED, 0);
     }
 }

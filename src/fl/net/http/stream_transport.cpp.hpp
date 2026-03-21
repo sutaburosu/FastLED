@@ -325,7 +325,7 @@ void HttpStreamTransport::update(u32 currentTimeMs) {
 
     // Handle state changes
     if (mWasConnected != nowConnected) {
-        handleConnectionStateChange();
+        handleConnectionStateChange(currentTimeMs);
         mWasConnected = nowConnected;
     }
 
@@ -437,11 +437,13 @@ bool HttpStreamTransport::processIncomingData() {
     return true;
 }
 
-void HttpStreamTransport::handleConnectionStateChange() {
+void HttpStreamTransport::handleConnectionStateChange(u32 currentTimeMs) {
     if (isConnected()) {
-        // Just connected
-        mLastHeartbeatSent = getCurrentTimeMs();
-        mLastHeartbeatReceived = getCurrentTimeMs();
+        // Just connected — use the caller-provided timestamp to avoid
+        // unsigned-underflow races between getCurrentTimeMs() and the
+        // currentTimeMs snapshot used by checkHeartbeatTimeout().
+        mLastHeartbeatSent = currentTimeMs;
+        mLastHeartbeatReceived = currentTimeMs;
         if (mOnConnect) {
             mOnConnect();
         }

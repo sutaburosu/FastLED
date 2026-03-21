@@ -27,19 +27,19 @@ class WasmAudioImpl {
     WasmAudioImpl(const fl::string& name, const fl::audio::Config& config);
     ~WasmAudioImpl();
 
-    Sample next();
+    audio::Sample next();
     bool hasNext();
 
     // Group setting (used by JSON UI system)
     void setGroup(const fl::string& groupName);
 
     // Expose underlying audio input for FastLED.add() auto-pump
-    fl::shared_ptr<IInput> audioInput() { return mWasmInputOwner; }
+    fl::shared_ptr<audio::IInput> audioInput() { return mWasmInputOwner; }
 
   private:
     fl::string mName;
     WasmAudioInput* mWasmInput;
-    fl::shared_ptr<IInput> mWasmInputOwner;  // Prevent premature destruction
+    fl::shared_ptr<audio::IInput> mWasmInputOwner;  // Prevent premature destruction
     bool mOwnsInput;  // Track if we created the input
     fl::shared_ptr<JsonUiAudioInternal> mInternal;  // UI registration component
 };

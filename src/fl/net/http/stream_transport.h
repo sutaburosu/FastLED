@@ -203,7 +203,7 @@ private:
     void sendHeartbeat();
     void checkHeartbeatTimeout(u32 currentTimeMs);
     bool processIncomingData();
-    void handleConnectionStateChange();
+    void handleConnectionStateChange(u32 currentTimeMs);
     void parseChunkedMessages();
     bool resolveRpc(const fl::json& msg, const fl::string& idKey);
     bool resolveRpcStream(const fl::json& msg, const fl::string& idKey);

@@ -135,14 +135,6 @@ bool is_would_block() {
 #endif
 }
 
-bool is_in_progress() {
-#ifdef FL_IS_WIN
-    int err = WSAGetLastError();
-    return err == WSAEWOULDBLOCK || err == WSAEINPROGRESS;
-#else
-    return errno == EWOULDBLOCK || errno == EINPROGRESS;
-#endif
-}
 
 int plat_getsockname(int fd, struct sockaddr *addr, socklen_t *addrlen) {
 #ifdef FL_IS_WIN
@@ -215,14 +207,21 @@ error_code socket::connect(const endpoint &ep) {
             continue;
 
         mFd = sock;
-        set_nonblocking(mFd, true);
-        mNonBlocking = true;
+        // Keep socket BLOCKING for connect() — non-blocking connect
+        // returns EINPROGRESS/WSAEWOULDBLOCK which is racy: subsequent
+        // send() can fail with ENOTCONN if the TCP handshake hasn't
+        // completed yet.  A blocking connect on loopback completes in
+        // microseconds; on real networks, the timeout is the OS default
+        // (typically 75-120 s), which is acceptable for a "synchronous
+        // connect" API.
 
         ret = plat_connect(mFd, addr->ai_addr,
                            static_cast<socklen_t>(addr->ai_addrlen));
 
-        if (ret == 0 || is_in_progress()) {
-            // Connected or connection in progress (non-blocking)
+        if (ret == 0) {
+            // Connected — now switch to non-blocking for all I/O
+            set_nonblocking(mFd, true);
+            mNonBlocking = true;
             ec = error_code();
             break;
         }

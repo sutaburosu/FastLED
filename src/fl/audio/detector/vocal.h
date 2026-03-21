@@ -69,25 +69,30 @@ private:
     ExponentialSmoother<float> mAcfIrregularitySmoother{0.08f};
     ExponentialSmoother<float> mZcCVSmoother{0.08f};
     fl::vector<float> mPrevBins;
+    fl::vector<float> mFluxNormBins; // Reusable buffer for spectral flux (avoids per-frame allocation)
     SpectralVariance<float> mSpectralVarianceFilter{0.2f};
     int mSampleRate = 44100;
-    int mNumBins = 128;
+    int mFormantNumBins = 64;
+    int mBroadNumBins = 16;
+    // Cached formant bin indices for the narrow formant FFT
+    int mFormantCachedBinCount = -1; // Invalidation sentinel
+    int mFormantF1MinBin = 0, mFormantF1MaxBin = 0;
+    int mFormantF2MinBin = 0, mFormantF2MaxBin = 0;
 
-    shared_ptr<const fft::Bins> mRetainedFFT;
+    shared_ptr<const fft::Bins> mRetainedFormantFFT;  // 64 bins, 200-3500 Hz
+    shared_ptr<const fft::Bins> mRetainedBroadFFT;    // 16 bins, 174.6-4698.3 Hz
 
-    // Analysis methods
-    float calculateSpectralCentroid(const fft::Bins& fft);
-    float calculateSpectralRolloff(const fft::Bins& fft);
-    float estimateFormantRatio(const fft::Bins& fft);
-    float calculateSpectralFlatness(const fft::Bins& fft);
-    float calculateHarmonicDensity(const fft::Bins& fft);
-    float calculateVocalPresenceRatio(const fft::Bins& fft);
-    float calculateSpectralFlux(const fft::Bins& fft);
-    float calculateSpectralVariance(const fft::Bins& fft);
-    float calculateEnvelopeJitter(span<const i16> pcm);
+    // Formant ratio from high-res narrow FFT (64 bins, 200-3500 Hz)
+    void computeFormantRatio(const fft::Bins& formantFft);
+    // Broad spectral features from low-res wide FFT (16 bins, 174.6-4698.3 Hz)
+    void computeBroadSpectralFeatures(const fft::Bins& broadFft);
+    // Vocal presence ratio from broad FFT linear bins
+    float calculateVocalPresenceRatio(const fft::Bins& broadFft);
+    // Fused PCM pass: computes envelope jitter + shimmer AND zero-crossing CV
+    // in a single traversal. Saves one full PCM pass (~2-3 us).
+    void computePCMTimeDomainFeatures(span<const i16> pcm);
     float calculateAutocorrelationIrregularity(span<const i16> pcm);
-    float calculateZeroCrossingCV(span<const i16> pcm);
-    float calculateRawConfidence(float centroid, float rolloff, float formantRatio,
+    float calculateRawConfidence(float formantRatio,
                                  float spectralFlatness, float harmonicDensity,
                                  float vocalPresenceRatio, float spectralFlux,
                                  float spectralVariance);
@@ -95,7 +100,8 @@ private:
 
 // Test-only accessor for internal diagnostic state
 struct VocalDetectorDiagnostics {
-    static int getNumBins(const Vocal& d) { return d.mNumBins; }
+    static int getNumBins(const Vocal& d) { return d.mFormantNumBins; }
+    static int getBroadNumBins(const Vocal& d) { return d.mBroadNumBins; }
     static float getSpectralFlatness(const Vocal& d) { return d.mSpectralFlatness; }
     static float getHarmonicDensity(const Vocal& d) { return d.mHarmonicDensity; }
     static float getSpectralCentroid(const Vocal& d) { return d.mSpectralCentroid; }
