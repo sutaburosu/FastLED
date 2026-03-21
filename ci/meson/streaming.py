@@ -12,7 +12,10 @@ from typing import Callable, Optional
 from running_process import RunningProcess
 
 from ci.meson.build_optimizer import BuildOptimizer
-from ci.meson.compile import _create_error_context_filter, _is_compilation_error
+from ci.meson.compile import (
+    _create_error_context_filter,
+    _is_compilation_error,
+)
 from ci.meson.compiler import get_meson_executable
 from ci.meson.output import print_error, print_success
 from ci.meson.phase_tracker import PhaseTracker

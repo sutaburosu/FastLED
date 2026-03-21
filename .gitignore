@@ -12,7 +12,7 @@ build/
 out/
 emscripten/
 *.o
-*.pch
+
 
 # Profile test results
 profile_*_results.json
@@ -104,6 +104,7 @@ examples/**/*.ino.cpp
 # WASM frontend build (Vite)
 src/platforms/wasm/compiler/dist/
 src/platforms/wasm/compiler/node_modules/
+
 
 # Claude Code local settings
 .claude/settings.local.json

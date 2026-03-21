@@ -95,7 +95,6 @@ def _invalidate_stale_pchs(build_dir: Path) -> None:
 def compile_meson(
     build_dir: Path,
     target: Optional[str] = None,
-    check: bool = False,
     quiet: bool = False,
     verbose: bool = False,
     build_mode: Optional[str] = None,
@@ -106,7 +105,6 @@ def compile_meson(
     Args:
         build_dir: Meson build directory
         target: Specific target to build (None = all)
-        check: Enable IWYU static analysis during compilation (default: False)
         quiet: Suppress banner and progress output (used during target fallback retries)
         verbose: Enable verbose output with section banners
         build_mode: Build mode string for display (e.g., "quick", "debug", "release").
@@ -137,9 +135,9 @@ def compile_meson(
     #   3. tests/ max source file mtime ≤ saved → no test source modifications
     #   4. Output DLL/exe mtime unchanged   → not rebuilt externally or deleted
     #
-    # Only applied to specific targets (not all-build) and non-IWYU mode.
+    # Only applied to specific targets (not all-build).
     # Overhead: ~20-50ms (os.scandir over tests/ source files). Savings: ~2-3s.
-    if target and not check and check_ninja_skip(build_dir, target):
+    if target and check_ninja_skip(build_dir, target):
         if not quiet:
             _ts_print(f"[BUILD] ✓ Target up-to-date (ninja skipped)")
         return CompileResult(
@@ -180,104 +178,17 @@ def compile_meson(
     test_name_slug = target.replace("/", "_") if target else "all"
     error_log_path = compile_errors_dir / f"{test_name_slug}.log"
 
-    # Inject IWYU wrapper by modifying build.ninja when check mode is enabled
-    # This avoids meson setup probe issues while still running IWYU during compilation
-    env = os.environ.copy()
-    if check:
-        # Use custom IWYU wrapper (fixes clang-tool-chain-iwyu argument forwarding issues)
-        iwyu_wrapper_path = Path(__file__).parent.parent / "iwyu_wrapper.py"
-        if iwyu_wrapper_path.exists():
-            # Use Python to invoke our custom wrapper
-            python_exe = sys.executable
-            iwyu_wrapper = f'"{python_exe}" "{iwyu_wrapper_path}"'
-            _ts_print(f"[MESON] Using custom IWYU wrapper: {iwyu_wrapper_path.name}")
-        else:
-            iwyu_wrapper = None
-            _ts_print(f"[MESON] ⚠️ Custom IWYU wrapper not found: {iwyu_wrapper_path}")
-
-        if iwyu_wrapper:
-            # Modify build.ninja to wrap C++ compiler with IWYU
-            # This is done after meson setup (which uses normal compiler) but before ninja runs
-            build_ninja_path = build_dir / "build.ninja"
-            if build_ninja_path.exists():
-                try:
-                    # Read build.ninja
-                    build_ninja_content = build_ninja_path.read_text(encoding="utf-8")
-
-                    # Replace C++ compiler command in cpp_COMPILER rule with IWYU wrapper
-                    # Pattern matches EITHER:
-                    #   1. Single executable: command = "path\to\clang++.EXE" $ARGS
-                    #   2. Python wrapper: command = "python.exe" "wrapper.py" $ARGS
-
-                    # Flexible pattern that captures the entire compiler command before $ARGS
-                    # Group 1: "rule cpp_COMPILER\n command = "
-                    # Group 2: The entire compiler command (could be single or multiple quoted strings)
-                    # Group 3: " $ARGS" and rest
-                    pattern = r'(rule cpp_COMPILER\s+command = )((?:"[^"]*"\s*)+)(\$ARGS.*?)(?=\n\s*(?:deps|$))'
-
-                    def replace_compiler(match: re.Match[str]) -> str:
-                        prefix = match.group(1)
-                        compiler_cmd = match.group(2).strip()
-                        args_and_rest = match.group(3)
-
-                        # Escape backslashes in paths for re.sub
-                        iwyu_escaped = iwyu_wrapper.replace("\\", "\\\\")
-
-                        # Wrap the entire compiler command with IWYU
-                        # iwyu_wrapper already contains proper quoting (e.g., "python.exe" "script.py")
-                        # Format: python.exe script.py -- original_compiler_command $ARGS...
-                        return (
-                            f"{prefix}{iwyu_escaped} -- {compiler_cmd} {args_and_rest}"
-                        )
-
-                    modified_content = re.sub(
-                        pattern, replace_compiler, build_ninja_content, flags=re.DOTALL
-                    )
-
-                    # Also strip out PCH flags from all ARGS variables since IWYU doesn't support PCH
-                    # Pattern matches ARGS lines containing PCH flags
-                    # Example: ARGS = ... -include-pch "path.pch" -Werror=invalid-pch -fpch-validate-input-files-content ...
-                    # We need to remove these three flags together
-                    pch_pattern = r'(-include-pch\s+"[^"]+"\s+-Werror=invalid-pch\s+-fpch-validate-input-files-content\s+)'
-                    modified_content = re.sub(
-                        pch_pattern, "", modified_content, flags=re.MULTILINE
-                    )
-
-                    if modified_content != build_ninja_content:
-                        build_ninja_path.write_text(modified_content, encoding="utf-8")
-                        _ts_print(
-                            f"[MESON] ✅ IWYU wrapper injected into build.ninja: {iwyu_wrapper}"
-                        )
-                        _ts_print(
-                            f"[MESON] ✅ PCH flags removed from all compile commands (IWYU does not support PCH)"
-                        )
-                    else:
-                        _ts_print(
-                            f"[MESON] ⚠️ Failed to modify build.ninja (content unchanged)"
-                        )
-                        _ts_print(
-                            f"[MESON] DEBUG: Looking for cpp_COMPILER rule in build.ninja"
-                        )
-                except (OSError, IOError) as e:
-                    _ts_print(f"[MESON] ⚠️ Failed to modify build.ninja: {e}")
-            else:
-                _ts_print(f"[MESON] ⚠️ build.ninja not found, skipping IWYU injection")
-        else:
-            _ts_print(f"[MESON] ⚠️ IWYU wrapper not found, skipping static analysis")
-
     # Create tee for error log capture (stdout + stderr merged)
     stderr_tee = StreamTee(error_log_path, echo=False)
     last_error_lines: list[str] = []
 
     try:
         # Use RunningProcess for streaming output
-        # Pass modified environment with IWYU wrapper if check=True
         proc = RunningProcess(
             cmd,
             timeout=600,  # 10 minute timeout for compilation
             auto_run=True,
             check=False,  # We'll check returncode manually
-            env=env,  # Pass environment with IWYU wrapper
             output_formatter=TimestampFormatter(),
         )
 
@@ -649,8 +560,7 @@ def compile_meson(
         # This was previously conditional on quiet mode, but it's always redundant
 
         # Save ninja skip state so the next run can bypass ninja for this target.
-        # Only for specific targets (not all-build) and non-IWYU mode.
-        if target and not check:
+        if target:
             save_ninja_skip_state(build_dir, target)
 
         return CompileResult(
