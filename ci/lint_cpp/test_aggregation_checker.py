@@ -113,10 +113,16 @@ def _collect_included_files(excluded_dir: Path) -> tuple[Path | None, set[Path]]
         if agg.exists():
             agg_dir = agg.parent
             for inc_path in _parse_includes(agg):
-                # Resolve include relative to the aggregator's directory
+                # Try resolving relative to the aggregator's directory first
                 resolved = (agg_dir / inc_path).resolve()
                 if resolved.exists():
                     included_files.add(resolved)
+                else:
+                    # Also try resolving relative to project root
+                    # (for fully-qualified includes like "tests/fl/codec/gif.hpp")
+                    resolved_root = (PROJECT_ROOT / inc_path).resolve()
+                    if resolved_root.exists():
+                        included_files.add(resolved_root)
         check_dir = check_dir.parent
 
     return aggregator, included_files
@@ -158,6 +164,8 @@ def check() -> tuple[bool, list[str]]:
         # Check for .cpp includes in the direct aggregator (should be .hpp)
         for inc_path in sorted(_parse_includes(aggregator)):
             inc_resolved = (aggregator.parent / inc_path).resolve()
+            if not inc_resolved.exists():
+                inc_resolved = (PROJECT_ROOT / inc_path).resolve()
             if inc_resolved.is_relative_to(excluded_dir) and inc_path.endswith(".cpp"):
                 rel_agg = aggregator.relative_to(PROJECT_ROOT)
                 violations.append(
@@ -193,6 +201,8 @@ def check_single_file(file_path: Path) -> tuple[bool, list[str]]:
                     )
             for inc_path in sorted(_parse_includes(aggregator)):
                 inc_resolved = (aggregator.parent / inc_path).resolve()
+                if not inc_resolved.exists():
+                    inc_resolved = (PROJECT_ROOT / inc_path).resolve()
                 if inc_resolved.is_relative_to(excluded_dir) and inc_path.endswith(
                     ".cpp"
                 ):

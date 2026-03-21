@@ -15,18 +15,18 @@ FL_TEST_CASE("Audio - Test registration works") {
 }
 
 // Include audio test files (unity build pattern)
-#include "audio/audio_context.hpp"
-#include "audio/auto_gain.hpp"
-#include "audio/frequency_bin_mapper.hpp"
-#include "audio/noise_floor_tracker.hpp"
-#include "audio/signal_conditioner.hpp"
-#include "audio/spectral_equalizer.hpp"
-#include "audio/synth.hpp"
-#include "audio/detector/equalizer.hpp"
-#include "audio/gain.hpp"
-#include "audio/mic_response_data.hpp"
-#include "audio/detector/multiband_beat_detector.hpp"
-#include "audio/detector/musical_beat_detector.hpp"
+#include "tests/fl/audio/audio_context.hpp"
+#include "tests/fl/audio/auto_gain.hpp"
+#include "tests/fl/audio/frequency_bin_mapper.hpp"
+#include "tests/fl/audio/noise_floor_tracker.hpp"
+#include "tests/fl/audio/signal_conditioner.hpp"
+#include "tests/fl/audio/spectral_equalizer.hpp"
+#include "tests/fl/audio/synth.hpp"
+#include "tests/fl/audio/detector/equalizer.hpp"
+#include "tests/fl/audio/gain.hpp"
+#include "tests/fl/audio/mic_response_data.hpp"
+#include "tests/fl/audio/detector/multiband_beat_detector.hpp"
+#include "tests/fl/audio/detector/musical_beat_detector.hpp"
 
 FL_TEST_FILE(FL_FILEPATH) {
 

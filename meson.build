@@ -11,6 +11,7 @@ project('fastled', 'cpp',
 # Source directory
 src_dir = include_directories('src')
 tests_dir = include_directories('tests')
+project_root_dir = include_directories('.')
 
 # Platform-specific stub include (provides Arduino.h and other stub headers)
 stub_dir = include_directories('src/platforms/stub')

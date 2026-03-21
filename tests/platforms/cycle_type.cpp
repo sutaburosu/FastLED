@@ -103,7 +103,7 @@ FL_TEST_CASE("fl::cycle_t type definition") {
 }
 
 // Grouped tests
-#include "../fl/stl/limits.hpp"
+#include "tests/fl/stl/limits.hpp"
 
 FL_TEST_FILE(FL_FILEPATH) {
 

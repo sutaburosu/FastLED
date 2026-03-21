@@ -4,5 +4,5 @@
 #include "fl/audio/fft/fft_impl.h"
 
 FL_TEST_FILE(FL_FILEPATH) {
-#include "fft_sweep.hpp"
+#include "tests/misc/fft_sweep.hpp"
 } // FL_TEST_FILE

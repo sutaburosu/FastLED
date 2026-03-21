@@ -28,7 +28,7 @@ FL_DISABLE_WARNING(pragma-pack)
 // IWYU pragma: no_include "test.h"
 
 // Include fl_unittest.h for test registration and execution
-#include "shared/fl_unittest.h"
+#include "tests/shared/fl_unittest.h"
 
 #ifdef _WIN32
 FL_DISABLE_WARNING_POP

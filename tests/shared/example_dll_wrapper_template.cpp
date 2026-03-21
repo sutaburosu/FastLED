@@ -42,7 +42,7 @@ void loop() {}
 
 // DLL mode: Use export function from example_dll_main.hpp
 #ifdef EXAMPLE_DLL_MODE
-#include "shared/example_dll_main.hpp"
+#include "tests/shared/example_dll_main.hpp"
 #else
 // Standalone mode: Use standard stub_main.hpp with main()
 #include "platforms/stub_main.hpp"

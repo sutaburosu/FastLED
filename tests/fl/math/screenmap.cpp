@@ -161,7 +161,7 @@ FL_TEST_CASE("ScreenMap getBounds functionality") {
 }
 
 // Grouped tests
-#include "xymap.hpp"
+#include "tests/fl/math/xymap.hpp"
 
 FL_TEST_FILE(FL_FILEPATH) {
 

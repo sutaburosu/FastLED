@@ -16,7 +16,7 @@ FL_DISABLE_WARNING_PUSH
 FL_DISABLE_WARNING(pragma-pack)
 #endif
 
-#include "../crash_handler.h"
+#include "tests/crash_handler.h"
 
 #ifdef _WIN32
 FL_DISABLE_WARNING_POP

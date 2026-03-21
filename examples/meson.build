@@ -215,7 +215,7 @@ foreach example_name : example_paths.keys()
     wrapper_cpp = files(project_root / 'tests' / 'shared' / 'example_dll_wrapper_template.cpp')
 
     # Add FastLED includes (src, stub platform, and tests for shared infrastructure) to the example includes
-    all_includes = [src_dir, stub_dir, tests_dir] + include_objs
+    all_includes = [project_root_dir, src_dir, stub_dir, tests_dir] + include_objs
 
     # Get additional source files for this example (e.g., src/*.cpp)
     additional_sources = []
