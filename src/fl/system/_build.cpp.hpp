@@ -7,4 +7,6 @@
 #include "fl/system/log.cpp.hpp"
 #include "fl/system/pin.cpp.hpp"
 #include "fl/system/pins.cpp.hpp"
+#include "fl/system/engine_events.cpp.hpp"
+#include "fl/system/serial.cpp.hpp"
 #include "fl/system/yield.cpp.hpp"

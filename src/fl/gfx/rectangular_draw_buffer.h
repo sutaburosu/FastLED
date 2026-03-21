@@ -16,8 +16,9 @@
 // for that pin.
 
 #include "fl/stl/int.h"
+#include "fl/stl/allocator.h"
 #include "fl/stl/flat_map.h"
-#include "fl/scoped_array.h"
+#include "fl/stl/unique_ptr.h"
 #include "fl/stl/vector.h"
 #include "fl/stl/strstream.h"
 
@@ -78,7 +79,7 @@ class RectangularDrawBuffer {
     // We manually manage the memory for the buffer of all LEDs so that it can
     // go into psram on ESP32S3, which is managed by fl::PSRamAllocator.
     // Use PSRamDeleter to properly free memory allocated with PSRamAllocator.
-    scoped_array<u8, PSRamDeleter<u8>> mAllLedsBufferUint8;
+    unique_ptr<u8[], PSRamDeleter<u8>> mAllLedsBufferUint8;
     u32 mAllLedsBufferUint8Size = 0;
     fl::flat_map<u8, fl::span<u8>> mPinToLedSegment;
     DrawList mDrawList;

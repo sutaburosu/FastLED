@@ -155,7 +155,7 @@ template <typename T> struct Hash<T *> {
 template <typename T> struct Hash<vec2<T>> {
     u32 operator()(const vec2<T> &key) const noexcept {
 FL_DISABLE_WARNING_PUSH
-FL_DISABLE_WARNING(maybe-uninitialized)
+FL_DISABLE_WARNING_MAYBE_UNINITIALIZED
         T packed[2] = {key.x, key.y};
         const void *p = &packed[0];
         return MurmurHash3_x86_32(p, sizeof(packed));

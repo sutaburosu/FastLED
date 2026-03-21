@@ -4,7 +4,7 @@
 #include "fl/stl/string.h"  // IWYU pragma: keep
 #include "fl/stl/stdint.h"  // IWYU pragma: keep
 #include "fl/stl/detail/file_handle.h"  // IWYU pragma: keep
-#include "fl/scoped_array.h"  // IWYU pragma: keep
+#include "fl/stl/unique_ptr.h"  // IWYU pragma: keep
 #include "fl/fx/frame.h"  // IWYU pragma: keep
 #include "fl/codec/idecoder.h"  // IWYU pragma: keep
 

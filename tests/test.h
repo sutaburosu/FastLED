@@ -10,7 +10,7 @@
 #include "fl/stl/stdio.h"
 #include "crgb.h"
 #include "fl/stl/unordered_set.h"
-#include "fl/lut.h"
+#include "fl/math/lut.h"
 #include "fl/stl/optional.h"
 #include "fl/stl/strstream.h"
 #include "fl/gfx/tile2x2.h"

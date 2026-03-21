@@ -41,7 +41,7 @@ EXCLUDED_TEST_FILES: set[Path] = {
     TESTS_DIR / "fl" / "time_alpha.cpp",  # → timeout.cpp
     TESTS_DIR / "fl" / "assume_aligned.cpp",  # → align.cpp
     TESTS_DIR / "fl" / "map_range.cpp",  # → clamp.cpp
-    TESTS_DIR / "fl" / "hash_map_lru.cpp",  # → hash.cpp
+    TESTS_DIR / "fl" / "unordered_map_lru.cpp",  # → hash.cpp
     TESTS_DIR / "fl" / "insert_result.cpp",  # → hash.cpp
     TESTS_DIR / "fl" / "alloca.cpp",  # → memory.cpp
     TESTS_DIR / "fl" / "numeric_limits.cpp",  # → types.cpp

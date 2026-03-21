@@ -8,7 +8,7 @@
 #include "fl/stl/int.h"  // IWYU pragma: keep
 #include "fl/audio/audio.h"
 #include "fl/audio/audio_input.h"  // For audio::Config  // IWYU pragma: keep
-#include "fl/engine_events.h"
+#include "fl/system/engine_events.h"
 #include "fl/stl/function.h"
 #include "fl/math/math.h"
 #include "fl/stl/type_traits.h"

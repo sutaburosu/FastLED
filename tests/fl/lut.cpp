@@ -3,7 +3,7 @@
 
 
 #include "fl/math/intmap.h"
-#include "fl/lut.h"
+#include "fl/math/lut.h"
 #include "fl/stl/stdint.h"
 #include "test.h"
 

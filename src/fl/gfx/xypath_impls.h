@@ -10,7 +10,7 @@
 // We provide common paths discovered throughout human history, for use in
 // your animations.
 
-#include "fl/lut.h"  // IWYU pragma: keep
+#include "fl/math/lut.h"  // IWYU pragma: keep
 #include "fl/math/math.h"  // IWYU pragma: keep
 #include "fl/stl/shared_ptr.h"         // For FASTLED_SHARED_PTR macros
 #include "fl/gfx/tile2x2.h"  // IWYU pragma: keep

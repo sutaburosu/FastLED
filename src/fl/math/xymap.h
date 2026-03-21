@@ -2,7 +2,7 @@
 
 #include "fl/stl/compiler_control.h"
 #include "fl/math/math.h"
-#include "fl/lut.h"
+#include "fl/math/lut.h"
 #include "fl/stl/type_traits.h"
 #include "fl/stl/int.h"
 

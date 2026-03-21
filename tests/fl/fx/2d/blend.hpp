@@ -6,7 +6,7 @@
 #include "fl/fx/2d/blend.h"
 #include "fl/fx/fx.h"
 
-#include "fl/scoped_array.h"
+#include "fl/stl/unique_ptr.h"
 #include "fl/stl/ostream.h"
 #include "fl/stl/stdint.h"
 #include "crgb.h"
@@ -60,7 +60,7 @@ class TestFx2D : public fl::Fx2d {
         }
     }
 
-    fl::scoped_array<CRGB> mLeds;
+    fl::unique_ptr<CRGB[]> mLeds;
 };
 
 FL_TEST_CASE("Test FX2d Layered Blending") {

@@ -3,7 +3,7 @@
 #include <stdint.h>
 // IWYU pragma: end_keep  // for u8, u32, u16
 #include "FastLED.h"
-#include "fl/engine_events.h"
+#include "fl/system/engine_events.h"
 #include "fl/stl/compiler_control.h"
 #include "fl/channels/channel.h"
 #include "fl/channels/channel_events.h"

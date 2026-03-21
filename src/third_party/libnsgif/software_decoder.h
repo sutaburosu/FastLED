@@ -5,7 +5,7 @@
 #include "fl/stl/shared_ptr.h"
 #include "fl/stl/string.h"
 #include "fl/stl/stdint.h"
-#include "fl/scoped_array.h"
+#include "fl/stl/unique_ptr.h"
 #include "fl/stl/vector.h"
 #include "fl/fx/frame.h"
 
@@ -18,13 +18,13 @@ namespace third_party {
 
     // Simple bitmap wrapper for libnsgif integration with FastLED Frame
     struct GifBitmap {
-        fl::scoped_array<fl::u8> pixels;
+        fl::unique_ptr<fl::u8[]> pixels;
         fl::u16 width;
         fl::u16 height;
         fl::u8 bytesPerPixel;
 
         GifBitmap(fl::u16 w, fl::u16 h, fl::u8 bpp)
-            : pixels(fl::make_scoped_array<fl::u8>(w * h * bpp))
+            : pixels(fl::make_unique<fl::u8[]>(w * h * bpp))
             , width(w)
             , height(h)
             , bytesPerPixel(bpp) {

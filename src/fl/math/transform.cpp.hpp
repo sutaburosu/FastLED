@@ -1,7 +1,7 @@
 
 #include "fl/math/math.h"
 
-#include "fl/lut.h"
+#include "fl/math/lut.h"
 #include "fl/math/math.h"
 #include "fl/math/transform.h"
 #include "fl/math/intmap.h"

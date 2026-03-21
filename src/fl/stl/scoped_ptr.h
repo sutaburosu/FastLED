@@ -2,8 +2,7 @@
 #pragma once
 
 // Backward compatibility - include the new unique_ptr header
-#include "fl/stl/unique_ptr.h"
-#include "fl/scoped_array.h"  // IWYU pragma: keep
+#include "fl/stl/unique_ptr.h"  // IWYU pragma: keep
 
 namespace fl {
 

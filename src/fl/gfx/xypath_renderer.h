@@ -3,7 +3,7 @@
 
 // #include "fl/stl/assert.h"
 // #include "fl/stl/function.h"
-// #include "fl/lut.h"
+// #include "fl/math/lut.h"
 // #include "fl/map_range.h"
 // #include "fl/math/math.h"
 // #include "fl/gfx/raster.h"

@@ -2,7 +2,7 @@
 #include "fl/audio/fft/fft.h"
 #include "fl/stl/compiler_control.h"
 #include "fl/audio/fft/fft_impl.h"
-#include "fl/hash_map_lru.h"
+#include "fl/stl/unordered_map_lru.h"
 #include "fl/stl/int.h"
 #include "fl/stl/shared_ptr.h"  // For shared_ptr
 #include "fl/stl/singleton.h"

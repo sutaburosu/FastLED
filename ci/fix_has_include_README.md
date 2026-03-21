@@ -105,7 +105,7 @@ When adding the include, the script uses this priority order:
 
 **Files Fixed:**
 1. `tests/crash_handler.h` (manual fix)
-2. `src/fl/serial.h` (auto-fix)
+2. `src/fl/system/serial.h` (auto-fix)
 3. `src/fl/undef.h` (auto-fix)
 
 ## IWYU Pragma

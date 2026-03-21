@@ -73,12 +73,12 @@ struct SoftwareMpeg1Decoder::Mpeg1DecoderData {
     fl::u16 frameRate = 0;
 
     // Input buffer for pl_mpeg
-    fl::scoped_array<fl::u8> inputBuffer;
+    fl::unique_ptr<fl::u8[]> inputBuffer;
     fl::size inputSize = 0;
     fl::size totalSize = 0;
 
     // Current decoded frame data (RGB)
-    fl::scoped_array<fl::u8> rgbFrameBuffer;
+    fl::unique_ptr<fl::u8[]> rgbFrameBuffer;
     fl::size rgbFrameSize = 0;
 
     // Decoder state

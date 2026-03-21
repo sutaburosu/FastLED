@@ -8,7 +8,7 @@
 // ok no namespace fl
 
 #include "platforms/stub_main.hpp"
-#include "fl/engine_events.h"
+#include "fl/system/engine_events.h"
 
 // Export function for DLL mode - called by example_runner.exe
 extern "C" {

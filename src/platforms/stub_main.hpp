@@ -16,7 +16,7 @@
 #include "fl/stl/compiler_control.h"  // For FL_MAYBE_UNUSED
 #include "fl/stl/function.h"
 #include "fl/system/delay.h"  // For delay() function
-#include "fl/engine_events.h"  // For onExit() event
+#include "fl/system/engine_events.h"  // For onExit() event
 #if !defined(ARDUINO) || defined(FASTLED_USE_STUB_ARDUINO)
 #include "platforms/stub/time_stub.h"
 #endif

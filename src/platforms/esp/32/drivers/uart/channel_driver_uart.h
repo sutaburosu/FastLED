@@ -33,7 +33,7 @@
 #include "fl/channels/data.h"
 #include "fl/channels/driver.h"
 #include "fl/chipsets/led_timing.h"
-#include "fl/engine_events.h"
+#include "fl/system/engine_events.h"
 #include "fl/stl/span.h"
 #include "fl/stl/vector.h"
 #include "platforms/esp/32/drivers/uart/iuart_peripheral.h"

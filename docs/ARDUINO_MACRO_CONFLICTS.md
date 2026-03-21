@@ -93,7 +93,7 @@ static T max() { ... }
 The following files were fixed to prevent Arduino macro conflicts:
 
 ### Using Parentheses for Calls:
-- `src/fl/hash_map_lru.h` - `(fl::numeric_limits<u32>::max)()`
+- `src/fl/stl/unordered_map_lru.h` - `(fl::numeric_limits<u32>::max)()`
 - `src/fl/noise_woryley.cpp.hpp` - `(fl::numeric_limits<i32>::max)()`
 - `src/fl/task.cpp.hpp` - `(numeric_limits<uint32_t>::max)()` (2 locations)
 - `src/fl/video/pixel_stream.cpp.hpp` - `(fl::numeric_limits<int32_t>::max)()`

@@ -54,6 +54,8 @@
   #define FL_DISABLE_WARNING_C17_EXTENSIONS FL_DISABLE_WARNING(c++17-extensions)
   // Clang doesn't have class-memaccess warning, use no-op
   #define FL_DISABLE_WARNING_CLASS_MEMACCESS
+  // Clang doesn't have maybe-uninitialized warning (uses -Wuninitialized instead)
+  #define FL_DISABLE_WARNING_MAYBE_UNINITIALIZED
 #elif defined(FL_IS_GCC) && FL_GCC_VERSION >= 406
   // GCC doesn't have global-constructors warning, use no-op
   #define FL_DISABLE_WARNING_GLOBAL_CONSTRUCTORS
@@ -103,6 +105,8 @@
   #else
     #define FL_DISABLE_WARNING_CLASS_MEMACCESS
   #endif
+  // GCC has maybe-uninitialized warning
+  #define FL_DISABLE_WARNING_MAYBE_UNINITIALIZED FL_DISABLE_WARNING(maybe-uninitialized)
   // GCC 7+: 'register' deprecated in C++11, removed in C++17 (-Wregister)
   #if FL_GCC_VERSION >= 700
     #define FL_DISABLE_WARNING_DEPRECATED_REGISTER FL_DISABLE_WARNING(register)
@@ -130,6 +134,7 @@
   #define FL_DISABLE_WARNING_C17_EXTENSIONS
   // Other compilers don't have class-memaccess warning, use no-op
   #define FL_DISABLE_WARNING_CLASS_MEMACCESS
+  #define FL_DISABLE_WARNING_MAYBE_UNINITIALIZED
 #endif
 
 // END WARNING SPECIFIC MACROS THAT MAY NOT BE UNIVERSAL.

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "fl/stl/stdint.h"
+#include "fl/stl/unique_ptr.h"
 
 #include "fl/gfx/sample.h"
 #include "fl/math/screenmap.h"
@@ -78,7 +79,7 @@ class Fx2dTo1d : public Fx1d {
     InterpolationMode mInterpolationMode;
 
     // Working buffer for 2D effect rendering
-    fl::scoped_array<CRGB> mGrid;
+    fl::unique_ptr<CRGB[]> mGrid;
 };
 
 } // namespace fl

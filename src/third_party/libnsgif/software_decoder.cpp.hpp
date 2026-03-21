@@ -1,5 +1,5 @@
 #include "software_decoder.h"
-#include "fl/scoped_array.h"
+#include "fl/stl/unique_ptr.h"
 #include "fl/stl/string.h"
 #include "fl/stl/cstring.h"  // for fl::memset() and fl::memcpy()
 

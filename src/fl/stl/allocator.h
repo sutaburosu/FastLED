@@ -79,6 +79,17 @@ void ClearMallocFreeHook();
 void SetPSRamAllocator(void *(*alloc)(fl::size), void (*free)(void *));
 void *PSRamAllocate(fl::size size, bool zero = true);
 void PSRamDeallocate(void *ptr);
+
+// Deleter for memory allocated via fl::PSRamAllocator (uses fl::PSRamDeallocate)
+template <typename T> struct PSRamDeleter {
+    PSRamDeleter() = default;
+    void operator()(T *ptr) {
+        if (ptr) {
+            PSRamDeallocate(ptr);
+        }
+    }
+};
+
 void* Malloc(fl::size size);
 void Free(void *ptr);
 

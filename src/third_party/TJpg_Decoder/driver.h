@@ -8,6 +8,7 @@
 #include "fl/stl/shared_ptr.h"
 #include "fl/stl/span.h"
 #include "fl/stl/string.h"
+#include "fl/stl/unique_ptr.h"
 #include "fl/codec/pixel.h"
 #include "fl/fx/frame.h"
 #include "fl/system/file_system.h"
@@ -71,7 +72,7 @@ private:
 
     // Frame management
     fl::shared_ptr<Frame> current_frame_;
-    fl::scoped_array<fl::u8> frame_buffer_;
+    fl::unique_ptr<fl::u8[]> frame_buffer_;
     fl::size frame_buffer_size_ = 0;
 
     // State tracking
@@ -81,7 +82,7 @@ private:
 
     // Input data management
     fl::filebuf_ptr input_stream_;
-    fl::scoped_array<fl::u8> input_buffer_;
+    fl::unique_ptr<fl::u8[]> input_buffer_;
     fl::size input_size_ = 0;
 
     // Processing time management

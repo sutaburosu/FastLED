@@ -45,7 +45,7 @@ struct PinGroup {
     fl::i32 sm;           ///< State machine index (-1 if not allocated)
     fl::i32 dma_chan;     ///< DMA channel (-1 if not allocated)
 
-    fl::scoped_array<fl::u8> transpose_buffer;  ///< Bit-transposed output buffer
+    fl::unique_ptr<fl::u8[]> transpose_buffer;  ///< Bit-transposed output buffer
     fl::u32 buffer_size;  ///< Size of transpose buffer
 
     PinGroup() : base_pin(0), num_pins(0), pio(nullptr), sm(-1), dma_chan(-1), buffer_size(0) {}

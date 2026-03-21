@@ -209,7 +209,7 @@ using fl::degrees;
 
 #include "fastspi.h"
 #include "chipsets.h"
-#include "fl/engine_events.h"
+#include "fl/system/engine_events.h"
 
 #include "fl/leds.h"
 
@@ -1473,7 +1473,7 @@ extern CFastLED FastLED;
 #include "fl/system/log.h"
 #include "fl/system/log.h"  // FASTLED_WARN("time now: " << millis()), FASTLED_WARN_IF(condition, "time now: " << millis());"
 #include "fl/system/log.h"  // FL_PRINT("message" << value), FL_LOG_*() category-specific logging
-#include "fl/serial.h"  // Arduino-compatible Serial API: fl::Serial.print(), fl::Serial.read(), etc.
+#include "fl/system/serial.h"  // Arduino-compatible Serial API: fl::Serial.print(), fl::Serial.read(), etc.
 #include "fl/stl/assert.h"  // FASTLED_ASSERT(condition, "message");
 #include "fl/stl/sstream.h"  // fl::sstream for string stream operations
 #include "fl/remote/remote.h"  // Remote RPC system for JSON-based function calls (requires FASTLED_ENABLE_JSON)
