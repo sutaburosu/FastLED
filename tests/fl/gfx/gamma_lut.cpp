@@ -2,7 +2,7 @@
 
 #include "test.h"
 #include "fl/gfx/gamma_lut.h"
-#include "fl/gfx/ease.h"
+#include "fl/math/ease.h"
 #include <cmath>   // ok include - for pow()
 #include <cstdio>  // ok include - for printf()
 

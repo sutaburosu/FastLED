@@ -14,15 +14,16 @@
 #include "fl/fastled.h"
 
 
+#include "fl/stl/compiler_control.h"
 #include "fl/stl/cstring.h"
-#include "fl/stl/math.h"
+#include "fl/math/math.h"
 // Compiler throws a warning about stack usage possibly being unbounded even
 // though bounds are checked, silence that so users don't see it
-#pragma GCC diagnostic push
+FL_DISABLE_WARNING_PUSH
 #if defined(FL_IS_GCC)
-  #pragma GCC diagnostic ignored "-Wstack-usage="
+  FL_DISABLE_WARNING(stack-usage=)
 #elif defined(FL_IS_CLANG)
-  #pragma clang diagnostic ignored "-Wunknown-warning-option"
+  FL_DISABLE_WARNING(unknown-warning-option)
 #endif
 
 
@@ -575,7 +576,7 @@ fl::u8 inoise8(fl::u16 x, fl::u16 y, fl::u16 z) {
     //return scale8(76+(inoise8_raw(x,y,z)),215)<<1;
     fl::i8 n = inoise8_raw( x, y, z);  // -64..+64
     n+= 64;                            //   0..128
-    fl::u8 ans = fl::qadd8( n, n);        //   0..255
+    fl::u8 ans = qadd8( n, n);        //   0..255
     return ans;
 }
 
@@ -619,7 +620,7 @@ fl::u8 inoise8(fl::u16 x, fl::u16 y) {
   //return scale8(69+inoise8_raw(x,y),237)<<1;
     fl::i8 n = inoise8_raw( x, y);  // -64..+64
     n+= 64;                         //   0..128
-    fl::u8 ans = fl::qadd8( n, n);     //   0..255
+    fl::u8 ans = qadd8( n, n);     //   0..255
     return ans;
 }
 
@@ -652,7 +653,7 @@ fl::i8 inoise8_raw(fl::u16 x)
 fl::u8 inoise8(fl::u16 x) {
     fl::i8 n = inoise8_raw(x);    //-64..+64
     n += 64;                      // 0..128
-    fl::u8 ans = fl::qadd8(n,n);     // 0..255
+    fl::u8 ans = qadd8(n,n);     // 0..255
     return ans;
 }
 
@@ -676,7 +677,7 @@ void fill_raw_noise8(fl::u8 *pData, fl::u8 num_points, fl::u8 octaves, fl::u16 x
   fl::u32 scx = scale;
   for(int o = 0; o < octaves; ++o) {
     for(int i = 0,xx=_xx; i < num_points; ++i, xx+=scx) {
-          pData[i] = fl::qadd8(pData[i],inoise8(xx,time)>>o);
+          pData[i] = qadd8(pData[i],inoise8(xx,time)>>o);
     }
 
     _xx <<= 1;
@@ -810,7 +811,7 @@ void fill_raw_2dnoise16into8(fl::u8 *pData, int width, int height, fl::u8 octave
       noise_base = (0x8000 & noise_base) ? noise_base - (32767) : 32767 - noise_base;
       noise_base = scale8(noise_base>>7,amplitude);
       if(skip==1) {
-        pRow[j] = fl::qadd8(scale8(pRow[j],invamp),noise_base);
+        pRow[j] = qadd8(scale8(pRow[j],invamp),noise_base);
       } else {
         for(int ii = i; ii<(i+skip) && ii<height; ++ii) {
           fl::u8 *pRow = pData + (ii*width);
@@ -957,4 +958,4 @@ void fill_2dnoise16(CRGB *leds, int width, int height, bool serpentine,
   }
 }
 
-#pragma GCC diagnostic pop
+FL_DISABLE_WARNING_POP

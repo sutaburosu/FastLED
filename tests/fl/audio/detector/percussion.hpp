@@ -6,7 +6,7 @@
 #include "fl/audio/detector/percussion.h"
 #include "../test_helpers.h"
 #include "fl/stl/vector.h"
-#include "fl/stl/math.h"
+#include "fl/math/math.h"
 #include "fl/stl/shared_ptr.h"
 #include "fl/stl/cstring.h"
 

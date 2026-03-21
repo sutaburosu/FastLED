@@ -7,7 +7,7 @@
 /// - Padding: 0-2 zero bytes to ensure total size divisible by 3
 
 #include "fl/chipsets/ucs7604.h"
-#include "fl/gfx/ease.h"
+#include "fl/math/ease.h"
 #include "fl/stl/cstddef.h"
 #include "fl/stl/stdint.h"
 #include "fl/stl/new.h"

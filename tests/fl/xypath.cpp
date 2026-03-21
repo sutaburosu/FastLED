@@ -6,12 +6,12 @@
 #include "fl/stl/stdint.h"
 #include "fl/stl/new.h"
 #include "test.h"
-#include "fl/gfx/geometry.h"
-#include "fl/stl/math.h"
+#include "fl/math/geometry.h"
+#include "fl/math/math.h"
 #include "fl/stl/vector.h"
 #include "fl/stl/shared_ptr.h"
 #include "fl/gfx/tile2x2.h"
-#include "fl/gfx/transform.h"
+#include "fl/math/transform.h"
 #include "fl/gfx/xypath_impls.h"
 
 FL_TEST_FILE(FL_FILEPATH) {

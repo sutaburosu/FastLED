@@ -5,16 +5,17 @@
 /// It uses the FL_* macros to test basic functionality.
 
 // Suppress macro redefinition warnings from fl/fltest.h
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wmacro-redefined"
+#include "fl/stl/compiler_control.h"
+FL_DISABLE_WARNING_PUSH
+FL_DISABLE_WARNING(macro-redefined)
 #include "fl/fltest.h"
-#pragma clang diagnostic pop
+FL_DISABLE_WARNING_POP
 
 // Include test.h to override fl/fltest.h macros with fl_unittest versions
 // This ensures tests register with fl_unittest's runner, not fltest's TestContext
 #include "test.h"
 
-#include "fl/gfx/geometry.h"  // For fl::rect
+#include "fl/math/geometry.h"  // For fl::rect
 #include "fl/stl/vector.h"  // For fl::vector
 #include "fl/stl/unordered_set.h"  // For fl::unordered_set
 #include "fl/stl/unordered_map.h"  // For fl::unordered_map

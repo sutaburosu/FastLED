@@ -1,6 +1,6 @@
 #include "fl/audio/noise_floor_tracker.h"
 #include "fl/stl/algorithm.h"
-#include "fl/stl/math.h"
+#include "fl/math/math.h"
 
 namespace fl {
 namespace audio {

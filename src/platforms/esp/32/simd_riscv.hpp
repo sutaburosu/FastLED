@@ -19,7 +19,7 @@
 
 #include "fl/stl/has_include.h"
 #include "fl/stl/align.h"
-#include "fl/stl/math.h"  // for sqrtf
+#include "fl/math/math.h"  // for sqrtf
 
 // RISC-V vector extensions (RVV) support detection
 // Note: Current ESP32 RISC-V variants do not include RVV hardware.

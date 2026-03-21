@@ -2,11 +2,11 @@
 
 
 
-#include "fl/gfx/line_simplification.h"
+#include "fl/math/line_simplification.h"
 #include "fl/stl/new.h"
 #include "test.h"
-#include "fl/gfx/geometry.h"
-#include "fl/stl/math.h"
+#include "fl/math/geometry.h"
+#include "fl/math/math.h"
 #include "fl/stl/span.h"
 #include "fl/stl/move.h"
 

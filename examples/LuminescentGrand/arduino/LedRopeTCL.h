@@ -13,7 +13,7 @@
 
 #include "fl/stl/vector.h"
 #include "crgb.h"
-#include "fl/gfx/screenmap.h"
+#include "fl/math/screenmap.h"
 
 
 // LedRopeTCL is a C++ wrapper around the Total Control Lighting LED rope

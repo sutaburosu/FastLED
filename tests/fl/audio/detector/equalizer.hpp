@@ -6,8 +6,8 @@
 #include "fl/audio/mic_response_data.h"
 #include "fl/stl/vector.h"
 #include "fl/stl/shared_ptr.h"
-#include "fl/stl/math.h"
-#include "fl/stl/math.h"
+#include "fl/math/math.h"
+#include "fl/math/math.h"
 #include "../test_helpers.h"
 
 using namespace fl;

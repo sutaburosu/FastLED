@@ -1,10 +1,10 @@
 // Test for fl::simd atomic operations
 
-#include "fl/stl/simd.h"
+#include "fl/math/simd.h"
 #include "fl/stl/cstddef.h"
 #include "fl/stl/stdint.h"
-#include "fl/stl/fixed_point/s0x32x4.h"
-#include "fl/stl/fixed_point/s16x16x4.h"
+#include "fl/math/fixed_point/s0x32x4.h"
+#include "fl/math/fixed_point/s16x16x4.h"
 #include "fl/stl/limits.h"
 #include "test.h"
 

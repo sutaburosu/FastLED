@@ -5,13 +5,13 @@
 // #include "fl/stl/function.h"
 // #include "fl/lut.h"
 // #include "fl/map_range.h"
-// #include "fl/stl/math.h"
+// #include "fl/math/math.h"
 // #include "fl/gfx/raster.h"
 // #include "fl/gfx/xypath.h"
 #include "fl/stl/function.h"  // IWYU pragma: keep
 #include "fl/stl/shared_ptr.h"         // For FASTLED_SHARED_PTR macros
 #include "fl/gfx/tile2x2.h"  // IWYU pragma: keep
-#include "fl/gfx/transform.h"
+#include "fl/math/transform.h"
 
 namespace fl {
 

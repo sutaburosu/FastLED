@@ -1,7 +1,7 @@
 #pragma once
 
 #include "fl/audio/audio_detector.h"
-#include "fl/filter.h"
+#include "fl/math/filter/filter.h"
 #include "fl/stl/function.h"
 #include "fl/stl/vector.h"
 

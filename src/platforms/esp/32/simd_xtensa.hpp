@@ -15,7 +15,7 @@
 #if defined(__XTENSA__)
 
 #include "fl/stl/has_include.h"
-#include "fl/stl/math.h"  // for sqrtf
+#include "fl/math/math.h"  // for sqrtf
 
 // Xtensa PIE intrinsics (available on ESP32, ESP32-S2, ESP32-S3)
 #if FL_HAS_INCLUDE(<xtensa/tie/xt_PIE.h>)

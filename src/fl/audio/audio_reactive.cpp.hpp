@@ -3,7 +3,7 @@
 #include "fl/audio/detector/musical_beat_detector.h"
 #include "fl/audio/detector/multiband_beat_detector.h"
 #include "fl/audio/mic_response_data.h"
-#include "fl/stl/math.h"
+#include "fl/math/math.h"
 #include "fl/stl/span.h"
 #include "fl/stl/int.h"
 #include "fl/stl/unique_ptr.h"  // For unique_ptr

@@ -42,7 +42,7 @@
 // IWYU pragma: begin_keep
 // IWYU pragma: end_keep
 #include "fl/stl/thread.h"
-#include "fl/stl/math.h"  // For fmod function
+#include "fl/math/math.h"  // For fmod function
 
 // IWYU pragma: begin_keep
 #include <emscripten.h>

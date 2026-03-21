@@ -8,10 +8,10 @@ only a small number of pixels are set.
 */
 
 #include "fl/stl/int.h"
-#include "fl/gfx/geometry.h"
+#include "fl/math/geometry.h"
 #include "fl/stl/unordered_map.h"
 #include "fl/stl/span.h"
-#include "fl/gfx/xymap.h"
+#include "fl/math/xymap.h"
 
 #ifndef FASTLED_RASTER_SPARSE_INLINED_COUNT
 #define FASTLED_RASTER_SPARSE_INLINED_COUNT 128

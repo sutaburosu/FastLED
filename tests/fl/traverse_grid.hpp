@@ -1,10 +1,10 @@
-#include "fl/gfx/traverse_grid.h"
+#include "fl/math/traverse_grid.h"
 
 #include "fl/stl/set.h"
 #include "fl/stl/new.h"
 #include "fl/stl/utility.h"
 #include "test.h"
-#include "fl/gfx/geometry.h"
+#include "fl/math/geometry.h"
 
 
 struct CollectingVisitor {

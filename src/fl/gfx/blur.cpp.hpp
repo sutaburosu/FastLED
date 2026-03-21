@@ -10,8 +10,8 @@
 #include "fl/gfx/colorutils_misc.h"
 #include "fl/stl/compiler_control.h"
 #include "fl/system/log.h"
-#include "fl/gfx/xymap.h"
-#include "lib8tion/scale8.h"
+#include "fl/math/xymap.h"
+#include "fl/math/scale8.h"
 #include "fl/stl/int.h"
 #include "fl/stl/span.h"
 #include "fl/gfx/crgb.h"
@@ -21,7 +21,7 @@
 
 // Platform-neutral SIMD for blur kernels (SSE2, NEON, Xtensa PIE, scalar).
 #if !defined(FL_IS_AVR)
-#include "fl/stl/simd.h"
+#include "fl/math/simd.h"
 #endif
 
 // Legacy XY function. This is a weak symbol that can be overridden by the user.

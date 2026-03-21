@@ -4,7 +4,7 @@
 #include "fl/stl/bit_cast.h"
 #include "fl/system/log.h"
 #include "fl/system/log.h"
-#include "fl/gfx/xymap.h"
+#include "fl/math/xymap.h"
 #include "fl/fx/frame.h"
 
 #include "fl/stl/cstring.h"

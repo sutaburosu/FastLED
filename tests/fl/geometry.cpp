@@ -1,7 +1,7 @@
 // ok cpp include
-#include "fl/gfx/geometry.h"
+#include "fl/math/geometry.h"
 #include "test.h"
-#include "fl/stl/math.h"
+#include "fl/math/math.h"
 #include "fl/stl/move.h"
 #include "fl/stl/int.h"
 

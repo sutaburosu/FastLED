@@ -9,7 +9,7 @@
 #include "crgb.h"
 #include "test.h"
 #include "fl/system/log.h"
-#include "fl/stl/math.h"
+#include "fl/math/math.h"
 #include "fl/stl/strstream.h"
 
 FL_TEST_FILE(FL_FILEPATH) {

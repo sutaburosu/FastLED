@@ -14,7 +14,7 @@
 #include "fl/stl/cstddef.h"
 #include "fl/stl/stdint.h"
 #include "test.h"
-#include "fl/stl/math.h"
+#include "fl/math/math.h"
 
 FL_TEST_FILE(FL_FILEPATH) {
 

@@ -12,7 +12,7 @@
 
 #include <FastLED.h>
 #include "fl/fx/1d/demoreel100.h"
-#include "fl/gfx/screenmap.h"
+#include "fl/math/screenmap.h"
 
 #define DATA_PIN    3
 //#define CLK_PIN   4

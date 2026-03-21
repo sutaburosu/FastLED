@@ -3,7 +3,7 @@
 // IWYU pragma: private
 
 #include "fl/stl/stdint.h"
-#include "lib8tion/lib8static.h"
+#include "fl/math/lib8static.h"
 #include "fl/stl/compiler_control.h"
 
 namespace fl {

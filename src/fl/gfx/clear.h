@@ -6,8 +6,7 @@
 
 namespace fl {
 
-template<typename T>
-class Grid;
+template<typename T> class Grid;
 
 // Memory safe clear function for CRGB arrays.
 template <int N> inline void clear(CRGB (&arr)[N]) {

@@ -2,7 +2,7 @@
 
 #include "fl/stl/type_traits.h"
 #include "fl/stl/move.h"
-#include "fl/stl/random.h"
+#include "fl/math/random.h"
 
 namespace fl {
 
@@ -611,9 +611,9 @@ void shuffle(Iterator first, Iterator last, RandomGenerator& g) {
     }
 }
 
-// Shuffle function with fl::fl_random instance
+// Shuffle function with fl::math::random instance
 template <typename Iterator>
-void shuffle(Iterator first, Iterator last, fl_random& rng) {
+void shuffle(Iterator first, Iterator last, math::random& rng) {
     if (first == last) {
         return;  // Empty range, nothing to shuffle
     }

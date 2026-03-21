@@ -3,7 +3,7 @@
 #include "fl/stl/stdint.h"
 
 #include "fl/stl/shared_ptr.h"         // For FASTLED_SHARED_PTR macros
-#include "fl/gfx/xymap.h"
+#include "fl/math/xymap.h"
 #include "fl/fx/fx.h"
 
 namespace fl {

@@ -4,7 +4,7 @@
 #include "test.h"
 #include "fl/stl/allocator.h"
 #include "fl/stl/pair.h"
-#include "fl/stl/random.h"
+#include "fl/math/random.h"
 
 FL_TEST_FILE(FL_FILEPATH) {
 

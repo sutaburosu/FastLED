@@ -10,19 +10,16 @@
 #endif
 
 // Suppress -Wpragma-pack warnings from Windows SDK headers
+#include "fl/stl/compiler_control.h"
 #ifdef _WIN32
-#ifdef __clang__
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wpragma-pack"
-#endif
+FL_DISABLE_WARNING_PUSH
+FL_DISABLE_WARNING(pragma-pack)
 #endif
 
 #include "../crash_handler.h"
 
 #ifdef _WIN32
-#ifdef __clang__
-#pragma clang diagnostic pop
-#endif
+FL_DISABLE_WARNING_POP
 #endif
 
 // Setup crash handler - this is called from runner.exe main()

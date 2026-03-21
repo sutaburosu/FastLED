@@ -1,5 +1,5 @@
-#include "fl/stl/math.h"
-#include "fl/gfx/geometry.h"
+#include "fl/math/math.h"
+#include "fl/math/geometry.h"
 #include "test.h"
 #include "fl/stl/int.h"
 

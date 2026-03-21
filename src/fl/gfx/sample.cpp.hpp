@@ -1,7 +1,7 @@
 #include "fl/gfx/sample.h"
 
-#include "fl/stl/math.h"
-#include "fl/gfx/xymap.h"
+#include "fl/math/math.h"
+#include "fl/math/xymap.h"
 #include "crgb.h"
 
 namespace fl {

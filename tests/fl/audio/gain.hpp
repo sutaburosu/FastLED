@@ -5,8 +5,8 @@
 
 #include "fl/audio/audio.h"
 #include "fl/stl/int.h"
-#include "fl/stl/math.h"
-#include "fl/stl/math.h"
+#include "fl/math/math.h"
+#include "fl/math/math.h"
 #include "fl/stl/vector.h"
 #include "test_helpers.hpp"
 #include "test.h"

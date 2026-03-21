@@ -10,7 +10,7 @@
 #include "fl/audio/audio_input.h"  // For audio::Config  // IWYU pragma: keep
 #include "fl/engine_events.h"
 #include "fl/stl/function.h"
-#include "fl/stl/math.h"
+#include "fl/math/math.h"
 #include "fl/stl/type_traits.h"
 #include "fl/ui_impl.h"
 #include "fl/stl/compiler_control.h"  // IWYU pragma: keep

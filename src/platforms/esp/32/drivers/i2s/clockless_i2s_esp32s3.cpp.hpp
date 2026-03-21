@@ -26,7 +26,7 @@
 #include "cpixel_ledcontroller.h"
 #include "crgb.h"
 #include "eorder.h"
-#include "fl/stl/math.h"
+#include "fl/math/math.h"
 #include "fl/gfx/rectangular_draw_buffer.h"
 #include "fl/stl/singleton.h"
 #include "fl/system/log.h"

@@ -1,8 +1,8 @@
 /// @file tests/fl/xymap.cpp
 /// @brief Test suite for XYMap addressing transformations
 
-#include "fl/gfx/xymap.h"
-#include "fl/gfx/screenmap.h"
+#include "fl/math/xymap.h"
+#include "fl/math/screenmap.h"
 #include "fl/fltest.h"
 
 using namespace fl;

@@ -1,6 +1,6 @@
 // Generate assembly dumps for sin32 analysis
 #include "fl/math/sin32.h"
-#include "fl/stl/simd.h"
+#include "fl/math/simd.h"
 
 using namespace fl;
 

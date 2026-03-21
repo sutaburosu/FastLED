@@ -10,13 +10,13 @@
 // problems. See PixelController::as_iterator() for how to create a PixelIterator.
 
 
-#include "lib8tion/intmap.h"
+#include "fl/math/intmap.h"
 #include "platforms/is_platform.h"
 
 #include "rgbw.h"
 #include "fl/gfx/five_bit_hd_gamma.h"
 #include "fl/stl/compiler_control.h"
-#include "lib8tion/scale8.h"
+#include "fl/math/scale8.h"
 #include "eorder.h"
 #include "dither_mode.h"
 #include "pixel_iterator.h"
@@ -423,14 +423,14 @@ struct PixelController {
     /// @param pc reference to the pixel controller
     /// @param b the color byte to dither
     /// @returns b + dither offset, clamped to 255
-    template<int SLOT>  FASTLED_FORCE_INLINE static fl::u8 dither(PixelController & pc, fl::u8 b) { return b ? fl::qadd8(b, pc.d[RO(SLOT)]) : 0; }
+    template<int SLOT>  FASTLED_FORCE_INLINE static fl::u8 dither(PixelController & pc, fl::u8 b) { return b ? qadd8(b, pc.d[RO(SLOT)]) : 0; }
 
     /// Add explicit dither offset to pixel value (BEFORE scaling). Black pixels not dithered.
     /// @tparam SLOT The data slot in the output stream
     /// @param b the color byte to dither
     /// @param d dither offset to add
     /// @returns b + d, clamped to 255
-    template<int SLOT>  FASTLED_FORCE_INLINE static fl::u8 dither(PixelController & , fl::u8 b, fl::u8 d) { return b ? fl::qadd8(b,d) : 0; }
+    template<int SLOT>  FASTLED_FORCE_INLINE static fl::u8 dither(PixelController & , fl::u8 b, fl::u8 d) { return b ? qadd8(b,d) : 0; }
 
     /// Scale a value using the per-channel scale data
     /// @tparam SLOT The data slot in the output stream. This is used to select which byte of the output stream is being processed.

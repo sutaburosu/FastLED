@@ -5,10 +5,9 @@
 
 // Suppress -Wpragma-pack warnings from Windows SDK headers
 // dbghelp.h includes _dbg_common.h which uses #pragma pack(push/pop)
-#ifdef __clang__
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wpragma-pack"
-#endif
+#include "fl/stl/compiler_control.h"
+FL_DISABLE_WARNING_PUSH
+FL_DISABLE_WARNING(pragma-pack)
 
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
@@ -17,9 +16,7 @@
 #include <dbghelp.h>
 #include <psapi.h>
 
-#ifdef __clang__
-#pragma clang diagnostic pop
-#endif
+FL_DISABLE_WARNING_POP
 #include <csignal>
 #include <cstdio>
 #include <cstdlib>

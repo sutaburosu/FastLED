@@ -3,7 +3,7 @@
 #include "platforms/math8_config.h"
 #include "fl/gfx/crgb.h"
 #include "fastled_config.h"
-#include "lib8tion/lib8static.h"
+#include "fl/math/lib8static.h"
 #include "fl/stl/compiler_control.h"
 
 // Select appropriate implementation based on platform configuration

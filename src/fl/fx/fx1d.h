@@ -1,7 +1,7 @@
 #pragma once
 
 #include "fl/stl/int.h"
-#include "fl/gfx/xmap.h"
+#include "fl/math/xmap.h"
 #include "fl/fx/fx.h"
 
 namespace fl {

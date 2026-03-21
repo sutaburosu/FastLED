@@ -4,7 +4,7 @@
 #include "test.h"
 #include "fl/audio/audio.h"
 #include "fl/stl/vector.h"
-#include "fl/stl/math.h"
+#include "fl/math/math.h"
 
 FL_TEST_FILE(FL_FILEPATH) {
 

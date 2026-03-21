@@ -4,7 +4,7 @@
 #include "fl/gfx/gfx.h"
 #include "fl/stl/chrono.h"
 #include "fl/stl/cstdio.h"
-#include "fl/stl/fixed_point/s16x16.h"
+#include "fl/math/fixed_point/s16x16.h"
 
 // Performance benchmark for 2D graphics primitives.
 // All types are fl:: fixed-width integers; coordinates are s16x16 fixed-point.

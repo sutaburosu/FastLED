@@ -2,8 +2,8 @@
 /// @brief Implementation of SpectralEqualizer for frequency-dependent gain correction
 
 #include "fl/audio/spectral_equalizer.h"
-#include "fl/stl/math.h"
-#include "fl/stl/math.h"
+#include "fl/math/math.h"
+#include "fl/math/math.h"
 #include "fl/stl/compiler_control.h"
 
 namespace fl {

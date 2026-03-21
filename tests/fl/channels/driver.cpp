@@ -26,8 +26,8 @@
 #include "fl/stl/shared_ptr.h"
 #include "fl/stl/strstream.h"
 #include "fl/engine_events.h"
-#include "fl/gfx/xymap.h"
-#include "fl/gfx/screenmap.h"
+#include "fl/math/xymap.h"
+#include "fl/math/screenmap.h"
 #include "fl/chipsets/spi.h"
 
 FL_TEST_FILE(FL_FILEPATH) {

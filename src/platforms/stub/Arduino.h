@@ -19,14 +19,14 @@
 #include "fl/stl/ostream.h"
 #include "fl/stl/stdio.h"
 #include "platforms/stub/time_stub.h"
-#include "fl/stl/math.h"
+#include "fl/math/math.h"
 
 // Math functions from fl:: namespace
 // On stub platform, min/max/abs/radians/degrees are provided by
-// FastLED.h (from fl/stl/math.h) which undefs Arduino macros and brings fl:: functions
+// FastLED.h (from fl/math/math.h) which undefs Arduino macros and brings fl:: functions
 // into global namespace via using declarations.
 // Note: fl::map refers to the map container (red-black tree), not the Arduino map function
-// Note: fl/stl/math.h is NOT included here - it's included by FastLED.h after macro undefs
+// Note: fl/math/math.h is NOT included here - it's included by FastLED.h after macro undefs
 // Note: fl/map_range.h provides fl::map_range() which the global map() function delegates to
 
 #ifndef FASTLED_NO_ARDUINO_STUBS

@@ -2,7 +2,7 @@
 #include "fl/fx/2d/animartrix.hpp"
 #include "crgb.h"
 #include "test.h"
-#include "fl/gfx/xymap.h"
+#include "fl/math/xymap.h"
 
 using namespace fl;
 

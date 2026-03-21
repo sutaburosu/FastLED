@@ -2,7 +2,7 @@
 /// @brief Tests for bandlimited audio synthesizer oscillator
 
 #include "fl/audio/synth.h"
-#include "fl/stl/math.h"
+#include "fl/math/math.h"
 
 using namespace fl;
 

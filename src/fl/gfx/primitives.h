@@ -2,11 +2,11 @@
 
 #include "fl/gfx/canvas.h"  // IWYU pragma: keep
 #include "fl/gfx/draw_mode.h"
-#include "fl/gfx/detail/distance_lut.h"  // IWYU pragma: keep
-#include "fl/gfx/detail/integer_math.h"  // IWYU pragma: keep
-#include "fl/stl/fixed_point/s16x16.h"
-#include "fl/stl/math.h"
-#include "lib8tion/scale8.h"
+#include "fl/math/distance_lut.h"  // IWYU pragma: keep
+#include "fl/math/integer_math.h"  // IWYU pragma: keep
+#include "fl/math/fixed_point/s16x16.h"
+#include "fl/math/math.h"
+#include "fl/math/scale8.h"
 
 namespace fl {
 namespace gfx {

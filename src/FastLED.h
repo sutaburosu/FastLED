@@ -15,7 +15,7 @@
 // processed. Pulling fl/system/arduino.h in here — before any internal FastLED headers —
 // ensures all subsequent headers see a clean, macro-free environment.
 // fl/stl/undef.h (included by fl/system/arduino.h) is intentionally re-includable, so a
-// second cleanup in fl/stl/math.h (included later, after platform headers) will
+// second cleanup in fl/math/math.h (included later, after platform headers) will
 // catch any macros re-introduced by those platform headers.
 #if defined(ARDUINO)
 #include "fl/system/arduino.h"
@@ -163,7 +163,7 @@
 
 // Arduino macros (min, max, abs, etc.) are cleaned up in two passes:
 //   Pass 1 — top of FastLED.h (above): fl/system/arduino.h cleans up before internal headers.
-//   Pass 2 — fl/stl/math.h (below): cleans up any macros re-introduced by platform headers.
+//   Pass 2 — fl/math/math.h (below): cleans up any macros re-introduced by platform headers.
 // fl/stl/undef.h is intentionally re-includable to support both passes.
 
 #include "controller.h"
@@ -179,10 +179,10 @@
 // headers without evaluating preprocessor paths.
 #include "platforms/ldf_headers.h"
 
-// Pass 2 macro cleanup: fl/stl/math.h includes fl/stl/undef.h which undefs any
+// Pass 2 macro cleanup: fl/math/math.h includes fl/stl/undef.h which undefs any
 // min/max/abs/round/radians/degrees/map macros re-introduced by platform headers above.
 // Then provides type-safe fl:: replacements brought into global scope via using below.
-#include "fl/stl/math.h"
+#include "fl/math/math.h"
 
 // Bring fl:: math functions into global namespace for Arduino compatibility
 // Teensy platforms define their own template min/max in wiring.h (global namespace),
@@ -1466,9 +1466,9 @@ extern CFastLED FastLED;
 #if !defined(FASTLED_INTERNAL) && !defined(FASTLED_LEAN_AND_MEAN)
 
 #include "fl/stl/string.h"   // Awesome Str class that has stack allocation and heap overflow, copy on write.
-#include "fl/gfx/xymap.h"  // XYMap class for mapping 2D coordinates on seperintine matrices.
+#include "fl/math/xymap.h"  // XYMap class for mapping 2D coordinates on seperintine matrices.
 
-#include "fl/stl/math.h"  // fl::clamp, fl::map_range, fl::min, fl::max, etc.
+#include "fl/math/math.h"  // fl::clamp, fl::map_range, fl::min, fl::max, etc.
 
 #include "fl/system/log.h"
 #include "fl/system/log.h"  // FASTLED_WARN("time now: " << millis()), FASTLED_WARN_IF(condition, "time now: " << millis());"

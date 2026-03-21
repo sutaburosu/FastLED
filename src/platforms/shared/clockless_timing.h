@@ -10,7 +10,7 @@
 // IWYU pragma: private
 
 #include "fl/stl/stdint.h"
-#include "fl/stl/math.h"
+#include "fl/math/math.h"
 #include "fl/stl/compiler_control.h"
 
 namespace fl {

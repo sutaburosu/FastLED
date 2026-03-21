@@ -1,8 +1,8 @@
 #include "fl/gfx/hsv16.h"
-#include "fl/stl/math.h"
+#include "fl/math/math.h"
 
-#include "lib8tion/intmap.h"
-#include "fl/gfx/ease.h"
+#include "fl/math/intmap.h"
+#include "fl/math/ease.h"
 
 namespace fl {
 

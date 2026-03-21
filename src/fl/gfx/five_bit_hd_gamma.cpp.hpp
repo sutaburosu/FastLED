@@ -1,6 +1,6 @@
 #include "fl/gfx/five_bit_hd_gamma.h"
 #include "fl/stl/align.h"
-#include "fl/gfx/ease.h"
+#include "fl/math/ease.h"
 #include "fl/fastled.h"
 
 namespace fl {

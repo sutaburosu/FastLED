@@ -2,7 +2,7 @@
 
 #include "fl/audio/audio_detector.h"
 #include "fl/audio/spectral_equalizer.h"
-#include "fl/filter.h"
+#include "fl/math/filter/filter.h"
 #include "fl/stl/function.h"
 #include "fl/stl/span.h"
 #include "fl/stl/vector.h"

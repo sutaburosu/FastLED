@@ -64,7 +64,7 @@
 #include "fl/stl/span.h"        // fl::span (non-owning array view)
 #include "fl/stl/vector.h"      // fl::vector
 #include "fl/stl/string.h"          // fl::string
-#include "fl/stl/math.h"  // fl::min, fl::max, etc.
+#include "fl/math/math.h"  // fl::min, fl::max, etc.
 #include "fl/system/log.h"          // FL_DBG macro for debug output
 #include "fl/system/log.h"         // FL_WARN macro for warnings
 
@@ -76,7 +76,7 @@
 #include "fl/fx/fx2d.h"
 #include "fl/fx/fx2d_to_1d.h"
 #include "fl/fx/fx_engine.h"
-#include "fl/gfx/screenmap.h"
+#include "fl/math/screenmap.h"
 #include "fl/fx/2d/animartrix.hpp"
 
 // ============================================================================

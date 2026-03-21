@@ -28,7 +28,7 @@
 #include "driver/periph_ctrl.h"
 #include "rom/lldesc.h"
 #include "fl/stl/string.h"
-#include "fl/stl/math.h"
+#include "fl/math/math.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"

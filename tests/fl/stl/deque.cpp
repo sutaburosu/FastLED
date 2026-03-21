@@ -1,3 +1,4 @@
+#include "fl/stl/compiler_control.h"
 #include "fl/stl/deque.h"
 #include "fl/stl/cstddef.h"
 #include "fl/stl/new.h"
@@ -81,10 +82,10 @@ FL_TEST_CASE("fl::deque - copy assignment") {
     FL_CHECK_EQ(dq2[2], 3);
 
     // Test self-assignment
-    #pragma GCC diagnostic push
-    #pragma GCC diagnostic ignored "-Wself-assign-overloaded"
+    FL_DISABLE_WARNING_PUSH
+    FL_DISABLE_WARNING_SELF_ASSIGN_OVERLOADED
     dq1 = dq1;
-    #pragma GCC diagnostic pop
+    FL_DISABLE_WARNING_POP
     FL_CHECK_EQ(dq1.size(), 3u);
 }
 

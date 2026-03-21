@@ -1,8 +1,8 @@
 // Unit tests for smoothing filters: ExponentialSmoother, MovingAverage, MedianFilter
 
 #include "test.h"
-#include "fl/filter.h"
-#include "fl/stl/fixed_point.h"
+#include "fl/math/filter/filter.h"
+#include "fl/math/fixed_point.h"
 
 FL_TEST_FILE(FL_FILEPATH) {
 

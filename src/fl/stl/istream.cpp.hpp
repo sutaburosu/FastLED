@@ -1,11 +1,11 @@
 #include "fl/stl/istream.h"
-#include "fl/stl/math.h"
+#include "fl/math/math.h"
 #include "fl/stl/compiler_control.h"
 //#include <stddef.h>
 // <cstdlib> not available on AVR platforms like Arduino UNO
 // We implement custom integer parsing functions instead
 
-#include "fl/stl/math.h"
+#include "fl/math/math.h"
 
 namespace fl {
 

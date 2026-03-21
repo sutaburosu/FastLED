@@ -1,9 +1,9 @@
 #pragma once
 
 #include "platforms/math8_config.h"
-#include "lib8tion/scale8.h"
-#include "lib8tion/lib8static.h"
-#include "lib8tion/intmap.h"
+#include "fl/math/scale8.h"
+#include "fl/math/lib8static.h"
+#include "fl/math/intmap.h"
 #include "fl/stl/compiler_control.h"
 
 

@@ -5,7 +5,7 @@
 
 #include "fl/stl/stdint.h"
 #include "fl/stl/compiler_control.h"
-#include "fl/stl/math.h"
+#include "fl/math/math.h"
 #include "fl/system/fastpin.h"
 #include "eorder.h"
 #include "transpose8x1_noinline.h"

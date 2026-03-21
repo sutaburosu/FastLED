@@ -12,7 +12,7 @@
 #include "fl/stl/cstdlib.h"
 #include "fl/stl/stdio.h"
 #include "fl/stl/stdint.h"
-#include "fl/stl/math.h"
+#include "fl/math/math.h"
 #include "fl/stl/string.h"
 #include "fl/stl/malloc.h"
 #include "fft_precision.h"

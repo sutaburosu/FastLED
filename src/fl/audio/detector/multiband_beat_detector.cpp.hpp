@@ -1,5 +1,5 @@
 #include "fl/audio/detector/multiband_beat_detector.h"
-#include "fl/stl/math.h"
+#include "fl/math/math.h"
 
 namespace fl {
 namespace audio {

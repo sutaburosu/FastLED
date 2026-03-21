@@ -310,7 +310,7 @@ void processFrame(fl::span<const float> fftBins) {
 }
 ```
 
-The filter lives in `fl/detail/filter/spectral_variance_impl.h` with the public API in `fl/filter.h` alongside all other filters. It accepts any `span<const T>` -- not limited to audio/FFT bins.
+The filter lives in `fl/math/filter/spectral_variance_impl.h` with the public API in `fl/filter.h` alongside all other filters. It accepts any `span<const T>` -- not limited to audio/FFT bins.
 
 Parameters:
 - **alpha** (default 0.2): EMA tracking speed. Lower = more history, detects slower changes
@@ -633,7 +633,7 @@ The VocalDetector uses 3 spectral features (centroid, rolloff, formant ratio) av
 
 **File:** `tests/fl/audio/test_helpers.h`
 
-Four functions added to the `fl::audio::test` namespace (with `#include "fl/stl/random.h"`):
+Four functions added to the `fl::audio::test` namespace (with `#include "fl/math/random.h"`):
 
 **`makeMultiHarmonic`** — Fundamental + overtones with geometric amplitude decay. Tests harmonic-rich signals that aren't voice (e.g., instruments).
 

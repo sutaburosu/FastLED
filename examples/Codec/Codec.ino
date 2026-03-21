@@ -9,7 +9,7 @@
 #include "fl/ui.h"
 #include "fl/stl/string.h"
 
-#include "fl/gfx/xymap.h"
+#include "fl/math/xymap.h"
 #include "inlined_data.h"
 #include "codec_processor.h"
 

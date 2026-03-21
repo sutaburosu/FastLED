@@ -1,6 +1,6 @@
-#include "fl/gfx/ease.h"
+#include "fl/math/ease.h"
 #include "fl/stl/pair.h"
-#include "lib8tion/intmap.h"
+#include "fl/math/intmap.h"
 #include "test.h"
 #include "fl/stl/cstddef.h"
 #include "fl/stl/stdint.h"

@@ -16,17 +16,17 @@
 
 // Now we can include other headers and do platform checks
 #include "fl/stl/json.h"
-#include "fl/stl/math.h"
-#include "fl/stl/math.h"
+#include "fl/math/math.h"
+#include "fl/math/math.h"
 #include "fl/system/log.h"
 #include "noisegen.h"
-#include "fl/gfx/screenmap.h"
+#include "fl/math/screenmap.h"
 #include "fl/stl/span.h"
 #include "fl/ui.h"
 #include "fl/sensors/pir.h"
 #include "fl/stl/sstream.h"
 #include "fl/stl/assert.h"
-#include "fl/gfx/noise.h"
+#include "fl/gfx/noise/noise.h"
 
 // Defines come after all includes
 #ifndef DATA_PIN

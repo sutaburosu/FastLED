@@ -4,7 +4,7 @@
 #include "test.h"
 
 #include "fl/gfx/hsv16.h"
-#include "lib8tion/intmap.h"
+#include "fl/math/intmap.h"
 #include "fl/stl/stdint.h"
 #include "test.h"
 #include "hsv2rgb.h"

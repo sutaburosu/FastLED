@@ -21,8 +21,8 @@
 
 #include "fl/stl/json.h"
 #include "fl/stl/span.h"
-#include "fl/gfx/screenmap.h"
-#include "fl/stl/math.h"
+#include "fl/math/screenmap.h"
+#include "fl/math/math.h"
 
 using fl::vec2f;
 using fl::vector;

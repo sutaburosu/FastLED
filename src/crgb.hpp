@@ -8,7 +8,7 @@
 #include "crgb.h"
 #include "lib8tion.h"
 #include "fl/stl/compiler_control.h"
-#include "lib8tion/scale8.h"
+#include "fl/math/scale8.h"
 
 
 // Define namespace-aware scale8 macro
@@ -124,7 +124,7 @@ FASTLED_FORCE_INLINE CRGB& CRGB::nscale8 (const CRGB & scaledown )
 FASTLED_FORCE_INLINE CRGB CRGB::scale8 (fl::u8 scaledown ) const
 {
     CRGB out = *this;
-    nscale8x3( out.r, out.g, out.b, scaledown);
+    fl::nscale8x3( out.r, out.g, out.b, scaledown);
     return out;
 }
 
@@ -181,17 +181,17 @@ namespace fl {
 /// @copydoc CRGB::operator+=
 FASTLED_FORCE_INLINE CRGB operator+( const CRGB& p1, const CRGB& p2)
 {
-    return CRGB( qadd8( p1.r, p2.r),
-                 qadd8( p1.g, p2.g),
-                 qadd8( p1.b, p2.b));
+    return CRGB( fl::qadd8( p1.r, p2.r),
+                 fl::qadd8( p1.g, p2.g),
+                 fl::qadd8( p1.b, p2.b));
 }
 
 /// @copydoc CRGB::operator-=
 FASTLED_FORCE_INLINE CRGB operator-( const CRGB& p1, const CRGB& p2)
 {
-    return CRGB( qsub8( p1.r, p2.r),
-                 qsub8( p1.g, p2.g),
-                 qsub8( p1.b, p2.b));
+    return CRGB( fl::qsub8( p1.r, p2.r),
+                 fl::qsub8( p1.g, p2.g),
+                 fl::qsub8( p1.b, p2.b));
 }
 
 /// @copydoc CRGB::operator*=

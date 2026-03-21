@@ -13,7 +13,7 @@
 #include "fl/system/log.h"
 #include "fl/stl/memory.h"
 #include "fl/stl/unique_ptr.h"
-#include "fl/gfx/xymap.h"
+#include "fl/math/xymap.h"
 #include "fl/stl/vector.h"
 #include "fl/stl/pair.h"
 #include "fl/stl/string.h"

@@ -5,7 +5,7 @@
 #include "simd_tests.h"
 #include "test_helpers.h"
 #include <FastLED.h>
-#include "fl/stl/simd.h"
+#include "fl/math/simd.h"
 
 using namespace fl::simd;
 

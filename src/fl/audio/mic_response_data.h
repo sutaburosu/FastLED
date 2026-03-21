@@ -10,7 +10,7 @@
 
 #include "fl/audio/mic_profiles.h"
 #include "fl/stl/compiler_control.h"
-#include "fl/stl/math.h"
+#include "fl/math/math.h"
 #include "fastled_progmem.h"
 
 namespace fl {

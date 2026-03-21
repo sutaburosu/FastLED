@@ -14,7 +14,7 @@ and removals.
 #include "fl/detail/private.h"  // IWYU pragma: keep
 #include "fl/stl/hash.h"
 #include "fl/stl/int.h"
-#include "fl/stl/math.h"
+#include "fl/math/math.h"
 #include "fl/stl/assert.h"  // IWYU pragma: keep
 #include "fl/stl/bit_cast.h"
 #include "fl/stl/bitset.h"

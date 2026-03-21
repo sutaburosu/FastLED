@@ -11,10 +11,10 @@
 // build system
 #include "FastLED.h"
 
-#include "fl/stl/math.h"
-#include "fl/gfx/screenmap.h"
+#include "fl/math/math.h"
+#include "fl/math/screenmap.h"
 #include "fl/ui.h"
-#include "fl/stl/math.h"
+#include "fl/math/math.h"
 #include "fl/fx/2d/animartrix.hpp"
 #include "fl/audio/audio_processor.h"
 #include "fl/audio/detector/vibe.h"

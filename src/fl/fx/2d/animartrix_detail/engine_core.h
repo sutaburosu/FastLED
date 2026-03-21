@@ -4,7 +4,7 @@
 // Extracted from animartrix_detail.hpp ANIMartRIX class to enable standalone operation
 
 #include "fl/stl/vector.h"
-#include "fl/stl/math.h"
+#include "fl/math/math.h"
 #include "fl/stl/chrono.h"
 #include "fl/stl/compiler_control.h"
 #include "fl/fx/2d/animartrix_detail/core_types.h"

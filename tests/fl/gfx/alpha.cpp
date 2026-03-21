@@ -1,6 +1,6 @@
 #include "test.h"
 
-#include "fl/gfx/alpha.h"
+#include "fl/math/alpha.h"
 
 using fl::alpha8;
 using fl::alpha16;

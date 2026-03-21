@@ -6,7 +6,7 @@
 #include "fl/stl/vector.h"
 #include "fl/stl/shared_ptr.h"
 #include "fl/stl/variant.h"
-#include "fl/gfx/screenmap.h"
+#include "fl/math/screenmap.h"
 #include "fl/chipsets/chipset_timing_config.h"
 #include "fl/chipsets/spi.h"
 #include "fl/gfx/eorder.h"

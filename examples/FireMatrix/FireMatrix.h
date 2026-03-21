@@ -40,7 +40,7 @@ void loop() {}
 
 #include "FastLED.h"     // Main FastLED library for controlling LEDs
 #include "fl/ui.h"       // UI components for the FastLED web compiler (sliders, etc.)
-#include "fl/gfx/xymap.h"    // Mapping between 1D LED array and 2D coordinates
+#include "fl/math/xymap.h"    // Mapping between 1D LED array and 2D coordinates
 #include "fl/fx/time.h"     // Time manipulation utilities
 
 // Use the FastLED namespace for convenience

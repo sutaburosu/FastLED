@@ -10,7 +10,7 @@
 
 #include "fl/stl/stdint.h"
 #include "fl/stl/compiler_control.h"
-#include "fl/stl/math.h"  // for sqrtf
+#include "fl/math/math.h"  // for sqrtf
 #include "fl/stl/align.h"
 
 #if defined(__ARM_NEON) || defined(__ARM_NEON__)

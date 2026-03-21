@@ -16,11 +16,10 @@
 #endif
 
 // Suppress -Wpragma-pack warnings from Windows SDK headers
+#include "fl/stl/compiler_control.h"
 #ifdef _WIN32
-#ifdef __clang__
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wpragma-pack"
-#endif
+FL_DISABLE_WARNING_PUSH
+FL_DISABLE_WARNING(pragma-pack)
 #endif
 
 // IWYU pragma: no_include "ios"
@@ -32,9 +31,7 @@
 #include "shared/fl_unittest.h"
 
 #ifdef _WIN32
-#ifdef __clang__
-#pragma clang diagnostic pop
-#endif
+FL_DISABLE_WARNING_POP
 #endif
 
 #ifdef ENABLE_CRASH_HANDLER

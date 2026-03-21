@@ -3,7 +3,7 @@
 
 Direct SIMD intrinsics (__m128i, _mm_*, arm_neon.h, ee.vadds, etc.) should
 only appear inside platform-specific SIMD implementations in src/platforms/.
-All other code should use the fl::simd abstraction layer (fl/stl/simd.h).
+All other code should use the fl::simd abstraction layer (fl/math/simd.h).
 """
 
 from ci.util.check_files import EXCLUDED_FILES, FileContent, FileContentChecker
@@ -22,13 +22,13 @@ _SIMD_PATTERNS: list[tuple[str, str]] = [
     ("_mm512_", "x86 AVX-512 intrinsic — use fl::simd operations"),
     ("_MM_HINT", "x86 prefetch hint — use __builtin_prefetch"),
     # x86 SIMD headers
-    ("<emmintrin.h>", "SSE2 header — use fl/stl/simd.h"),
-    ("<immintrin.h>", "AVX header — use fl/stl/simd.h"),
-    ("<smmintrin.h>", "SSE4.1 header — use fl/stl/simd.h"),
-    ("<xmmintrin.h>", "SSE header — use fl/stl/simd.h"),
-    ("<tmmintrin.h>", "SSSE3 header — use fl/stl/simd.h"),
+    ("<emmintrin.h>", "SSE2 header — use fl/math/simd.h"),
+    ("<immintrin.h>", "AVX header — use fl/math/simd.h"),
+    ("<smmintrin.h>", "SSE4.1 header — use fl/math/simd.h"),
+    ("<xmmintrin.h>", "SSE header — use fl/math/simd.h"),
+    ("<tmmintrin.h>", "SSSE3 header — use fl/math/simd.h"),
     # ARM NEON
-    ("<arm_neon.h>", "ARM NEON header — use fl/stl/simd.h"),
+    ("<arm_neon.h>", "ARM NEON header — use fl/math/simd.h"),
     ("vld1q_", "ARM NEON intrinsic — use fl::simd operations"),
     ("vst1q_", "ARM NEON intrinsic — use fl::simd operations"),
     ("vaddq_", "ARM NEON intrinsic — use fl::simd operations"),

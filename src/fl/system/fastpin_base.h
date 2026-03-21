@@ -13,12 +13,12 @@ FL_DISABLE_WARNING_PUSH
 FL_DISABLE_WARNING_DEPRECATED_REGISTER
 FL_DISABLE_WARNING_VOLATILE
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wignored-qualifiers"
+FL_DISABLE_WARNING_PUSH
+FL_DISABLE_WARNING(ignored-qualifiers)
 #ifdef FL_IS_ESP32
 // Get rid of the endless volatile warnings in ESP32
-#pragma GCC diagnostic ignored "-Wpragmas"
-#pragma GCC diagnostic ignored "-Wvolatile"
+FL_DISABLE_WARNING(pragmas)
+FL_DISABLE_WARNING_VOLATILE
 #endif
 
 namespace fl {
@@ -246,6 +246,6 @@ template<fl::u8 port> struct __FL_PORT_INFO {
 
 } // namespace fl
 
-#pragma GCC diagnostic pop
+FL_DISABLE_WARNING_POP
 
 FL_DISABLE_WARNING_POP

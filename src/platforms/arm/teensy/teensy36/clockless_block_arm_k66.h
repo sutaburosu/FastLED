@@ -4,8 +4,8 @@
 #define __INC_BLOCK_CLOCKLESS_ARM_K66_H
 
 #include "fl/chipsets/timing_traits.h"
-#include "fl/stl/math.h"
-#include "fl/transposition.h"
+#include "fl/math/math.h"
+#include "fl/math/transposition.h"
 #include "fastled_delay.h"
 
 // Definition for a single channel clockless controller for the k66 family of chips, like that used in the teensy 3.6

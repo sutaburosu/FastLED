@@ -284,7 +284,7 @@
 // with the clang toolchain on Windows
 #include "fl/stl/stdint.h"
 #include "fl/stl/malloc.h"
-#include "fl/stl/math.h"
+#include "fl/math/math.h"
 #include "fl/stl/cstring.h"
 #include "fl/stl/assert.h"
 
@@ -476,30 +476,30 @@ int32_t main(int32_t arg, char **argv)
 
    // e.g. #define your own STBTT_ifloor/STBTT_iceil() to avoid math.h
    #ifndef STBTT_ifloor
-   #include "fl/stl/math.h"
+   #include "fl/math/math.h"
    #define STBTT_ifloor(x)   ((int) floor(x))
    #define STBTT_iceil(x)    ((int) ceil(x))
    #endif
 
    #ifndef STBTT_sqrt
-   #include "fl/stl/math.h"
+   #include "fl/math/math.h"
    #define STBTT_sqrt(x)      sqrt(x)
    #define STBTT_pow(x,y)     pow(x,y)
    #endif
 
    #ifndef STBTT_fmod
-   #include "fl/stl/math.h"
+   #include "fl/math/math.h"
    #define STBTT_fmod(x,y)    fmod(x,y)
    #endif
 
    #ifndef STBTT_cos
-   #include "fl/stl/math.h"
+   #include "fl/math/math.h"
    #define STBTT_cos(x)       cos(x)
    #define STBTT_acos(x)      acos(x)
    #endif
 
    #ifndef STBTT_fabs
-   #include "fl/stl/math.h"
+   #include "fl/math/math.h"
    #define STBTT_fabs(x)      fabs(x)
    #endif
 

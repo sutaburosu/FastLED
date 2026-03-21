@@ -7,7 +7,7 @@
 
 // IWYU pragma: begin_keep
 #include "platforms/esp/32/audio/sound_util.h"
-#include "fl/stl/math.h"  // ok include
+#include "fl/math/math.h"  // ok include
 // IWYU pragma: end_keep
 #include "fl/stl/assert.h"
 

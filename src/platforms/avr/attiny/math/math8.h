@@ -3,8 +3,8 @@
 // IWYU pragma: private
 
 #include "platforms/math8_config.h"
-#include "lib8tion/lib8static.h"
-#include "lib8tion/intmap.h"
+#include "fl/math/lib8static.h"
+#include "fl/math/intmap.h"
 #include "fl/stl/compiler_control.h"
 
 // Include ATtiny-specific MUL-dependent functions (mul8, qmul8, blend8)

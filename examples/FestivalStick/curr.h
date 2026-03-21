@@ -26,10 +26,10 @@ Workflow:
 
 #include "fl/stl/assert.h"
 #include "fl/gfx/corkscrew.h"
-#include "fl/gfx/grid.h"
+#include "fl/math/grid.h"
 #include "fl/leds.h"
-#include "fl/stl/math.h"
-#include "fl/gfx/screenmap.h"
+#include "fl/math/math.h"
+#include "fl/math/screenmap.h"
 #include "fl/stl/sstream.h"
 #include "fl/system/log.h"
 #include "noise.h"

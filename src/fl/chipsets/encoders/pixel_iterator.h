@@ -9,7 +9,7 @@
 #include "fl/stl/compiler_control.h"
 #include "fl/gfx/rgbw.h"
 #include "crgb.h"
-#include "lib8tion/intmap.h"
+#include "fl/math/intmap.h"
 #include "fl/chipsets/encoders/ws2801.h"
 #include "fl/chipsets/encoders/ws2803.h"
 #include "fl/chipsets/encoders/ws2812.h"

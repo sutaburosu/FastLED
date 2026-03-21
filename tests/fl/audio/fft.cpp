@@ -10,7 +10,7 @@
 #include "fl/audio/fft/fft_impl.h"
 #include "fl/stl/int.h"
 #include "fl/system/log.h"
-#include "fl/stl/math.h"
+#include "fl/math/math.h"
 #include "fl/stl/move.h"
 #include "fl/stl/span.h"
 #include "fl/stl/stdint.h"

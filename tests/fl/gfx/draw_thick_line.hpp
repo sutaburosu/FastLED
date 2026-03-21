@@ -2,7 +2,7 @@
 
 #include "test.h"
 #include "fl/gfx/gfx.h"
-#include "fl/stl/fixed_point/s16x16.h"
+#include "fl/math/fixed_point/s16x16.h"
 
 FL_TEST_FILE(FL_FILEPATH) {
 

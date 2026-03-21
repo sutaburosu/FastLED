@@ -41,7 +41,7 @@
 // ============================================================================
 
 /// Compiler and language features
-#include "fl/stl/math.h"  // IWYU pragma: keep
+#include "fl/math/math.h"  // IWYU pragma: keep
 
 /// Memory and type utilities
 #include "fl/stl/bit_cast.h"  // IWYU pragma: keep

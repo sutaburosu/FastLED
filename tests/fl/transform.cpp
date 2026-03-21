@@ -2,12 +2,12 @@
 // g++ --std=c++11 test.cpp
 
 
-#include "lib8tion/intmap.h"
-#include "fl/gfx/transform.h"
+#include "fl/math/intmap.h"
+#include "fl/math/transform.h"
 #include "fl/stl/stdint.h"
 #include "test.h"
-#include "fl/gfx/geometry.h"
-#include "fl/stl/math.h"
+#include "fl/math/geometry.h"
+#include "fl/math/math.h"
 
 FL_TEST_FILE(FL_FILEPATH) {
 

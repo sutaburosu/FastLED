@@ -6,8 +6,8 @@
 #include "./led_layout_array.h"
 #include "./dprint.h"
 #include "./Keyboard.h"
-#include "fl/stl/math.h"
-#include "fl/stl/math.h"
+#include "fl/math/math.h"
+#include "fl/math/math.h"
 #include "fl/system/log.h"
 #include "fl/stl/cstring.h"
 

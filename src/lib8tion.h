@@ -3,7 +3,7 @@
 #ifndef __INC_LIB8TION_H
 #define __INC_LIB8TION_H
 
-#include "lib8tion/types.h"
+#include "fl/math/types.h"
 #include "fl/stl/compiler_control.h"
 
 #include "led_sysdefs.h"
@@ -12,21 +12,21 @@
 
 /// @file lib8tion.h
 /// Fast, efficient 8-bit math functions specifically
-/// designed for high-performance LED programming. 
+/// designed for high-performance LED programming.
 
 #include "fl/stl/stdint.h"
-#include "lib8tion/lib8static.h"
-#include "lib8tion/qfx.h"
-#include "lib8tion/memmove.h"
+#include "fl/math/lib8static.h"
+#include "fl/math/math8.h"
+#include "fl/math/qfx.h"
+#include "fl/math/memmove.h"
 #include "platforms/math8_config.h"
-#include "fl/gfx/ease.h"
+#include "fl/math/ease.h"
 #include "fl/stl/chrono.h"
 
 
 #if !defined(FL_IS_AVR)
 // memmove, memcpy, and memset are defined in lib8tion/memmove.h and fl/memfill.h
 #endif // end of !defined(FL_IS_AVR)
-
 
 /// @defgroup lib8tion Fast Math Functions
 /// Fast, efficient 8-bit math functions specifically
@@ -43,10 +43,10 @@
 ///    Instead of wrapping around if an overflow occurs,
 ///    these routines just 'clamp' the output at a maxumum
 ///    of 255, or a minimum of 0.  Useful for adding pixel
-///    values.  E.g., qadd8( 200, 100) = 255.
+///    values.  E.g., fl::qadd8( 200, 100) = 255.
 ///      @code
-///      qadd8( i, j) == fl::min( (i + j), 0xFF )
-///      qsub8( i, j) == fl::max( (i - j), 0 )
+///      fl::qadd8( i, j) == fl::min( (i + j), 0xFF )
+///      fl::qsub8( i, j) == fl::max( (i - j), 0 )
 ///      @endcode
 ///
 ///  - Saturating signed 8-bit ("7-bit") add.
@@ -106,7 +106,7 @@
 ///    These are provided mostly for completeness,
 ///    not particularly for performance.
 ///      @code
-///      mul8( i, j)  == (i * j) & 0xFF
+///      fl::mul8( i, j)  == (i * j) & 0xFF
 ///      add8( i, j)  == (i + j) & 0xFF
 ///      sub8( i, j)  == (i - j) & 0xFF
 ///      @endcode
@@ -176,10 +176,10 @@
 ///    fixed point fraction (fract8 or fract16).
 ///      @code
 ///      lerp8by8(   fromU8, toU8, fract8 )
-///      lerp16by8(  fromU16, toU16, fract8 )
-///      lerp15by8(  fromS16, toS16, fract8 )
+///      fl::lerp16by8(  fromU16, toU16, fract8 )
+///      fl::lerp15by8(  fromS16, toS16, fract8 )
 ///        == from + (( to - from ) * fract8) / 256)
-///      lerp16by16( fromU16, toU16, fract16 )
+///      fl::lerp16by16( fromU16, toU16, fract16 )
 ///        == from + (( to - from ) * fract16) / 65536)
 ///      map8( in, rangeStart, rangeEnd)
 ///        == map( in, 0, 255, rangeStart, rangeEnd);
@@ -222,10 +222,65 @@
 
 
 
-#include "lib8tion/math8.h"
-#include "lib8tion/scale8.h"
-#include "lib8tion/random8.h"
-#include "lib8tion/trig8.h"
+#include "fl/math/math8.h"
+#include "fl/math/scale8.h"
+#include "fl/math/random8.h"
+#include "fl/math/trig8.h"
+
+// Bring types and common math functions into global scope for backward compatibility.
+// Only import names that are actually defined in namespace fl (via platforms/ headers).
+// Functions defined with LIB8STATIC outside namespace fl (e.g., random8.h) are already global.
+using fl::u8;
+using fl::u16;
+using fl::u32;
+using fl::u64;
+using fl::i8;
+using fl::i16;
+using fl::i32;
+using fl::i64;
+// scale8.h (namespace fl)
+using fl::scale8;
+using fl::scale8_video;
+using fl::scale16;
+using fl::scale16by8;
+using fl::scale8_LEAVING_R1_DIRTY;
+using fl::nscale8x3;
+using fl::nscale8x3_video;
+using fl::scale8_video_LEAVING_R1_DIRTY;
+using fl::cleanup_R1;
+// trig8.h (namespace fl)
+using fl::sin8;
+using fl::sin16;
+using fl::cos8;
+using fl::cos16;
+// math8.h (namespace fl)
+using fl::qadd8;
+using fl::qsub8;
+using fl::qadd7;
+using fl::qmul8;
+using fl::add8;
+using fl::add8to16;
+using fl::sub8;
+using fl::avg8;
+using fl::avg16;
+using fl::avg8r;
+using fl::avg16r;
+using fl::avg7;
+using fl::avg15;
+using fl::mul8;
+using fl::abs8;
+using fl::blend8;
+using fl::mod8;
+using fl::addmod8;
+using fl::submod8;
+using fl::sqrt16;
+using fl::sqrt8;
+using fl::dim8_raw;
+// qfx.h (namespace fl)
+using fl::q44;
+using fl::q62;
+using fl::q88;
+using fl::q124;
 
 ///////////////////////////////////////////////////////////////////////
 
@@ -400,7 +455,7 @@ LIB8STATIC fl::u8 map8( fl::u8 in, fl::u8 rangeStart, fl::u8 rangeEnd)
 /// 8-bit quadratic ease-in / ease-out function. 
 /// Takes around 13 cycles on AVR.
 #if (EASE8_C == 1) || defined(FASTLED_DOXYGEN)
-LIB8STATIC fl::u8 ease8InOutQuad( fl::u8 i)
+LIB8STATIC fl::u8 ease8InOutQuad(fl::u8 i)
 {
     fl::u8 j = i;
     if( j & 0x80 ) {
@@ -443,7 +498,7 @@ LIB8STATIC fl::u8 ease8InOutQuad(fl::u8 val) {
 #error "No implementation for ease8InOutQuad available."
 #endif
 
-LIB8STATIC fl::u16 ease16InOutQuad( fl::u16 i)
+LIB8STATIC fl::u16 ease16InOutQuad(fl::u16 i)
 {
     // This is the legacy version, there is a slightly more accurate version in fl/ease.cpp
     // with fl::easeInOutQuad16. However the difference is minimal.
@@ -646,7 +701,7 @@ LIB8STATIC fl::u8 cubicwave8(fl::u8 in)
 /// @param in input value
 /// @param pulsewidth width of the output pulse
 /// @returns square wave output
-LIB8STATIC fl::u8 squarewave8( fl::u8 in, fl::u8 pulsewidth=128)
+LIB8STATIC fl::u8 squarewave8( fl::u8 in, u8 pulsewidth=128)
 {
     if( in < pulsewidth || (pulsewidth == 255)) {
         return 255;
@@ -741,7 +796,7 @@ fl::u32 get_millisecond_timer();
 /// @warning The BPM parameter **MUST** be provided in Q8.8 format! E.g.
 /// for 120 BPM it would be 120*256 = 30720. If you just want to specify
 /// "120", use beat16() or beat8().
-LIB8STATIC fl::u16 beat88( accum88 beats_per_minute_88, fl::u32 timebase = 0)
+LIB8STATIC fl::u16 beat88( accum88 beats_per_minute_88, u32 timebase = 0)
 {
     // BPM is 'beats per minute', or 'beats per 60000ms'.
     // To avoid using the (slower) division operator, we
@@ -757,7 +812,7 @@ LIB8STATIC fl::u16 beat88( accum88 beats_per_minute_88, fl::u32 timebase = 0)
 /// Generates a 16-bit "sawtooth" wave at a given BPM
 /// @param beats_per_minute the frequency of the wave, in decimal
 /// @param timebase the time offset of the wave from the millis() timer
-LIB8STATIC fl::u16 beat16( accum88 beats_per_minute, fl::u32 timebase = 0)
+LIB8STATIC fl::u16 beat16( accum88 beats_per_minute, u32 timebase = 0)
 {
     // Convert simple 8-bit BPM's to full Q8.8 accum88's if needed
     if( beats_per_minute < 256) beats_per_minute <<= 8;
@@ -767,7 +822,7 @@ LIB8STATIC fl::u16 beat16( accum88 beats_per_minute, fl::u32 timebase = 0)
 /// Generates an 8-bit "sawtooth" wave at a given BPM
 /// @param beats_per_minute the frequency of the wave, in decimal
 /// @param timebase the time offset of the wave from the millis() timer
-LIB8STATIC fl::u8 beat8( accum88 beats_per_minute, fl::u32 timebase = 0)
+LIB8STATIC fl::u8 beat8( accum88 beats_per_minute, u32 timebase = 0)
 {
     return beat16( beats_per_minute, timebase) >> 8;
 }
@@ -783,7 +838,7 @@ LIB8STATIC fl::u8 beat8( accum88 beats_per_minute, fl::u32 timebase = 0)
 /// @warning The BPM parameter **MUST** be provided in Q8.8 format! E.g.
 /// for 120 BPM it would be 120*256 = 30720. If you just want to specify
 /// "120", use beatsin16() or beatsin8().
-LIB8STATIC fl::u16 beatsin88( accum88 beats_per_minute_88, fl::u16 lowest = 0, fl::u16 highest = 65535,
+LIB8STATIC fl::u16 beatsin88( accum88 beats_per_minute_88, fl::u16 lowest = 0, u16 highest = 65535,
                               fl::u32 timebase = 0, fl::u16 phase_offset = 0)
 {
     fl::u16 beat = beat88( beats_per_minute_88, timebase);
@@ -805,7 +860,7 @@ LIB8STATIC fl::u16 beatsin88( accum88 beats_per_minute_88, fl::u16 lowest = 0, f
 /// @param highest the highest output value of the sine wave
 /// @param timebase the time offset of the wave from the millis() timer
 /// @param phase_offset phase offset of the wave from the current position
-LIB8STATIC fl::u16 beatsin16( accum88 beats_per_minute, fl::u16 lowest = 0, fl::u16 highest = 65535,
+LIB8STATIC fl::u16 beatsin16( accum88 beats_per_minute, fl::u16 lowest = 0, u16 highest = 65535,
                                fl::u32 timebase = 0, fl::u16 phase_offset = 0)
 {
     fl::u16 beat = beat16( beats_per_minute, timebase);
@@ -827,7 +882,7 @@ LIB8STATIC fl::u16 beatsin16( accum88 beats_per_minute, fl::u16 lowest = 0, fl::
 /// @param highest the highest output value of the sine wave
 /// @param timebase the time offset of the wave from the millis() timer
 /// @param phase_offset phase offset of the wave from the current position
-LIB8STATIC fl::u8 beatsin8( accum88 beats_per_minute, fl::u8 lowest = 0, fl::u8 highest = 255,
+LIB8STATIC fl::u8 beatsin8( accum88 beats_per_minute, fl::u8 lowest = 0, u8 highest = 255,
                             fl::u32 timebase = 0, fl::u8 phase_offset = 0)
 {
     fl::u8 beat = beat8( beats_per_minute, timebase);
@@ -896,7 +951,7 @@ LIB8STATIC fl::u8 hours8()
 /// just six shifts (vs 40), and no loop overhead.
 /// Used to convert millis to "binary seconds" aka bseconds:
 /// one bsecond == 1024 millis.
-LIB8STATIC fl::u16 div1024_32_16( fl::u32 in32)
+LIB8STATIC fl::u16 div1024_32_16( u32 in32)
 {
     fl::u16 out16;
 #if defined(FL_IS_AVR)
@@ -1252,30 +1307,4 @@ typedef CEveryNTimePeriods<fl::u8,hours8> CEveryNHours;
 
 #endif
 
-// Bring common math functions and types into global scope for backward compatibility
-using fl::qadd8;
-using fl::qsub8;
-using fl::qadd7;
-using fl::qmul8;
-using fl::add8;
-using fl::add8to16;
-using fl::sub8;
-using fl::avg8;
-using fl::avg16;
-using fl::avg8r;
-using fl::avg16r;
-using fl::avg7;
-using fl::avg15;
-using fl::mul8;
-using fl::abs8;
-using fl::blend8;
-using fl::mod8;
-using fl::addmod8;
-using fl::submod8;
-using fl::sqrt16;
-using fl::sqrt8;
-using fl::q44;
-using fl::q62;
-using fl::q88;
-using fl::q124;
-using fl::dim8_raw;
+// Using declarations moved to top of file

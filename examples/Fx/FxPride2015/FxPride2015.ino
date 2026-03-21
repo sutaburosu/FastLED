@@ -12,7 +12,7 @@
 
 #include <FastLED.h>
 #include "fl/fx/1d/pride2015.h"
-#include "fl/gfx/screenmap.h"
+#include "fl/math/screenmap.h"
 
 
 #define DATA_PIN    3

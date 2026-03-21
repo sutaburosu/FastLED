@@ -3,7 +3,7 @@
 // and the USE_SIN_32 wrapper path produce correct results.
 
 #include "test.h"
-#include "lib8tion/trig8.h"
+#include "fl/math/trig8.h"
 #include "fl/stl/int.h"
 
 using namespace fl;

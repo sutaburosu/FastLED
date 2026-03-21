@@ -48,13 +48,13 @@ from ci.lint_cpp.logging_in_iram_checker import LoggingInIramChecker
 from ci.lint_cpp.member_style_checker import MemberStyleChecker
 from ci.lint_cpp.namespace_platforms_checker import NamespacePlatformsChecker
 from ci.lint_cpp.native_platform_defines_checker import NativePlatformDefinesChecker
-from ci.lint_cpp.net_namespace_checker import SubdirNamespaceChecker
 from ci.lint_cpp.no_cpp_in_fl_checker import NoCppInFlChecker
 from ci.lint_cpp.no_namespace_fl_declaration import NamespaceFlDeclarationChecker
 from ci.lint_cpp.no_using_namespace_fl_in_headers import UsingNamespaceFlChecker
 from ci.lint_cpp.numeric_limit_macros_checker import NumericLimitMacroChecker
 from ci.lint_cpp.pch_file_checker import check as check_pch_files
 from ci.lint_cpp.platform_includes_checker import PlatformIncludesChecker
+from ci.lint_cpp.platform_pragma_checker import PlatformPragmaChecker
 from ci.lint_cpp.pragma_once_checker import PragmaOnceChecker
 from ci.lint_cpp.reinterpret_cast_checker import ReinterpretCastChecker
 from ci.lint_cpp.relative_include_checker import RelativeIncludeChecker
@@ -68,6 +68,7 @@ from ci.lint_cpp.std_namespace_checker import StdNamespaceChecker
 from ci.lint_cpp.stdint_type_checker import (
     StdintTypeChecker,
 )
+from ci.lint_cpp.subdir_namespace_checker import SubdirNamespaceChecker
 from ci.lint_cpp.test_aggregation_checker import TestAggregationChecker
 from ci.lint_cpp.test_aggregation_checker import check as check_test_aggregation
 from ci.lint_cpp.test_aggregation_checker import (
@@ -183,6 +184,7 @@ def create_checkers(
         SleepForChecker(),  # Checks for sleep_for() — bypasses async runner, use fl::yield/fl::async_run
         ThreadLocalKeywordChecker(),  # Checks for thread_local keyword — use fl::SingletonThreadLocal<T>::instance()
         BannedDefineChecker(),  # Checks for wrong #if patterns (e.g., #if ESP32 → #ifdef ESP32)
+        PlatformPragmaChecker(),  # Checks for raw #pragma GCC/clang/warning — use FL_DISABLE_WARNING macros
         # Note: Private libc++ headers checking is now integrated into BannedHeadersChecker
         # Note: _build.hpp hierarchy checking is now integrated into test_unity_build.py
     ]
@@ -244,9 +246,9 @@ def create_checkers(
         SubdirNamespaceChecker(
             "net"
         ),  # Checks fl/net/ headers use proper fl::net:: namespaces
-        SubdirNamespaceChecker(
-            "audio"
-        ),  # Checks fl/audio/ headers use proper fl::audio:: namespaces
+        # NOTE: fl/math/ is NOT checked — types there intentionally live in fl::
+        # namespace for backward compatibility. Using inline namespace math
+        # causes cascading ambiguity with fl::detail, fl::simd, etc.
     ]
 
     # lib8tion/ directory checkers with STRICT enforcement
@@ -434,8 +436,16 @@ def run_checkers(
     return _collect_violations_from_checkers(all_checkers)
 
 
-def format_and_print_results(results: dict[str, CheckerResults]) -> int:
-    """Format and print all violations. Returns exit code (0 = success, 1 = failures)."""
+def format_and_print_results(
+    results: dict[str, CheckerResults], max_violations_per_checker: int = 10
+) -> int:
+    """Format and print all violations. Returns exit code (0 = success, 1 = failures).
+
+    Args:
+        results: Checker results to format.
+        max_violations_per_checker: Maximum violations to print per checker before
+            truncating output. Set to 0 for unlimited.
+    """
     total_violations = 0
 
     for checker_name, checker_results in sorted(results.items()):
@@ -452,7 +462,15 @@ def format_and_print_results(results: dict[str, CheckerResults]) -> int:
         )
         print("=" * 80)
 
+        printed_violations = 0
+        truncated = False
         for file_path in sorted(checker_results.violations.keys()):
+            if (
+                max_violations_per_checker > 0
+                and printed_violations >= max_violations_per_checker
+            ):
+                truncated = True
+                break
             rel_path = os.path.relpath(file_path, PROJECT_ROOT)
             # Normalize to forward slashes for consistent cross-platform output
             rel_path = rel_path.replace("\\", "/")
@@ -460,7 +478,21 @@ def format_and_print_results(results: dict[str, CheckerResults]) -> int:
 
             print(f"\n{rel_path}:")
             for violation in file_violations.violations:
+                if (
+                    max_violations_per_checker > 0
+                    and printed_violations >= max_violations_per_checker
+                ):
+                    truncated = True
+                    break
                 print(f"  Line {violation.line_number}: {violation.content}")
+                printed_violations += 1
+
+        if truncated:
+            remaining = violation_count - printed_violations
+            print(
+                f"\n  ... stopped after {max_violations_per_checker} violations"
+                f" ({remaining} more not shown)"
+            )
 
     if total_violations > 0:
         print(f"\n{'=' * 80}")

@@ -2,7 +2,7 @@
 #include "fl/stl/algorithm.h"
 #include "fl/stl/new.h"
 #include "fl/stl/shared_ptr.h"
-#include "fl/stl/math.h"
+#include "fl/math/math.h"
 
 namespace fl {
 namespace audio {

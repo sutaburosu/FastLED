@@ -3,7 +3,7 @@
 #include "fl/audio/spectral_equalizer.h"
 #include "fl/audio/fft/fft.h"
 #include "fl/stl/vector.h"
-#include "fl/stl/math.h"
+#include "fl/math/math.h"
 #include "test_helpers.h"
 
 using namespace fl;

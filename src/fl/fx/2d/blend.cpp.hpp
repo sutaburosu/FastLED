@@ -10,7 +10,7 @@ are blended by the the max luminance of the components.
 #include "fl/fx/frame.h"
 #include "fl/fx/fx.h"
 #include "fl/stl/stdint.h"
-#include "fl/gfx/xymap.h"
+#include "fl/math/xymap.h"
 #include "fl/system/log.h"
 
 namespace fl {

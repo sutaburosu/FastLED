@@ -235,7 +235,7 @@ giving deterministic, FPU-free rendering at full subpixel precision.
 
 ```cpp
 #include "fl/gfx/gfx.h"
-#include "fl/stl/fixed_point/s16x16.h"
+#include "fl/math/fixed_point/s16x16.h"
 
 using fl::s16x16;
 
@@ -324,7 +324,7 @@ per value — useful on the most memory-constrained targets.
 
 ```cpp
 #include "fl/gfx/gfx.h"
-#include "fl/stl/fixed_point/s8x8.h"
+#include "fl/math/fixed_point/s8x8.h"
 
 using fl::s8x8;
 

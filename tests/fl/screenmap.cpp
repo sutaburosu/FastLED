@@ -2,10 +2,10 @@
 // g++ --std=c++11 test.cpp
 
 
-#include "fl/gfx/screenmap.h"
+#include "fl/math/screenmap.h"
 #include "fl/stl/new.h"
 #include "test.h"
-#include "fl/gfx/geometry.h"
+#include "fl/math/geometry.h"
 #include "fl/stl/map.h"
 #include "fl/stl/move.h"
 #include "fl/stl/string.h"

@@ -3,7 +3,7 @@
 /// @file fl/gfx/canvas.h
 /// @brief Canvas types for gfx primitives (implementation)
 
-#include "fl/gfx/alpha.h"
+#include "fl/math/alpha.h"
 #include "fl/gfx/draw_mode.h"
 #include "fl/stl/int.h"
 #include "fl/stl/span.h"

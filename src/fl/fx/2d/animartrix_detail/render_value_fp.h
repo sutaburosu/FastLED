@@ -6,7 +6,7 @@
 //
 // This is the core inner loop for all FP visualizer conversions.
 
-#include "fl/stl/fixed_point/s16x16.h"
+#include "fl/math/fixed_point/s16x16.h"
 #include "fl/fx/2d/animartrix_detail/core_types.h"
 #include "fl/fx/2d/animartrix_detail/perlin_s16x16.h"
 #include "fl/math/sin32.h"

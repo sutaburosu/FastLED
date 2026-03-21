@@ -21,10 +21,10 @@
 #include "fl/system/pin.h"
 #include "fl/chipsets/encoders/ucs7604.h"
 #include "fl/chipsets/ucs7604.h"
-#include "fl/gfx/ease.h"
+#include "fl/math/ease.h"
 #include "fl/stl/iterator.h"
 #include "fl/engine_events.h"
-#include "fl/gfx/xymap.h"
+#include "fl/math/xymap.h"
 #include "fl/stl/singleton.h"
 
 namespace fl {

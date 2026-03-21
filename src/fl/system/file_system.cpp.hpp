@@ -6,7 +6,7 @@
 #include "fl/codec/jpeg.h"
 #include "fl/codec/mp3.h"
 #include "fl/stl/vector.h"
-#include "fl/stl/math.h"
+#include "fl/math/math.h"
 
 #ifdef FASTLED_TESTING
 // Test filesystem implementation that maps to real hard drive
@@ -28,9 +28,9 @@
 #endif
 
 #include "fl/stl/json.h"
-#include "fl/gfx/screenmap.h"
+#include "fl/math/screenmap.h"
 #include "fl/codec/mpeg1.h"
-#include "fl/stl/math.h" // for min
+#include "fl/math/math.h" // for min
 #include "fl/stl/cstring.h"
 
 namespace fl {

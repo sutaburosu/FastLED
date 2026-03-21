@@ -5,7 +5,7 @@
 #include "./Keyboard.h"
 #include "./dprint.h"
 #include "fl/stl/compiler_control.h"
-#include "fl/stl/math.h"
+#include "fl/math/math.h"
 
 Key::Key() : mOn(false), mSustained(false), mSustainPedalOn(false),
              mVelocity(0), mIdx(0), mEventTime(0) {}

@@ -4,8 +4,8 @@
     #include "fl/fastled.h" //to have the type CRGB
 #endif
 
-#include "fl/stl/math.h"
-#include "fl/stl/math.h"
+#include "fl/math/math.h"
+#include "fl/math/math.h"
 
 // NAN is not available in all platforms, define it if not present
 #ifndef FL_NAN

@@ -2,8 +2,8 @@
 /// @brief Implementation of FrequencyBinMapper for fft::FFT bin to frequency channel mapping
 
 #include "fl/audio/frequency_bin_mapper.h"
-#include "fl/stl/math.h"
-#include "fl/stl/math.h"
+#include "fl/math/math.h"
+#include "fl/math/math.h"
 #include "fl/stl/compiler_control.h"
 
 namespace fl {

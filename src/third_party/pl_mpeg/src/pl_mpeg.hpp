@@ -155,8 +155,8 @@ See below for detailed the API documentation.
 #include "fl/stl/stddef.h"  // For NULL definition
 
 #include "fl/stl/stdint.h"
-#include "fl/stl/math.h"
-#include "fl/stl/math.h"
+#include "fl/math/math.h"
+#include "fl/math/math.h"
 #include "fl/stl/string.h"
 #include "fl/stl/cstring.h"  // for fl::memset(), fl::memcpy(), fl::memmove()
 

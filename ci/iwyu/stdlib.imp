@@ -128,9 +128,9 @@
   # __ostream/* -> "fl/stl/ostream.h"
   { include: ['"__ostream/basic_ostream.h"', 'private', '"fl/stl/ostream.h"', 'public'] },
 
-  # __random/* -> "fl/stl/random.h"
-  { include: ['"__random/mersenne_twister_engine.h"', 'private', '"fl/stl/random.h"', 'public'] },
-  { include: ['"__random/random_device.h"', 'private', '"fl/stl/random.h"', 'public'] },
+  # __random/* -> "fl/math/random.h"
+  { include: ['"__random/mersenne_twister_engine.h"', 'private', '"fl/math/random.h"', 'public'] },
+  { include: ['"__random/random_device.h"', 'private', '"fl/math/random.h"', 'public'] },
 
   # __thread/* -> "fl/stl/thread.h"
   { include: ['"__thread/id.h"', 'private', '"fl/stl/thread.h"', 'public'] },

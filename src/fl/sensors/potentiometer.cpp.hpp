@@ -4,7 +4,7 @@
 #include "fl/stl/assert.h"
 #include "fl/sensors/potentiometer.h"
 #include "fl/system/pin.h"
-#include "fl/stl/math.h"
+#include "fl/math/math.h"
 
 namespace fl {
 

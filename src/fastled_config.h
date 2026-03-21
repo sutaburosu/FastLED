@@ -38,10 +38,10 @@
 // #define FASTLED_NOISE_ALLOW_AVERAGE_TO_OVERFLOW 1
 
 /// @def FASTLED_SCALE8_FIXED
-/// Use this to toggle whether or not to use the "fixed" FastLED scale8().  The initial scale8()
-/// had a problem where scale8(255,255) would give you 254.  This is now fixed, and that
+/// Use this to toggle whether or not to use the "fixed" FastLED fl::scale8().  The initial fl::scale8()
+/// had a problem where fl::scale8(255,255) would give you 254.  This is now fixed, and that
 /// fix is enabled by default.  However, if for some reason you have code that is not
-/// working right as a result of this (e.g. code that was expecting the old scale8() behavior)
+/// working right as a result of this (e.g. code that was expecting the old fl::scale8() behavior)
 /// you can disable it here.
 #define FASTLED_SCALE8_FIXED 1
 // #define FASTLED_SCALE8_FIXED 0

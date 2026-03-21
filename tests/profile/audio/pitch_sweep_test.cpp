@@ -26,7 +26,7 @@
 #include "fl/audio/fft/fft_impl.h"
 #include "fl/stl/int.h"
 #include "fl/stl/json.h"
-#include "fl/stl/math.h"
+#include "fl/math/math.h"
 #include "fl/stl/stdio.h"
 #include "fl/stl/string.h"
 #include "fl/stl/vector.h"

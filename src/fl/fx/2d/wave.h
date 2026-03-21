@@ -10,8 +10,8 @@
 
 #include "fl/gfx/gradient.h"
 #include "fl/stl/shared_ptr.h"  // For FASTLED_SHARED_PTR macros and shared_ptr
-#include "fl/gfx/wave_simulation.h"
-#include "fl/gfx/xymap.h"
+#include "fl/math/wave/wave_simulation.h"
+#include "fl/math/xymap.h"
 #include "fl/fx/fx2d.h"
 
 namespace fl {

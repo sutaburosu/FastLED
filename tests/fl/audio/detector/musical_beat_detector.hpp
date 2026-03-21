@@ -2,8 +2,8 @@
 // standalone test
 
 #include "fl/audio/detector/musical_beat_detector.h"
-#include "fl/stl/math.h"
-#include "fl/stl/math.h"
+#include "fl/math/math.h"
+#include "fl/math/math.h"
 
 using namespace fl;
 

@@ -8,7 +8,7 @@ Each of the four pixels in the tile is a fl::u8 value in the range
 [0..255] that represents the intensity of the pixel at that point.
 */
 
-#include "fl/gfx/geometry.h"
+#include "fl/math/geometry.h"
 
 namespace fl {
 

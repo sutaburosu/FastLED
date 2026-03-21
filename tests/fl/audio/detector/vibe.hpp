@@ -5,7 +5,7 @@
 #include "fl/audio/audio_context.h"
 #include "fl/audio/detector/vibe.h"
 #include "../test_helpers.h"
-#include "fl/stl/math.h"
+#include "fl/math/math.h"
 #include "fl/stl/shared_ptr.h"
 
 using namespace fl;

@@ -11,8 +11,8 @@ namespace fl {
 
 class Tile2x2_u8;
 class Tile2x2_u8_wrap;  // Forward declaration to support operator<< overload
-template <typename T> struct vec2;  // Forward declaration from fl/geometry.h
-template <typename T> struct rect;  // Forward declaration from fl/geometry.h
+template <typename T> struct vec2;  // Forward declaration from fl/math/geometry.h
+template <typename T> struct rect;  // Forward declaration from fl/math/geometry.h
 template <typename T, typename Alloc> class vector;  // Forward declaration from fl/vector.h  // IWYU pragma: keep
 template <typename T> class Optional;  // Forward declaration from fl/stl/optional.h
 template <typename Key, typename Hash, typename KeyEqual> class unordered_set;  // Forward declaration from fl/stl/unordered_set.h

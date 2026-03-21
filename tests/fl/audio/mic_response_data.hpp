@@ -1,8 +1,8 @@
 // Unit tests for mic_response_data.h — high-resolution mic curves and utilities
 
 #include "fl/audio/mic_response_data.h"
-#include "fl/stl/math.h"
-#include "fl/stl/math.h"
+#include "fl/math/math.h"
+#include "fl/math/math.h"
 
 using namespace fl;
 

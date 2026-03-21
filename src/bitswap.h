@@ -9,6 +9,6 @@
 /// @deprecated This header is maintained for backwards compatibility.
 /// New code should use fl/transposition.h directly.
 
-#include "fl/transposition.h"
+#include "fl/math/transposition.h"
 
 #endif

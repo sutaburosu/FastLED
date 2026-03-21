@@ -142,7 +142,7 @@ class TestPlatformIncludesChecker(unittest.TestCase):
         lines = [
             '#include "fl/stl/int.h"',
             '#include "fl/stl/vector.h"',
-            '#include "fl/stl/math.h"',
+            '#include "fl/math/math.h"',
         ]
         content = FileContent(
             path="/path/to/project/src/fl/test.h",

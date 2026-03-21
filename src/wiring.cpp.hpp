@@ -19,7 +19,7 @@ typedef union { unsigned long _long; fl::u8 raw[4]; } tBytesForLong;
 volatile unsigned long FastLED_timer0_overflow_count=0;
 volatile unsigned long FastLED_timer0_millis = 0;
 
-LIB8STATIC void  __attribute__((always_inline)) fastinc32 (volatile fl::u32 & _long) {
+LIB8STATIC void  __attribute__((always_inline)) fastinc32 (volatile u32 & _long) {
   fl::u8 b = ++((tBytesForLong&)_long).raw[0];
   if(!b) {
     b = ++((tBytesForLong&)_long).raw[1];

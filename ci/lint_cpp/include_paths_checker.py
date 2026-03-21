@@ -8,10 +8,10 @@ and proper IDE support.
 
 Valid includes:
   - #include "fl/foo.h"              - starts with fl/
+  - #include "fl/math/foo.h"         - starts with fl/
   - #include "platforms/bar.h"       - starts with platforms/
   - #include <system_header>         - system headers are fine
   - #include "FastLED.h"             - top-level src files are fine
-  - #include "lib8tion/foo.h"        - starts with lib8tion/
   - #include "fx/foo.h"              - starts with fx/
   - #include "sensors/foo.h"         - starts with sensors/
   - #include "third_party/foo.h"     - starts with third_party/
@@ -21,6 +21,7 @@ Valid includes:
 Invalid includes:
   - #include "../foo.h"              - parent-relative paths
   - #include "./foo.h"               - current-dir relative
+  - #include "fl/math/lib8tion/foo.h" - use "fl/math/foo.h" instead
   - #include "avr/foo.h"             - inside platforms/, should be "platforms/avr/foo.h"
   - #include "esp/foo.h"             - inside platforms/, should be "platforms/esp/foo.h"
   - #include "arm/foo.h"             - inside platforms/, should be "platforms/arm/foo.h"
@@ -46,7 +47,6 @@ from ci.util.paths import PROJECT_ROOT
 VALID_PREFIXES = (
     "fl/",
     "platforms/",
-    "lib8tion/",
     "fx/",
     "sensors/",
     "third_party/",
@@ -127,6 +127,13 @@ FASTLED_PLATFORM_SUBDIRS = (
     "wasm/",
     "posix/",
 )
+
+# Internal subpaths within fl/ that should NOT be used directly in includes.
+# These subdirectories have been folded into their parent - use the parent path instead.
+# Maps banned prefix -> replacement prefix
+BANNED_INTERNAL_SUBPATHS: dict[str, str] = {
+    "fl/math/lib8tion/": "fl/math/",
+}
 
 # Likely typos of valid FastLED prefixes that should be flagged
 # These are misspellings or variations that look like they're trying to
@@ -238,6 +245,17 @@ def is_fastled_platform_relative(include_path: str) -> bool:
     return False
 
 
+def get_banned_subpath_replacement(include_path: str) -> str | None:
+    """Check if the include uses a banned internal subpath.
+
+    Returns the corrected path if banned, None otherwise.
+    """
+    for banned_prefix, replacement_prefix in BANNED_INTERNAL_SUBPATHS.items():
+        if include_path.startswith(banned_prefix):
+            return replacement_prefix + include_path[len(banned_prefix) :]
+    return None
+
+
 def is_valid_include_path(include_path: str) -> bool:
     """Check if include path follows the required style.
 
@@ -255,6 +273,10 @@ def is_valid_include_path(include_path: str) -> bool:
     # External SDK headers are allowed (e.g., "hardware/irq.h", "freertos/FreeRTOS.h")
     if is_external_sdk_header(include_path):
         return True
+
+    # Reject banned internal subpaths (e.g., fl/math/lib8tion/ -> fl/math/)
+    if get_banned_subpath_replacement(include_path) is not None:
+        return False
 
     # Check if path starts with a valid FastLED prefix
     for prefix in VALID_PREFIXES:
@@ -383,7 +405,16 @@ class IncludePathsChecker(FileContentChecker):
 
                 # Check if the include path is valid
                 if not is_valid_include_path(include_path):
-                    if is_relative_path(include_path):
+                    banned_replacement = get_banned_subpath_replacement(include_path)
+                    if banned_replacement is not None:
+                        msg = (
+                            f'Invalid include path: #include "{include_path}" - '
+                            f'Use #include "{banned_replacement}" instead. '
+                            f"Add '// ok include path' comment to suppress."
+                        )
+                        violations.append((line_number, msg))
+                        self.total_error_count += 1
+                    elif is_relative_path(include_path):
                         msg = (
                             f'Invalid include path: #include "{include_path}" - '
                             f"Relative paths (../ or ./) are not allowed. "
@@ -484,7 +515,10 @@ def apply_fixes(violations_dict: dict, file_contents: dict) -> tuple[int, int]:
             use_angle_brackets = False
 
             # Try to infer the correct path
-            if is_known_sdk_header(include_path):
+            banned_replacement = get_banned_subpath_replacement(include_path)
+            if banned_replacement is not None:
+                corrected_path = banned_replacement
+            elif is_known_sdk_header(include_path):
                 # Convert to angle bracket syntax - check this first!
                 corrected_path = Path(include_path).name
                 use_angle_brackets = True

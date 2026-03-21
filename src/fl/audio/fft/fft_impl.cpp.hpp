@@ -16,9 +16,9 @@
 #include "fl/audio/fft/fft_impl.h"
 #include "fl/stl/string.h"
 #include "fl/stl/compiler_control.h"
-#include "fl/stl/fixed_point.h"
+#include "fl/math/fixed_point.h"
 #include "fl/stl/vector.h"
-#include "fl/gfx/alpha.h"
+#include "fl/math/alpha.h"
 #include "fl/system/log.h"
 
 #include "fl/stl/cstring.h"

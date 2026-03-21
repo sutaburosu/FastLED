@@ -8,8 +8,8 @@
 // by Malcolm Kesson; arduino port by Peter Chiochetti, Sep 2007
 
 #include "fl/stl/stdint.h"
-#include "fl/stl/math.h"
-#include "fl/stl/math.h"
+#include "fl/math/math.h"
+#include "fl/math/math.h"
 #include "fl/stl/compiler_control.h"
 
 namespace fl {

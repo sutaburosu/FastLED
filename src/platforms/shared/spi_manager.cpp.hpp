@@ -12,7 +12,7 @@
 
 #include "fl/stl/limits.h"
 #include "fl/system/fastpin.h"
-#include "fl/stl/math.h"
+#include "fl/math/math.h"
 
 // Arduino defines max/min as macros, which conflicts with fl::numeric_limits<T>::max()
 // Undefine them here since we use the FastLED fl:: equivalents (min/max)

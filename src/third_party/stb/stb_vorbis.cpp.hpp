@@ -262,12 +262,12 @@
    #include "fl/stl/malloc.h"    // For fl::malloc, fl::free
    #include "fl/stl/cstdlib.h"   // For fl::qsort
    #include "fl/stl/cstring.h"   // For fl::memset, fl::memcpy, fl::memcmp, etc.
-   #include "fl/stl/math.h"      // For fl::floor, fl::exp, fl::cos, fl::sin, fl::pow, fl::ldexp, etc.
+   #include "fl/math/math.h"      // For fl::floor, fl::exp, fl::cos, fl::sin, fl::pow, fl::ldexp, etc.
 
 #endif // !FL_STB_VORBIS_NO_CRT
 
 #include "fl/stl/limits.h"     // For fl::numeric_limits (instead of limits.h)
-#include "fl/stl/math.h"    // For FL_PI
+#include "fl/math/math.h"    // For FL_PI
 #include "fl/stl/singleton.h"   // For SingletonThreadLocal (thread-safe temp buffer)
 #include "fl/stl/vector.h"     // For fl::vector (heap temp buffer)
 

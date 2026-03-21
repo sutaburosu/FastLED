@@ -24,12 +24,12 @@
 
 #include "crgb.h"
 #include "fl/stl/vector.h"
-#include "fl/stl/math.h"
+#include "fl/math/math.h"
 #include "fl/stl/optional.h"
 #include "fl/stl/stdint.h"
 #include "fl/math/sin32.h"
-#include "fl/stl/fixed_point/s16x16.h"
-#include "fl/stl/simd.h"
+#include "fl/math/fixed_point/s16x16.h"
+#include "fl/math/simd.h"
 
 
 #ifndef PI
@@ -49,7 +49,7 @@ FL_OPTIMIZATION_LEVEL_O3_BEGIN
 #include "fl/fx/2d/animartrix_detail/context.h"
 #include "fl/fx/2d/animartrix_detail/chasing_spiral_pixel_lut.h"
 #include "fl/fx/2d/animartrix_detail/perlin_s16x16.h"
-#include "fl/fx/2d/animartrix_detail/perlin_s16x16_simd.h"
+#include "fl/math/noise/perlin_s16x16_simd.h"
 #include "fl/fx/2d/animartrix_detail/perlin_q16.h"
 #include "fl/fx/2d/animartrix_detail/perlin_s8x8.h"
 #include "fl/fx/2d/animartrix_detail/perlin_i16_optimized.h"

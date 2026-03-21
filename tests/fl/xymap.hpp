@@ -2,7 +2,7 @@
 
 #include "FastLED.h"
 #include "test.h"
-#include "fl/gfx/xymap.h"
+#include "fl/math/xymap.h"
 #include "fl/stl/int.h"
 
 

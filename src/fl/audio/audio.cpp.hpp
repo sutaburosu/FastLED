@@ -1,7 +1,7 @@
 
 #include "fl/audio/audio.h"
 #include "fl/audio/fft/fft.h"
-#include "fl/stl/math.h"
+#include "fl/math/math.h"
 #include "fl/stl/move.h"
 #include "fl/stl/mutex.h"
 #include "fl/stl/shared_ptr.h"

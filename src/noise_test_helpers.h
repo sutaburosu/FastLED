@@ -1,7 +1,7 @@
 #pragma once
 
 #include "crgb.h"
-#include "fl/stl/math.h"
+#include "fl/math/math.h"
 
 namespace noise_test_helpers {
     // Helper function to calculate average color difference between two frames

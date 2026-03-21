@@ -3,15 +3,16 @@
 // VIBE CODED WITH AI
 
 #include "fl/gfx/downscale.h"
+#include "fl/stl/compiler_control.h"
 #include "fl/stl/int.h"
 
 #include "crgb.h"
 #include "fl/stl/assert.h"
-#include "fl/stl/math.h"
-#include "fl/gfx/xymap.h"
+#include "fl/math/math.h"
+#include "fl/math/xymap.h"
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wshift-count-overflow"
+FL_DISABLE_WARNING_PUSH
+FL_DISABLE_WARNING(shift-count-overflow)
 
 namespace fl {
 
@@ -185,4 +186,4 @@ void downscale(const CRGB *src, const XYMap &srcXY, CRGB *dst,
 
 } // namespace fl
 
-#pragma GCC diagnostic pop
+FL_DISABLE_WARNING_POP

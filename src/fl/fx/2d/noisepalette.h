@@ -8,9 +8,9 @@
 
 #include "fl/stl/shared_ptr.h"         // For FASTLED_SHARED_PTR macros
 #include "fl/stl/shared_ptr.h"  // For shared_ptr
-#include "fl/gfx/xymap.h"
+#include "fl/math/xymap.h"
 #include "fl/fx/fx2d.h"
-#include "lib8tion/random8.h"
+#include "fl/math/random8.h"
 
 namespace fl {
 

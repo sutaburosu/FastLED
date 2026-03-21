@@ -40,10 +40,10 @@
 #include "platforms/shared/active_strip_data/active_strip_data.h"
 #include "platforms/wasm/js.h"
 #include "fl/system/log.h"
-#include "fl/stl/math.h"
+#include "fl/math/math.h"
 #include "fl/stl/malloc.h"
 #include "fl/stl/cstring.h"
-#include "fl/gfx/screenmap.h"
+#include "fl/math/screenmap.h"
 #include "fl/stl/json.h"
 #include "fl/stl/stdio.h"
 

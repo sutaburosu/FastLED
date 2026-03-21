@@ -8,7 +8,7 @@
 #include "fl/codec/vorbis.h"
 #include "fl/stl/detail/file_handle.h"
 #include "fl/stl/detail/file_io.h"
-#include "fl/stl/math.h"
+#include "fl/math/math.h"
 #include "fl/stl/scope_exit.h"
 #include "fl/stl/shared_ptr.h"
 #include "fl/stl/vector.h"

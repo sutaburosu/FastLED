@@ -7,14 +7,14 @@
 
 #include "fl/stl/int.h"
 #include "platforms/is_platform.h"
-#include "fl/stl/math.h"
+#include "fl/math/math.h"
 #include "fl/stl/stdint.h"
 
 #include "fl/fastled.h"
 #include "fl/stl/assert.h"
 #include "fl/gfx/colorutils.h"
 #include "fl/stl/compiler_control.h"
-#include "fl/gfx/xymap.h"
+#include "fl/math/xymap.h"
 
 namespace fl {
 

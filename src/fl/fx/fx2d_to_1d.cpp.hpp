@@ -1,7 +1,7 @@
 #include "fl/fx/fx2d_to_1d.h"
 
 #include "fl/gfx/sample.h"
-#include "fl/gfx/xymap.h"
+#include "fl/math/xymap.h"
 #include "crgb.h"
 #include "fl/stl/allocator.h"
 

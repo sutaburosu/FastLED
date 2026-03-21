@@ -19,7 +19,7 @@
 #include "fl/fx/video.h"
 #include "fl/system/file_system.h"
 #include "fl/ui.h"
-#include "fl/gfx/screenmap.h"
+#include "fl/math/screenmap.h"
 #include "fl/system/file_system.h"
 
 

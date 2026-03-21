@@ -1,12 +1,12 @@
 #include "fl/gfx/tile2x2.h"
 #include "crgb.h"
 #include "fl/gfx/draw_visitor.h"
-#include "fl/stl/math.h"
+#include "fl/math/math.h"
 #include "fl/gfx/raster.h"
 #include "fl/gfx/raster_sparse.h"
 #include "fl/stl/compiler_control.h"
 #include "fl/system/log.h"
-#include "fl/gfx/xymap.h"
+#include "fl/math/xymap.h"
 #include "fl/stl/vector.h"
 
 namespace fl {

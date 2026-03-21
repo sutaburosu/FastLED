@@ -4,7 +4,7 @@
 #include "fl/audio/detector/vocal.h"
 #include "fl/audio/audio_context.h"
 #include "fl/audio/fft/fft.h"
-#include "fl/stl/math.h"
+#include "fl/math/math.h"
 #include "fl/stl/algorithm.h"
 
 namespace fl {

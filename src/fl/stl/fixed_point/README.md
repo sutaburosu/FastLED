@@ -46,7 +46,7 @@ FastLED provides **two templated types** that are the primary entry point:
 
 ### Signed Fixed-Point Integer
 ```cpp
-#include "fl/stl/fixed_point.h"
+#include "fl/math/fixed_point.h"
 
 // sfixed_integer<IntBits, FracBits>
 // Stores signed values (can be negative)
@@ -84,7 +84,7 @@ fl::ufixed_integer<16, 16> ratio(0.75f);      // 0-65k range, 1/65k precision
 
 ### Example 1: Fade LED Brightness
 ```cpp
-#include "fl/stl/fixed_point.h"
+#include "fl/math/fixed_point.h"
 
 // u8x8 = unsigned, 8-bit integer, 8-bit fraction
 // Range: [0, 256), Precision: 1/256
@@ -471,8 +471,8 @@ Not yet available: `u8x8x4`, `s8x24x4`, etc. (scalar versions are recommended fo
 ### SIMD Types and Creation
 
 ```cpp
-#include "fl/stl/fixed_point/s16x16x4.h"
-#include "fl/stl/fixed_point/s0x32x4.h"
+#include "fl/math/fixed_point/s16x16x4.h"
+#include "fl/math/fixed_point/s0x32x4.h"
 
 // Broadcast: all 4 lanes get same value
 s16x16 val(1.57f);  // π/2

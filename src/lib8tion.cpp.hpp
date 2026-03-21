@@ -173,7 +173,7 @@ void testmul8()
         Serial.print(r); Serial.print(" : ");
         for( c = 0; c <= 20; c += 1) {
             byte t;
-            t = mul8( r, c);
+            t = fl::mul8( r, c);
             Serial.print(t); Serial.print(' ');
         }
         Serial.println(' ');
@@ -193,7 +193,7 @@ void testscale8()
         Serial.print(r); Serial.print(" : ");
         for( c = 0; c <= 240; c += 10) {
             byte t;
-            t = scale8( r, c);
+            t = fl::scale8( r, c);
             Serial.print(t); Serial.print(' ');
         }
         Serial.println(' ');
@@ -206,7 +206,7 @@ void testscale8()
         Serial.print(r); Serial.print(" : ");
         for( c = 0; c <= 100; c += 4) {
             byte t;
-            t = scale8_video( r, c);
+            t = fl::scale8_video( r, c);
             Serial.print(t); Serial.print(' ');
         }
         Serial.println(' ');
@@ -226,7 +226,7 @@ void testqadd8()
         Serial.print(r); Serial.print(" : ");
         for( c = 0; c <= 240; c += 10) {
             byte t;
-            t = qadd8( r, c);
+            t = fl::qadd8( r, c);
             Serial.print(t); Serial.print(' ');
         }
         Serial.println(' ');

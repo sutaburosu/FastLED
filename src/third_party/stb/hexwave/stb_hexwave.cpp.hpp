@@ -38,7 +38,7 @@
 // FastLED stl wrappers instead of standard library headers
 #include "fl/stl/malloc.h"    // For fl::malloc, fl::free
 #include "fl/stl/cstring.h"   // For fl::memset, fl::memcpy, fl::memmove
-#include "fl/stl/math.h"      // For fl::sin, fl::cos, fl::fabs
+#include "fl/math/math.h"      // For fl::sin, fl::cos, fl::fabs
 
 namespace fl {
 namespace third_party {

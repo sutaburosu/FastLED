@@ -3,8 +3,8 @@
 #include "fl/stl/int.h"
 #include "fl/stl/compiler_control.h"
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-function"
+FL_DISABLE_WARNING_PUSH
+FL_DISABLE_WARNING(unused-function)
 
 // Type traits are tricky and can be compiler dependent. We can't rely on
 // unit testing since that runs on the host machine. So to any type trait
@@ -123,4 +123,4 @@ FL_MAYBE_UNUSED void __compile_test() {
 }
 } // namespace
 
-#pragma GCC diagnostic pop
+FL_DISABLE_WARNING_POP

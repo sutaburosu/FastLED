@@ -37,7 +37,7 @@
 #include "fl/system/log.h"
 #include "fl/system/delay.h"
 #include "fl/system/pin.h"
-#include "fl/stl/math.h"
+#include "fl/math/math.h"
 #include "fl/stl/async.h"
 #include "fl/system/log.h"
 #include "fl/stl/chrono.h"

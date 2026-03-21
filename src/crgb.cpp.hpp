@@ -4,11 +4,11 @@
 #define FASTLED_INTERNAL
 #include "crgb.h"
 #include "fl/fastled.h"
-#include "fl/gfx/xymap.h"
+#include "fl/math/xymap.h"
 
 #include "fl/gfx/upscale.h"
 #include "fl/gfx/downscale.h"
-#include "lib8tion/math8.h"
+#include "fl/math/math8.h"
 
 #include "fl/stl/int.h"
 
@@ -92,9 +92,9 @@ CRGB &CRGB::nscale8(fl::u8 scaledown) {
 
 /// Add one CRGB to another, saturating at 0xFF for each channel
 CRGB &CRGB::operator+=(const CRGB &rhs) {
-    r = fl::qadd8(r, rhs.r);
-    g = fl::qadd8(g, rhs.g);
-    b = fl::qadd8(b, rhs.b);
+    r = qadd8(r, rhs.r);
+    g = qadd8(g, rhs.g);
+    b = qadd8(b, rhs.b);
     return *this;
 }
 

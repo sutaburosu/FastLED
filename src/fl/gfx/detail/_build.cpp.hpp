@@ -1,6 +1,6 @@
 /// @file fl/gfx/detail/_build.cpp.hpp
-/// @brief Unity build for fl/gfx/detail/ — distance lookup table
+/// @brief Unity build for fl/gfx/detail/ — files moved to fl/math/
 
 #pragma once
 
-#include "fl/gfx/detail/distance_lut.cpp.hpp"
+// distance_lut.cpp.hpp moved to fl/math/distance_lut.cpp.hpp

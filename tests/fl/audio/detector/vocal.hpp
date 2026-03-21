@@ -6,10 +6,10 @@
 #include "fl/audio/detector/vocal.h"
 #include "../test_helpers.h"
 #include "fl/stl/vector.h"
-#include "fl/stl/math.h"
+#include "fl/math/math.h"
 #include "fl/stl/shared_ptr.h"
 #include "fl/stl/cstring.h"
-#include "fl/stl/math.h"
+#include "fl/math/math.h"
 
 using namespace fl;
 using Diag = fl::audio::detector::VocalDetectorDiagnostics;

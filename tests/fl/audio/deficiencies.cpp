@@ -24,7 +24,7 @@
 #include "fl/audio/detector/frequency_bands.h"
 #include "fl/audio/detector/tempo_analyzer.h"
 #include "fl/audio/detector/vocal.h"
-#include "fl/stl/math.h"
+#include "fl/math/math.h"
 
 FL_TEST_FILE(FL_FILEPATH) {
 

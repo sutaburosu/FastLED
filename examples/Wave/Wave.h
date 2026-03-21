@@ -15,9 +15,9 @@ This will compile and preview the sketch in the browser, and enable
 all the UI elements you see below.
 */
 
-#include "fl/stl/math.h"
+#include "fl/math/math.h"
 #include "fl/ui.h"
-#include "fl/gfx/wave_simulation.h"
+#include "fl/math/wave/wave_simulation.h"
 #include <Arduino.h>
 #include <FastLED.h>
 

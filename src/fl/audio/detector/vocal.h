@@ -8,8 +8,8 @@
 #pragma once
 
 #include "fl/audio/audio_detector.h"
-#include "fl/filter.h"
-#include "fl/stl/math.h"
+#include "fl/math/filter/filter.h"
+#include "fl/math/math.h"
 #include "fl/stl/function.h"
 #include "fl/stl/shared_ptr.h"
 

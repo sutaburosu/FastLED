@@ -3,7 +3,7 @@
 #include "fl/leds.h"
 #include "crgb.h"
 #include "fl/stl/assert.h"
-#include "fl/gfx/xymap.h"
+#include "fl/math/xymap.h"
 
 namespace fl {
 

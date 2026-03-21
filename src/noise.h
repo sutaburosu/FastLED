@@ -5,9 +5,9 @@
 #include "crgb.h"
 #include "chsv.h"
 #include "fl/gfx/hsv16.h"
-#include "fl/stl/math.h"
-#include "lib8tion/qfx.h"
-#include "lib8tion/intmap.h"
+#include "fl/math/math.h"
+#include "fl/math/qfx.h"
+#include "fl/math/intmap.h"
 
 /// @file noise.h
 /// Functions to generate and fill arrays with noise.
@@ -131,7 +131,7 @@ fl::u16 snoise16(fl::u32 x, fl::u32 y, fl::u32 z, fl::u32 w);
 
 /// @} NoiseGeneration
 
-#include "fl/gfx/noise.h"
+#include "fl/gfx/noise/noise.h"
 
 
 

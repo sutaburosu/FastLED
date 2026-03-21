@@ -1,18 +1,3 @@
-/// @file lib8static.h
-/// Defines static inlining macros for lib8tion functions
-
 #pragma once
-
-#include "fl/stl/compiler_control.h"
-
-/// @addtogroup lib8tion
-/// @{
-
-/// Define a LIB8TION member function as static inline with an "unused" attribute
-#define LIB8STATIC __attribute__ ((unused)) static inline
-
-/// Define a LIB8TION member function as always static inline
-/// This macro is deprecated and should be replaced with FL_ALWAYS_INLINE
-#define LIB8STATIC_ALWAYS_INLINE FL_ALWAYS_INLINE
-
-/// @} lib8tion
+// Legacy forwarding header — moved to fl/math/lib8tion/lib8static.h
+#include "fl/math/lib8tion/lib8static.h"

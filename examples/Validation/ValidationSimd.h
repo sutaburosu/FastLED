@@ -8,13 +8,13 @@
 #pragma once
 
 #include <FastLED.h>
-#include "fl/stl/simd.h"
+#include "fl/math/simd.h"
 #include "fl/stl/sstream.h"
-#include "fl/stl/fixed_point/s8x8.h"
-#include "fl/stl/fixed_point/s16x16.h"
-#include "fl/stl/fixed_point/u16x16.h"
-#include "fl/stl/fixed_point/s0x32x4.h"
-#include "fl/stl/fixed_point/s16x16x4.h"
+#include "fl/math/fixed_point/s8x8.h"
+#include "fl/math/fixed_point/s16x16.h"
+#include "fl/math/fixed_point/u16x16.h"
+#include "fl/math/fixed_point/s0x32x4.h"
+#include "fl/math/fixed_point/s16x16x4.h"
 
 namespace validation {
 namespace simd_check {

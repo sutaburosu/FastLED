@@ -16,10 +16,8 @@
 #include "fl/stl/istream.cpp.hpp"
 #include "fl/stl/json.cpp.hpp"
 #include "fl/stl/malloc.cpp.hpp"
-#include "fl/stl/math.cpp.hpp"
 #include "fl/stl/not_null.cpp.hpp"
 #include "fl/stl/ostream.cpp.hpp"
-#include "fl/stl/random.cpp.hpp"
 #include "fl/stl/shared_ptr.cpp.hpp"
 #include "fl/stl/singleton.cpp.hpp"
 #include "fl/stl/string.cpp.hpp"
@@ -30,7 +28,5 @@
 #include "fl/stl/type_traits.cpp.hpp"
 
 // begin sub directory includes
-#include "fl/stl/fixed_point/_build.cpp.hpp"
 #include "fl/stl/asio/_build.cpp.hpp"
 #include "fl/stl/isr/_build.cpp.hpp"
-#include "fl/stl/simd/_build.cpp.hpp"

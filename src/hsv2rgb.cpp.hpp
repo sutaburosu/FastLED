@@ -8,7 +8,7 @@
 #include "fl/stl/stdint.h"
 
 #include "fl/fastled.h"
-#include "fl/stl/math.h"
+#include "fl/math/math.h"
 
 #include "hsv2rgb.h"
 
@@ -623,7 +623,7 @@ CHSV rgb2hsv_approximate( const CRGB& rgb)
     if( total > 255 ) {
         v = 255;
     } else {
-        v = fl::qadd8(desat,total);
+        v = qadd8(desat,total);
         // undo 'dimming' of brightness
         if( v != 255) v = fl::sqrt16( v * 256);
         // without lib8tion: float ... ew ... sqrt... double ew, or rather, ew ^ 0.5
@@ -672,15 +672,15 @@ CHSV rgb2hsv_approximate( const CRGB& rgb)
         if( g == 0 ) {
             // if green is zero, we're in Purple/Pink-Red
             h = (HUE_PURPLE + HUE_PINK) / 2;
-            h += fl::scale8( fl::qsub8(r, 128), FIXFRAC8(48,128));
+            h += scale8( qsub8(r, 128), FIXFRAC8(48,128));
         } else if ( (r - g) > g) {
             // if R-G > G then we're in Red-Orange
             h = HUE_RED;
-            h += fl::scale8( g, FIXFRAC8(32,85));
+            h += scale8( g, FIXFRAC8(32,85));
         } else {
             // R-G < G, we're in Orange-Yellow
             h = HUE_ORANGE;
-            h += fl::scale8( fl::qsub8((g - 85) + (171 - r), 4), FIXFRAC8(32,85)); //221
+            h += scale8( qsub8((g - 85) + (171 - r), 4), FIXFRAC8(32,85)); //221
         }
 
     } else if ( highest == g) {
@@ -691,8 +691,8 @@ CHSV rgb2hsv_approximate( const CRGB& rgb)
             //   G = 171..255
             //   R = 171..  0
             h = HUE_YELLOW;
-            fl::u8 radj = fl::scale8( fl::qsub8(171,r),   47); //171..0 -> 0..171 -> 0..31
-            fl::u8 gadj = fl::scale8( fl::qsub8(g,171),   96); //171..255 -> 0..84 -> 0..31;
+            fl::u8 radj = scale8( qsub8(171,r),   47); //171..0 -> 0..171 -> 0..31
+            fl::u8 gadj = scale8( qsub8(g,171),   96); //171..255 -> 0..84 -> 0..31;
             fl::u8 rgadj = radj + gadj;
             fl::u8 hueadv = rgadj / 2;
             h += hueadv;
@@ -702,10 +702,10 @@ CHSV rgb2hsv_approximate( const CRGB& rgb)
             // if Blue is nonzero we're in Green-Aqua
             if( (g-b) > b) {
                 h = HUE_GREEN;
-                h += fl::scale8( b, FIXFRAC8(32,85));
+                h += scale8( b, FIXFRAC8(32,85));
             } else {
                 h = HUE_AQUA;
-                h += fl::scale8( fl::qsub8(b, 85), FIXFRAC8(8,42));
+                h += scale8( qsub8(b, 85), FIXFRAC8(8,42));
             }
         }
 
@@ -715,15 +715,15 @@ CHSV rgb2hsv_approximate( const CRGB& rgb)
         if( r == 0) {
             // if red is zero, we're in Aqua/Blue-Blue
             h = HUE_AQUA + ((HUE_BLUE - HUE_AQUA) / 4);
-            h += fl::scale8( fl::qsub8(b, 128), FIXFRAC8(24,128));
+            h += scale8( qsub8(b, 128), FIXFRAC8(24,128));
         } else if ( (b-r) > r) {
             // B-R > R, we're in Blue-Purple
             h = HUE_BLUE;
-            h += fl::scale8( r, FIXFRAC8(32,85));
+            h += scale8( r, FIXFRAC8(32,85));
         } else {
             // B-R < R, we're in Purple-Pink
             h = HUE_PURPLE;
-            h += fl::scale8( fl::qsub8(r, 85), FIXFRAC8(32,85));
+            h += scale8( qsub8(r, 85), FIXFRAC8(32,85));
         }
     }
 

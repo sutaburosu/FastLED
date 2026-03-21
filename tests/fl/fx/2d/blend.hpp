@@ -14,7 +14,7 @@
 #include "fl/fx/fx2d.h"
 #include "fl/gfx/crgb.h"
 #include "fl/stl/string.h"
-#include "fl/gfx/xymap.h"
+#include "fl/math/xymap.h"
 
 
 // Simple test effect that fills with a solid color

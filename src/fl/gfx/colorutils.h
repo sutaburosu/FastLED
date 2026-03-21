@@ -11,8 +11,8 @@
 #include "fl/gfx/blur.h"  // IWYU pragma: keep
 #include "fl/gfx/colorutils_misc.h"
 #include "fl/gfx/fill.h"
-#include "fl/gfx/xymap.h"  // IWYU pragma: keep
-#include "lib8tion/memmove.h"
+#include "fl/math/xymap.h"  // IWYU pragma: keep
+#include "fl/math/memmove.h"
 #include "fl/stl/compiler_control.h"
 #include "fl/system/log.h"  // IWYU pragma: keep
 #include "platforms/is_platform.h"  // IWYU pragma: keep
@@ -34,8 +34,8 @@ FL_DISABLE_WARNING_SIGN_CONVERSION
 #endif
 #endif
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wcast-align"
+FL_DISABLE_WARNING_PUSH
+FL_DISABLE_WARNING(cast-align)
 
 namespace fl {
 

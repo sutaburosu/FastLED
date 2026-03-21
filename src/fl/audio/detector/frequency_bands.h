@@ -2,7 +2,7 @@
 
 #include "fl/audio/audio_detector.h"
 #include "fl/audio/fft/fft.h"
-#include "fl/filter.h"
+#include "fl/math/filter/filter.h"
 #include "fl/stl/function.h"
 #include "fl/stl/shared_ptr.h"
 

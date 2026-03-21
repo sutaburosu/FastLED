@@ -1,8 +1,8 @@
 #pragma once
 
 
-#include "fl/stl/math.h"
-#include "fl/gfx/geometry.h"
+#include "fl/math/math.h"
+#include "fl/math/geometry.h"
 #include "fl/stl/bit_cast.h"
 #include "fl/stl/initializer_list.h"
 #include "fl/stl/type_traits.h"

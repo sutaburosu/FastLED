@@ -163,7 +163,7 @@ PRIVATE_LIBCPP_HEADER_MAPPINGS = {
     "__iterator": '"fl/stl/iterator.h"',
     "__numeric": '"fl/stl/algorithm.h"',
     "__ostream": '"fl/stl/ostream.h"',
-    "__random": '"fl/stl/random.h"',
+    "__random": '"fl/math/random.h"',
     "__thread": '"fl/stl/thread.h"',
     "__type_traits": '"fl/stl/type_traits.h"',
     "__utility": '"fl/stl/utility.h"',
@@ -383,10 +383,14 @@ EXCEPTION_RULES: dict[str, list[HeaderException]] = {
     # Math operations
     "math.h": [
         HeaderException(
-            "fl/stl/math.cpp", "Platform math functions (sin, cos, sqrt, etc.)"
+            "fl/math/math.cpp", "Platform math functions (sin, cos, sqrt, etc.)"
         ),
         HeaderException(
-            "fl/stl/math.cpp.hpp", "Platform math wrapper (header-only implementation)"
+            "fl/math/math.cpp.hpp",
+            "STL math wrapper (header-only unity build implementation)",
+        ),
+        HeaderException(
+            "fl/math/math.cpp.hpp", "Platform math wrapper (header-only implementation)"
         ),
         HeaderException(
             "fl/audio/audio_reactive.cpp", "Audio FFT and signal processing"

@@ -103,8 +103,8 @@
 
 #include "test.h"
 #include "fl/stl/compiler_control.h"
-#include "fl/stl/fixed_point.h"
-#include "fl/stl/math.h"
+#include "fl/math/fixed_point.h"
+#include "fl/math/math.h"
 
 FL_TEST_FILE(FL_FILEPATH) {
 

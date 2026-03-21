@@ -6,13 +6,13 @@
 #include "fl/stl/deque.h"
 #include "fl/stl/span.h"
 #include "fl/stl/charconv.h"
-#include "fl/stl/math.h" // For floor function
+#include "fl/math/math.h" // For floor function
 #include "fl/stl/compiler_control.h"
 #include "fl/stl/stdint.h"
 #include "fl/stl/optional.h"
 #include "fl/stl/unordered_map.h"
 #include "fl/system/log.h"
-#include "fl/stl/math.h"
+#include "fl/math/math.h"
 #include "fl/stl/cstddef.h"
 #include "fl/stl/cstring.h"
 #include "fl/stl/limits.h"
