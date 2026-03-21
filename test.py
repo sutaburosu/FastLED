@@ -145,6 +145,37 @@ def main() -> None:
             list_all_tests(filter_pattern=args.test, filter_type=None)
             sys.exit(0)
 
+        # Handle --setup-only flag: run Meson setup to generate compile_commands.json, then exit.
+        # This is used by the install script to avoid a full build when only IntelliSense
+        # configuration is needed.
+        if args.setup_only:
+            from ci.meson.build_config import setup_meson_build
+
+            build_mode = (
+                args.build_mode
+                if args.build_mode
+                else ("debug" if args.debug else "quick")
+            )
+            source_dir = Path(".")
+            build_dir = Path(".build") / f"meson-{build_mode}"
+            ts_print(f"Running Meson setup only ({build_mode} mode)...")
+            ok = setup_meson_build(
+                source_dir,
+                build_dir,
+                reconfigure=False,
+                debug=(build_mode == "debug"),
+                build_mode=build_mode,
+                verbose=args.verbose,
+                enable_examples=True,
+                enable_unit_tests=True,
+            )
+            if ok:
+                ts_print("Meson setup complete.")
+            else:
+                ts_print("Meson setup failed.", file=sys.stderr)
+                sys.exit(1)
+            sys.exit(0)
+
         # ULTRA-EARLY EXIT: Check if the requested test result is already cached.
         # Uses check_single_test_cached() from ci.early_exit_cache for the full
         # pipeline: name normalization → candidate matching → ninja skip → result cache.

@@ -54,10 +54,11 @@ fi
 # 3. Sets up zccache integration correctly
 echo "Configuring Meson and building FastLED..."
 
-# Use test.py to configure Meson and generate compile_commands.json
-# Use --no-fingerprint to force a build (ensure compile_commands.json is generated)
+# Use test.py --setup-only to configure Meson and generate compile_commands.json
+# This runs only the Meson setup phase (no compilation or testing), which is
+# much faster than a full build.
 # Note: test.py creates .build/meson-quick/ directory (build mode-specific)
-uv run test.py --cpp --quick --no-fingerprint 2>/dev/null || true
+uv run test.py --setup-only --quick 2>/dev/null || true
 
 # Copy compile_commands.json to project root for clangd
 # Note: Build system uses mode-specific directories (.build/meson-quick, etc.)

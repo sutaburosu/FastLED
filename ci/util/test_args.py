@@ -185,6 +185,11 @@ def parse_args(args: Optional[list[str]] = None) -> TestArgs:
         action="store_true",
         help="Enable debug tracing for KeyboardInterrupt handler calls (prints caller location and stack)",
     )
+    parser.add_argument(
+        "--setup-only",
+        action="store_true",
+        help="Run Meson setup only (generates compile_commands.json) without building or testing",
+    )
 
     parsed_args = parser.parse_args(args)
 
@@ -231,6 +236,7 @@ def parse_args(args: Optional[list[str]] = None) -> TestArgs:
         log_failures=Path(parsed_args.log_failures)
         if parsed_args.log_failures
         else None,
+        setup_only=parsed_args.setup_only,
     )
 
     # Handle --docker flag: implies --debug unless --quick or --release is specified

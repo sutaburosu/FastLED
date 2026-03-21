@@ -105,6 +105,9 @@ class TestArgs:
     raw_test_query: Optional[str] = None  # Original test query before disambiguation
     log_failures: Optional[Path] = None  # Directory to write per-test failure logs
     debug_test: bool = False  # Enable debug tracing for KeyboardInterrupt handlers
+    setup_only: bool = (
+        False  # Run Meson setup only (generate compile_commands.json), skip build/test
+    )
 
 
 @typechecked
