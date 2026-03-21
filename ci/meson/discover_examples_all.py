@@ -129,11 +129,9 @@ def discover_examples_all(examples_dir: Path) -> None:
             str(example_root.relative_to(examples_dir.parent)).replace("\\", "/")
         ]
 
-        # Check for subdirectories that should be included
-        # Common patterns: src/, lib/, include/
-        for subdir_name in ["src", "lib", "include"]:
-            subdir = example_root / subdir_name
-            if subdir.exists() and subdir.is_dir():
+        # Auto-discover all subdirectories for include paths
+        for subdir in sorted(example_root.iterdir()):
+            if subdir.is_dir() and not subdir.name.startswith("."):
                 include_dirs.append(
                     str(subdir.relative_to(examples_dir.parent)).replace("\\", "/")
                 )
@@ -154,10 +152,9 @@ def discover_examples_all(examples_dir: Path) -> None:
                 str(cpp_file.relative_to(examples_dir.parent)).replace("\\", "/")
             )
 
-        # Then, look in src/ and lib/ subdirectories
-        for subdir_name in ["src", "lib"]:
-            subdir = example_root / subdir_name
-            if subdir.exists() and subdir.is_dir():
+        # Auto-discover .cpp files in all subdirectories
+        for subdir in sorted(example_root.iterdir()):
+            if subdir.is_dir() and not subdir.name.startswith("."):
                 for cpp_file in subdir.rglob("*.cpp"):
                     cpp_sources.append(
                         str(cpp_file.relative_to(examples_dir.parent)).replace(
