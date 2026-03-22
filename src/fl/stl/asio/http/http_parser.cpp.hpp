@@ -5,9 +5,10 @@
 #include "fl/stl/cstring.h"
 #include "fl/stl/cctype.h"
 namespace fl {
+namespace {
 
 // Helper: Convert string to lowercase
-static fl::string toLower(const fl::string& str) {
+fl::string toLower(const fl::string& str) {
     fl::string result = str;
     for (size_t i = 0; i < result.size(); i++) {
         result[i] = fl::tolower(result[i]);
@@ -16,7 +17,7 @@ static fl::string toLower(const fl::string& str) {
 }
 
 // Helper: Trim whitespace from string
-static fl::string trim(const fl::string& str) {
+fl::string http_parser_trim(const fl::string& str) {
     if (str.empty()) return str;
 
     size_t start = 0;
@@ -33,7 +34,7 @@ static fl::string trim(const fl::string& str) {
 }
 
 // Helper: Parse integer from string
-static bool parseInt(const fl::string& str, int& out) {
+bool parseInt(const fl::string& str, int& out) {
     if (str.empty()) return false;
 
     int value = 0;
@@ -47,6 +48,7 @@ static bool parseInt(const fl::string& str, int& out) {
     out = value;
     return true;
 }
+} // anonymous namespace
 
 //==============================================================================
 // HttpRequestParser
@@ -201,8 +203,8 @@ bool HttpRequestParser::parseHeaders() {
             continue;  // Skip invalid header
         }
 
-        fl::string name = trim(line.substr(0, colonPos));
-        fl::string value = trim(line.substr(colonPos + 1));
+        fl::string name = http_parser_trim(line.substr(0, colonPos));
+        fl::string value = http_parser_trim(line.substr(colonPos + 1));
 
         req().headers[name] = value;
     }
@@ -433,8 +435,8 @@ bool HttpResponseParser::parseHeaders() {
             continue;  // Skip invalid header
         }
 
-        fl::string name = trim(line.substr(0, colonPos));
-        fl::string value = trim(line.substr(colonPos + 1));
+        fl::string name = http_parser_trim(line.substr(0, colonPos));
+        fl::string value = http_parser_trim(line.substr(colonPos + 1));
 
         resp().headers[name] = value;
     }

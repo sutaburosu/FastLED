@@ -386,6 +386,248 @@ def _check_build_include_order(src_dir: Path) -> list[str]:
     return violations
 
 
+def _check_subdir_completeness(src_dir: Path) -> list[str]:
+    """
+    Check that _build.cpp.hpp files include ALL immediate subdirectory _build.cpp.hpp files.
+
+    For each _build.cpp.hpp, every immediate subdirectory that:
+    1. Contains its own _build.cpp.hpp
+    2. Does NOT have its own _build.cpp (independently compiled unit)
+
+    ...must be included. This catches the case where a new subdirectory is added
+    to _build.cpp but not to _build.cpp.hpp, causing linker errors.
+
+    Returns:
+        list of violation strings
+    """
+    violations: list[str] = []
+
+    for build_hpp in src_dir.rglob(BUILD_HPP):
+        dir_path = build_hpp.parent
+        content = build_hpp.read_text(encoding="utf-8")
+        rel_file = build_hpp.relative_to(PROJECT_ROOT).as_posix()
+
+        # Find all immediate subdirs with _build.cpp.hpp
+        for subdir in sorted(dir_path.iterdir()):
+            if not subdir.is_dir():
+                continue
+            sub_build = subdir / BUILD_HPP
+            if not sub_build.exists():
+                continue
+            # Skip subdirs with their own _build.cpp (independently compiled)
+            if (subdir / BUILD_CPP).exists():
+                continue
+
+            # This subdir's _build.cpp.hpp should be included
+            include_path = sub_build.relative_to(src_dir).as_posix()
+            if include_path not in content:
+                violations.append(
+                    f"{rel_file}: Missing subdirectory include '{include_path}'. "
+                    f"All immediate subdirectories with {BUILD_HPP} must be included."
+                )
+
+    return violations
+
+
+def _check_alphabetical_order(src_dir: Path) -> list[str]:
+    """
+    Check that includes within each section of _build.cpp.hpp are alphabetically sorted.
+
+    Rules:
+    - Same-level *.cpp.hpp includes must be sorted alphabetically.
+    - Subdirectory _build.cpp.hpp includes must be sorted alphabetically.
+    - .h header includes at the top (before sections) are exempt from sorting.
+
+    Returns:
+        list of violation strings
+    """
+    violations: list[str] = []
+
+    include_pattern = re.compile(r'^\s*#include\s+"([^"]+\.cpp\.hpp)"', re.MULTILINE)
+
+    for build_hpp in src_dir.rglob(BUILD_HPP):
+        content = build_hpp.read_text(encoding="utf-8")
+        rel_file = build_hpp.relative_to(PROJECT_ROOT).as_posix()
+
+        includes = list(include_pattern.finditer(content))
+        if len(includes) < 2:
+            continue
+
+        # Split into sections
+        same_level: list[tuple[str, int]] = []
+        subdir: list[tuple[str, int]] = []
+        for match in includes:
+            path = match.group(1)
+            line_num = _get_line_number(content, match.start())
+            if path.endswith(BUILD_HPP):
+                subdir.append((path, line_num))
+            else:
+                same_level.append((path, line_num))
+
+        # Check each section is alphabetically sorted
+        for section_name, section in [
+            ("current directory", same_level),
+            ("sub directory", subdir),
+        ]:
+            if len(section) < 2:
+                continue
+            paths = [p for p, _ in section]
+            sorted_paths = sorted(paths)
+            if paths != sorted_paths:
+                # Find first out-of-order pair
+                for i in range(1, len(paths)):
+                    if paths[i] < paths[i - 1]:
+                        line_num = section[i][1]
+                        violations.append(
+                            f"{rel_file}:{line_num}: {section_name} includes not alphabetically sorted. "
+                            f"'{paths[i]}' comes before '{paths[i - 1]}' but should come after it."
+                        )
+                        break
+
+    return violations
+
+
+def _check_build_cpp_simplicity(src_dir: Path) -> list[str]:
+    """
+    Check that _build.cpp files only include their own _build.cpp.hpp, not subdirectory builds.
+
+    _build.cpp is the compilation entry point. It should include:
+    - Its own _build.cpp.hpp (which contains the hierarchical includes)
+    - Optional setup headers (.h files like platforms/new.h, fl/system/arduino.h)
+
+    It should NOT directly include subdirectory _build.cpp.hpp files — those belong
+    in the parent _build.cpp.hpp for proper hierarchical organization.
+
+    Returns:
+        list of violation strings
+    """
+    violations: list[str] = []
+
+    for build_cpp in src_dir.rglob(BUILD_CPP):
+        if build_cpp.name != BUILD_CPP:
+            continue
+        content = build_cpp.read_text(encoding="utf-8")
+        rel_file = build_cpp.relative_to(PROJECT_ROOT).as_posix()
+        dir_path = build_cpp.parent
+
+        # Determine the expected own _build.cpp.hpp path
+        own_build_hpp = dir_path / BUILD_HPP
+        if own_build_hpp.exists():
+            own_path = own_build_hpp.relative_to(src_dir).as_posix()
+        else:
+            own_path = None
+
+        # Find all included _build.cpp.hpp files
+        for match in BUILD_HPP_INCLUDE_PATTERN.finditer(content):
+            included_path = match.group(1)
+
+            # Allow including its own _build.cpp.hpp
+            if own_path and included_path == own_path:
+                continue
+
+            # This is a subdirectory _build.cpp.hpp — should be in _build.cpp.hpp instead
+            line_num = _get_line_number(content, match.start())
+            violations.append(
+                f"{rel_file}:{line_num}: Direct subdirectory include '{included_path}' "
+                f"should be in '{own_path or BUILD_HPP}' instead. "
+                f"_build.cpp should only include its own _build.cpp.hpp (plus optional setup headers)."
+            )
+
+    return violations
+
+
+def _check_no_cross_directory_includes(src_dir: Path) -> list[str]:
+    """
+    Check that _build.cpp.hpp files only include files from their own directory scope.
+
+    Same-level .cpp.hpp includes must come from the same directory as the _build.cpp.hpp.
+    Subdirectory _build.cpp.hpp includes must come from immediate child directories.
+    No includes from sibling, parent, or unrelated directories.
+
+    Returns:
+        list of violation strings
+    """
+    violations: list[str] = []
+
+    include_pattern = re.compile(r'^\s*#include\s+"([^"]+)"', re.MULTILINE)
+
+    for build_hpp in src_dir.rglob(BUILD_HPP):
+        content = build_hpp.read_text(encoding="utf-8")
+        rel_file = build_hpp.relative_to(PROJECT_ROOT).as_posix()
+        namespace_path = _get_namespace_path(build_hpp, src_dir)
+        if namespace_path is None:
+            continue
+
+        # Root src/ directory has empty namespace_path — files use bare names
+        expected_prefix = (namespace_path + "/") if namespace_path else ""
+
+        for match in include_pattern.finditer(content):
+            included_path = match.group(1)
+            line_num = _get_line_number(content, match.start())
+
+            # Skip .h header includes (allowed at top for setup)
+            if not included_path.endswith(".cpp.hpp"):
+                continue
+
+            # Every .cpp.hpp include must start with the directory's namespace prefix
+            if expected_prefix and not included_path.startswith(expected_prefix):
+                violations.append(
+                    f"{rel_file}:{line_num}: Cross-directory include '{included_path}' "
+                    f"does not belong to this directory (expected prefix '{expected_prefix}'). "
+                    f"_build.cpp.hpp should only include files from its own directory."
+                )
+                continue
+
+            # For non-_build.cpp.hpp includes, the file must be directly in this directory
+            # (no extra path separators after the prefix, except the filename)
+            if not included_path.endswith(BUILD_HPP):
+                relative_part = included_path[len(expected_prefix) :]
+                if "/" in relative_part:
+                    violations.append(
+                        f"{rel_file}:{line_num}: Include '{included_path}' is from a "
+                        f"subdirectory but is not a _build.cpp.hpp. Same-level includes "
+                        f"must be directly in '{namespace_path}/', not in a child folder."
+                    )
+
+    return violations
+
+
+def _check_no_invalid_include_types(src_dir: Path) -> list[str]:
+    """
+    Check that _build.cpp.hpp files only include .cpp.hpp and .h files.
+
+    Disallowed: .cpp, .c, .cc, or any other non-.cpp.hpp/.h file type.
+    Angle-bracket includes (e.g., <new>) are ignored (system headers).
+
+    Returns:
+        list of violation strings
+    """
+    violations: list[str] = []
+
+    # Match quoted includes only (not angle-bracket system includes)
+    include_pattern = re.compile(r'^\s*#include\s+"([^"]+)"', re.MULTILINE)
+
+    for build_hpp in src_dir.rglob(BUILD_HPP):
+        content = build_hpp.read_text(encoding="utf-8")
+        rel_file = build_hpp.relative_to(PROJECT_ROOT).as_posix()
+
+        for match in include_pattern.finditer(content):
+            included_path = match.group(1)
+            line_num = _get_line_number(content, match.start())
+
+            if included_path.endswith(".cpp.hpp"):
+                continue  # Valid
+            if included_path.endswith(".h") or included_path.endswith(".hpp"):
+                continue  # Valid (setup headers)
+
+            violations.append(
+                f"{rel_file}:{line_num}: Invalid include type '{included_path}'. "
+                f"_build.cpp.hpp should only include *.cpp.hpp and *.h files."
+            )
+
+    return violations
+
+
 def _build_include_map(src_dir: Path, all_build_hpp_files: list[Path]) -> IncludeMap:
     """
     Build a map of which _build.hpp files are included by other _build.hpp files.
@@ -664,6 +906,12 @@ def check_scanned_data(data: ScannedData) -> CheckResult:
     # 3b. Check _build.cpp.hpp include ordering (same-level first, subdir last)
     violations.extend(_check_build_include_order(data.src_dir))
 
+    # 3c. Check _build.cpp.hpp includes ALL immediate subdirectory _build.cpp.hpp files
+    violations.extend(_check_subdir_completeness(data.src_dir))
+
+    # 3d. Check alphabetical ordering within sections
+    violations.extend(_check_alphabetical_order(data.src_dir))
+
     # 4. Check _build.cpp files include necessary _build.hpp files
     violations.extend(
         _check_build_cpp_files(
@@ -674,7 +922,16 @@ def check_scanned_data(data: ScannedData) -> CheckResult:
         )
     )
 
-    # 5. Validate library.json srcFilter
+    # 4b. Check _build.cpp files don't bypass hierarchy with direct subdirectory includes
+    violations.extend(_check_build_cpp_simplicity(data.src_dir))
+
+    # 5. Check no cross-directory includes (files from wrong directory)
+    violations.extend(_check_no_cross_directory_includes(data.src_dir))
+
+    # 6. Check no invalid include types (.cpp, .c, etc.)
+    violations.extend(_check_no_invalid_include_types(data.src_dir))
+
+    # 7. Validate library.json srcFilter
     violations.extend(_check_library_json_srcfilter())
 
     return CheckResult(success=len(violations) == 0, violations=violations)

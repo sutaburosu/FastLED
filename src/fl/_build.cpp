@@ -12,31 +12,5 @@
 #include "fl/system/arduino.h"  // Trampoline that includes Arduino.h + cleans up macros
 // IWYU pragma: end_keep
 
-// Root directory implementations
+// All fl/ implementations (current directory + all subdirectories hierarchically)
 #include "fl/_build.cpp.hpp"
-
-// Subdirectory implementations (alphabetical order)
-#include "fl/audio/_build.cpp.hpp"
-#include "fl/audio/detector/_build.cpp.hpp"
-#include "fl/audio/fft/_build.cpp.hpp"
-#include "fl/channels/_build.cpp.hpp"
-#include "fl/font/_build.cpp.hpp"
-#include "fl/channels/adapters/_build.cpp.hpp"
-#include "fl/channels/detail/validation/_build.cpp.hpp"
-#include "fl/chipsets/_build.cpp.hpp"
-#include "fl/codec/_build.cpp.hpp"
-#include "fl/detail/_build.cpp.hpp"
-#include "fl/details/_build.cpp.hpp"
-#include "fl/fx/1d/_build.cpp.hpp"
-#include "fl/fx/2d/_build.cpp.hpp"
-#include "fl/fx/2d/animartrix_detail/_build.cpp.hpp"
-#include "fl/fx/_build.cpp.hpp"
-#include "fl/fx/detail/_build.cpp.hpp"
-#include "fl/fx/wled/_build.cpp.hpp"
-#include "fl/gfx/_build.cpp.hpp"
-#include "fl/sensors/_build.cpp.hpp"
-#include "fl/spi/_build.cpp.hpp"
-#include "fl/stl/_build.cpp.hpp"
-#include "fl/stl/detail/_build.cpp.hpp"
-#include "fl/task/_build.cpp.hpp"
-#include "fl/video/_build.cpp.hpp"

@@ -13,7 +13,6 @@
 #include "fl/audio/detector/equalizer.cpp.hpp"
 #include "fl/audio/detector/frequency_bands.cpp.hpp"
 #include "fl/audio/detector/key.cpp.hpp"
-#include "fl/audio/detector/vibe.cpp.hpp"
 #include "fl/audio/detector/mood_analyzer.cpp.hpp"
 #include "fl/audio/detector/multiband_beat_detector.cpp.hpp"
 #include "fl/audio/detector/musical_beat_detector.cpp.hpp"
@@ -23,4 +22,5 @@
 #include "fl/audio/detector/silence.cpp.hpp"
 #include "fl/audio/detector/tempo_analyzer.cpp.hpp"
 #include "fl/audio/detector/transient.cpp.hpp"
+#include "fl/audio/detector/vibe.cpp.hpp"
 #include "fl/audio/detector/vocal.cpp.hpp"

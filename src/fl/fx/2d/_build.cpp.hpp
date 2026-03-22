@@ -1,10 +1,13 @@
-/// @file _build.hpp
+/// @file _build.cpp.hpp
 /// @brief Unity build header for fl/fx/2d/ directory
-/// Includes all implementation files in alphabetical order
 
+// begin current directory includes
 #include "fl/fx/2d/blend.cpp.hpp"
 #include "fl/fx/2d/flowfield.cpp.hpp"
 #include "fl/fx/2d/luminova.cpp.hpp"
 #include "fl/fx/2d/noisepalette.cpp.hpp"
 #include "fl/fx/2d/scale_up.cpp.hpp"
 #include "fl/fx/2d/wave.cpp.hpp"
+
+// begin sub directory includes
+#include "fl/fx/2d/animartrix_detail/_build.cpp.hpp"

@@ -14,4 +14,5 @@
 #include "fl/channels/wave8.cpp.hpp"
 
 // begin sub directory includes
+#include "fl/channels/adapters/_build.cpp.hpp"
 #include "fl/channels/detail/_build.cpp.hpp"
