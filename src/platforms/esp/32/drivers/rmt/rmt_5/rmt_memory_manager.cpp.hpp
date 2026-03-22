@@ -305,11 +305,11 @@ void RmtMemoryManager::getMemoryBlockStrategy(size_t& idleBlocks, size_t& networ
     networkBlocks = mNetworkBlocks;
 }
 
-Result<size_t, RmtMemoryError> RmtMemoryManager::allocateTx(u8 channel_id, bool use_dma, bool networkActive) {
+result<size_t, RmtMemoryError> RmtMemoryManager::allocateTx(u8 channel_id, bool use_dma, bool networkActive) {
     // Check if channel already allocated
     if (findAllocation(channel_id, true) != nullptr) {
         FL_WARN("RMT TX channel " << static_cast<int>(channel_id) << " already allocated");
-        return Result<size_t, RmtMemoryError>::failure(RmtMemoryError::CHANNEL_ALREADY_ALLOCATED);
+        return result<size_t, RmtMemoryError>::failure(RmtMemoryError::CHANNEL_ALREADY_ALLOCATED);
     }
 
     // DMA channels on ESP32-S3 still consume one memory block from on-chip RMT memory
@@ -331,18 +331,18 @@ Result<size_t, RmtMemoryError> RmtMemoryManager::allocateTx(u8 channel_id, bool 
                     << " - insufficient on-chip memory");
             FL_WARN("  Requested: " << dma_words << " words (1 block for DMA descriptor)");
             FL_WARN("  Available: " << getAvailableWords(true) << " words");
-            return Result<size_t, RmtMemoryError>::failure(RmtMemoryError::INSUFFICIENT_TX_MEMORY);
+            return result<size_t, RmtMemoryError>::failure(RmtMemoryError::INSUFFICIENT_TX_MEMORY);
         }
         mLedger.allocations.push_back(ChannelAllocation(channel_id, dma_words, true, true));
         FL_LOG_RMT("RMT TX channel " << static_cast<int>(channel_id)
                    << " allocated (DMA, " << dma_words << " words for descriptor)");
-        return Result<size_t, RmtMemoryError>::success(dma_words);
+        return result<size_t, RmtMemoryError>::success(dma_words);
 #else
         // Other platforms (if DMA supported): Assume DMA bypasses on-chip memory
         mLedger.allocations.push_back(ChannelAllocation(channel_id, 0, true, true));
         FL_LOG_RMT("RMT TX channel " << static_cast<int>(channel_id)
                    << " allocated (DMA, bypasses on-chip memory)");
-        return Result<size_t, RmtMemoryError>::success(0);
+        return result<size_t, RmtMemoryError>::success(0);
 #endif
     }
 
@@ -374,7 +374,7 @@ Result<size_t, RmtMemoryError> RmtMemoryManager::allocateTx(u8 channel_id, bool 
                 mLedger.allocations.push_back(ChannelAllocation(channel_id, fallback_words, true, false));
                 FL_LOG_RMT("RMT TX channel " << static_cast<int>(channel_id)
                            << " allocated (non-DMA, " << fallback_words << " words, single-buffer)");
-                return Result<size_t, RmtMemoryError>::success(fallback_words);
+                return result<size_t, RmtMemoryError>::success(fallback_words);
             }
 
             FL_LOG_RMT("  ✗ Fallback failed: insufficient memory even for single-buffer");
@@ -408,7 +408,7 @@ Result<size_t, RmtMemoryError> RmtMemoryManager::allocateTx(u8 channel_id, bool 
             FL_WARN("              Consider disabling network or using DMA channels");
         }
 
-        return Result<size_t, RmtMemoryError>::failure(RmtMemoryError::INSUFFICIENT_TX_MEMORY);
+        return result<size_t, RmtMemoryError>::failure(RmtMemoryError::INSUFFICIENT_TX_MEMORY);
     }
 
     mLedger.allocations.push_back(ChannelAllocation(channel_id, words_needed, true, false));
@@ -417,14 +417,14 @@ Result<size_t, RmtMemoryError> RmtMemoryManager::allocateTx(u8 channel_id, bool 
                << " allocated: " << words_needed << " words (" << mem_blocks << "× buffer"
                << (networkActive ? ", Network mode" : "") << ")");
 
-    return Result<size_t, RmtMemoryError>::success(words_needed);
+    return result<size_t, RmtMemoryError>::success(words_needed);
 }
 
-Result<size_t, RmtMemoryError> RmtMemoryManager::allocateRx(u8 channel_id, size_t symbols, bool use_dma) {
+result<size_t, RmtMemoryError> RmtMemoryManager::allocateRx(u8 channel_id, size_t symbols, bool use_dma) {
     // Check if channel already allocated
     if (findAllocation(channel_id, false) != nullptr) {
         FL_WARN("RMT RX channel " << static_cast<int>(channel_id) << " already allocated");
-        return Result<size_t, RmtMemoryError>::failure(RmtMemoryError::CHANNEL_ALREADY_ALLOCATED);
+        return result<size_t, RmtMemoryError>::failure(RmtMemoryError::CHANNEL_ALREADY_ALLOCATED);
     }
 
     // DMA channels bypass on-chip memory (use DRAM instead)
@@ -432,7 +432,7 @@ Result<size_t, RmtMemoryError> RmtMemoryManager::allocateRx(u8 channel_id, size_
         mLedger.allocations.push_back(ChannelAllocation(channel_id, 0, false, true));
         FL_LOG_RMT("RMT RX channel " << static_cast<int>(channel_id)
                    << " allocated (DMA, bypasses on-chip memory, uses DRAM buffer)");
-        return Result<size_t, RmtMemoryError>::success(0);
+        return result<size_t, RmtMemoryError>::success(0);
     }
 
     // RX symbols = words (1 symbol = 1 word = 4 bytes)
@@ -462,7 +462,7 @@ Result<size_t, RmtMemoryError> RmtMemoryManager::allocateRx(u8 channel_id, size_
             FL_WARN("              Consider reducing symbol count or using fewer channels");
         }
 
-        return Result<size_t, RmtMemoryError>::failure(RmtMemoryError::INSUFFICIENT_RX_MEMORY);
+        return result<size_t, RmtMemoryError>::failure(RmtMemoryError::INSUFFICIENT_RX_MEMORY);
     }
 
     mLedger.allocations.push_back(ChannelAllocation(channel_id, words_needed, false, false));
@@ -470,7 +470,7 @@ Result<size_t, RmtMemoryError> RmtMemoryManager::allocateRx(u8 channel_id, size_
     FL_LOG_RMT("RMT RX channel " << static_cast<int>(channel_id)
                << " allocated: " << words_needed << " words (" << symbols << " symbols)");
 
-    return Result<size_t, RmtMemoryError>::success(words_needed);
+    return result<size_t, RmtMemoryError>::success(words_needed);
 }
 
 void RmtMemoryManager::free(u8 channel_id, bool is_tx) {

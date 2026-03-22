@@ -1936,7 +1936,7 @@ bool ParlioEngine::beginTransmission(const u8* scratchBuffer,
         // Create debug task using unified task API (wraps TaskCoroutine)
         // Lambda captures 'this' to access ParlioEngine instance
         CoroutineConfig config;
-        config.function = [this]() { debugTaskFunction(this); };
+        config.func = [this]() { debugTaskFunction(this); };
         config.name = "parlio_debug";
         config.stack_size = 4096;  // 4KB stack (increased for ESP32-C6 RISC-V - stack overflow at 2KB)
         config.priority = 1;       // Low priority (tskIDLE_PRIORITY + 1)

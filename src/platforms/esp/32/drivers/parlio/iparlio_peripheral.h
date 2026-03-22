@@ -378,7 +378,7 @@ public:
     //
     // Migration guide:
     // - OLD: task_handle_t h = peripheral->createTask(config);
-    // - NEW: auto task = fl::task::coroutine({.function = func, .name = name});
+    // - NEW: auto task = fl::task::coroutine({.func = func, .name = name});
     // - Self-deletion: fl::task::exit_current();
 
     //=========================================================================

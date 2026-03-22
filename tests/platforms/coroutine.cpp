@@ -89,7 +89,7 @@ FL_TEST_CASE("coroutine - task::coroutine runs function") {
     fl::atomic<int> result(0);
 
     CoroutineConfig config;
-    config.function = [&]() {
+    config.func = [&]() {
         result.store(42);
         completed.store(true);
     };
@@ -111,14 +111,14 @@ FL_TEST_CASE("coroutine - two coroutines both complete") {
     fl::atomic<int> completed_count(0);
 
     CoroutineConfig config1;
-    config1.function = [&]() {
+    config1.func = [&]() {
         completed_count.fetch_add(1);
     };
     config1.name = "Coro1";
     auto coro1 = task::coroutine(config1);
 
     CoroutineConfig config2;
-    config2.function = [&]() {
+    config2.func = [&]() {
         completed_count.fetch_add(1);
     };
     config2.name = "Coro2";

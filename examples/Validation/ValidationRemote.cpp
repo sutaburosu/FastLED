@@ -1925,7 +1925,7 @@ void ValidationRemoteControl::registerFunctions(fl::shared_ptr<ValidationState> 
         fl::atomic<bool> task_completed(false);
 
         fl::task::CoroutineConfig cfg;
-        cfg.function = [&task_ran, &task_completed]() {
+        cfg.func = [&task_ran, &task_completed]() {
             task_ran.store(true);
             delay(50);
             task_completed.store(true);
@@ -1955,7 +1955,7 @@ void ValidationRemoteControl::registerFunctions(fl::shared_ptr<ValidationState> 
         fl::atomic<bool> task_started(false);
 
         fl::task::CoroutineConfig cfg;
-        cfg.function = [&task_started]() {
+        cfg.func = [&task_started]() {
             task_started.store(true);
             while (true) {
                 delay(10);
@@ -1997,7 +1997,7 @@ void ValidationRemoteControl::registerFunctions(fl::shared_ptr<ValidationState> 
         fl::task::Handle tasks[NUM_TASKS];
         for (int i = 0; i < NUM_TASKS; i++) {
             fl::task::CoroutineConfig cfg;
-            cfg.function = [i, &task_flags, &completed_count]() {
+            cfg.func = [i, &task_flags, &completed_count]() {
                 delay(20 + i * 20);
                 task_flags[i].store(true);
                 completed_count.fetch_add(1);
@@ -2045,7 +2045,7 @@ void ValidationRemoteControl::registerFunctions(fl::shared_ptr<ValidationState> 
         // Consumer coroutine: starts first, calls fl::task::await() which should block
         // until the producer coroutine resolves the promise
         fl::task::CoroutineConfig consumer_cfg;
-        consumer_cfg.function = [promise_ptr, &consumer_started, &consumer_finished,
+        consumer_cfg.func = [promise_ptr, &consumer_started, &consumer_finished,
                                  &consumer_value, &consumer_ok]() {
             consumer_started.store(true);
             // This should block the coroutine until producer fulfills the promise
@@ -2064,7 +2064,7 @@ void ValidationRemoteControl::registerFunctions(fl::shared_ptr<ValidationState> 
 
         // Producer coroutine: simulates async work, then resolves the promise
         fl::task::CoroutineConfig producer_cfg;
-        producer_cfg.function = [promise_ptr, &producer_started, &producer_finished]() {
+        producer_cfg.func = [promise_ptr, &producer_started, &producer_finished]() {
             producer_started.store(true);
             delay(200);  // simulate real async work (e.g. sensor read, network I/O)
             promise_ptr->complete_with_value(42);
@@ -2107,7 +2107,7 @@ void ValidationRemoteControl::registerFunctions(fl::shared_ptr<ValidationState> 
 
         // Consumer coroutine: awaits promise, expects error
         fl::task::CoroutineConfig consumer_cfg;
-        consumer_cfg.function = [promise_ptr, &consumer_finished, &got_error]() {
+        consumer_cfg.func = [promise_ptr, &consumer_finished, &got_error]() {
             auto result = fl::task::await(*promise_ptr);
             if (!result.ok()) {
                 got_error.store(true);
@@ -2121,7 +2121,7 @@ void ValidationRemoteControl::registerFunctions(fl::shared_ptr<ValidationState> 
 
         // Producer coroutine: rejects the promise with error
         fl::task::CoroutineConfig producer_cfg;
-        producer_cfg.function = [promise_ptr, &producer_finished]() {
+        producer_cfg.func = [promise_ptr, &producer_finished]() {
             delay(100);
             promise_ptr->complete_with_error(fl::task::Error("test error"));
             producer_finished.store(true);
@@ -2167,7 +2167,7 @@ void ValidationRemoteControl::registerFunctions(fl::shared_ptr<ValidationState> 
 
         // Producer coroutine fulfills the promise
         fl::task::CoroutineConfig producer_cfg;
-        producer_cfg.function = [promise_ptr, &producer_finished]() {
+        producer_cfg.func = [promise_ptr, &producer_finished]() {
             delay(100);
             promise_ptr->complete_with_value(99);
             producer_finished.store(true);
@@ -2213,7 +2213,7 @@ void ValidationRemoteControl::registerFunctions(fl::shared_ptr<ValidationState> 
 
         // Producer coroutine rejects the promise
         fl::task::CoroutineConfig producer_cfg;
-        producer_cfg.function = [promise_ptr, &producer_finished]() {
+        producer_cfg.func = [promise_ptr, &producer_finished]() {
             delay(100);
             promise_ptr->complete_with_error(fl::task::Error("rejection test"));
             producer_finished.store(true);
@@ -2254,7 +2254,7 @@ void ValidationRemoteControl::registerFunctions(fl::shared_ptr<ValidationState> 
 
         // Coroutine C: end of chain, awaits p2
         fl::task::CoroutineConfig cfg_c;
-        cfg_c.function = [p2, &final_value, &chain_complete, &c_done]() {
+        cfg_c.func = [p2, &final_value, &chain_complete, &c_done]() {
             auto result = fl::task::await(*p2);
             if (result.ok()) {
                 final_value.store(result.value());
@@ -2267,7 +2267,7 @@ void ValidationRemoteControl::registerFunctions(fl::shared_ptr<ValidationState> 
 
         // Coroutine B: middle of chain, awaits p1, transforms, fulfills p2
         fl::task::CoroutineConfig cfg_b;
-        cfg_b.function = [p1, p2, &b_done]() {
+        cfg_b.func = [p1, p2, &b_done]() {
             auto result = fl::task::await(*p1);
             if (result.ok()) {
                 // Transform: multiply by 10
@@ -2282,7 +2282,7 @@ void ValidationRemoteControl::registerFunctions(fl::shared_ptr<ValidationState> 
 
         // Coroutine A: head of chain, produces the initial value into p1
         fl::task::CoroutineConfig cfg_a;
-        cfg_a.function = [p1, &a_done]() {
+        cfg_a.func = [p1, &a_done]() {
             delay(100);  // simulate work
             p1->complete_with_value(7);
             a_done.store(true);

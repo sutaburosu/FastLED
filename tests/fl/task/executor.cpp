@@ -647,7 +647,7 @@ FL_TEST_CASE("await in coroutine - basic resolution") {
 
     // Spawn coroutine that awaits a promise
     CoroutineConfig config;
-    config.function = [&]() {
+    config.func = [&]() {
         // Create promise that resolves to 42 after 5ms (reduced from 50ms)
         auto p = delayed_resolve<int>(42, 5);
 
@@ -685,7 +685,7 @@ FL_TEST_CASE("await in coroutine - error handling") {
     fl::atomic<bool> got_error(false);
 
     CoroutineConfig config;
-    config.function = [&]() {
+    config.func = [&]() {
         // Create promise that rejects after 5ms (reduced from 50ms)
         auto p = delayed_reject<int>(fl::task::Error("Test error"), 5);
 
@@ -723,7 +723,7 @@ FL_TEST_CASE("await in coroutine - already completed promise") {
     fl::atomic<int> result_value(0);
 
     CoroutineConfig config;
-    config.function = [&]() {
+    config.func = [&]() {
         // Create already-resolved promise
         auto p = fl::task::Promise<int>::resolve(123);
 
@@ -764,7 +764,7 @@ FL_TEST_CASE("await in coroutine - multiple concurrent coroutines") {
     // Spawn 5 coroutines, each awaiting different promises
     for (int i = 0; i < 5; i++) {
         CoroutineConfig config;
-        config.function = [&, i]() {
+        config.func = [&, i]() {
             printf("  Coroutine %d: Started\n", i);
             // Each promise resolves to i*10 after (i*2)ms
             auto p = delayed_resolve<int>(i * 10, i * 2);
@@ -810,7 +810,7 @@ FL_TEST_CASE("await in coroutine - invalid promise") {
     fl::atomic<bool> got_error(false);
 
     CoroutineConfig config;
-    config.function = [&]() {
+    config.func = [&]() {
         // Create invalid promise (default constructor)
         fl::task::Promise<int> p;
 
@@ -844,7 +844,7 @@ FL_TEST_CASE("await in coroutine - sequential awaits") {
     fl::atomic<int> total(0);
 
     CoroutineConfig config;
-    config.function = [&]() {
+    config.func = [&]() {
         // First await (reduced from 20ms to 2ms)
         auto p1 = delayed_resolve<int>(10, 2);
         auto r1 = fl::task::await(p1);
@@ -892,7 +892,7 @@ FL_TEST_CASE("await vs await_top_level - CPU usage comparison") {
 
     // Test 1: await in coroutine (should NOT busy-wait)
     CoroutineConfig config;
-    config.function = [&]() {
+    config.func = [&]() {
         auto p = delayed_resolve<int>(42, 5);  // 5ms delay (reduced from 50ms)
         auto result = fl::task::await(p);
         FL_CHECK(result.ok());
@@ -937,7 +937,7 @@ FL_TEST_CASE("global coordination - no concurrent execution") {
 
     // Spawn a coroutine that increments/decrements active counter
     CoroutineConfig config;
-    config.function = [&]() {
+    config.func = [&]() {
         for (int i = 0; i < 50; i++) {
             // Increment active counter
             int before = active_threads.fetch_add(1);
@@ -1021,7 +1021,7 @@ FL_TEST_CASE("global coordination - await releases lock for other threads") {
 
     // Spawn two coroutines that await different promises
     CoroutineConfig config1;
-    config1.function = [&]() {
+    config1.func = [&]() {
         coroutine1_progress.store(1);  // Started
 
         // Await a promise (should release global lock) - reduced from 100ms to 10ms
@@ -1037,7 +1037,7 @@ FL_TEST_CASE("global coordination - await releases lock for other threads") {
     auto coro1 = task::coroutine(config1);
 
     CoroutineConfig config2;
-    config2.function = [&]() {
+    config2.func = [&]() {
         coroutine2_progress.store(1);  // Started
 
         // Await a different promise - reduced from 100ms to 10ms

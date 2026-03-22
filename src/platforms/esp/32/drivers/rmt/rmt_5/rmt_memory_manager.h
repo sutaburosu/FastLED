@@ -154,7 +154,7 @@ public:
     ///
     /// When with_dma=true in rmt_tx_channel_config_t, mem_block_symbols controls
     /// the DRAM buffer size, NOT on-chip RMT memory.
-    Result<size_t, RmtMemoryError> allocateTx(u8 channel_id, bool use_dma, bool networkActive = false);
+    result<size_t, RmtMemoryError> allocateTx(u8 channel_id, bool use_dma, bool networkActive = false);
 
     /// @brief Allocate memory for RX channel with user-specified size
     /// @param channel_id RMT channel ID (0-7 for ESP32, 0-3 for S3, 0-1 for C3/C6/H2)
@@ -168,7 +168,7 @@ public:
     ///
     /// When with_dma=true in rmt_rx_channel_config_t, mem_block_symbols controls
     /// the DRAM buffer size, NOT on-chip RMT memory.
-    Result<size_t, RmtMemoryError> allocateRx(u8 channel_id, size_t symbols, bool use_dma = false);
+    result<size_t, RmtMemoryError> allocateRx(u8 channel_id, size_t symbols, bool use_dma = false);
 
     /// @brief Free allocated memory for a channel
     /// @param channel_id RMT channel ID

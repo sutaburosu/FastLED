@@ -55,7 +55,7 @@ void myTaskFunction() {
 
 // Create and start OS-level task (RAII - auto-cleanup on destruction)
 auto t = fl::task::coroutine({
-    .function = myTaskFunction,
+    .func = myTaskFunction,
     .name = "MyTask"
 });
 
@@ -75,7 +75,7 @@ operations perfect for network requests, timers, or sensor readings.
 
 // Create a coroutine that performs sequential async operations
 auto t = fl::task::coroutine({
-    .function = []() {
+    .func = []() {
         // Fetch data from an API (zero CPU usage while waiting)
         auto result = fl::task::await(fl::fetch_get("http://api.example.com/data"));
 
@@ -127,7 +127,7 @@ class Coroutine;  // IWYU pragma: keep
 /// @brief Configuration for OS-level coroutine tasks
 struct CoroutineConfig {
     optional<TracePoint> trace;  // where this object was created, optional.
-    function<void()> function;
+    function<void()> func;
     string name = "task";
     size_t stack_size = 4096;
     u8 priority = 5;

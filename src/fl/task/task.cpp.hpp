@@ -217,7 +217,7 @@ public:
     CoroutineTask(const CoroutineConfig& config)
         : mTaskId(next_task_id())
         , mTraceLabel(config.trace ? make_unique<string>(make_trace_label(*config.trace)) : nullptr)
-        , mCoroutine(make_unique<Coroutine>(config.name, config.function, config.stack_size, config.priority,
+        , mCoroutine(make_unique<Coroutine>(config.name, config.func, config.stack_size, config.priority,
                                                  config.core_id.has_value() ? config.core_id.value() : -1)) {}
 
     void set_then(function<void()>) override { /* Coroutine tasks don't use then */ }

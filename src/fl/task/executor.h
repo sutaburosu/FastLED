@@ -292,7 +292,7 @@ namespace task {
 /// @section Usage
 /// @code
 /// fl::task::coroutine({
-///     .function = []() {
+///     .func = []() {
 ///         auto result = fl::task::await(fl::fetch_get("http://example.com"));
 ///         if (result.ok()) {
 ///             process(result.value());

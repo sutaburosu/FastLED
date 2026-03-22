@@ -48,8 +48,10 @@ fl::UISlider persistence("Trail Half-Life (s)", 0.86f, 0.05f, 5.0f, 0.01f);
 fl::UISlider flowShift("Pixel Shift", 1.8f, 0.5f, 4.0f, 0.1f);
 fl::UISlider numDots("Dots", 3, 1, 5, 1);
 fl::UIDropdown emitterMode("Emitter Mode", {"Lissajous", "Dots", "Both"});
+fl::UIDropdown computeMode("Compute Mode", {"Float", "Fixed-Point (Fast)"});
 
-fl::FlowField flowField(xyMap);
+fl::FlowFieldFloat flowFieldFloat(xyMap);
+fl::FlowFieldFP flowFieldFP(xyMap);
 
 void setup() {
     Serial.begin(115200);
@@ -59,22 +61,26 @@ void setup() {
 }
 
 void loop() {
-    // Push UI slider values into the effect.
-    flowField.setFlowSpeedX(flowSpeedX);
-    flowField.setFlowAmplitudeX(flowAmpX);
-    flowField.setNoiseFrequencyX(flowFreqX);
-    flowField.setFlowSpeedY(flowSpeedY);
-    flowField.setFlowAmplitudeY(flowAmpY);
-    flowField.setNoiseFrequencyY(flowFreqY);
-    flowField.setEndpointSpeed(endpointSpeed);
-    flowField.setColorShift(colorShift);
-    flowField.setPersistence(persistence);
-    flowField.setFlowShift(flowShift);
-    flowField.setDotCount(numDots.as<int>());
-    flowField.setEmitterMode(emitterMode.as_int());
-
     fl::Fx::DrawContext ctx(millis(), leds);
-    flowField.draw(ctx);
 
+    // Use base class reference for uniform parameter setting + draw
+    fl::FlowField &fx = (computeMode.as_int() == 0)
+        ? static_cast<fl::FlowField &>(flowFieldFloat)
+        : static_cast<fl::FlowField &>(flowFieldFP);
+
+    fx.setFlowSpeedX(flowSpeedX);
+    fx.setFlowAmplitudeX(flowAmpX);
+    fx.setNoiseFrequencyX(flowFreqX);
+    fx.setFlowSpeedY(flowSpeedY);
+    fx.setFlowAmplitudeY(flowAmpY);
+    fx.setNoiseFrequencyY(flowFreqY);
+    fx.setEndpointSpeed(endpointSpeed);
+    fx.setColorShift(colorShift);
+    fx.setPersistence(persistence);
+    fx.setFlowShift(flowShift);
+    fx.setDotCount(numDots.as<int>());
+    fx.setEmitterMode(emitterMode.as_int());
+
+    fx.draw(ctx);
     FastLED.show();
 }

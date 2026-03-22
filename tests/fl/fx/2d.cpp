@@ -6,3 +6,4 @@
 #include "tests/fl/fx/2d/blend.hpp"
 #include "tests/fl/fx/2d/chasing_spirals.hpp"
 #include "tests/fl/fx/2d/perlin_s8x8_test.hpp"
+#include "tests/fl/fx/2d/flowfield.hpp"
