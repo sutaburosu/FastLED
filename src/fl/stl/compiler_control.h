@@ -47,6 +47,8 @@
   // Clang: -Wdeprecated-volatile warns about volatile in parameters/return types (C++20)
   #define FL_DISABLE_WARNING_VOLATILE FL_DISABLE_WARNING(deprecated-volatile)
   #define FL_DISABLE_WARNING_DEPRECATED_REGISTER FL_DISABLE_WARNING(deprecated-register)
+  // Clang doesn't have maybe-uninitialized warning (GCC-only), use no-op
+  #define FL_DISABLE_WARNING_MAYBE_UNINITIALIZED
   // Clang doesn't have subobject-linkage warning, use no-op
   #define FL_DISABLE_WARNING_SUBOBJECT_LINKAGE
   // C++14/17 extension warnings (for compatibility when using SIMD intrinsic headers)
@@ -99,6 +101,8 @@
   // GCC doesn't have C++14/17 extension warnings, use no-op
   #define FL_DISABLE_WARNING_C14_EXTENSIONS
   #define FL_DISABLE_WARNING_C17_EXTENSIONS
+  // GCC has maybe-uninitialized warning
+  #define FL_DISABLE_WARNING_MAYBE_UNINITIALIZED FL_DISABLE_WARNING(maybe-uninitialized)
   // GCC 8+: -Wclass-memaccess warns when memset/memcpy used on non-trivial types
   #if FL_GCC_VERSION >= 800
     #define FL_DISABLE_WARNING_CLASS_MEMACCESS FL_DISABLE_WARNING(class-memaccess)
@@ -127,6 +131,8 @@
   #define FL_DISABLE_WARNING_SHORTEN_64_TO_32
   #define FL_DISABLE_WARNING_VOLATILE
   #define FL_DISABLE_WARNING_DEPRECATED_REGISTER
+  // Other compilers don't have maybe-uninitialized warning, use no-op
+  #define FL_DISABLE_WARNING_MAYBE_UNINITIALIZED
   // Other compilers don't have subobject-linkage warning, use no-op
   #define FL_DISABLE_WARNING_SUBOBJECT_LINKAGE
   // Other compilers don't have C++14/17 extension warnings, use no-op
