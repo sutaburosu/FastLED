@@ -36,22 +36,34 @@ CRGB leds[NUM_LEDS];
 fl::XYMap xyMap(WIDTH, HEIGHT, SERPENTINE);
 
 // -- UI controls --
+fl::UITitle title("FlowFields");
+fl::UIDescription description(
+    "Flow field visualization with noise-driven advection, creating fluid-like patterns from color emitters. "
+    "Concept by Stefan Petrick, Initial C++ implementation by 4wheeljive. FastLED port adaptation + fixed point "
+    "optmization by Zach Vorhies."
+);
+
 fl::UISlider flowSpeedX("X Speed", 0.10f, -2.0f, 2.0f, 0.01f);
 fl::UISlider flowAmpX("X Amplitude", 1.0f, 0.0f, 2.0f, 0.01f);
 fl::UISlider flowFreqX("X Frequency", 0.33f, 0.05f, 4.0f, 0.01f);
+fl::UIGroup flowXGroup("Flow X", flowSpeedX, flowAmpX, flowFreqX);
+
 fl::UISlider flowSpeedY("Y Speed", 0.10f, -2.0f, 2.0f, 0.01f);
 fl::UISlider flowAmpY("Y Amplitude", 1.0f, 0.0f, 2.0f, 0.01f);
 fl::UISlider flowFreqY("Y Frequency", 0.32f, 0.05f, 4.0f, 0.01f);
+fl::UIGroup flowYGroup("Flow Y", flowSpeedY, flowAmpY, flowFreqY);
+
 fl::UISlider endpointSpeed("Endpoint Speed", 0.80f, 0.05f, 2.0f, 0.01f);
 fl::UISlider colorShift("Color Shift", 0.04f, 0.0f, 0.5f, 0.01f);
 fl::UISlider persistence("Trail Half-Life (s)", 0.86f, 0.05f, 5.0f, 0.01f);
 fl::UISlider flowShift("Pixel Shift", 1.8f, 0.5f, 4.0f, 0.1f);
 fl::UISlider numDots("Dots", 3, 1, 5, 1);
 fl::UIDropdown emitterMode("Emitter Mode", {"Lissajous", "Dots", "Both"});
+fl::UIGroup appearanceGroup("Appearance", endpointSpeed, colorShift, persistence, flowShift, numDots, emitterMode);
+
 fl::UIDropdown computeMode("Compute Mode", {"Float", "Fixed-Point (Fast)"});
-fl::UITitle title("FlowFields");
-fl::UIDescription description("Flow field visualization with noise-driven advection, creating fluid-like patterns from color emitters. Concept by Stefan Petrick, C++ implementation by 4wheeljive.");
 fl::UICheckbox showFlowVectors("Show Flow Vectors", false);
+fl::UIGroup debugGroup("Debug", computeMode, showFlowVectors);
 
 fl::FlowFieldFloat flowFieldFloat(xyMap);
 fl::FlowFieldFP flowFieldFP(xyMap);
