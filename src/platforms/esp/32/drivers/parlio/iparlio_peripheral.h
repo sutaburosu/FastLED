@@ -49,7 +49,7 @@
 
 #include "fl/stl/stdint.h"
 #include "fl/stl/cstddef.h"
-#include "fl/stl/task.h"  // For OS-level task management (fl::os_task namespace)
+#include "fl/task/task.h"  // For OS-level task management (fl::os_task namespace)
 #include "fl/stl/vector.h"  // For fl::vector_fixed
 
 namespace fl {
@@ -379,7 +379,7 @@ public:
     // Migration guide:
     // - OLD: task_handle_t h = peripheral->createTask(config);
     // - NEW: auto task = fl::task::coroutine({.function = func, .name = name});
-    // - Self-deletion: fl::task::exitCurrent();
+    // - Self-deletion: fl::task::exit_current();
 
     //=========================================================================
     // Timer Management (REMOVED - Use fl/isr.h directly)

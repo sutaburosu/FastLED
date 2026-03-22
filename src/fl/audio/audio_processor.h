@@ -13,7 +13,7 @@
 #include "fl/stl/shared_ptr.h"
 #include "fl/stl/function.h"  // IWYU pragma: keep
 #include "fl/stl/vector.h"
-#include "fl/stl/task.h"
+#include "fl/task/task.h"
 
 class CFastLED;
 
@@ -383,7 +383,7 @@ private:
     shared_ptr<detector::Vibe> getVibeDetector();
 
     // Auto-pump support (used by CFastLED::add(Config))
-    fl::task mAutoTask;
+    fl::task::Handle mAutoTask;
     fl::shared_ptr<IInput> mAudioInput;
 
     static fl::shared_ptr<Processor> createWithAutoInput(

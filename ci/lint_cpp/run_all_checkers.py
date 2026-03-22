@@ -254,6 +254,9 @@ def create_checkers(
         SubdirNamespaceChecker(
             "video"
         ),  # Checks fl/video/ headers use proper fl::video:: namespaces
+        SubdirNamespaceChecker(
+            "task"
+        ),  # Checks fl/task/ headers use proper fl::task:: namespaces
         # NOTE: fl/math/ is NOT checked — types there intentionally live in fl::
         # namespace for backward compatibility. Using inline namespace math
         # causes cascading ambiguity with fl::detail, fl::simd, etc.

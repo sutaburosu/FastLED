@@ -15,7 +15,7 @@
 
 #include "platforms/esp/32/drivers/parlio/parlio_peripheral_esp.h"
 #include "fl/system/log.h"
-#include "fl/stl/async.h"
+#include "fl/task/executor.h"
 #include "fl/system/log.h"
 #include "fl/system/log.h"
 #include "fl/stl/sstream.h"
@@ -437,7 +437,7 @@ void ParlioPeripheralESPImpl::delay(u32 ms) {
 }
 
 void ParlioPeripheralESPImpl::delayMicroseconds(u32 us) {
-    async_run(us, AsyncFlags::SYSTEM);
+    task::run(us, task::ExecFlags::SYSTEM);
 }
 
 u32 ParlioPeripheralESPImpl::millis() {

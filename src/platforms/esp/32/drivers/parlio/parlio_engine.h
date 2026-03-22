@@ -313,7 +313,7 @@ private:
 
 #ifdef FL_DEBUG
     // Debug task for periodic ISR state logging (unified task API)
-    fl::task mDebugTask;
+    fl::task::Handle mDebugTask;
 #endif
 
     // Ring buffer for DMA streaming (fixed 3-buffer architecture)

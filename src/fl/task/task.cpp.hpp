@@ -1,12 +1,13 @@
-#include "fl/stl/task.h"
+#include "fl/task/task.h"
 #include "fl/stl/limits.h"
-#include "fl/stl/async.h"
+#include "fl/task/scheduler.h"
 #include "fl/stl/sstream.h"
 #include "fl/stl/unique_ptr.h"
 #include "fl/stl/atomic.h"
 #include "platforms/coroutine.h"
 
 namespace fl {
+namespace task {
 
 namespace {
 // Generate trace label from TracePoint
@@ -23,28 +24,30 @@ int next_task_id() {
 }
 } // namespace
 
+} // namespace task
 } // namespace fl
 
 namespace fl {
+namespace task {
 
 //=============================================================================
-// TaskCoroutine - RAII wrapper around platform-specific implementation
+// Coroutine - RAII wrapper around platform-specific implementation
 //=============================================================================
 
-class TaskCoroutine {
+class Coroutine {
 public:
     using TaskFunction = fl::function<void()>;
 
-    TaskCoroutine(fl::string name, TaskFunction function, size_t stack_size = 4096, u8 priority = 5, int core_id = -1)
+    Coroutine(fl::string name, TaskFunction function, size_t stack_size = 4096, u8 priority = 5, int core_id = -1)
         : mImpl(platforms::createTaskCoroutine(fl::move(name), fl::move(function), stack_size, priority, core_id)) {
     }
 
-    ~TaskCoroutine() = default;
+    ~Coroutine() = default;
 
-    TaskCoroutine(const TaskCoroutine&) = delete;
-    TaskCoroutine& operator=(const TaskCoroutine&) = delete;
-    TaskCoroutine(TaskCoroutine&&) = delete;
-    TaskCoroutine& operator=(TaskCoroutine&&) = delete;
+    Coroutine(const Coroutine&) = delete;
+    Coroutine& operator=(const Coroutine&) = delete;
+    Coroutine(Coroutine&&) = delete;
+    Coroutine& operator=(Coroutine&&) = delete;
 
     void stop() {
         if (mImpl) {
@@ -64,9 +67,11 @@ private:
     platforms::TaskCoroutinePtr mImpl;
 };
 
+} // namespace task
 } // namespace fl
 
 namespace fl {
+namespace task {
 
 //=============================================================================
 // ITaskImpl - Virtual Interface
@@ -212,7 +217,7 @@ public:
     CoroutineTask(const CoroutineConfig& config)
         : mTaskId(next_task_id())
         , mTraceLabel(config.trace ? make_unique<string>(make_trace_label(*config.trace)) : nullptr)
-        , mCoroutine(make_unique<TaskCoroutine>(config.name, config.function, config.stack_size, config.priority,
+        , mCoroutine(make_unique<Coroutine>(config.name, config.function, config.stack_size, config.priority,
                                                  config.core_id.has_value() ? config.core_id.value() : -1)) {}
 
     void set_then(function<void()>) override { /* Coroutine tasks don't use then */ }
@@ -257,84 +262,35 @@ private:
     bool mCanceled = false;
     bool mAutoRegistered = false;
     unique_ptr<string> mTraceLabel;
-    unique_ptr<TaskCoroutine> mCoroutine;
+    unique_ptr<Coroutine> mCoroutine;
 };
 
 //=============================================================================
-// task - Public API Implementation
+// Handle - Public API Implementation
 //=============================================================================
 
-task::task(shared_ptr<ITaskImpl> impl) : mImpl(fl::move(impl)) {}
-
-// Static builders
-task task::every_ms(int interval_ms) {
-    return task(fl::make_shared<TimeTask>(TaskType::kEveryMs, interval_ms));
-}
-
-task task::every_ms(int interval_ms, const TracePoint& trace) {
-    return task(fl::make_shared<TimeTask>(TaskType::kEveryMs, interval_ms, trace));
-}
-
-task task::at_framerate(int fps) {
-    return task(fl::make_shared<TimeTask>(TaskType::kAtFramerate, 1000 / fps));
-}
-
-task task::at_framerate(int fps, const TracePoint& trace) {
-    return task(fl::make_shared<TimeTask>(TaskType::kAtFramerate, 1000 / fps, trace));
-}
-
-task task::before_frame() {
-    return task(fl::make_shared<TimeTask>(TaskType::kBeforeFrame, 0));
-}
-
-task task::before_frame(const TracePoint& trace) {
-    return task(fl::make_shared<TimeTask>(TaskType::kBeforeFrame, 0, trace));
-}
-
-task task::after_frame() {
-    return task(fl::make_shared<TimeTask>(TaskType::kAfterFrame, 0));
-}
-
-task task::after_frame(const TracePoint& trace) {
-    return task(fl::make_shared<TimeTask>(TaskType::kAfterFrame, 0, trace));
-}
-
-task task::after_frame(function<void()> on_then) {
-    task t = task::after_frame();
-    t.then(fl::move(on_then));
-    return t;
-}
-
-task task::after_frame(function<void()> on_then, const TracePoint& trace) {
-    task t = task::after_frame(trace);
-    t.then(fl::move(on_then));
-    return t;
-}
-
-task task::coroutine(const CoroutineConfig& config) {
-    return task(fl::make_shared<CoroutineTask>(config));
-}
+Handle::Handle(shared_ptr<ITaskImpl> impl) : mImpl(fl::move(impl)) {}
 
 // Fluent API
-task& task::then(function<void()> on_then) {
+Handle& Handle::then(function<void()> on_then) {
     if (mImpl) {
         mImpl->set_then(fl::move(on_then));
         if (!mImpl->is_auto_registered()) {
             mImpl->auto_register_with_scheduler();
-            fl::Scheduler::instance().add_task(*this);
+            Scheduler::instance().add_task(*this);
         }
     }
     return *this;
 }
 
-task& task::catch_(function<void(const Error&)> on_catch) {
+Handle& Handle::catch_(function<void(const Error&)> on_catch) {
     if (mImpl) {
         mImpl->set_catch(fl::move(on_catch));
     }
     return *this;
 }
 
-task& task::cancel() {
+Handle& Handle::cancel() {
     if (mImpl) {
         mImpl->set_canceled();
     }
@@ -342,35 +298,87 @@ task& task::cancel() {
 }
 
 // Getters
-int task::id() const { return mImpl ? mImpl->id() : 0; }
-bool task::has_then() const { return mImpl ? mImpl->has_then() : false; }
-bool task::has_catch() const { return mImpl ? mImpl->has_catch() : false; }
-string task::trace_label() const { return mImpl ? mImpl->trace_label() : ""; }
-TaskType task::type() const { return mImpl ? mImpl->type() : TaskType::kEveryMs; }
-int task::interval_ms() const { return mImpl ? mImpl->interval_ms() : 0; }
-void task::set_interval_ms(int interval_ms) { if (mImpl) mImpl->set_interval_ms(interval_ms); }
-fl::u32 task::last_run_time() const { return mImpl ? mImpl->last_run_time() : 0; }
-void task::set_last_run_time(fl::u32 time) { if (mImpl) mImpl->set_last_run_time(time); }
-bool task::ready_to_run(fl::u32 current_time) const { return mImpl ? mImpl->ready_to_run(current_time) : false; }
-bool task::is_valid() const { return mImpl != nullptr; }
-bool task::isCoroutine() const { return mImpl && mImpl->type() == TaskType::kCoroutine; }
+int Handle::id() const { return mImpl ? mImpl->id() : 0; }
+bool Handle::has_then() const { return mImpl ? mImpl->has_then() : false; }
+bool Handle::has_catch() const { return mImpl ? mImpl->has_catch() : false; }
+string Handle::trace_label() const { return mImpl ? mImpl->trace_label() : ""; }
+TaskType Handle::type() const { return mImpl ? mImpl->type() : TaskType::kEveryMs; }
+int Handle::interval_ms() const { return mImpl ? mImpl->interval_ms() : 0; }
+void Handle::set_interval_ms(int interval_ms) { if (mImpl) mImpl->set_interval_ms(interval_ms); }
+fl::u32 Handle::last_run_time() const { return mImpl ? mImpl->last_run_time() : 0; }
+void Handle::set_last_run_time(fl::u32 time) { if (mImpl) mImpl->set_last_run_time(time); }
+bool Handle::ready_to_run(fl::u32 current_time) const { return mImpl ? mImpl->ready_to_run(current_time) : false; }
+bool Handle::is_valid() const { return mImpl != nullptr; }
+bool Handle::isCoroutine() const { return mImpl && mImpl->type() == TaskType::kCoroutine; }
 
 // Coroutine control
-void task::stop() { if (mImpl) mImpl->stop(); }
-bool task::isRunning() const { return mImpl ? mImpl->isRunning() : false; }
-void task::exitCurrent() { TaskCoroutine::exitCurrent(); }
+void Handle::stop() { if (mImpl) mImpl->stop(); }
+bool Handle::isRunning() const { return mImpl ? mImpl->isRunning() : false; }
+
+// Free function builders (were static methods on class fl::task)
+Handle every_ms(int interval_ms) {
+    return Handle(fl::make_shared<TimeTask>(TaskType::kEveryMs, interval_ms));
+}
+
+Handle every_ms(int interval_ms, const TracePoint& trace) {
+    return Handle(fl::make_shared<TimeTask>(TaskType::kEveryMs, interval_ms, trace));
+}
+
+Handle at_framerate(int fps) {
+    return Handle(fl::make_shared<TimeTask>(TaskType::kAtFramerate, 1000 / fps));
+}
+
+Handle at_framerate(int fps, const TracePoint& trace) {
+    return Handle(fl::make_shared<TimeTask>(TaskType::kAtFramerate, 1000 / fps, trace));
+}
+
+Handle before_frame() {
+    return Handle(fl::make_shared<TimeTask>(TaskType::kBeforeFrame, 0));
+}
+
+Handle before_frame(const TracePoint& trace) {
+    return Handle(fl::make_shared<TimeTask>(TaskType::kBeforeFrame, 0, trace));
+}
+
+Handle after_frame() {
+    return Handle(fl::make_shared<TimeTask>(TaskType::kAfterFrame, 0));
+}
+
+Handle after_frame(const TracePoint& trace) {
+    return Handle(fl::make_shared<TimeTask>(TaskType::kAfterFrame, 0, trace));
+}
+
+Handle after_frame(function<void()> on_then) {
+    Handle t = after_frame();
+    t.then(fl::move(on_then));
+    return t;
+}
+
+Handle after_frame(function<void()> on_then, const TracePoint& trace) {
+    Handle t = after_frame(trace);
+    t.then(fl::move(on_then));
+    return t;
+}
+
+Handle coroutine(const CoroutineConfig& config) {
+    return Handle(fl::make_shared<CoroutineTask>(config));
+}
+
+// Static coroutine control
+void exit_current() { Coroutine::exitCurrent(); }
 
 // Internal methods for Scheduler (friend access only)
-void task::_set_id(int id) { if (mImpl) mImpl->set_id(id); }
-int task::_id() const { return mImpl ? mImpl->id() : 0; }
-bool task::_is_canceled() const { return mImpl ? mImpl->is_canceled() : true; }
-bool task::_ready_to_run(fl::u32 current_time) const { return mImpl ? mImpl->ready_to_run(current_time) : false; }
-bool task::_ready_to_run_frame_task(fl::u32 current_time) const { return mImpl ? mImpl->ready_to_run_frame_task(current_time) : false; }
-void task::_set_last_run_time(fl::u32 time) { if (mImpl) mImpl->set_last_run_time(time); }
-bool task::_has_then() const { return mImpl ? mImpl->has_then() : false; }
-void task::_execute_then() { if (mImpl) mImpl->execute_then(); }
-void task::_execute_catch(const Error& error) { if (mImpl) mImpl->execute_catch(error); }
-TaskType task::_type() const { return mImpl ? mImpl->type() : TaskType::kEveryMs; }
-string task::_trace_label() const { return mImpl ? mImpl->trace_label() : ""; }
+void Handle::_set_id(int id) { if (mImpl) mImpl->set_id(id); }
+int Handle::_id() const { return mImpl ? mImpl->id() : 0; }
+bool Handle::_is_canceled() const { return mImpl ? mImpl->is_canceled() : true; }
+bool Handle::_ready_to_run(fl::u32 current_time) const { return mImpl ? mImpl->ready_to_run(current_time) : false; }
+bool Handle::_ready_to_run_frame_task(fl::u32 current_time) const { return mImpl ? mImpl->ready_to_run_frame_task(current_time) : false; }
+void Handle::_set_last_run_time(fl::u32 time) { if (mImpl) mImpl->set_last_run_time(time); }
+bool Handle::_has_then() const { return mImpl ? mImpl->has_then() : false; }
+void Handle::_execute_then() { if (mImpl) mImpl->execute_then(); }
+void Handle::_execute_catch(const Error& error) { if (mImpl) mImpl->execute_catch(error); }
+TaskType Handle::_type() const { return mImpl ? mImpl->type() : TaskType::kEveryMs; }
+string Handle::_trace_label() const { return mImpl ? mImpl->trace_label() : ""; }
 
+} // namespace task
 } // namespace fl

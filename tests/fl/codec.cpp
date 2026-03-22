@@ -1,5 +1,5 @@
 // Combined codec tests — one test binary for all codec tests
-// ok standalone // ok cpp include
+// ok cpp include
 #include "tests/fl/codec/gif.hpp"
 #include "tests/fl/codec/h264.hpp"
 #include "tests/fl/codec/jpeg.hpp"

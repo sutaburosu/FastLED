@@ -11,7 +11,7 @@
 #include "fl/stl/unique_ptr.h"
 #include "fl/stl/result.h"
 #include "fl/stl/optional.h"
-#include "fl/promise.h"  // for fl::Error
+#include "fl/task/promise.h"  // for fl::task::Error
 
 namespace fl {
 
@@ -57,7 +57,7 @@ public:
     /// @brief Get result of completed transaction
     /// @returns Result indicating success or error
     /// @warning Only valid after isDone() returns true
-    fl::optional<fl::Error> getResult() const;
+    fl::optional<fl::task::Error> getResult() const;
 
     /// @brief Destructor - automatically waits for completion
     /// @note Ensures transaction completes before destruction

@@ -45,6 +45,14 @@ EXCLUDED_TEST_FILES = {
     "fltest_self_test.cpp",  # Self-test for fl::test framework (tests fltest.h)
     "asan_leak.cpp",  # ASAN/LSAN symbolization verification test (no src header)
     "test_helpers.hpp",  # Shared test helper utilities (not 1:1 with source)
+    # Unity-build aggregators (only include test .hpp files, not source headers)
+    "codec.cpp",  # Aggregates tests/fl/codec/*.hpp
+    "detail.cpp",  # Aggregates tests/fl/detail/*.hpp
+    "detectors.cpp",  # Aggregates tests/fl/audio/detector/*.hpp
+    "encoders.cpp",  # Aggregates tests/fl/chipsets/encoders/*.hpp
+    "2d.cpp",  # Aggregates tests/fl/fx/2d/*.hpp
+    "validation.cpp",  # Aggregates tests/fl/channels/detail/validation/*.hpp
+    "rpc.cpp",  # Aggregates tests/fl/remote/rpc/*.hpp
 }
 
 # Test directories that don't follow the 1:1 mapping (legacy code)

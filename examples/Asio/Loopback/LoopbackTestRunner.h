@@ -153,7 +153,7 @@ private:
                 // Advance to next test state
                 state = next_state;
             })
-            .catch_([this](const fl::Error& err) {
+            .catch_([this](const fl::task::Error& err) {
                 // Error callback - network/connection failure
                 has_failure = true;
                 Serial.print("  ✗ FAILED - Error: ");

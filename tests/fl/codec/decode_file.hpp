@@ -1,4 +1,4 @@
-// ok standalone
+
 // Decode a file sent via JSON-RPC + base64 transport.
 // Reads the payload from a hardcoded path (.build/decode_payload.json) by
 // default. Override with the FASTLED_DECODE_PAYLOAD env var. When the payload

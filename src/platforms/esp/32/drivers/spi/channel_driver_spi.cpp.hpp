@@ -38,7 +38,7 @@
 #include "fl/system/delay.h"
 #include "fl/system/pin.h"
 #include "fl/math/math.h"
-#include "fl/stl/async.h"
+#include "fl/task/executor.h"
 #include "fl/system/log.h"
 #include "fl/stl/chrono.h"
 #include "platforms/esp/32/drivers/spi/spi_hw_base.h" // SPI host definitions (SPI2_HOST, SPI3_HOST)
@@ -547,7 +547,7 @@ void ChannelEngineSpi::beginBatchedTransmission(
                     break;
                 }
                 // OS yield only while waiting for DMA
-                async_run(250, AsyncFlags::SYSTEM);
+                task::run(250, task::ExecFlags::SYSTEM);
             }
 
             // Insert reset delay between batches (critical for LED protocol compliance)

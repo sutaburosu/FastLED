@@ -1,4 +1,4 @@
-// ok standalone
+
 /// @file test_wave8_spi.cpp
 /// @brief Unit tests for SPI wave8 encoder
 ///

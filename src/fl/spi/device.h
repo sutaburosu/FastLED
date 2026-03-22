@@ -9,7 +9,7 @@
 #include "fl/stl/stdint.h"
 #include "fl/stl/unique_ptr.h"
 #include "fl/stl/optional.h"
-#include "fl/promise.h"  // for fl::Error
+#include "fl/task/promise.h"  // for fl::task::Error
 #include "fl/spi/config.h"
 #include "fl/spi/transaction.h"
 // IWYU pragma: begin_keep
@@ -59,7 +59,7 @@ public:
     /// @brief Initialize the SPI hardware
     /// @returns Result indicating success or error
     /// @note Must be called before any communication methods
-    fl::optional<fl::Error> begin();
+    fl::optional<fl::task::Error> begin();
 
     /// @brief Shutdown the SPI hardware and release resources
     /// @note Waits for pending operations to complete
@@ -102,7 +102,7 @@ public:
     /// @param async If true, returns immediately; if false, waits for completion
     /// @returns Result indicating success or error
     /// @note Zero-copy: buffer is transmitted directly via DMA
-    fl::optional<fl::Error> transmit(DMABuffer& buffer, bool async = true);
+    fl::optional<fl::task::Error> transmit(DMABuffer& buffer, bool async = true);
 
     /// @brief Wait for pending async operation to complete
     /// @param timeout_ms Maximum time to wait (default: forever)
@@ -120,7 +120,7 @@ public:
     /// @returns Result indicating success or error
     /// @note Runtime updates not yet supported - new speed takes effect on next begin()
     /// @note To apply immediately: call end() then begin()
-    fl::optional<fl::Error> setClockSpeed(u32 speed_hz);
+    fl::optional<fl::task::Error> setClockSpeed(u32 speed_hz);
 
     /// @brief Get current configuration
     /// @returns Reference to configuration structure

@@ -74,9 +74,9 @@ MultiLaneDevice::~MultiLaneDevice() {
     }
 }
 
-fl::optional<fl::Error> MultiLaneDevice::begin() {
+fl::optional<fl::task::Error> MultiLaneDevice::begin() {
     if (!pImpl) {
-        return fl::Error("Device not initialized");
+        return fl::task::Error("Device not initialized");
     }
 
     if (pImpl->initialized) {
@@ -88,7 +88,7 @@ fl::optional<fl::Error> MultiLaneDevice::begin() {
 
     // Validate lane count
     if (num_lanes < 1 || num_lanes > 8) {
-        return fl::Error("Invalid number of lanes (must be 1-8)");
+        return fl::task::Error("Invalid number of lanes (must be 1-8)");
     }
 
     // Auto-select appropriate hardware backend based on lane count
@@ -97,7 +97,7 @@ fl::optional<fl::Error> MultiLaneDevice::begin() {
         const auto& controllers = SpiHw1::getAll();
         if (controllers.empty()) {
             FL_WARN("MultiLaneDevice: No Single-SPI hardware available");
-            return fl::Error("Single-SPI hardware not available");
+            return fl::task::Error("Single-SPI hardware not available");
         }
 
         // Find first available controller
@@ -111,7 +111,7 @@ fl::optional<fl::Error> MultiLaneDevice::begin() {
 
         if (!hw) {
             FL_WARN("MultiLaneDevice: All Single-SPI controllers in use");
-            return fl::Error("All Single-SPI controllers already in use");
+            return fl::task::Error("All Single-SPI controllers already in use");
         }
 
         // Configure Single-SPI
@@ -123,7 +123,7 @@ fl::optional<fl::Error> MultiLaneDevice::begin() {
 
         if (!hw->begin(hw_config)) {
             FL_WARN("MultiLaneDevice: Failed to initialize Single-SPI hardware");
-            return fl::Error("Failed to initialize Single-SPI hardware");
+            return fl::task::Error("Failed to initialize Single-SPI hardware");
         }
 
         pImpl->backend = hw;
@@ -135,7 +135,7 @@ fl::optional<fl::Error> MultiLaneDevice::begin() {
         const auto& controllers = SpiHw2::getAll();
         if (controllers.empty()) {
             FL_WARN("MultiLaneDevice: No Dual-SPI hardware available");
-            return fl::Error("Dual-SPI hardware not available");
+            return fl::task::Error("Dual-SPI hardware not available");
         }
 
         // Find first available controller
@@ -149,7 +149,7 @@ fl::optional<fl::Error> MultiLaneDevice::begin() {
 
         if (!hw) {
             FL_WARN("MultiLaneDevice: All Dual-SPI controllers in use");
-            return fl::Error("All Dual-SPI controllers already in use");
+            return fl::task::Error("All Dual-SPI controllers already in use");
         }
 
         // Configure Dual-SPI
@@ -162,7 +162,7 @@ fl::optional<fl::Error> MultiLaneDevice::begin() {
 
         if (!hw->begin(hw_config)) {
             FL_WARN("MultiLaneDevice: Failed to initialize Dual-SPI hardware");
-            return fl::Error("Failed to initialize Dual-SPI hardware");
+            return fl::task::Error("Failed to initialize Dual-SPI hardware");
         }
 
         pImpl->backend = hw;
@@ -174,7 +174,7 @@ fl::optional<fl::Error> MultiLaneDevice::begin() {
         const auto& controllers = SpiHw4::getAll();
         if (controllers.empty()) {
             FL_WARN("MultiLaneDevice: No Quad-SPI hardware available");
-            return fl::Error("Quad-SPI hardware not available");
+            return fl::task::Error("Quad-SPI hardware not available");
         }
 
         // Find first available controller
@@ -188,7 +188,7 @@ fl::optional<fl::Error> MultiLaneDevice::begin() {
 
         if (!hw) {
             FL_WARN("MultiLaneDevice: All Quad-SPI controllers in use");
-            return fl::Error("All Quad-SPI controllers already in use");
+            return fl::task::Error("All Quad-SPI controllers already in use");
         }
 
         // Configure Quad-SPI
@@ -203,7 +203,7 @@ fl::optional<fl::Error> MultiLaneDevice::begin() {
 
         if (!hw->begin(hw_config)) {
             FL_WARN("MultiLaneDevice: Failed to initialize Quad-SPI hardware");
-            return fl::Error("Failed to initialize Quad-SPI hardware");
+            return fl::task::Error("Failed to initialize Quad-SPI hardware");
         }
 
         pImpl->backend = hw;
@@ -215,7 +215,7 @@ fl::optional<fl::Error> MultiLaneDevice::begin() {
         const auto& controllers = SpiHw8::getAll();
         if (controllers.empty()) {
             FL_WARN("MultiLaneDevice: No Octal-SPI hardware available");
-            return fl::Error("Octal-SPI hardware not available");
+            return fl::task::Error("Octal-SPI hardware not available");
         }
 
         // Find first available controller
@@ -229,7 +229,7 @@ fl::optional<fl::Error> MultiLaneDevice::begin() {
 
         if (!hw) {
             FL_WARN("MultiLaneDevice: All Octal-SPI controllers in use");
-            return fl::Error("All Octal-SPI controllers already in use");
+            return fl::task::Error("All Octal-SPI controllers already in use");
         }
 
         // Configure Octal-SPI
@@ -248,7 +248,7 @@ fl::optional<fl::Error> MultiLaneDevice::begin() {
 
         if (!hw->begin(hw_config)) {
             FL_WARN("MultiLaneDevice: Failed to initialize Octal-SPI hardware");
-            return fl::Error("Failed to initialize Octal-SPI hardware");
+            return fl::task::Error("Failed to initialize Octal-SPI hardware");
         }
 
         pImpl->backend = hw;

@@ -20,7 +20,7 @@
 #include "platforms/wasm/active_strip_data.h"
 #include "platforms/wasm/engine_listener.h"
 #include "fl/system/log.h"
-#include "fl/stl/async.h"
+#include "fl/task/executor.h"
 #include "fl/system/log.h"
 // IWYU pragma: begin_keep
 #include "fl/stl/cstdio.h"  // ok include
@@ -57,7 +57,7 @@ void fastled_setup_once() {
 void fastled_loop_once() {
     fastled_setup_once();
     fl::EngineEvents::onPlatformPreLoop();
-    fl::async_run();
+    fl::task::run();
     loop();
     if (!gEndFrameListener.endFrameHappened()) {
         fl::EngineEvents::onEndFrame();

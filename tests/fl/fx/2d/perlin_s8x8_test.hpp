@@ -1,4 +1,4 @@
-// ok standalone - tests implementation details of perlin noise variants
+
 #include "fl/fx/2d/animartrix.hpp"
 #include "test.h"
 

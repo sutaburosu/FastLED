@@ -1,6 +1,6 @@
 #pragma once
 
-#include "fl/promise.h"
+#include "fl/task/promise.h"
 #include "fl/stl/stdint.h"
 #include "fl/stl/string.h"
 
@@ -25,7 +25,7 @@ enum class errc : i32 {
 /// Asio-compatible error code: numeric code + optional human-readable message.
 /// Maps to boost::system::error_code in Asio.
 ///
-/// Unlike fl::Error (string-only, heap allocation on every error), error_code
+/// Unlike fl::task::Error (string-only, heap allocation on every error), error_code
 /// is cheap to copy and supports quick boolean checks: if (ec) { /* error */ }
 struct error_code {
     errc code;
@@ -42,20 +42,20 @@ struct error_code {
     /// Convenience: true if no error.
     bool ok() const { return code == errc::success; }
 
-    /// Convert from fl::Error for interop with existing FastLED code.
-    static error_code from_error(const fl::Error &e) {
+    /// Convert from fl::task::Error for interop with existing FastLED code.
+    static error_code from_error(const fl::task::Error &e) {
         if (e.is_empty()) {
             return error_code();
         }
         return error_code(errc::unknown, e.message);
     }
 
-    /// Convert to fl::Error for interop with existing FastLED code.
-    fl::Error to_error() const {
+    /// Convert to fl::task::Error for interop with existing FastLED code.
+    fl::task::Error to_error() const {
         if (ok()) {
-            return fl::Error();
+            return fl::task::Error();
         }
-        return fl::Error(message);
+        return fl::task::Error(message);
     }
 
     /// Convert from platform errno value.

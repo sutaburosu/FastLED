@@ -1,8 +1,8 @@
 
 
 #include "test.h"
-#include "fl/stl/task.h"
-#include "fl/stl/async.h"
+#include "fl/task/task.h"
+#include "fl/task/executor.h"
 #include "fl/system/engine_events.h"
 #include "fl/stl/chrono.h"
 #include "fl/stl/stdint.h"
@@ -31,7 +31,7 @@ public:
     void onEndFrame() override {
         frame_count++;
         // Pump the scheduler to execute after_frame tasks specifically
-        fl::Scheduler::instance().update_after_frame_tasks();
+        fl::task::Scheduler::instance().update_after_frame_tasks();
     }
     
     int frame_count = 0;
@@ -43,7 +43,7 @@ FL_TEST_CASE("Task self-registration and destruction behavior [task]") {
     
     FL_SUBCASE("Task auto-registers when callback is set - SUCCESS") {
         // Clear any leftover tasks from previous tests
-        fl::Scheduler::instance().clear_all_tasks();
+        fl::task::Scheduler::instance().clear_all_tasks();
         
         bool task_executed = false;
         
@@ -65,12 +65,12 @@ FL_TEST_CASE("Task self-registration and destruction behavior [task]") {
         FL_CHECK(task_executed);
         
         // Clean up
-        fl::Scheduler::instance().clear_all_tasks();
+        fl::task::Scheduler::instance().clear_all_tasks();
     }
     
     FL_SUBCASE("Fluent API pattern works with auto-registration") {
         // Clear any leftover tasks from previous tests
-        fl::Scheduler::instance().clear_all_tasks();
+        fl::task::Scheduler::instance().clear_all_tasks();
         
         bool task_executed = false;
         
@@ -88,12 +88,12 @@ FL_TEST_CASE("Task self-registration and destruction behavior [task]") {
         FL_CHECK(task_executed);
         
         // Clean up
-        fl::Scheduler::instance().clear_all_tasks();
+        fl::task::Scheduler::instance().clear_all_tasks();
     }
     
     FL_SUBCASE("Multiple auto-registering tasks work correctly") {
         // Clear any leftover tasks from previous tests
-        fl::Scheduler::instance().clear_all_tasks();
+        fl::task::Scheduler::instance().clear_all_tasks();
         
         int tasks_executed = 0;
         
@@ -114,12 +114,12 @@ FL_TEST_CASE("Task self-registration and destruction behavior [task]") {
         FL_CHECK_EQ(tasks_executed, 3);
         
         // Clean up
-        fl::Scheduler::instance().clear_all_tasks();
+        fl::task::Scheduler::instance().clear_all_tasks();
     }
     
     FL_SUBCASE("Manual registration still works (backward compatibility)") {
         // Clear any leftover tasks from previous tests
-        fl::Scheduler::instance().clear_all_tasks();
+        fl::task::Scheduler::instance().clear_all_tasks();
         
         bool task_executed = false;
         
@@ -130,7 +130,7 @@ FL_TEST_CASE("Task self-registration and destruction behavior [task]") {
             });
         
         // Manual add should work (though now redundant since auto-registration already happened)
-        fl::Scheduler::instance().add_task(task);
+        fl::task::Scheduler::instance().add_task(task);
         
         // Simulate frame end event
         TestFrameListener listener;
@@ -140,12 +140,12 @@ FL_TEST_CASE("Task self-registration and destruction behavior [task]") {
         FL_CHECK(task_executed);
         
         // Clean up
-        fl::Scheduler::instance().clear_all_tasks();
+        fl::task::Scheduler::instance().clear_all_tasks();
     }
     
     FL_SUBCASE("Task cancellation works with auto-registered tasks") {
         // Clear any leftover tasks from previous tests
-        fl::Scheduler::instance().clear_all_tasks();
+        fl::task::Scheduler::instance().clear_all_tasks();
         
         bool task_executed = false;
         
@@ -167,12 +167,12 @@ FL_TEST_CASE("Task self-registration and destruction behavior [task]") {
         FL_CHECK_FALSE(task_executed);
         
         // Clean up
-        fl::Scheduler::instance().clear_all_tasks();
+        fl::task::Scheduler::instance().clear_all_tasks();
     }
     
     FL_SUBCASE("Tasks without callbacks don't auto-register") {
         // Clear any leftover tasks from previous tests
-        fl::Scheduler::instance().clear_all_tasks();
+        fl::task::Scheduler::instance().clear_all_tasks();
         
         // Create task without callback - should not auto-register
         auto task = fl::task::after_frame();
@@ -181,12 +181,12 @@ FL_TEST_CASE("Task self-registration and destruction behavior [task]") {
         FL_CHECK(task.is_valid()); // Task should be valid but not auto-registered
         
         // Clean up
-        fl::Scheduler::instance().clear_all_tasks();
+        fl::task::Scheduler::instance().clear_all_tasks();
     }
     
     FL_SUBCASE("every_ms task runs immediately once then respects timing interval") {
         // Clear any leftover tasks from previous tests
-        fl::Scheduler::instance().clear_all_tasks();
+        fl::task::Scheduler::instance().clear_all_tasks();
         
         int execution_count = 0;
         
@@ -201,11 +201,11 @@ FL_TEST_CASE("Task self-registration and destruction behavior [task]") {
         FL_CHECK(task.has_then());
         
         // First update - should run immediately
-        fl::Scheduler::instance().update();
+        fl::task::Scheduler::instance().update();
         FL_CHECK_EQ(execution_count, 1);
         
         // Immediate second update - should NOT run (not enough time passed)
-        fl::Scheduler::instance().update();
+        fl::task::Scheduler::instance().update();
         FL_CHECK_EQ(execution_count, 1); // Still 1, didn't run again
         
         // Manually advance the task's last run time to simulate 50ms passing
@@ -213,27 +213,27 @@ FL_TEST_CASE("Task self-registration and destruction behavior [task]") {
         task.set_last_run_time(current_time - 50);
         
         // Update - should still NOT run (only 50ms passed, need 100ms)
-        fl::Scheduler::instance().update();
+        fl::task::Scheduler::instance().update();
         FL_CHECK_EQ(execution_count, 1); // Still 1
         
         // Manually advance to simulate 100ms+ passing
         task.set_last_run_time(current_time - 100);
         
         // Update - should run now (100ms has passed)
-        fl::Scheduler::instance().update();
+        fl::task::Scheduler::instance().update();
         FL_CHECK_EQ(execution_count, 2); // Should be 2 now
         
         // Immediate update again - should NOT run
-        fl::Scheduler::instance().update();
+        fl::task::Scheduler::instance().update();
         FL_CHECK_EQ(execution_count, 2); // Still 2
         
         // Clean up
-        fl::Scheduler::instance().clear_all_tasks();
+        fl::task::Scheduler::instance().clear_all_tasks();
     }
     
     FL_SUBCASE("after_frame task executes when FastLED.show() is called") {
         // Clear any leftover tasks from previous tests - CRITICAL for test isolation
-        fl::Scheduler::instance().clear_all_tasks();
+        fl::task::Scheduler::instance().clear_all_tasks();
         
         int execution_count = 0;
         
@@ -251,7 +251,7 @@ FL_TEST_CASE("Task self-registration and destruction behavior [task]") {
         FL_CHECK_EQ(execution_count, 0);
         
         // Manually calling scheduler update shouldn't trigger frame tasks yet
-        fl::Scheduler::instance().update();
+        fl::task::Scheduler::instance().update();
         FL_CHECK_EQ(execution_count, 0); // Still 0
 
         
@@ -276,7 +276,7 @@ FL_TEST_CASE("Task self-registration and destruction behavior [task]") {
         FL_CHECK_EQ(execution_count, 2);
         
         // Clean up
-        fl::Scheduler::instance().clear_all_tasks();
+        fl::task::Scheduler::instance().clear_all_tasks();
     }
 } 
 

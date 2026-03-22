@@ -7,7 +7,7 @@
 #include "fl/stl/vector.h"
 #include "fl/stl/unique_ptr.h"
 #include "fl/stl/optional.h"
-#include "fl/promise.h"  // for fl::Error
+#include "fl/task/promise.h"  // for fl::task::Error
 #include "fl/spi/transaction.h"
 // IWYU pragma: begin_keep
 #include "platforms/shared/spi_types.h"  // ok platform headers
@@ -91,7 +91,7 @@ public:
     /// @brief Initialize hardware and setup LUT
     /// @returns Optional error (nullopt on success)
     /// @note Auto-selects backend based on pin count and mode
-    fl::optional<fl::Error> begin();
+    fl::optional<fl::task::Error> begin();
 
     /// @brief Shutdown hardware and release resources
     void end();

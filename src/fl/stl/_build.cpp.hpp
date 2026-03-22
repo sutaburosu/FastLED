@@ -4,7 +4,6 @@
 
 // begin current directory includes
 #include "fl/stl/allocator.cpp.hpp"
-#include "fl/stl/async.cpp.hpp"
 #include "fl/stl/bitset.cpp.hpp"
 #include "fl/stl/charconv.cpp.hpp"
 #include "fl/stl/chrono.cpp.hpp"
@@ -21,7 +20,6 @@
 #include "fl/stl/shared_ptr.cpp.hpp"
 #include "fl/stl/singleton.cpp.hpp"
 #include "fl/stl/string.cpp.hpp"
-#include "fl/stl/task.cpp.hpp"
 #include "fl/stl/string_interner.cpp.hpp"
 #include "fl/stl/string_view.cpp.hpp"
 #include "fl/stl/strstream.cpp.hpp"

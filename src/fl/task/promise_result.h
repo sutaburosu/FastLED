@@ -1,73 +1,74 @@
 #pragma once
 
-/// @file promise_result.h
+/// @file fl/task/PromiseResult.h
 /// @brief Result type for promise operations with ok() semantics
 ///
-/// promise_result<T> provides a Rust-like Result type that wraps either a success
+/// PromiseResult<T> provides a Rust-like Result type that wraps either a success
 /// value of type T or an Error. It provides convenient ok() checking and safe
 /// value access with assertions on misuse.
 
 #include "fl/stl/variant.h"
-#include "fl/promise.h"  // For Error type
+#include "fl/task/promise.h"  // For Error type
 
 namespace fl {
+namespace task {
 
 /// @brief Result type for promise operations
 /// @tparam T The success value type
-/// 
-/// promise_result provides a clean API for handling success/error results from
+///
+/// PromiseResult provides a clean API for handling success/error results from
 /// async operations. It wraps a variant<T, Error> but provides more ergonomic
 /// access patterns with ok() checking and automatic assertions.
 ///
 /// @section Usage
 /// @code
-/// auto result = fl::await_top_level<int>(some_promise);
-/// 
+/// auto result = fl::task::await_top_level<int>(some_promise);
+///
 /// if (result.ok()) {
 ///     int value = result.value();  // Safe access
 ///     FL_WARN("Success: " << value);
 /// } else {
 ///     FL_WARN("Error: " << result.error().message);
 /// }
-/// 
+///
 /// // Or use operator bool
 /// if (result) {
 ///     FL_WARN("Got: " << result.value());
 /// }
 /// @endcode
 template<typename T>
-class promise_result {
+class PromiseResult {
 public:
-    /// @brief Construct a successful promise_result
+    /// @brief Construct a successful PromiseResult
     /// @param value The success value
-    promise_result(const T& value) : mResult(value) {}
+    PromiseResult(const T& value) : mResult(value) {}
 
-    /// @brief Construct a successful promise_result (move)
+    /// @brief Construct a successful PromiseResult (move)
     /// @param value The success value (moved)
-    promise_result(T&& value) : mResult(fl::move(value)) {}
+    PromiseResult(T&& value) : mResult(fl::move(value)) {}
 
-    /// @brief Construct an error promise_result
+    /// @brief Construct an error PromiseResult
     /// @param error The error value
-    promise_result(const Error& error) : mResult(error) {}
+    PromiseResult(const Error& error) : mResult(error) {}
 
-    /// @brief Construct an error promise_result (move)
+    /// @brief Construct an error PromiseResult (move)
     /// @param error The error value (moved)
-    promise_result(Error&& error) : mResult(fl::move(error)) {}
-    
+    PromiseResult(Error&& error) : mResult(fl::move(error)) {}
+
     /// @brief Check if the result is successful
     /// @return True if the result contains a value, false if it contains an error
     bool ok() const {
         return mResult.template is<T>();
     }
-    
+
     /// @brief Boolean conversion operator (same as ok())
     /// @return True if the result is successful
-    /// 
+    ///
     /// Allows usage like: if (result) { ... }
     explicit operator bool() const {
         return ok();
     }
-    
+
     /// @brief Get the success value (const)
     /// @return Reference to the success value
     /// @warning Returns static empty object if called on an error result
@@ -80,7 +81,7 @@ public:
         }
         return mResult.template get<T>();
     }
-    
+
     /// @brief Get the success value (mutable)
     /// @return Reference to the success value
     /// @warning Returns static empty object if called on an error result
@@ -93,7 +94,7 @@ public:
         }
         return mResult.template get<T>();
     }
-    
+
     /// @brief Get the error value
     /// @return Reference to the error
     /// @warning Returns static descriptive error if called on a success result
@@ -106,14 +107,14 @@ public:
         }
         return mResult.template get<Error>();
     }
-    
+
     /// @brief Get the error message as a convenience
     /// @return Error message string, or empty string if successful
     /// @note Safe to call on success results (returns empty string)
     fl::string error_message() const {
         return ok() ? fl::string() : error().message;
     }
-    
+
     /// @brief Access the underlying variant (for advanced usage)
     /// @return Reference to the internal variant
     const fl::variant<T, Error>& variant() const {
@@ -129,17 +130,17 @@ private:
 /// @param value The success value
 /// @return result containing the value
 template<typename T>
-promise_result<T> make_success(const T& value) {
-    return promise_result<T>(value);
+PromiseResult<T> make_success(const T& value) {
+    return PromiseResult<T>(value);
 }
 
 /// @brief Helper function to create a successful result (move)
-/// @tparam T The value type  
+/// @tparam T The value type
 /// @param value The success value (moved)
 /// @return result containing the value
 template<typename T>
-promise_result<T> make_success(T&& value) {
-    return promise_result<T>(fl::move(value));
+PromiseResult<T> make_success(T&& value) {
+    return PromiseResult<T>(fl::move(value));
 }
 
 /// @brief Helper function to create an error result
@@ -147,8 +148,8 @@ promise_result<T> make_success(T&& value) {
 /// @param error The error
 /// @return result containing the error
 template<typename T>
-promise_result<T> make_error(const Error& error) {
-    return promise_result<T>(error);
+PromiseResult<T> make_error(const Error& error) {
+    return PromiseResult<T>(error);
 }
 
 /// @brief Helper function to create an error result (move)
@@ -156,8 +157,8 @@ promise_result<T> make_error(const Error& error) {
 /// @param error The error (moved)
 /// @return result containing the error
 template<typename T>
-promise_result<T> make_error(Error&& error) {
-    return promise_result<T>(fl::move(error));
+PromiseResult<T> make_error(Error&& error) {
+    return PromiseResult<T>(fl::move(error));
 }
 
 /// @brief Helper function to create an error result from string
@@ -165,8 +166,8 @@ promise_result<T> make_error(Error&& error) {
 /// @param message The error message
 /// @return result containing the error
 template<typename T>
-promise_result<T> make_error(const fl::string& message) {
-    return promise_result<T>(Error(message));
+PromiseResult<T> make_error(const fl::string& message) {
+    return PromiseResult<T>(Error(message));
 }
 
 /// @brief Helper function to create an error result from C-string
@@ -174,13 +175,9 @@ promise_result<T> make_error(const fl::string& message) {
 /// @param message The error message
 /// @return result containing the error
 template<typename T>
-promise_result<T> make_error(const char* message) {
-    return promise_result<T>(Error(message));
+PromiseResult<T> make_error(const char* message) {
+    return PromiseResult<T>(Error(message));
 }
 
-/// @brief Type alias for backwards compatibility
-/// @deprecated Use promise_result<T> instead of PromiseResult<T>
-template<typename T>
-using PromiseResult = promise_result<T>;
-
-} // namespace fl 
+} // namespace task
+} // namespace fl

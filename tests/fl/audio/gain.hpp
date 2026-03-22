@@ -1,4 +1,4 @@
-// ok standalone
+
 /// @file gain.hpp
 /// @brief Tests for Sample::applyGain() — the low-level PCM gain primitive
 

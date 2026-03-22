@@ -12,7 +12,7 @@ namespace http {
 
 // --- StreamHandle implementation ---
 
-StreamHandle::StreamHandle(fl::promise<fl::json> p,
+StreamHandle::StreamHandle(fl::task::Promise<fl::json> p,
                            fl::shared_ptr<fl::function<void(const fl::json&)>> updateCb)
     : mPromise(fl::move(p))
     , mUpdateCallback(fl::move(updateCb)) {
@@ -30,12 +30,12 @@ StreamHandle& StreamHandle::then(fl::function<void(const fl::json&)> cb) {
     return *this;
 }
 
-StreamHandle& StreamHandle::catch_(fl::function<void(const fl::Error&)> cb) {
+StreamHandle& StreamHandle::catch_(fl::function<void(const fl::task::Error&)> cb) {
     mPromise.catch_(fl::move(cb));
     return *this;
 }
 
-fl::promise<fl::json>& StreamHandle::promise() {
+fl::task::Promise<fl::json>& StreamHandle::promise() {
     return mPromise;
 }
 
@@ -133,7 +133,7 @@ bool HttpStreamTransport::resolveRpc(const fl::json& msg, const fl::string& idKe
 
     // Check for error
     if (msg.contains("error")) {
-        fl::Error err(msg["error"]["message"].as_string().value());
+        fl::task::Error err(msg["error"]["message"].as_string().value());
         pending->promise.complete_with_error(err);
         mPendingCalls.erase(idKey);
         return true;
@@ -161,7 +161,7 @@ bool HttpStreamTransport::resolveRpcStream(const fl::json& msg, const fl::string
 
     // Check for error
     if (msg.contains("error")) {
-        fl::Error err(msg["error"]["message"].as_string().value());
+        fl::task::Error err(msg["error"]["message"].as_string().value());
         pending->promise.complete_with_error(err);
         mPendingStreams.erase(idKey);
         return true;
@@ -203,7 +203,7 @@ bool HttpStreamTransport::resolveRpcStream(const fl::json& msg, const fl::string
     return true;
 }
 
-fl::promise<fl::json> HttpStreamTransport::rpc(const fl::string& method, const fl::json& params) {
+fl::task::Promise<fl::json> HttpStreamTransport::rpc(const fl::string& method, const fl::json& params) {
     int id = mNextCallId++;
     fl::json request = fl::json::object();
     request.set("jsonrpc", "2.0");
@@ -213,11 +213,11 @@ fl::promise<fl::json> HttpStreamTransport::rpc(const fl::string& method, const f
     return rpc(request);
 }
 
-fl::promise<fl::json> HttpStreamTransport::rpc(const fl::json& fullRequest) {
-    fl::promise<fl::json> p = fl::promise<fl::json>::create();
+fl::task::Promise<fl::json> HttpStreamTransport::rpc(const fl::json& fullRequest) {
+    fl::task::Promise<fl::json> p = fl::task::Promise<fl::json>::create();
 
     if (!isConnected()) {
-        p.complete_with_error(fl::Error("Not connected"));
+        p.complete_with_error(fl::task::Error("Not connected"));
         return p;
     }
 
@@ -242,10 +242,10 @@ StreamHandle HttpStreamTransport::rpcStream(const fl::string& method, const fl::
 
 StreamHandle HttpStreamTransport::rpcStream(const fl::json& fullRequest) {
     auto updateCb = fl::make_shared<fl::function<void(const fl::json&)>>();
-    fl::promise<fl::json> p = fl::promise<fl::json>::create();
+    fl::task::Promise<fl::json> p = fl::task::Promise<fl::json>::create();
 
     if (!isConnected()) {
-        p.complete_with_error(fl::Error("Not connected"));
+        p.complete_with_error(fl::task::Error("Not connected"));
         return StreamHandle(fl::move(p), fl::move(updateCb));
     }
 

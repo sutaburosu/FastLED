@@ -151,9 +151,9 @@ ParallelDevice::~ParallelDevice() {
     }
 }
 
-fl::optional<fl::Error> ParallelDevice::begin() {
+fl::optional<fl::task::Error> ParallelDevice::begin() {
     if (!pImpl) {
-        return fl::Error("Device not initialized");
+        return fl::task::Error("Device not initialized");
     }
 
     if (pImpl->initialized) {
@@ -165,7 +165,7 @@ fl::optional<fl::Error> ParallelDevice::begin() {
 
     // Validate pin count
     if (num_pins == 0 || num_pins > 32) {
-        return fl::Error("Invalid number of GPIO pins (must be 1-32)");
+        return fl::task::Error("Invalid number of GPIO pins (must be 1-32)");
     }
 
     // Determine backend width (round up to next supported width: 1,2,4,8,16,32)
@@ -198,7 +198,7 @@ fl::optional<fl::Error> ParallelDevice::begin() {
 
         // Note: These need to be heap-allocated for type-erasure
         // For now, return error indicating ISR mode not yet implemented
-        return fl::Error("ISR mode not yet implemented for ParallelDevice");
+        return fl::task::Error("ISR mode not yet implemented for ParallelDevice");
 
     } else {
         // Bit-bang (blocking) backend
@@ -206,7 +206,7 @@ fl::optional<fl::Error> ParallelDevice::begin() {
 
         // Note: These need to be heap-allocated for type-erasure
         // For now, return error indicating bit-bang mode not yet implemented
-        return fl::Error("Bit-bang mode not yet implemented for ParallelDevice");
+        return fl::task::Error("Bit-bang mode not yet implemented for ParallelDevice");
     }
 
     pImpl->initialized = true;

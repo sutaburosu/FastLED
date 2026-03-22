@@ -20,7 +20,7 @@
 #include "fl/system/log.h"
 #include "fl/system/log.h"
 #include "fl/stl/cstring.h"
-#include "fl/stl/async.h"
+#include "fl/task/executor.h"
 #include "fl/channels/wave8.h"
 #include "fl/channels/detail/wave8.hpp"
 
@@ -315,7 +315,7 @@ bool ChannelEngineI2S::beginTransmission(fl::span<const ChannelDataPtr> channelD
         // since we need to free/reallocate buffers that DMA may be reading.
         while (mPeripheral->isBusy()) {
             // Wait for in-flight DMA to complete before touching buffers
-            async_run(250, AsyncFlags::SYSTEM);
+            task::run(250, task::ExecFlags::SYSTEM);
         }
         mBusy = false;
 
@@ -425,7 +425,7 @@ bool ChannelEngineI2S::beginTransmission(fl::span<const ChannelDataPtr> channelD
     // Encoding has already been done above, so this wait is the only blocking time.
     while (mPeripheral->isBusy()) {
         // Wait for previous DMA to finish
-        async_run(250, AsyncFlags::SYSTEM);
+        task::run(250, task::ExecFlags::SYSTEM);
     }
     mBusy = false;
 

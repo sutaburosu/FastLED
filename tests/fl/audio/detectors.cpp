@@ -1,5 +1,5 @@
 // Combined audio detector tests — one test binary for all audio detector
-// ok standalone // ok cpp include
+// ok cpp include
 #include "tests/fl/audio/detector/backbeat.hpp"
 #include "tests/fl/audio/detector/beat.hpp"
 #include "tests/fl/audio/detector/downbeat.hpp"

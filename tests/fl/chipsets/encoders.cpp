@@ -1,5 +1,5 @@
 // Combined encoder tests — one test binary for all LED chipset encoders
-// ok standalone // ok cpp include
+// ok cpp include
 #include "tests/fl/chipsets/encoders/apa102.hpp"
 #include "tests/fl/chipsets/encoders/hd108.hpp"
 #include "tests/fl/chipsets/encoders/lpd6803.hpp"

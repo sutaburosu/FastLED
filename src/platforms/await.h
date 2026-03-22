@@ -12,11 +12,11 @@
 ///   - Host/Stub: Thread sleep (safe from worker threads)
 ///   - Arduino: delayMicroseconds
 ///
-/// This header is included from fl/stl/async.h. The public API fl::await() in
-/// fl/stl/async.h acts as a trampoline that delegates to fl::platforms::await().
+/// This header is included from fl/task/executor.h. The public API fl::task::await()
+/// delegates to fl::platforms::await().
 
-#include "fl/promise.h"
-#include "fl/promise_result.h"
+#include "fl/task/promise.h"
+#include "fl/task/promise_result.h"
 #include "platforms/coroutine_runtime.h"
 
 namespace fl {
@@ -25,23 +25,23 @@ namespace platforms {
 /// @brief Await promise completion using platform-agnostic polling
 /// @tparam T The type of value the promise resolves to
 /// @param promise The promise to await
-/// @return A promise_result<T> containing either the resolved value or an error
+/// @return A PromiseResult<T> containing either the resolved value or an error
 ///
 /// Polls the promise in a loop, yielding to the platform scheduler between
 /// checks via ICoroutineRuntime::suspendMainthread(). This method is safe to call
 /// from any execution context (main thread, coroutine, worker thread).
 template<typename T>
-fl::promise_result<T> await(fl::promise<T> promise) {
+fl::task::PromiseResult<T> await(fl::task::Promise<T> promise) {
     // Validate promise
     if (!promise.valid()) {
-        return fl::promise_result<T>(Error("Invalid promise"));
+        return fl::task::PromiseResult<T>(fl::task::Error("Invalid promise"));
     }
 
     // If already completed, return immediately
     if (promise.is_completed()) {
         return promise.is_resolved()
-            ? fl::promise_result<T>(promise.value())
-            : fl::promise_result<T>(promise.error());
+            ? fl::task::PromiseResult<T>(promise.value())
+            : fl::task::PromiseResult<T>(promise.error());
     }
 
     auto& runtime = ICoroutineRuntime::instance();
@@ -55,8 +55,8 @@ fl::promise_result<T> await(fl::promise<T> promise) {
 
     // Promise completed, return result
     return promise.is_resolved()
-        ? fl::promise_result<T>(promise.value())
-        : fl::promise_result<T>(promise.error());
+        ? fl::task::PromiseResult<T>(promise.value())
+        : fl::task::PromiseResult<T>(promise.error());
 }
 
 } // namespace platforms

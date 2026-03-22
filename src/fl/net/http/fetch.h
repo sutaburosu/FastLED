@@ -37,7 +37,7 @@
 ///                 FL_WARN("HTTP Error: " << resp.status() << " " << resp.status_text());
 ///             }
 ///         })
-///         .catch_([](const fl::Error& err) {
+///         .catch_([](const fl::task::Error& err) {
 ///             FL_WARN("Fetch Error: " << err.message);
 ///         });
 /// }
@@ -51,7 +51,7 @@
 /// }
 /// @endcode
 
-#include "fl/promise.h"
+#include "fl/task/promise.h"
 #include "fl/stl/string.h"
 #include "fl/stl/vector.h"
 #include "fl/stl/map.h"
@@ -59,7 +59,7 @@
 #include "fl/stl/optional.h"
 #include "fl/stl/function.h"
 #include "fl/stl/shared_ptr.h"
-#include "fl/stl/async.h"
+#include "fl/task/executor.h"
 #include "fl/stl/mutex.h"
 #include "fl/system/log.h"
 #include "fl/stl/json.h"  // Add JSON support for response.json() method
@@ -244,13 +244,13 @@ private:
 class FetchEngineListener;
 
 /// Internal fetch manager for promise tracking
-class FetchManager : public async_runner {
+class FetchManager : public task::Runner {
 public:
     static FetchManager& instance();
     
-    void register_promise(const fl::promise<Response>& promise);
+    void register_promise(const fl::task::Promise<Response>& promise);
     
-    // async_runner interface
+    // task::Runner interface
     void update() override;
     bool has_active_tasks() const override;
     size_t active_task_count() const override;
@@ -260,7 +260,7 @@ public:
     void cleanup_completed_promises();
     
 private:
-    fl::vector<fl::promise<Response>> mActivePromises;
+    fl::vector<fl::task::Promise<Response>> mActivePromises;
     fl::unique_ptr<FetchEngineListener> mEngineListener;
 };
 
@@ -284,38 +284,38 @@ inline void fetch(const char* url, const FetchCallback& callback) {
 // ========== Promise-Based API (JavaScript-like) ==========
 
 /// HTTP GET request
-fl::promise<Response> fetch_get(const fl::string& url, const FetchOptions& request = FetchOptions(""));
+fl::task::Promise<Response> fetch_get(const fl::string& url, const FetchOptions& request = FetchOptions(""));
 
 /// HTTP POST request
-fl::promise<Response> fetch_post(const fl::string& url, const FetchOptions& request = FetchOptions(""));
+fl::task::Promise<Response> fetch_post(const fl::string& url, const FetchOptions& request = FetchOptions(""));
 
 /// HTTP PUT request
-fl::promise<Response> fetch_put(const fl::string& url, const FetchOptions& request = FetchOptions(""));
+fl::task::Promise<Response> fetch_put(const fl::string& url, const FetchOptions& request = FetchOptions(""));
 
 /// HTTP DELETE request
-fl::promise<Response> fetch_delete(const fl::string& url, const FetchOptions& request = FetchOptions(""));
+fl::task::Promise<Response> fetch_delete(const fl::string& url, const FetchOptions& request = FetchOptions(""));
 
 /// HTTP HEAD request
-fl::promise<Response> fetch_head(const fl::string& url, const FetchOptions& request = FetchOptions(""));
+fl::task::Promise<Response> fetch_head(const fl::string& url, const FetchOptions& request = FetchOptions(""));
 
 /// HTTP OPTIONS request
-fl::promise<Response> fetch_http_options(const fl::string& url, const FetchOptions& request = FetchOptions(""));
+fl::task::Promise<Response> fetch_http_options(const fl::string& url, const FetchOptions& request = FetchOptions(""));
 
 /// HTTP PATCH request
-fl::promise<Response> fetch_patch(const fl::string& url, const FetchOptions& request = FetchOptions(""));
+fl::task::Promise<Response> fetch_patch(const fl::string& url, const FetchOptions& request = FetchOptions(""));
 
 /// Generic request with options (like fetch(url, options))
-fl::promise<Response> fetch_request(const fl::string& url, const RequestOptions& options = RequestOptions());
+fl::task::Promise<Response> fetch_request(const fl::string& url, const RequestOptions& options = RequestOptions());
 
-/// Legacy manual update for fetch promises (use fl::async_run() for new code)
-/// @deprecated Use fl::async_run() instead - this calls async_run() internally
+/// Legacy manual update for fetch promises (use fl::task::run() for new code)
+/// @deprecated Use fl::task::run() instead - this calls task::run() internally
 void fetch_update();
 
 /// Get number of active requests
 fl::size fetch_active_requests();
 
 /// Internal helper to execute a fetch request and return a promise
-fl::promise<Response> execute_fetch_request(const fl::string& url, const FetchOptions& request);
+fl::task::Promise<Response> execute_fetch_request(const fl::string& url, const FetchOptions& request);
 
 } // namespace http
 } // namespace net

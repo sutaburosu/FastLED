@@ -1,4 +1,4 @@
-// ok standalone
+
 // Test allocator move semantics for all containers
 // Verifies that allocators are properly moved during move construction and move assignment
 

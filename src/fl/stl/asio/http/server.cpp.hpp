@@ -42,8 +42,8 @@ namespace http {
 
 /// Internal async runner helper for Server
 /// This bridges the Server::update() method (which returns size_t)
-/// with the async_runner interface (which requires void update())
-class Server::ServerAsyncRunner : public async_runner {
+/// with the runner interface (which requires void update())
+class Server::ServerAsyncRunner : public task::Runner {
 public:
     explicit ServerAsyncRunner(Server* server) : mServer(server) {}
 
@@ -282,7 +282,7 @@ bool Server::start(int port) {
     // Register with async system for automatic updates
     if (!mAsyncRunner) {
         mAsyncRunner = fl::make_unique<ServerAsyncRunner>(this);
-        AsyncManager::instance().register_runner(mAsyncRunner.get());
+        task::Executor::instance().register_runner(mAsyncRunner.get());
     }
 
     return true;
@@ -293,7 +293,7 @@ void Server::stop() {
 
     // Unregister from async system
     if (mAsyncRunner) {
-        AsyncManager::instance().unregister_runner(mAsyncRunner.get());
+        task::Executor::instance().unregister_runner(mAsyncRunner.get());
         mAsyncRunner.reset();
     }
 
@@ -629,7 +629,7 @@ namespace asio {
 namespace http {
 
 // Minimal definition for unique_ptr<ServerAsyncRunner> destruction
-// (ESP32 uses esp_http_server tasks, not async_runner)
+// (ESP32 uses esp_http_server tasks, not runner)
 class Server::ServerAsyncRunner {};
 
 // ========== ESP32 Helpers ==========

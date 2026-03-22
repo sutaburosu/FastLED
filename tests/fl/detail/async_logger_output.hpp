@@ -1,4 +1,4 @@
-// ok standalone
+
 /// @file async_logger_output.cpp
 /// @brief Test that async logger mechanism works end-to-end
 ///

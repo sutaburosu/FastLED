@@ -72,7 +72,7 @@
 // ASYNC ARCHITECTURE:
 // The JSON-RPC system runs on an async task (10ms interval) registered during setup().
 // The task calls RemoteControlSingleton::tick() and processSerialInput() automatically.
-// loop() aggressively pumps fl::async_run() (100x per iteration) to ensure responsiveness.
+// loop() aggressively pumps fl::task::run() (100x per iteration) to ensure responsiveness.
 //
 
 // ============================================================================
@@ -438,7 +438,7 @@ void loop() {
     // Aggressively pump async tasks (including JSON-RPC task)
     // This ensures RPC commands are processed frequently even without delay() calls
     for (int i = 0; i < 100; i++) {
-        fl::async_run();
+        fl::task::run();
     }
 
     // Run GPIO baseline test once after device is ready (allows JSON-RPC to be operational first)

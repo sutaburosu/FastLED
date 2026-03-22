@@ -115,7 +115,7 @@ void setup() {
 
 void loop() {
     // Pump async task queue (async fetch tasks + server)
-    fl::async_run();
+    fl::task::run();
 
     // State: WAITING_FOR_TESTS -> wait 1 second after startup -> start tests
     if (state == WAITING_FOR_TESTS && (fl::millis() - startup_time > 1000)) {

@@ -1,4 +1,4 @@
-// ok standalone
+
 #include "test.h"
 #include "tests/fl/stl/asio/http/test_utils/mock_http_server.h"
 #include "tests/fl/stl/asio/http/test_utils/mock_http_client.h"

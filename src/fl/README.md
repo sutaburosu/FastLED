@@ -380,9 +380,9 @@ void register_handlers() {
 Why: Lightweight foundations for parallel work or async orchestration where supported.
 
 ```cpp
-#include "fl/promise.h"
+#include "fl/task/promise.h"
 
-fl::promise<int> compute_async(); // returns a moveable wrapper around a future-like result
+fl::task::promise<int> compute_async(); // returns a moveable wrapper around a future-like result
 ```
 
 ### Interrupt Service Routines (ISR)

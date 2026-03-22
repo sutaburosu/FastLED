@@ -6,8 +6,8 @@
 #pragma once
 
 #include "ValidationRemote.h"
-#include "fl/stl/task.h"
-#include "fl/stl/async.h"
+#include "fl/task/task.h"
+#include "fl/task/executor.h"
 
 namespace validation {
 
@@ -30,7 +30,7 @@ namespace validation {
 /// - Safe to capture remote_control by reference (singleton lifetime)
 /// - ESP32 Arduino runs on single core - task switching is atomic
 /// - No additional synchronization needed
-inline fl::task setupRpcAsyncTask(ValidationRemoteControl& remote_control, int interval_ms = 10) {
+inline fl::task::Handle setupRpcAsyncTask(ValidationRemoteControl& remote_control, int interval_ms = 10) {
     return fl::task::every_ms(interval_ms, FL_TRACE)
         .then([&remote_control]() {
             uint32_t current_time = millis();

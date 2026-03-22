@@ -1,10 +1,10 @@
 #include "fl/net/http/fetch.h"
 #include "fl/stl/singleton.h"
 #include "fl/system/engine_events.h"
-#include "fl/stl/async.h"
+#include "fl/task/executor.h"
 #include "fl/stl/unique_ptr.h"  // For make_unique
-#include "fl/stl/task.h"  // For fl::task::every_ms
-#include "fl/scheduler.h"  // For fl::Scheduler
+#include "fl/task/task.h"  // For fl::task::every_ms
+#include "fl/scheduler.h"  // For fl::RpcScheduler
 #include "fl/net/http/fetch_request.h"  // For fl::net::http::FetchRequest
 
 // IWYU pragma: begin_keep
@@ -50,9 +50,9 @@ void fetch(const fl::string& url, const FetchCallback& callback) {
 }
 
 // Internal helper to execute a fetch request and return a promise
-fl::promise<Response> execute_fetch_request(const fl::string& url, const FetchOptions& request) {
+fl::task::Promise<Response> execute_fetch_request(const fl::string& url, const FetchOptions& request) {
     // Create a promise for this request
-    auto promise = fl::promise<Response>::create();
+    auto promise = fl::task::Promise<Response>::create();
     
     // Register with fetch manager to ensure it's tracked
     FetchManager::instance().register_promise(promise);
@@ -190,7 +190,7 @@ response perform_http_request(const fl::string& url, const FetchOptions& request
                 return resp;
             }
             // Timeout or no data yet - pump async system to allow server to process
-            async_run(0);
+            task::run(0);
         }
     }
 
@@ -250,7 +250,7 @@ response perform_http_request(const fl::string& url, const FetchOptions& request
 #endif
             if (err == SOCKET_ERROR_WOULD_BLOCK) {
                 // No data available yet - pump async system to allow server to process
-                async_run(0);
+                task::run(0);
                 retries++;
 
                 // Small delay to avoid busy-waiting
@@ -351,7 +351,7 @@ void fetch(const fl::string& url, const FetchCallback& callback) {
         .then([callback](const Response& resp) {
             callback(resp);
         })
-        .catch_([callback](const Error& err) {
+        .catch_([callback](const fl::task::Error& err) {
             // On error, return 500 response
             Response resp(500, "Internal Server Error");
             resp.set_body(err.message);
@@ -360,9 +360,9 @@ void fetch(const fl::string& url, const FetchCallback& callback) {
 }
 
 // Internal helper to execute a fetch request and return a promise
-fl::promise<Response> execute_fetch_request(const fl::string& url, const FetchOptions& request) {
+fl::task::Promise<Response> execute_fetch_request(const fl::string& url, const FetchOptions& request) {
     // Create promise for this request
-    auto promise = fl::promise<Response>::create();
+    auto promise = fl::task::Promise<Response>::create();
 
     // Register promise with FetchManager for tracking
     FetchManager::instance().register_promise(promise);
@@ -371,7 +371,7 @@ fl::promise<Response> execute_fetch_request(const fl::string& url, const FetchOp
     auto fetch_req = fl::make_shared<FetchRequest>(url, request, promise);
 
     // Create self-canceling task (stored in shared_ptr for lambda capture)
-    auto task_ptr = fl::make_shared<fl::task>();
+    auto task_ptr = fl::make_shared<fl::task::Handle>();
 
     *task_ptr = fl::task::every_ms(1)  // Update every 1ms
         .then([fetch_req, task_ptr]() {
@@ -383,7 +383,7 @@ fl::promise<Response> execute_fetch_request(const fl::string& url, const FetchOp
                 task_ptr->cancel();
             }
         })
-        .catch_([promise](const fl::Error& e) mutable {
+        .catch_([promise](const fl::task::Error& e) mutable {
             // Task error - reject promise if not already completed
             if (promise.valid() && !promise.is_completed()) {
                 promise.complete_with_error(e);
@@ -391,7 +391,7 @@ fl::promise<Response> execute_fetch_request(const fl::string& url, const FetchOp
         });
 
     // Add to scheduler
-    fl::Scheduler::instance().add_task(*task_ptr);
+    fl::task::Scheduler::instance().add_task(*task_ptr);
 
     return promise;
 }
@@ -406,12 +406,12 @@ void fetch(const fl::string& url, const FetchCallback& callback) {
     callback(resp);
 }
 
-fl::promise<Response> execute_fetch_request(const fl::string& url, const FetchOptions& request) {
+fl::task::Promise<Response> execute_fetch_request(const fl::string& url, const FetchOptions& request) {
     (void)request;
     FL_WARN("HTTP fetch is not supported on this platform. URL: " << url);
     Response error_response(501, "Not Implemented");
     error_response.set_body("HTTP fetch is not available on this platform.");
-    return fl::promise<Response>::resolve(error_response);
+    return fl::task::Promise<Response>::resolve(error_response);
 }
 
 #endif
@@ -434,7 +434,7 @@ public:
 
     void onEndFrame() override {
         // Update all async tasks (fetch, timers, etc.) at the end of each frame
-        fl::async_run(0);
+        fl::task::run(0);
     }
 };
 
@@ -442,10 +442,10 @@ FetchManager& FetchManager::instance() {
     return fl::Singleton<FetchManager>::instance();
 }
 
-void FetchManager::register_promise(const fl::promise<Response>& promise) {
+void FetchManager::register_promise(const fl::task::Promise<Response>& promise) {
     // Auto-register with async system and engine listener on first promise
     if (mActivePromises.empty()) {
-        AsyncManager::instance().register_runner(this);
+        task::Executor::instance().register_runner(this);
         
         if (!mEngineListener) {
             mEngineListener = fl::make_unique<FetchEngineListener>();
@@ -469,7 +469,7 @@ void FetchManager::update() {
     
     // Auto-unregister from async system when no more promises
     if (mActivePromises.empty()) {
-        AsyncManager::instance().unregister_runner(this);
+        task::Executor::instance().unregister_runner(this);
         
         if (mEngineListener) {
             EngineEvents::removeListener(mEngineListener.get());
@@ -492,7 +492,7 @@ fl::size FetchManager::active_requests() const {
 
 void FetchManager::cleanup_completed_promises() {
     // Rebuild vector without completed promises
-    fl::vector<fl::promise<Response>> active_promises;
+    fl::vector<fl::task::Promise<Response>> active_promises;
     for (const auto& promise : mActivePromises) {
         if (promise.valid() && !promise.is_completed()) {
             active_promises.push_back(promise);
@@ -506,7 +506,7 @@ void FetchManager::cleanup_completed_promises() {
 
 // ========== Public API Functions ==========
 
-fl::promise<Response> fetch_get(const fl::string& url, const FetchOptions& request) {
+fl::task::Promise<Response> fetch_get(const fl::string& url, const FetchOptions& request) {
     // Create a new request with GET method
     FetchOptions get_request(url, RequestOptions("GET"));
     
@@ -523,7 +523,7 @@ fl::promise<Response> fetch_get(const fl::string& url, const FetchOptions& reque
     return execute_fetch_request(url, get_request);
 }
 
-fl::promise<Response> fetch_post(const fl::string& url, const FetchOptions& request) {
+fl::task::Promise<Response> fetch_post(const fl::string& url, const FetchOptions& request) {
     // Create a new request with POST method
     FetchOptions post_request(url, RequestOptions("POST"));
     
@@ -540,7 +540,7 @@ fl::promise<Response> fetch_post(const fl::string& url, const FetchOptions& requ
     return execute_fetch_request(url, post_request);
 }
 
-fl::promise<Response> fetch_put(const fl::string& url, const FetchOptions& request) {
+fl::task::Promise<Response> fetch_put(const fl::string& url, const FetchOptions& request) {
     // Create a new request with PUT method
     FetchOptions put_request(url, RequestOptions("PUT"));
     
@@ -557,7 +557,7 @@ fl::promise<Response> fetch_put(const fl::string& url, const FetchOptions& reque
     return execute_fetch_request(url, put_request);
 }
 
-fl::promise<Response> fetch_delete(const fl::string& url, const FetchOptions& request) {
+fl::task::Promise<Response> fetch_delete(const fl::string& url, const FetchOptions& request) {
     // Create a new request with DELETE method
     FetchOptions delete_request(url, RequestOptions("DELETE"));
     
@@ -574,7 +574,7 @@ fl::promise<Response> fetch_delete(const fl::string& url, const FetchOptions& re
     return execute_fetch_request(url, delete_request);
 }
 
-fl::promise<Response> fetch_head(const fl::string& url, const FetchOptions& request) {
+fl::task::Promise<Response> fetch_head(const fl::string& url, const FetchOptions& request) {
     // Create a new request with HEAD method
     FetchOptions head_request(url, RequestOptions("HEAD"));
     
@@ -591,7 +591,7 @@ fl::promise<Response> fetch_head(const fl::string& url, const FetchOptions& requ
     return execute_fetch_request(url, head_request);
 }
 
-fl::promise<Response> fetch_http_options(const fl::string& url, const FetchOptions& request) {
+fl::task::Promise<Response> fetch_http_options(const fl::string& url, const FetchOptions& request) {
     // Create a new request with OPTIONS method
     FetchOptions options_request(url, RequestOptions("OPTIONS"));
     
@@ -608,7 +608,7 @@ fl::promise<Response> fetch_http_options(const fl::string& url, const FetchOptio
     return execute_fetch_request(url, options_request);
 }
 
-fl::promise<Response> fetch_patch(const fl::string& url, const FetchOptions& request) {
+fl::task::Promise<Response> fetch_patch(const fl::string& url, const FetchOptions& request) {
     // Create a new request with PATCH method
     FetchOptions patch_request(url, RequestOptions("PATCH"));
     
@@ -625,7 +625,7 @@ fl::promise<Response> fetch_patch(const fl::string& url, const FetchOptions& req
     return execute_fetch_request(url, patch_request);
 }
 
-fl::promise<Response> fetch_request(const fl::string& url, const RequestOptions& options) {
+fl::task::Promise<Response> fetch_request(const fl::string& url, const RequestOptions& options) {
     // Create a FetchOptions with the provided options
     FetchOptions request(url, options);
     
@@ -634,9 +634,9 @@ fl::promise<Response> fetch_request(const fl::string& url, const RequestOptions&
 }
 
 void fetch_update() {
-    // Legacy function - use fl::async_run() for new code
+    // Legacy function - use fl::task::run() for new code
     // This provides backwards compatibility for existing code
-    fl::async_run(0);
+    fl::task::run(0);
 }
 
 fl::size fetch_active_requests() {

@@ -38,4 +38,5 @@
 #include "fl/spi/_build.cpp.hpp"
 #include "fl/stl/_build.cpp.hpp"
 #include "fl/stl/detail/_build.cpp.hpp"
+#include "fl/task/_build.cpp.hpp"
 #include "fl/video/_build.cpp.hpp"

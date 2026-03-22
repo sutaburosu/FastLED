@@ -2,7 +2,7 @@
 #include "fl/channels/driver.h"
 #include "fl/system/log.h"
 #include "fl/stl/chrono.h"
-#include "fl/stl/async.h"
+#include "fl/task/executor.h"
 
 namespace fl {
 
@@ -19,7 +19,7 @@ bool IChannelDriver::waitForCondition(Condition condition, u32 timeoutMs) {
 
         // OS yield only — keeps WiFi/lwIP alive without pumping
         // tasks or coroutines in the driver polling loop.
-        async_run(250, AsyncFlags::SYSTEM);
+        task::run(250, task::ExecFlags::SYSTEM);
     }
 
     return true;  // Condition met

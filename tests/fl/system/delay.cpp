@@ -2,7 +2,7 @@
 /// Unit tests for fl/system/delay.h: nanosecond delays, runtime delays, and async pumping
 
 #include "fl/system/delay.h"
-#include "fl/stl/async.h"
+#include "fl/task/executor.h"
 #include "test.h"
 
 FL_TEST_FILE(FL_FILEPATH) {
@@ -127,7 +127,7 @@ FL_TEST_CASE("Mix of compile-time and runtime delays") {
 // ============================================================================
 
 // Test async runner that tracks update calls
-class TestAsyncRunner : public fl::async_runner {
+class TestAsyncRunner : public fl::task::Runner {
 public:
     int update_count = 0;
 
@@ -165,7 +165,7 @@ FL_TEST_CASE("fl::delay(0, true) returns immediately") {
 
 FL_TEST_CASE("fl::delay(ms, false) does not pump async tasks") {
     TestAsyncRunner runner;
-    fl::AsyncManager::instance().register_runner(&runner);
+    fl::task::Executor::instance().register_runner(&runner);
 
     runner.reset();
     fl::delay(10, false);  // Simple delay without async pumping
@@ -173,12 +173,12 @@ FL_TEST_CASE("fl::delay(ms, false) does not pump async tasks") {
     // Async runner should NOT have been called
     FL_CHECK(runner.update_count == 0);
 
-    fl::AsyncManager::instance().unregister_runner(&runner);
+    fl::task::Executor::instance().unregister_runner(&runner);
 }
 
 FL_TEST_CASE("fl::delay(ms, true) pumps async tasks") {
     TestAsyncRunner runner;
-    fl::AsyncManager::instance().register_runner(&runner);
+    fl::task::Executor::instance().register_runner(&runner);
 
     runner.reset();
     fl::delay(10, true);  // Delay with async pumping (default)
@@ -186,12 +186,12 @@ FL_TEST_CASE("fl::delay(ms, true) pumps async tasks") {
     // Async runner should have been called multiple times
     FL_CHECK(runner.update_count > 0);
 
-    fl::AsyncManager::instance().unregister_runner(&runner);
+    fl::task::Executor::instance().unregister_runner(&runner);
 }
 
 FL_TEST_CASE("fl::delay(ms) defaults to async pumping") {
     TestAsyncRunner runner;
-    fl::AsyncManager::instance().register_runner(&runner);
+    fl::task::Executor::instance().register_runner(&runner);
 
     runner.reset();
     fl::delay(10);  // Default should be run_async=true
@@ -199,12 +199,12 @@ FL_TEST_CASE("fl::delay(ms) defaults to async pumping") {
     // Async runner should have been called
     FL_CHECK(runner.update_count > 0);
 
-    fl::AsyncManager::instance().unregister_runner(&runner);
+    fl::task::Executor::instance().unregister_runner(&runner);
 }
 
 FL_TEST_CASE("fl::delayMs(ms) delegates to fl::delay with async") {
     TestAsyncRunner runner;
-    fl::AsyncManager::instance().register_runner(&runner);
+    fl::task::Executor::instance().register_runner(&runner);
 
     runner.reset();
     fl::delayMs(10);  // Should delegate to delay(10, true)
@@ -212,12 +212,12 @@ FL_TEST_CASE("fl::delayMs(ms) delegates to fl::delay with async") {
     // Async runner should have been called
     FL_CHECK(runner.update_count > 0);
 
-    fl::AsyncManager::instance().unregister_runner(&runner);
+    fl::task::Executor::instance().unregister_runner(&runner);
 }
 
 FL_TEST_CASE("fl::delayMs(ms, false) disables async pumping") {
     TestAsyncRunner runner;
-    fl::AsyncManager::instance().register_runner(&runner);
+    fl::task::Executor::instance().register_runner(&runner);
 
     runner.reset();
     fl::delayMs(10, false);  // Explicit disable
@@ -225,12 +225,12 @@ FL_TEST_CASE("fl::delayMs(ms, false) disables async pumping") {
     // Async runner should NOT have been called
     FL_CHECK(runner.update_count == 0);
 
-    fl::AsyncManager::instance().unregister_runner(&runner);
+    fl::task::Executor::instance().unregister_runner(&runner);
 }
 
 FL_TEST_CASE("fl::delayMillis() does not pump async (legacy)") {
     TestAsyncRunner runner;
-    fl::AsyncManager::instance().register_runner(&runner);
+    fl::task::Executor::instance().register_runner(&runner);
 
     runner.reset();
     fl::delayMillis(10);  // Legacy function should not pump async
@@ -238,7 +238,7 @@ FL_TEST_CASE("fl::delayMillis() does not pump async (legacy)") {
     // Async runner should NOT have been called (backward compatibility)
     FL_CHECK(runner.update_count == 0);
 
-    fl::AsyncManager::instance().unregister_runner(&runner);
+    fl::task::Executor::instance().unregister_runner(&runner);
 }
 
 } // FL_TEST_FILE

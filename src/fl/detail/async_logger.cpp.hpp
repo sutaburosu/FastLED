@@ -6,8 +6,8 @@
 #include "fl/stl/isr/handler.h"
 #include "fl/math/math.h"
 #include "fl/system/log.h"  // For FL_ERROR macro
-#include "fl/stl/task.h"  // For fl::task and fl::Scheduler
-#include "fl/stl/async.h"  // For fl::Scheduler::instance()
+#include "fl/task/task.h"  // For fl::task
+#include "fl/task/scheduler.h"  // For fl::task::Scheduler
 
 namespace fl {
 
@@ -243,7 +243,7 @@ AsyncLoggerServiceTask::AsyncLoggerServiceTask()
             this->serviceLoggers();
         });
 
-    fl::Scheduler::instance().add_task(mTask);
+    fl::task::Scheduler::instance().add_task(mTask);
 }
 
 void AsyncLoggerServiceTask::setInterval(u32 interval_ms) {

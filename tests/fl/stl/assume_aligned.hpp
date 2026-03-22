@@ -1,4 +1,4 @@
-// ok standalone
+
 /// @file assume_aligned.cpp
 /// @brief Tests for fl::assume_aligned<N>(ptr) and FL_ASSUME_ALIGNED macro
 

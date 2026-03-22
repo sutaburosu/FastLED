@@ -1,149 +1,17 @@
-#include "fl/stl/async.h"
-#include "fl/stl/functional.h"
+#include "fl/task/scheduler.h"
 #include "fl/stl/singleton.h"
-#include "fl/stl/scope_exit.h"
-#include "fl/stl/algorithm.h"
-#include "fl/stl/task.h"
 #include "fl/stl/chrono.h"
 #include "fl/system/log.h"
-#include "fl/system/log.h"
-
-#include "fl/stl/new.h"
-#include "fl/system/yield.h"
-#include "platforms/coroutine_runtime.h"
 
 namespace fl {
-
-namespace detail {
-
-
-/// @brief Get reference to thread-local await recursion depth
-/// @return Reference to the thread-local await depth counter
-int& await_depth_tls() {
-    return SingletonThreadLocal<int>::instance();
-}
-} // namespace detail
-
-AsyncManager& AsyncManager::instance() {
-    return fl::Singleton<AsyncManager>::instance();
-}
-
-void AsyncManager::register_runner(async_runner* runner) {
-    if (runner && fl::find(mRunners.begin(), mRunners.end(), runner) == mRunners.end()) {
-        mRunners.push_back(runner);
-    }
-}
-
-void AsyncManager::unregister_runner(async_runner* runner) {
-    auto it = fl::find(mRunners.begin(), mRunners.end(), runner);
-    if (it != mRunners.end()) {
-        mRunners.erase(it);
-    }
-}
-
-void AsyncManager::update_all() {
-    // Update all registered runners
-    for (auto* runner : mRunners) {
-        if (runner) {
-            runner->update();
-        }
-    }
-}
-
-bool AsyncManager::has_active_tasks() const {
-    for (const auto* runner : mRunners) {
-        if (runner && runner->has_active_tasks()) {
-            return true;
-        }
-    }
-    return false;
-}
-
-size_t AsyncManager::total_active_tasks() const {
-    size_t total = 0;
-    for (const auto* runner : mRunners) {
-        if (runner) {
-            total += runner->active_task_count();
-        }
-    }
-    return total;
-}
-
-// Public API functions
-
-void async_run(fl::u32 microseconds, AsyncFlags flags) {
-    // Re-entrancy guard: detect if async_run is called from within async_run
-    bool& running = SingletonThreadLocal<bool>::instance();
-    if (running) {
-        FL_WARN_ONCE("async_run re-entrancy detected, skipping nested call");
-        return;
-    }
-    running = true;
-    auto guard = fl::make_scope_exit([&running]() { running = false; });
-
-    const bool do_tasks = flags & AsyncFlags::TASKS;
-    const bool do_coroutines = flags & AsyncFlags::COROUTINES;
-    const bool do_system = flags & AsyncFlags::SYSTEM;
-
-    // Calculate start time with rollover protection
-    fl::u32 begin_time = fl::micros();
-
-    // Lambda to get elapsed time (rollover-safe)
-    auto elapsed = [begin_time]() {
-        return fl::micros() - begin_time;
-    };
-
-    // Lambda to get remaining time until deadline expires
-    auto remaining = [elapsed, microseconds]() -> fl::u32 {
-        fl::u32 e = elapsed();
-        if (e >= microseconds) {
-            return 0;
-        }
-        return microseconds - e;
-    };
-
-    // Lambda to check if deadline has expired
-    auto expired = [remaining]() {
-        return remaining() == 0;
-    };
-
-    do  {
-        // TASKS: Scheduler (fl::task timers) + AsyncManager (fetch, HTTP server, audio)
-        if (do_tasks) {
-            fl::Scheduler::instance().update();
-            AsyncManager::instance().update_all();
-        }
-
-        // SYSTEM: Pure OS-level yield (vTaskDelay(0), thread yield, etc.)
-        if (do_system) {
-            fl::yield();
-        }
-
-        // COROUTINES: Platform cooperative coroutines (pumpCoroutines)
-        if (do_coroutines) {
-            auto time_left = remaining();
-            if (time_left) {
-                fl::u32 sleep_us = fl::min(1000u, time_left);
-                fl::platforms::ICoroutineRuntime::instance().pumpCoroutines(sleep_us);
-            }
-        }
-    } while (!expired());
-}
-
-size_t async_active_tasks() {
-    return AsyncManager::instance().total_active_tasks();
-}
-
-bool async_has_tasks() {
-    return AsyncManager::instance().has_active_tasks();
-}
+namespace task {
 
 // Scheduler implementation
 Scheduler& Scheduler::instance() {
     return fl::Singleton<Scheduler>::instance();
 }
 
-int Scheduler::add_task(task t) {
+int Scheduler::add_task(Handle t) {
     if (t.is_valid()) {
         int task_id = mNextTaskId.fetch_add(1);
         t._set_id(task_id);
@@ -155,10 +23,10 @@ int Scheduler::add_task(task t) {
 
 void Scheduler::update() {
     u32 current_time = fl::millis();
-    
+
     // Use index-based iteration to avoid iterator invalidation issues
     for (fl::size i = 0; i < mTasks.size();) {
-        task& t = mTasks[i];
+        Handle& t = mTasks[i];
 
         if (!t.is_valid() || t._is_canceled()) {
             // erase() returns bool in fl::vector, not iterator
@@ -208,7 +76,7 @@ void Scheduler::update_tasks_of_type(TaskType task_type) {
 
     // Use index-based iteration to avoid iterator invalidation issues
     for (fl::size i = 0; i < mTasks.size();) {
-        task& t = mTasks[i];
+        Handle& t = mTasks[i];
 
         if (!t.is_valid() || t._is_canceled()) {
             // erase() returns bool in fl::vector, not iterator
@@ -257,4 +125,5 @@ void Scheduler::warn_no_catch(int task_id, const fl::string& trace_label, const 
     }
 }
 
-} // namespace fl 
+} // namespace task
+} // namespace fl

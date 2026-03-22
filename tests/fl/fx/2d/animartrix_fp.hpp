@@ -1,4 +1,4 @@
-// ok standalone
+
 // Float vs fixed-point comparison tests for all Animartrix visualizations.
 //
 // Each visualization has a float reference class and a _FP fixed-point class.

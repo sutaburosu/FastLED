@@ -343,14 +343,14 @@ ParlioEngine::~ParlioEngine() {
             mIsrContext->mStreamComplete = false;  // Ensure loop exits (both conditions false)
             FL_MEMORY_BARRIER;
         }
-        // Give task time to self-delete (task calls fl::task::exitCurrent() at end)
+        // Give task time to self-delete (task calls fl::task::exit_current() at end)
         // Task sleeps for 500ms, so we need to wait at least 500ms for it to wake up and check flags
         // Use 600ms to be safe
         if (mPeripheral) {
             mPeripheral->delay(600);
         }
 
-        // Task should have self-deleted by now (via fl::task::exitCurrent())
+        // Task should have self-deleted by now (via fl::task::exit_current())
         // Cancel the task to release resources (task object cleaned up automatically)
         mDebugTask.cancel();
     }
@@ -405,7 +405,7 @@ void ParlioEngine::debugTaskFunction(void* arg) {
     auto *self = static_cast<ParlioEngine *>(arg);
     if (!self || !self->mIsrContext || !self->mPeripheral) {
         // Cannot proceed without valid context - self-delete
-        fl::task::exitCurrent();
+        fl::task::exit_current();
         return;  // UNREACHABLE on ESP32
     }
 
@@ -447,7 +447,7 @@ void ParlioEngine::debugTaskFunction(void* arg) {
     }
 
     // Task is shutting down - self-delete
-    fl::task::exitCurrent();
+    fl::task::exit_current();
     // UNREACHABLE CODE on ESP32
 }
 #endif  // FL_DEBUG

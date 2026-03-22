@@ -1,9 +1,9 @@
-#include "fl/stl/async.h"
-#include "fl/stl/task.h"
-#include "fl/promise.h"
+#include "fl/task/executor.h"
+#include "fl/task/task.h"
+#include "fl/task/promise.h"
 #include "fl/stl/new.h"
 #include "test.h"
-#include "fl/promise_result.h"
+#include "fl/task/promise_result.h"
 #include "fl/stl/function.h"
 #include "fl/stl/move.h"
 #include "fl/stl/string.h"
@@ -24,9 +24,16 @@
 FL_TEST_FILE(FL_FILEPATH) {
 
 using namespace fl;
+using fl::task::Executor;
+using fl::task::Runner;
+using fl::task::Scheduler;
+using fl::task::run;
+using fl::task::active_tasks;
+using fl::task::has_tasks;
+using fl::task::CoroutineConfig;
 
 // Test helper: A simple test async runner
-class TestAsyncRunner : public fl::async_runner {
+class TestAsyncRunner : public fl::task::Runner {
 public:
     TestAsyncRunner() : update_count(0), active(false), task_count(0) {}
 
@@ -52,7 +59,7 @@ private:
     size_t task_count;
 };
 
-FL_TEST_CASE("fl::async_runner interface") {
+FL_TEST_CASE("fl::task::Runner interface") {
     FL_SUBCASE("basic implementation") {
         TestAsyncRunner runner;
 
@@ -70,15 +77,15 @@ FL_TEST_CASE("fl::async_runner interface") {
     }
 }
 
-FL_TEST_CASE("fl::AsyncManager") {
+FL_TEST_CASE("fl::task::Executor") {
     FL_SUBCASE("singleton instance") {
-        AsyncManager& mgr1 = AsyncManager::instance();
-        AsyncManager& mgr2 = AsyncManager::instance();
+        Executor& mgr1 = Executor::instance();
+        Executor& mgr2 = Executor::instance();
         FL_CHECK_EQ(&mgr1, &mgr2);
     }
 
     FL_SUBCASE("register and unregister runners") {
-        AsyncManager& mgr = AsyncManager::instance();
+        Executor& mgr = Executor::instance();
         TestAsyncRunner runner1;
         TestAsyncRunner runner2;
 
@@ -102,7 +109,7 @@ FL_TEST_CASE("fl::AsyncManager") {
     }
 
     FL_SUBCASE("duplicate registration") {
-        AsyncManager& mgr = AsyncManager::instance();
+        Executor& mgr = Executor::instance();
         TestAsyncRunner runner;
 
         // Register same runner multiple times
@@ -119,7 +126,7 @@ FL_TEST_CASE("fl::AsyncManager") {
     }
 
     FL_SUBCASE("null runner handling") {
-        AsyncManager& mgr = AsyncManager::instance();
+        Executor& mgr = Executor::instance();
 
         // Should handle null gracefully
         mgr.register_runner(nullptr);
@@ -128,7 +135,7 @@ FL_TEST_CASE("fl::AsyncManager") {
     }
 
     FL_SUBCASE("has_active_tasks") {
-        AsyncManager& mgr = AsyncManager::instance();
+        Executor& mgr = Executor::instance();
         TestAsyncRunner runner1;
         TestAsyncRunner runner2;
 
@@ -152,7 +159,7 @@ FL_TEST_CASE("fl::AsyncManager") {
     }
 
     FL_SUBCASE("total_active_tasks") {
-        AsyncManager& mgr = AsyncManager::instance();
+        Executor& mgr = Executor::instance();
         TestAsyncRunner runner1;
         TestAsyncRunner runner2;
 
@@ -173,17 +180,17 @@ FL_TEST_CASE("fl::AsyncManager") {
     }
 }
 
-FL_TEST_CASE("fl::async_run") {
+FL_TEST_CASE("fl::task::run") {
     FL_SUBCASE("updates all registered runners") {
-        AsyncManager& mgr = AsyncManager::instance();
+        Executor& mgr = Executor::instance();
         TestAsyncRunner runner;
 
         mgr.register_runner(&runner);
 
         FL_CHECK_EQ(runner.update_count, 0);
-        async_run(0);
+        run(0);
         FL_CHECK_EQ(runner.update_count, 1);
-        async_run(0);
+        run(0);
         FL_CHECK_EQ(runner.update_count, 2);
 
         // Cleanup
@@ -191,12 +198,12 @@ FL_TEST_CASE("fl::async_run") {
     }
 }
 
-FL_TEST_CASE("fl::async_run reentrancy guard") {
+FL_TEST_CASE("fl::task::run reentrancy guard") {
     FL_SUBCASE("nested async_run is skipped") {
-        AsyncManager& mgr = AsyncManager::instance();
+        Executor& mgr = Executor::instance();
 
         // Runner that calls async_run from within its update() — re-entrant
-        struct ReentrantRunner : public async_runner {
+        struct ReentrantRunner : public Runner {
             size_t update_count = 0;
             size_t nested_update_count = 0;
             bool tried_reentry = false;
@@ -207,7 +214,7 @@ FL_TEST_CASE("fl::async_run reentrancy guard") {
                     tried_reentry = true;
                     size_t before = update_count;
                     // This should be detected as re-entrancy and skipped
-                    async_run(0);
+                    run(0);
                     // update_count should NOT have increased from the nested call
                     nested_update_count = update_count - before;
                 }
@@ -219,7 +226,7 @@ FL_TEST_CASE("fl::async_run reentrancy guard") {
         ReentrantRunner runner;
         mgr.register_runner(&runner);
 
-        async_run(0);
+        run(0);
 
         FL_CHECK(runner.tried_reentry);
         // The nested async_run should have been skipped, so the runner
@@ -231,9 +238,9 @@ FL_TEST_CASE("fl::async_run reentrancy guard") {
     }
 }
 
-FL_TEST_CASE("fl::async_active_tasks") {
+FL_TEST_CASE("fl::task::active_tasks") {
     FL_SUBCASE("returns total active tasks") {
-        AsyncManager& mgr = AsyncManager::instance();
+        Executor& mgr = Executor::instance();
         TestAsyncRunner runner1;
         TestAsyncRunner runner2;
 
@@ -243,7 +250,7 @@ FL_TEST_CASE("fl::async_active_tasks") {
         runner1.set_task_count(2);
         runner2.set_task_count(3);
 
-        FL_CHECK_EQ(async_active_tasks(), 5);
+        FL_CHECK_EQ(active_tasks(), 5);
 
         // Cleanup
         mgr.unregister_runner(&runner1);
@@ -251,34 +258,34 @@ FL_TEST_CASE("fl::async_active_tasks") {
     }
 }
 
-FL_TEST_CASE("fl::async_has_tasks") {
+FL_TEST_CASE("fl::task::has_tasks") {
     FL_SUBCASE("checks for any active tasks") {
-        AsyncManager& mgr = AsyncManager::instance();
+        Executor& mgr = Executor::instance();
         TestAsyncRunner runner;
 
         mgr.register_runner(&runner);
 
         runner.set_active(false);
-        FL_CHECK_EQ(async_has_tasks(), false);
+        FL_CHECK_EQ(has_tasks(), false);
 
         runner.set_active(true);
-        FL_CHECK_EQ(async_has_tasks(), true);
+        FL_CHECK_EQ(has_tasks(), true);
 
         // Cleanup
         mgr.unregister_runner(&runner);
     }
 }
 
-FL_TEST_CASE("fl::async_run with ms") {
+FL_TEST_CASE("fl::task::run with ms") {
     FL_SUBCASE("pumps async tasks") {
-        AsyncManager& mgr = AsyncManager::instance();
+        Executor& mgr = Executor::instance();
         TestAsyncRunner runner;
 
         mgr.register_runner(&runner);
 
         FL_CHECK_EQ(runner.update_count, 0);
-        async_run(1000);
-        // async_run(1000) pumps and yields for 1000us (1ms)
+        run(1000);
+        // run(1000) pumps and yields for 1000us (1ms)
         FL_CHECK(runner.update_count >= 1);
 
         // Cleanup
@@ -286,43 +293,43 @@ FL_TEST_CASE("fl::async_run with ms") {
     }
 }
 
-FL_TEST_CASE("fl::await_top_level - Basic Operations") {
+FL_TEST_CASE("fl::task::await_top_level - Basic Operations") {
     FL_SUBCASE("await_top_level resolved promise returns value") {
-        auto promise = fl::promise<int>::resolve(42);
-        auto result = fl::await_top_level(promise);  // Type automatically deduced!
+        auto promise = fl::task::Promise<int>::resolve(42);
+        auto result = fl::task::await_top_level(promise);  // Type automatically deduced!
 
         FL_CHECK(result.ok());
         FL_CHECK_EQ(result.value(), 42);
     }
 
     FL_SUBCASE("await_top_level rejected promise returns error") {
-        auto promise = fl::promise<int>::reject(fl::Error("Test error"));
-        auto result = fl::await_top_level(promise);  // Type automatically deduced!
+        auto promise = fl::task::Promise<int>::reject(fl::task::Error("Test error"));
+        auto result = fl::task::await_top_level(promise);  // Type automatically deduced!
 
         FL_CHECK(!result.ok());
         FL_CHECK_EQ(result.error().message, "Test error");
     }
 
     FL_SUBCASE("await_top_level invalid promise returns error") {
-        fl::promise<int> invalid_promise; // Default constructor creates invalid promise
-        auto result = fl::await_top_level(invalid_promise);  // Type automatically deduced!
+        fl::task::Promise<int> invalid_promise; // Default constructor creates invalid promise
+        auto result = fl::task::await_top_level(invalid_promise);  // Type automatically deduced!
 
         FL_CHECK(!result.ok());
         FL_CHECK_EQ(result.error().message, "Invalid promise");
     }
 
     FL_SUBCASE("explicit template parameter still works") {
-        auto promise = fl::promise<int>::resolve(42);
-        auto result = fl::await_top_level<int>(promise);  // Explicit template parameter
+        auto promise = fl::task::Promise<int>::resolve(42);
+        auto result = fl::task::await_top_level<int>(promise);  // Explicit template parameter
 
         FL_CHECK(result.ok());
         FL_CHECK_EQ(result.value(), 42);
     }
 }
 
-FL_TEST_CASE("fl::await_top_level - Asynchronous Completion") {
+FL_TEST_CASE("fl::task::await_top_level - Asynchronous Completion") {
     FL_SUBCASE("await_top_level waits for promise to be resolved") {
-        auto promise = fl::promise<int>::create();
+        auto promise = fl::task::Promise<int>::create();
         bool promise_completed = false;
 
         // Simulate async completion in background
@@ -333,7 +340,7 @@ FL_TEST_CASE("fl::await_top_level - Asynchronous Completion") {
         promise.complete_with_value(123);
         promise_completed = true;
 
-        auto result = fl::await_top_level(promise);  // Type automatically deduced!
+        auto result = fl::task::await_top_level(promise);  // Type automatically deduced!
 
         FL_CHECK(promise_completed);
         FL_CHECK(result.ok());
@@ -341,14 +348,14 @@ FL_TEST_CASE("fl::await_top_level - Asynchronous Completion") {
     }
 
     FL_SUBCASE("await_top_level waits for promise to be rejected") {
-        auto promise = fl::promise<int>::create();
+        auto promise = fl::task::Promise<int>::create();
         bool promise_completed = false;
 
         // Complete the promise with an error
-        promise.complete_with_error(fl::Error("Async error"));
+        promise.complete_with_error(fl::task::Error("Async error"));
         promise_completed = true;
 
-        auto result = fl::await_top_level(promise);  // Type automatically deduced!
+        auto result = fl::task::await_top_level(promise);  // Type automatically deduced!
 
         FL_CHECK(promise_completed);
         FL_CHECK(!result.ok());
@@ -356,10 +363,10 @@ FL_TEST_CASE("fl::await_top_level - Asynchronous Completion") {
     }
 }
 
-FL_TEST_CASE("fl::await_top_level - Different Value Types") {
+FL_TEST_CASE("fl::task::await_top_level - Different Value Types") {
     FL_SUBCASE("await_top_level with string type") {
-        auto promise = fl::promise<fl::string>::resolve(fl::string("Hello, World!"));
-        auto result = fl::await_top_level(promise);  // Type automatically deduced!
+        auto promise = fl::task::Promise<fl::string>::resolve(fl::string("Hello, World!"));
+        auto result = fl::task::await_top_level(promise);  // Type automatically deduced!
 
         FL_CHECK(result.ok());
         FL_CHECK_EQ(result.value(), "Hello, World!");
@@ -376,43 +383,43 @@ FL_TEST_CASE("fl::await_top_level - Different Value Types") {
         };
 
         TestData expected{42, "test"};
-        auto promise = fl::promise<TestData>::resolve(expected);
-        auto result = fl::await_top_level(promise);  // Type automatically deduced!
+        auto promise = fl::task::Promise<TestData>::resolve(expected);
+        auto result = fl::task::await_top_level(promise);  // Type automatically deduced!
 
         FL_CHECK(result.ok());
         FL_CHECK(result.value() == expected);
     }
 }
 
-FL_TEST_CASE("fl::await_top_level - Error Handling") {
+FL_TEST_CASE("fl::task::await_top_level - Error Handling") {
     FL_SUBCASE("await_top_level preserves error message") {
         fl::string error_msg = "Detailed error message";
-        auto promise = fl::promise<int>::reject(fl::Error(error_msg));
-        auto result = fl::await_top_level(promise);  // Type automatically deduced!
+        auto promise = fl::task::Promise<int>::reject(fl::task::Error(error_msg));
+        auto result = fl::task::await_top_level(promise);  // Type automatically deduced!
 
         FL_CHECK(!result.ok());
         FL_CHECK_EQ(result.error().message, error_msg);
     }
 
     FL_SUBCASE("await_top_level with custom error") {
-        fl::Error custom_error("Custom error with details");
-        auto promise = fl::promise<fl::string>::reject(custom_error);
-        auto result = fl::await_top_level(promise);  // Type automatically deduced!
+        fl::task::Error custom_error("Custom error with details");
+        auto promise = fl::task::Promise<fl::string>::reject(custom_error);
+        auto result = fl::task::await_top_level(promise);  // Type automatically deduced!
 
         FL_CHECK(!result.ok());
         FL_CHECK_EQ(result.error().message, "Custom error with details");
     }
 }
 
-FL_TEST_CASE("fl::await_top_level - Multiple Awaits") {
+FL_TEST_CASE("fl::task::await_top_level - Multiple Awaits") {
     FL_SUBCASE("multiple awaits on different promises") {
-        auto promise1 = fl::promise<int>::resolve(10);
-        auto promise2 = fl::promise<int>::resolve(20);
-        auto promise3 = fl::promise<int>::reject(fl::Error("Error in promise 3"));
+        auto promise1 = fl::task::Promise<int>::resolve(10);
+        auto promise2 = fl::task::Promise<int>::resolve(20);
+        auto promise3 = fl::task::Promise<int>::reject(fl::task::Error("Error in promise 3"));
 
-        auto result1 = fl::await_top_level(promise1);  // Type automatically deduced!
-        auto result2 = fl::await_top_level(promise2);  // Type automatically deduced!
-        auto result3 = fl::await_top_level(promise3);  // Type automatically deduced!
+        auto result1 = fl::task::await_top_level(promise1);  // Type automatically deduced!
+        auto result2 = fl::task::await_top_level(promise2);  // Type automatically deduced!
+        auto result3 = fl::task::await_top_level(promise3);  // Type automatically deduced!
 
         // Check first result
         FL_CHECK(result1.ok());
@@ -428,10 +435,10 @@ FL_TEST_CASE("fl::await_top_level - Multiple Awaits") {
     }
 
     FL_SUBCASE("await_top_level same promise multiple times") {
-        auto promise = fl::promise<int>::resolve(999);
+        auto promise = fl::task::Promise<int>::resolve(999);
 
-        auto result1 = fl::await_top_level(promise);  // Type automatically deduced!
-        auto result2 = fl::await_top_level(promise);  // Type automatically deduced!
+        auto result1 = fl::task::await_top_level(promise);  // Type automatically deduced!
+        auto result2 = fl::task::await_top_level(promise);  // Type automatically deduced!
 
         // Both awaits should return the same result
         FL_CHECK(result1.ok());
@@ -442,13 +449,13 @@ FL_TEST_CASE("fl::await_top_level - Multiple Awaits") {
     }
 }
 
-FL_TEST_CASE("fl::await_top_level - Boolean Conversion and Convenience") {
+FL_TEST_CASE("fl::task::await_top_level - Boolean Conversion and Convenience") {
     FL_SUBCASE("boolean conversion operator") {
-        auto success_promise = fl::promise<int>::resolve(42);
-        auto success_result = fl::await_top_level(success_promise);
+        auto success_promise = fl::task::Promise<int>::resolve(42);
+        auto success_result = fl::task::await_top_level(success_promise);
 
-        auto error_promise = fl::promise<int>::reject(fl::Error("Error"));
-        auto error_result = fl::await_top_level(error_promise);
+        auto error_promise = fl::task::Promise<int>::reject(fl::task::Error("Error"));
+        auto error_result = fl::task::await_top_level(error_promise);
 
         // Test boolean conversion (should work like ok())
         FL_CHECK(success_result);   // Implicit conversion to bool
@@ -460,11 +467,11 @@ FL_TEST_CASE("fl::await_top_level - Boolean Conversion and Convenience") {
     }
 
     FL_SUBCASE("error_message convenience method") {
-        auto success_promise = fl::promise<int>::resolve(42);
-        auto success_result = fl::await_top_level(success_promise);
+        auto success_promise = fl::task::Promise<int>::resolve(42);
+        auto success_result = fl::task::await_top_level(success_promise);
 
-        auto error_promise = fl::promise<int>::reject(fl::Error("Test error"));
-        auto error_result = fl::await_top_level(error_promise);
+        auto error_promise = fl::task::Promise<int>::reject(fl::task::Error("Test error"));
+        auto error_result = fl::task::await_top_level(error_promise);
 
         // Test error_message convenience method
         FL_CHECK_EQ(success_result.error_message(), "");  // Empty string for success
@@ -472,7 +479,7 @@ FL_TEST_CASE("fl::await_top_level - Boolean Conversion and Convenience") {
     }
 }
 
-FL_TEST_CASE("fl::Scheduler") {
+FL_TEST_CASE("fl::task::Scheduler") {
     FL_SUBCASE("singleton instance") {
         Scheduler& sched1 = Scheduler::instance();
         Scheduler& sched2 = Scheduler::instance();
@@ -588,7 +595,7 @@ FL_TEST_CASE("fl::async integration") {
         sched.add_task(fl::move(t));
 
         FL_CHECK_EQ(executed, false);
-        async_run(); // Should update scheduler and async manager
+        run(); // Should update scheduler and async manager
         FL_CHECK_EQ(executed, true);
 
         sched.clear_all_tasks();
@@ -602,8 +609,8 @@ FL_TEST_CASE("fl::async integration") {
 // Helper: Create a promise that resolves after a delay
 // Thread is registered via platform API for cleanup on exit
 template<typename T>
-promise<T> delayed_resolve(const T& value, uint32_t delay_ms) {
-    auto p = promise<T>::create();
+fl::task::Promise<T> delayed_resolve(const T& value, uint32_t delay_ms) {
+    auto p = fl::task::Promise<T>::create();
 
     fl::thread t([p, value, delay_ms]() mutable {
         for (uint32_t elapsed = 0; elapsed < delay_ms && !fl::platforms::ICoroutineRuntime::instance().isShutdownRequested(); elapsed += 1) {
@@ -619,8 +626,8 @@ promise<T> delayed_resolve(const T& value, uint32_t delay_ms) {
 
 // Helper: Create a promise that rejects after a delay
 template<typename T>
-promise<T> delayed_reject(const Error& error, uint32_t delay_ms) {
-    auto p = promise<T>::create();
+fl::task::Promise<T> delayed_reject(const fl::task::Error& error, uint32_t delay_ms) {
+    auto p = fl::task::Promise<T>::create();
 
     fl::thread t([p, error, delay_ms]() mutable {
         for (uint32_t elapsed = 0; elapsed < delay_ms && !fl::platforms::ICoroutineRuntime::instance().isShutdownRequested(); elapsed += 1) {
@@ -645,7 +652,7 @@ FL_TEST_CASE("await in coroutine - basic resolution") {
         auto p = delayed_resolve<int>(42, 5);
 
         // Await the promise (should block this coroutine only)
-        auto result = fl::await(p);
+        auto result = fl::task::await(p);
 
         // Verify result
         FL_CHECK(result.ok());
@@ -661,7 +668,7 @@ FL_TEST_CASE("await in coroutine - basic resolution") {
     // Wait for coroutine to complete (max 200ms to account for slow CI)
     int timeout = 0;
     while (!test_completed.load() && timeout < 200) {
-        async_run(1000);  // Release lock and pump async tasks
+        run(1000);  // Release lock and pump async tasks
         delay(5);
         timeout += 5;
     }
@@ -680,10 +687,10 @@ FL_TEST_CASE("await in coroutine - error handling") {
     CoroutineConfig config;
     config.function = [&]() {
         // Create promise that rejects after 5ms (reduced from 50ms)
-        auto p = delayed_reject<int>(Error("Test error"), 5);
+        auto p = delayed_reject<int>(fl::task::Error("Test error"), 5);
 
         // Await the promise
-        auto result = fl::await(p);
+        auto result = fl::task::await(p);
 
         // Should have error
         FL_CHECK(!result.ok());
@@ -699,7 +706,7 @@ FL_TEST_CASE("await in coroutine - error handling") {
     // Wait for completion (max 200ms to account for slow CI)
     int timeout = 0;
     while (!test_completed.load() && timeout < 200) {
-        async_run(1000);
+        run(1000);
         delay(5);
         timeout += 5;
     }
@@ -718,10 +725,10 @@ FL_TEST_CASE("await in coroutine - already completed promise") {
     CoroutineConfig config;
     config.function = [&]() {
         // Create already-resolved promise
-        auto p = promise<int>::resolve(123);
+        auto p = fl::task::Promise<int>::resolve(123);
 
         // Await should return immediately
-        auto result = fl::await(p);
+        auto result = fl::task::await(p);
 
         FL_CHECK(result.ok());
         if (result.ok()) {
@@ -736,7 +743,7 @@ FL_TEST_CASE("await in coroutine - already completed promise") {
     // Should complete quickly (within 200ms to account for slow CI)
     int timeout = 0;
     while (!test_completed.load() && timeout < 200) {
-        async_run(1000);
+        run(1000);
         delay(5);
         timeout += 5;
     }
@@ -752,7 +759,7 @@ FL_TEST_CASE("await in coroutine - multiple concurrent coroutines") {
     printf("Test: Spawning 5 coroutines\n");
 
     // Store task objects to keep coroutines alive
-    fl::vector<task> tasks;
+    fl::vector<task::Handle> tasks;
 
     // Spawn 5 coroutines, each awaiting different promises
     for (int i = 0; i < 5; i++) {
@@ -762,7 +769,7 @@ FL_TEST_CASE("await in coroutine - multiple concurrent coroutines") {
             // Each promise resolves to i*10 after (i*2)ms
             auto p = delayed_resolve<int>(i * 10, i * 2);
             printf("  Coroutine %d: Created promise, calling await()\n", i);
-            auto result = fl::await(p);
+            auto result = fl::task::await(p);
             printf("  Coroutine %d: await() returned, ok=%d\n", i, result.ok());
 
             if (result.ok()) {
@@ -785,7 +792,7 @@ FL_TEST_CASE("await in coroutine - multiple concurrent coroutines") {
         if (timeout % 100 == 0) {
             printf("Test: timeout=%d, completed=%d, sum=%d\n", timeout, completed_count.load(), sum.load());
         }
-        async_run(1000);
+        run(1000);
         delay(5);
         timeout += 5;
     }
@@ -805,10 +812,10 @@ FL_TEST_CASE("await in coroutine - invalid promise") {
     CoroutineConfig config;
     config.function = [&]() {
         // Create invalid promise (default constructor)
-        promise<int> p;
+        fl::task::Promise<int> p;
 
         // Await should return error immediately
-        auto result = fl::await(p);
+        auto result = fl::task::await(p);
 
         FL_CHECK(!result.ok());
         if (!result.ok()) {
@@ -823,7 +830,7 @@ FL_TEST_CASE("await in coroutine - invalid promise") {
     // Should complete quickly (within 200ms to account for slow CI)
     int timeout = 0;
     while (!test_completed.load() && timeout < 200) {
-        async_run(1000);
+        run(1000);
         delay(5);
         timeout += 5;
     }
@@ -840,17 +847,17 @@ FL_TEST_CASE("await in coroutine - sequential awaits") {
     config.function = [&]() {
         // First await (reduced from 20ms to 2ms)
         auto p1 = delayed_resolve<int>(10, 2);
-        auto r1 = fl::await(p1);
+        auto r1 = fl::task::await(p1);
         if (r1.ok()) total.fetch_add(r1.value());
 
         // Second await (reduced from 20ms to 2ms)
         auto p2 = delayed_resolve<int>(20, 2);
-        auto r2 = fl::await(p2);
+        auto r2 = fl::task::await(p2);
         if (r2.ok()) total.fetch_add(r2.value());
 
         // Third await (reduced from 20ms to 2ms)
         auto p3 = delayed_resolve<int>(30, 2);
-        auto r3 = fl::await(p3);
+        auto r3 = fl::task::await(p3);
         if (r3.ok()) total.fetch_add(r3.value());
 
         test_completed.store(true);
@@ -861,7 +868,7 @@ FL_TEST_CASE("await in coroutine - sequential awaits") {
     // Wait for completion (max 200ms to account for slow CI)
     int timeout = 0;
     while (!test_completed.load() && timeout < 200) {
-        async_run(1000);
+        run(1000);
         delay(5);
         timeout += 5;
     }
@@ -887,7 +894,7 @@ FL_TEST_CASE("await vs await_top_level - CPU usage comparison") {
     CoroutineConfig config;
     config.function = [&]() {
         auto p = delayed_resolve<int>(42, 5);  // 5ms delay (reduced from 50ms)
-        auto result = fl::await(p);
+        auto result = fl::task::await(p);
         FL_CHECK(result.ok());
         if (result.ok()) {
             FL_CHECK(result.value() == 42);
@@ -900,7 +907,7 @@ FL_TEST_CASE("await vs await_top_level - CPU usage comparison") {
     // Wait for coroutine to complete
     int timeout = 0;
     while (!await_completed.load() && timeout < 200) {
-        async_run(1000);
+        run(1000);
         delay(5);
         timeout += 5;
     }
@@ -988,13 +995,13 @@ FL_TEST_CASE("global coordination - no concurrent execution") {
         active_threads.fetch_sub(1);
 
         // Yield to allow coroutine to run (releases global lock)
-        async_run(1000);
+        run(1000);
     }
 
     // Wait for coroutine to complete
     int timeout = 0;
     while (!test_completed.load() && timeout < 500) {
-        async_run(1000);  // Keep yielding to let coroutine finish
+        run(1000);  // Keep yielding to let coroutine finish
         delay(1);
         timeout += 1;
     }
@@ -1019,7 +1026,7 @@ FL_TEST_CASE("global coordination - await releases lock for other threads") {
 
         // Await a promise (should release global lock) - reduced from 100ms to 10ms
         auto p = delayed_resolve<int>(42, 10);
-        auto result = fl::await(p);
+        auto result = fl::task::await(p);
 
         coroutine1_progress.store(2);  // Completed
 
@@ -1035,7 +1042,7 @@ FL_TEST_CASE("global coordination - await releases lock for other threads") {
 
         // Await a different promise - reduced from 100ms to 10ms
         auto p = delayed_resolve<int>(99, 10);
-        auto result = fl::await(p);
+        auto result = fl::task::await(p);
 
         coroutine2_progress.store(2);  // Completed
 
@@ -1049,7 +1056,7 @@ FL_TEST_CASE("global coordination - await releases lock for other threads") {
     // This avoids race condition where one coroutine finishes before the other
     int timeout = 0;
     while ((coroutine1_progress.load() < 2 || coroutine2_progress.load() < 2) && timeout < 500) {
-        async_run(1000);
+        run(1000);
         delay(1);
         timeout += 1;
     }

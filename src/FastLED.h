@@ -114,7 +114,7 @@
 #endif
 
 // Convenience includes for sketch inclusion
-#include "fl/stl/async.h"
+#include "fl/task/executor.h"
 #include "fl/system/sketch_macros.h"
 #include "fl/rx_device.h"
 #include "fl/stl/array.h"
@@ -1561,7 +1561,7 @@ using fl_string = fl::string;
 // to sketch_loop()
 #define loop() \
      sketch_loop(); \
-     void loop() { sketch_loop(); fl::async_run(); } \
+     void loop() { sketch_loop(); fl::task::run(); } \
      void sketch_loop()
 #endif
 

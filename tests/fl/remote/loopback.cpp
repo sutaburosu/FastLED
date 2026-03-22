@@ -1,4 +1,4 @@
-// ok standalone
+
 // Real loopback test: server startup + client connection + request + response
 // Uses a background thread for server-side accept + transport pumping + RPC,
 // while the main thread handles the client side. Results are posted to the

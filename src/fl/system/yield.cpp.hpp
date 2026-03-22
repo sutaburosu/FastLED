@@ -6,7 +6,7 @@
 #include "fl/stl/thread.h"
 
 #if SKETCH_HAS_LOTS_OF_MEMORY
-#include "fl/stl/async.h"
+#include "fl/task/executor.h"
 #endif
 
 #ifdef FL_IS_ESP32

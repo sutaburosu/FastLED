@@ -50,25 +50,25 @@ FL_TEST_CASE("error_code - Equality comparison") {
     FL_CHECK(a != c);
 }
 
-FL_TEST_CASE("error_code - Convert to/from fl::Error") {
+FL_TEST_CASE("error_code - Convert to/from fl::task::Error") {
     // Error -> error_code
-    fl::Error err("something failed");
+    fl::task::Error err("something failed");
     error_code ec = error_code::from_error(err);
     FL_CHECK_FALSE(ec.ok());
     FL_CHECK_EQ(ec.code, errc::unknown);
 
     // error_code -> Error
     error_code ec2(errc::connection_reset, "reset by peer");
-    fl::Error err2 = ec2.to_error();
+    fl::task::Error err2 = ec2.to_error();
     FL_CHECK_FALSE(err2.is_empty());
 
     // Success round-trip
-    fl::Error empty_err;
+    fl::task::Error empty_err;
     error_code ec3 = error_code::from_error(empty_err);
     FL_CHECK(ec3.ok());
 
     error_code success_ec;
-    fl::Error err3 = success_ec.to_error();
+    fl::task::Error err3 = success_ec.to_error();
     FL_CHECK(err3.is_empty());
 }
 

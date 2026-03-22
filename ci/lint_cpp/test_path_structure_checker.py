@@ -21,8 +21,68 @@ TESTS_ROOT = PROJECT_ROOT / "tests"
 SRC_ROOT = PROJECT_ROOT / "src"
 
 # Test files that are exempt from path matching (infrastructure/entry points)
+# Also includes unity-build aggregators and sub-test HPP files that are
+# #include'd by parent .cpp files (no 1:1 source mapping expected).
 EXCLUDED_TEST_FILES = {
     "doctest_main.cpp",  # Test framework entry point
+    # Unity-build aggregators (include multiple .hpp sub-tests)
+    "audio.cpp",  # Aggregates tests/fl/audio/*.hpp
+    "codec.cpp",  # Aggregates tests/fl/codec/*.hpp
+    "detail.cpp",  # Aggregates tests/fl/detail/*.hpp
+    "detectors.cpp",  # Aggregates tests/fl/audio/detector/*.hpp
+    "encoders.cpp",  # Aggregates tests/fl/chipsets/encoders/*.hpp
+    "2d.cpp",  # Aggregates tests/fl/fx/2d/*.hpp
+    "validation.cpp",  # Aggregates tests/fl/channels/detail/validation/*.hpp
+    # Sub-test HPP files included by parent CPP (gfx/ primitives → gfx.cpp)
+    "draw_ring.hpp",
+    "draw_thick_line.hpp",
+    "draw_line.hpp",
+    "draw_disc.hpp",
+    "draw_disc_16.hpp",
+    "perf_primitives.hpp",
+    # Sub-test HPP files included by parent CPP (audio/ → audio.cpp)
+    "gain.hpp",
+    "test_helpers.hpp",
+    "vocal_real_audio.hpp",  # → detectors.cpp (in detector/ dir, excluded as "detectors")
+    # Sub-test HPP files included by parent CPP (misc locations)
+    "map_range.hpp",  # → clamp.cpp
+    "assume_aligned.hpp",  # → align.cpp
+    "insert_result.hpp",  # → hash.cpp
+    # Standalone tests that test cross-cutting functionality (no 1:1 source mapping)
+    "active_strip_data_json.cpp",  # Tests JSON serialization of strip data
+    "audio_url.cpp",  # Tests audio URL handling
+    "bytestream.cpp",  # Tests pixel_stream/video byte streaming
+    "clamp.cpp",  # Tests fl::clamp from fl/math/math.h
+    "force_inline.cpp",  # Tests FASTLED_FORCE_INLINE from compiler_control.h
+    "hsv2rgb_accuracy.cpp",  # Tests HSV→RGB conversion accuracy
+    "noise_range.cpp",  # Tests noise function output ranges
+    "noise_ring.cpp",  # Tests noise ring patterns
+    "power_estimation.cpp",  # Tests power management estimation
+    "slice.cpp",  # Tests span/slice operations
+    "unused.cpp",  # Tests FASTLED_UNUSED macro
+    # Channel tests (test channel subsystem, not individual headers)
+    "channel_manager.cpp",  # Tests fl/channels/manager.h
+    "spi_channel.cpp",  # Tests SPI channel integration
+    "wave8_spi.cpp",  # Tests wave8 SPI encoding
+    # Remote tests (test remote subsystem integration)
+    "loopback.cpp",  # Tests remote loopback
+    "rpc.cpp",  # Aggregates tests/fl/remote/rpc/*.hpp
+    "rpc_http_stream.cpp",  # Tests RPC HTTP streaming
+    # Audio sub-component tests
+    "adversarial.cpp",  # Tests audio adversarial conditions
+    "deficiencies.cpp",  # Tests audio processing deficiencies
+    "sound_level_meter.cpp",  # Tests SoundLevelMeter
+    # STL tests (test STL wrappers, not individual headers)
+    "allocator_move.cpp",  # Tests allocator move semantics
+    "cstdint.cpp",  # Tests cstddef/stdint compatibility
+    "function_list.cpp",  # Tests function list patterns
+    "strstream_integers.cpp",  # Tests strstream integer formatting
+    # ASIO tests (test networking subsystem)
+    "test_tcp_socket.cpp",  # Tests TCP socket
+    "test_tcp_acceptor.cpp",  # Tests TCP acceptor
+    "http_promise.cpp",  # Tests HTTP promise
+    "http_transport.cpp",  # Tests HTTP transport
+    "server_loopback.cpp",  # Tests HTTP server loopback
 }
 
 

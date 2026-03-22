@@ -11,7 +11,7 @@
 #include "fl/chipsets/chipset_timing_config.h"
 #include "fl/system/delay.h"
 #include "fl/system/log.h"
-#include "fl/stl/async.h"
+#include "fl/task/executor.h"
 #include "fl/system/log.h"
 #include "fl/stl/algorithm.h"
 #include "fl/stl/charconv.h"
@@ -37,7 +37,7 @@ ChannelEngineUART::ChannelEngineUART(fl::shared_ptr<IUartPeripheral> peripheral)
 ChannelEngineUART::~ChannelEngineUART() {
     // Wait for any active transmissions to complete
     while (poll() == DriverState::BUSY || poll() == DriverState::DRAINING) {
-        async_run(250, AsyncFlags::SYSTEM);
+        task::run(250, task::ExecFlags::SYSTEM);
     }
 
     // Deinitialize peripheral

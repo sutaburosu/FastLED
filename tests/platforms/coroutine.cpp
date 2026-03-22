@@ -7,7 +7,7 @@
 /// 2. task::coroutine (high-level API)
 
 #include "test.h"
-#include "fl/stl/task.h"
+#include "fl/task/task.h"
 #include "fl/stl/atomic.h"
 #include "fl/stl/thread.h"
 #include "fl/stl/mutex.h"
@@ -16,13 +16,16 @@
 #include "fl/stl/string.h"
 #include "fl/stl/semaphore.h"
 #include "fl/system/delay.h"
-#include "fl/stl/async.h"
+#include "fl/task/executor.h"
 #include "platforms/coroutine.h"
 #include "fl/system/engine_events.h"
 
 FL_TEST_FILE(FL_FILEPATH) {
 
 using namespace fl;
+using fl::task::CoroutineConfig;
+using fl::task::run;
+using fl::task::Scheduler;
 
 // ============================================================
 // Level 1: Binary semaphore tests
@@ -96,7 +99,7 @@ FL_TEST_CASE("coroutine - task::coroutine runs function") {
     FL_CHECK(coro.isCoroutine());
 
     for (int elapsed = 0; elapsed < 500 && !completed.load(); elapsed += 5) {
-        async_run(1000);
+        run(1000);
         delay(5);
     }
 
@@ -122,7 +125,7 @@ FL_TEST_CASE("coroutine - two coroutines both complete") {
     auto coro2 = task::coroutine(config2);
 
     for (int elapsed = 0; elapsed < 500 && completed_count.load() < 2; elapsed += 5) {
-        async_run(1000);
+        run(1000);
         delay(5);
     }
 

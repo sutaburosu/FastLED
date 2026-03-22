@@ -11,7 +11,7 @@
 #include "fl/stl/algorithm.h"
 #include "fl/stl/move.h"
 #include "fl/trace.h"
-#include "fl/stl/async.h"
+#include "fl/task/executor.h"
 #include "platforms/init_channel_driver.h"
 
 namespace fl {
@@ -331,7 +331,7 @@ bool ChannelManager::waitForCondition(Condition condition, u32 timeoutMs) {
 
         // OS yield only — keeps WiFi/lwIP alive without pumping
         // tasks or coroutines during frame transitions (re-entrancy risk).
-        async_run(250, AsyncFlags::SYSTEM);
+        task::run(250, task::ExecFlags::SYSTEM);
     }
 
     return true;  // Condition met

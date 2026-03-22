@@ -1,4 +1,4 @@
-// ok standalone
+
 // Pixel accuracy test: Animartrix float vs fixed-point (Q31) Chasing_Spirals
 //
 // Compares RGB output pixel-by-pixel to determine:

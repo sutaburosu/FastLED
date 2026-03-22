@@ -19,7 +19,7 @@
 #include "fl/stl/span.h"
 #include "fl/stl/type_traits.h"
 #include "fl/system/log.h"
-#include "fl/promise.h" // For Error type
+#include "fl/task/promise.h" // For fl::task::Error type
 #include "fl/stl/string_view.h"
 
 #include "fl/system/sketch_macros.h"
@@ -40,18 +40,18 @@ struct json_value;
 using json_array = fl::vector<fl::shared_ptr<json_value>>;
 using json_object = fl::unordered_map<fl::string, fl::shared_ptr<json_value>>;
 
-// parse_result struct to replace variant<T, Error>
+// parse_result struct to replace variant<T, task::Error>
 template<typename T>
 struct parse_result {
     T value;
-    Error error;
+    task::Error error;
     
     parse_result(const T& val) : value(val), error() {}
-    parse_result(const Error& err) : value(), error(err) {}
+    parse_result(const task::Error& err) : value(), error(err) {}
     
     bool has_error() const { return !error.is_empty(); }
     const T& get_value() const { return value; }
-    const Error& get_error() const { return error; }
+    const task::Error& get_error() const { return error; }
     
     // Implicit conversion operator to allow using parse_result as T directly
     operator const T&() const { 
@@ -1189,7 +1189,7 @@ struct json_value {
         // Helper to convert current element to target type T
         parse_result<T> get_value() const {
             if (!mVariant || mIndex >= get_size()) {
-                return parse_result<T>(Error("Index out of bounds"));
+                return parse_result<T>(task::Error("Index out of bounds"));
             }
             
             if (mVariant->is<json_array>()) {
@@ -1204,14 +1204,14 @@ struct json_value {
                         if (opt) {
                             return parse_result<T>(*opt);
                         } else {
-                            return parse_result<T>(Error("Cannot convert to bool"));
+                            return parse_result<T>(task::Error("Cannot convert to bool"));
                         }
                     } else if (fl::is_integral<T>::value && fl::is_signed<T>::value) {
                         auto opt = val.template as_int<T>();
                         if (opt) {
                             return parse_result<T>(*opt);
                         } else {
-                            return parse_result<T>(Error("Cannot convert to signed integer"));
+                            return parse_result<T>(task::Error("Cannot convert to signed integer"));
                         }
                     } else if (fl::is_integral<T>::value && !fl::is_signed<T>::value) {
                         // For unsigned types, we check that it's integral but not signed
@@ -1219,18 +1219,18 @@ struct json_value {
                         if (opt) {
                             return parse_result<T>(*opt);
                         } else {
-                            return parse_result<T>(Error("Cannot convert to unsigned integer"));
+                            return parse_result<T>(task::Error("Cannot convert to unsigned integer"));
                         }
                     } else if (fl::is_floating_point<T>::value) {
                         auto opt = val.template as_float<T>();
                         if (opt) {
                             return parse_result<T>(*opt);
                         } else {
-                            return parse_result<T>(Error("Cannot convert to floating point"));
+                            return parse_result<T>(task::Error("Cannot convert to floating point"));
                         }
                     }
                 } else {
-                    return parse_result<T>(Error("Invalid array access"));
+                    return parse_result<T>(task::Error("Invalid array access"));
                 }
             }
             
@@ -1239,7 +1239,7 @@ struct json_value {
                 if (ptr && mIndex < ptr->size()) {
                     return parse_result<T>(static_cast<T>((*ptr)[mIndex]));
                 } else {
-                    return parse_result<T>(Error("Index out of bounds in i16 array"));
+                    return parse_result<T>(task::Error("Index out of bounds in i16 array"));
                 }
             }
             
@@ -1248,7 +1248,7 @@ struct json_value {
                 if (ptr && mIndex < ptr->size()) {
                     return parse_result<T>(static_cast<T>((*ptr)[mIndex]));
                 } else {
-                    return parse_result<T>(Error("Index out of bounds in u8 array"));
+                    return parse_result<T>(task::Error("Index out of bounds in u8 array"));
                 }
             }
             
@@ -1257,11 +1257,11 @@ struct json_value {
                 if (ptr && mIndex < ptr->size()) {
                     return parse_result<T>(static_cast<T>((*ptr)[mIndex]));
                 } else {
-                    return parse_result<T>(Error("Index out of bounds in float array"));
+                    return parse_result<T>(task::Error("Index out of bounds in float array"));
                 }
             }
             
-            return parse_result<T>(Error("Unknown array type"));
+            return parse_result<T>(task::Error("Unknown array type"));
         }
         
     public:

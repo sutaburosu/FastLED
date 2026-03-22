@@ -1,4 +1,4 @@
-// ok standalone
+
 // Tests for promise-based rpc()/rpcStream() API on HttpStreamTransport
 // Uses MockHttpServer + MockHttpClient + Remote (same pattern as rpc_http_stream.cpp)
 
@@ -6,7 +6,7 @@
 #include "fl/remote/remote.h"
 #include "fl/remote/rpc/response_send.h"
 #include "fl/stl/json.h"
-#include "fl/promise.h"
+#include "fl/task/promise.h"
 #include "fl/stl/vector.h"
 #include "fl/stl/asio/http/test_utils/mock_http_server.h"
 #include "fl/stl/asio/http/test_utils/mock_http_client.h"
@@ -40,7 +40,7 @@ FL_TEST_CASE("Promise - SYNC rpc() resolves") {
     json params = json::array();
     params.push_back(json(5));
     params.push_back(json(7));
-    fl::promise<json> p = client.rpc("add", params);
+    fl::task::Promise<json> p = client.rpc("add", params);
 
     FL_CHECK(p.valid());
     FL_CHECK(!p.is_completed());
@@ -83,7 +83,7 @@ FL_TEST_CASE("Promise - ASYNC rpc() skips ACK") {
     client.update(0);
 
     json params = json::array();
-    fl::promise<json> p = client.rpc("longTask", params);
+    fl::task::Promise<json> p = client.rpc("longTask", params);
 
     FL_CHECK(!p.is_completed());
 
@@ -182,8 +182,8 @@ FL_TEST_CASE("Promise - Error rejects promise") {
     bool errorCaught = false;
     fl::string errorMsg;
 
-    fl::promise<json> p = client.rpc("nonexistent", params);
-    p.catch_([&errorCaught, &errorMsg](const fl::Error& err) {
+    fl::task::Promise<json> p = client.rpc("nonexistent", params);
+    p.catch_([&errorCaught, &errorMsg](const fl::task::Error& err) {
         errorCaught = true;
         errorMsg = err.message;
     });
@@ -226,7 +226,7 @@ FL_TEST_CASE("Promise - readRequest() backward compat with rpc()") {
     json addParams = json::array();
     addParams.push_back(json(3));
     addParams.push_back(json(4));
-    fl::promise<json> addPromise = client.rpc("add", addParams);
+    fl::task::Promise<json> addPromise = client.rpc("add", addParams);
 
     // Also send a manual request for "multiply" via writeResponse (old API)
     json mulReq = json::object();
@@ -280,15 +280,15 @@ FL_TEST_CASE("Promise - Multiple concurrent calls resolve correctly") {
     // Fire 3 concurrent calls
     json p1 = json::array();
     p1.push_back(json(10));
-    fl::promise<json> call1 = client.rpc("double", p1);
+    fl::task::Promise<json> call1 = client.rpc("double", p1);
 
     json p2 = json::array();
     p2.push_back(json(20));
-    fl::promise<json> call2 = client.rpc("double", p2);
+    fl::task::Promise<json> call2 = client.rpc("double", p2);
 
     json p3 = json::array();
     p3.push_back(json(30));
-    fl::promise<json> call3 = client.rpc("double", p3);
+    fl::task::Promise<json> call3 = client.rpc("double", p3);
 
     FL_CHECK(!call1.is_completed());
     FL_CHECK(!call2.is_completed());

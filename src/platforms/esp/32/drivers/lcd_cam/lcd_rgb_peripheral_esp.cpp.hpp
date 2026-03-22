@@ -13,7 +13,7 @@
 
 #include "platforms/esp/32/drivers/lcd_cam/lcd_rgb_peripheral_esp.h"
 #include "fl/stl/singleton.h"
-#include "fl/stl/async.h"
+#include "fl/task/executor.h"
 #include "fl/system/log.h"
 
 // IWYU pragma: begin_keep
@@ -258,7 +258,7 @@ bool LcdRgbPeripheralEsp::waitFrameDone(u32 timeout_ms) {
                 return false;  // Timeout
             }
         }
-        async_run(250, AsyncFlags::SYSTEM);  // OS yield
+        task::run(250, task::ExecFlags::SYSTEM);  // OS yield
     }
     return true;
 }

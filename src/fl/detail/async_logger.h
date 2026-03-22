@@ -6,11 +6,11 @@
 #include "fl/detail/async_log_queue.h"
 #include "fl/stl/int.h"
 #include "fl/stl/singleton.h"
-#include "fl/stl/task.h"
+#include "fl/task/task.h"
 
 namespace fl {
 
-class Scheduler;
+// Scheduler is now fl::task::Scheduler (aliased via fl/stl/async.h)
 
 /// @brief ISR-safe async logger wrapper (zero heap allocation)
 /// Uses embedded AsyncLogQueue instead of heap-allocated pointer
@@ -201,7 +201,7 @@ namespace detail {
     };
 
     /// @brief Auto-instantiating task for async logger servicing
-    /// Registers itself with fl::Scheduler when first accessed
+    /// Registers itself with fl::task::Scheduler when first accessed
     /// Only instantiated if at least one async logger is used (linker removes if unused)
     class AsyncLoggerServiceTask {
     public:
@@ -233,7 +233,7 @@ namespace detail {
 
         u32 mIntervalMs;
         fl::size mMessagesPerTick;
-        fl::task mTask;  // Task object (stored to allow dynamic interval changes)
+        fl::task::Handle mTask;  // Task object (stored to allow dynamic interval changes)
     };
 
 } // namespace detail
@@ -252,7 +252,7 @@ inline AsyncLogger& get_async_logger_by_index() {
         detail::ActiveLoggerRegistry::instance().registerLogger(ptr);
 
         // Auto-instantiate service task on first logger access
-        // This ensures automatic background servicing via fl::delay() and fl::Scheduler
+        // This ensures automatic background servicing via fl::delay() and fl::task::Scheduler
         (void)detail::AsyncLoggerServiceTask::instance();
 
         return ptr;

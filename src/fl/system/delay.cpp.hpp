@@ -20,7 +20,7 @@
 #include "platforms/coroutine_runtime.h"
 
 #if SKETCH_HAS_LOTS_OF_MEMORY
-#include "fl/stl/async.h"
+#include "fl/task/executor.h"
 #endif
 
 // Include stub time header for delay override check (only on stub platform)
@@ -184,7 +184,7 @@ void delay(u32 ms, bool run_async) {
 #endif
 
   if (run_async && ms > 0) {
-    async_run(ms * 1000);
+    task::run(ms * 1000);
   } else {
     fl::platforms::delay(ms);  // Use platform layer for raw delay
   }

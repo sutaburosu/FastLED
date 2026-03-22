@@ -1,6 +1,6 @@
 #pragma once
 
-#include "fl/promise.h"
+#include "fl/task/promise.h"
 #include "fl/net/http/fetch.h"  // Includes response class  // IWYU pragma: keep
 #include "fl/stl/string.h"
 #include "fl/stl/url.h"
@@ -35,7 +35,7 @@ public:
     /// @param url URL to fetch
     /// @param opts Fetch options (method, headers, etc.)
     /// @param promise Promise to resolve when complete
-    FetchRequest(const fl::string& url, const FetchOptions& opts, fl::promise<Response> promise);
+    FetchRequest(const fl::string& url, const FetchOptions& opts, fl::task::Promise<Response> promise);
 
     /// @brief Destructor - closes socket if still open
     ~FetchRequest();
@@ -54,7 +54,7 @@ public:
 
 private:
     State mState;
-    fl::promise<Response> mPromise;
+    fl::task::Promise<Response> mPromise;
 
     // Parsed URL
     fl::url mParsedUrl;

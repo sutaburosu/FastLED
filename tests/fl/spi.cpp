@@ -9,7 +9,7 @@
 #include "fl/stl/new.h"
 #include "test.h"
 #include "fl/system/log.h"
-#include "fl/promise.h"
+#include "fl/task/promise.h"
 #include "fl/stl/result.h"
 #include "fl/stl/span.h"
 #include "fl/spi/config.h"
@@ -189,7 +189,7 @@ FL_TEST_CASE("Device initialization with begin()") {
         Config cfg(18, 23);
         Device spi(cfg);
 
-        fl::optional<fl::Error> result = spi.begin();
+        fl::optional<fl::task::Error> result = spi.begin();
         FL_CHECK(!result);  // No error means success
         FL_CHECK(spi.isReady());
     }
@@ -198,12 +198,12 @@ FL_TEST_CASE("Device initialization with begin()") {
         Config cfg(18, 23);
         Device spi(cfg);
 
-        fl::optional<fl::Error> result1 = spi.begin();
+        fl::optional<fl::task::Error> result1 = spi.begin();
         FL_CHECK(!result1);  // No error means success
         FL_CHECK(spi.isReady());
 
         // Second begin() should also succeed
-        fl::optional<fl::Error> result2 = spi.begin();
+        fl::optional<fl::task::Error> result2 = spi.begin();
         FL_CHECK(!result2);  // No error means success
         FL_CHECK(spi.isReady());
     }
@@ -230,7 +230,7 @@ FL_TEST_CASE("Device initialization with begin()") {
         FL_CHECK(!spi.isReady());
 
         // Second cycle
-        fl::optional<fl::Error> result = spi.begin();
+        fl::optional<fl::task::Error> result = spi.begin();
         FL_CHECK(!result);  // No error means success
         FL_CHECK(spi.isReady());
         spi.end();
@@ -315,7 +315,7 @@ FL_TEST_CASE("Device configuration updates") {
         cfg.clock_speed_hz = 10000000;
         Device spi(cfg);
 
-        fl::optional<fl::Error> result = spi.setClockSpeed(20000000);
+        fl::optional<fl::task::Error> result = spi.setClockSpeed(20000000);
         FL_CHECK(!result);  // No error means success
 
         const Config& stored = spi.getConfig();
@@ -349,8 +349,8 @@ FL_TEST_CASE("Multiple devices on different pins") {
         Device spi1(cfg1);
         Device spi2(cfg2);
 
-        fl::optional<fl::Error> result1 = spi1.begin();
-        fl::optional<fl::Error> result2 = spi2.begin();
+        fl::optional<fl::task::Error> result1 = spi1.begin();
+        fl::optional<fl::task::Error> result2 = spi2.begin();
 
         FL_CHECK(!result1);  // No error means success
         FL_CHECK(!result2);  // No error means success
@@ -524,7 +524,7 @@ FL_TEST_CASE("Device transmit operations") {
             data[i] = static_cast<uint8_t>(i);
         }
 
-        fl::optional<fl::Error> result = spi.transmit(buffer, false);  // Blocking
+        fl::optional<fl::task::Error> result = spi.transmit(buffer, false);  // Blocking
         FL_CHECK(!result);  // No error means success
         FL_CHECK(!spi.isBusy());
 
@@ -536,7 +536,7 @@ FL_TEST_CASE("Device transmit operations") {
         Device spi(cfg);
 
         DMABuffer buffer(64);
-        fl::optional<fl::Error> result = spi.transmit(buffer, false);
+        fl::optional<fl::task::Error> result = spi.transmit(buffer, false);
 
         FL_CHECK(result.has_value());  // Error present means failure
     }
@@ -547,7 +547,7 @@ FL_TEST_CASE("Device transmit operations") {
         spi.begin();
 
         DMABuffer invalid_buffer(SPIError::ALLOCATION_FAILED);
-        fl::optional<fl::Error> result = spi.transmit(invalid_buffer, false);
+        fl::optional<fl::task::Error> result = spi.transmit(invalid_buffer, false);
 
         FL_CHECK(result.has_value());  // Error present means failure
 
@@ -859,7 +859,7 @@ FL_TEST_CASE("Device writeAsync operations") {
     FL_SUBCASE("Basic writeAsync succeeds and returns Transaction") {
         Config cfg(18, 19);
         Device spi(cfg);
-        fl::optional<fl::Error> begin_result = spi.begin();
+        fl::optional<fl::task::Error> begin_result = spi.begin();
         FL_REQUIRE(!begin_result);  // Must succeed for test to continue
 
         uint8_t data[4] = {0x01, 0x02, 0x03, 0x04};
@@ -1212,7 +1212,7 @@ FL_TEST_CASE("Transaction lifecycle") {
         Transaction txn = fl::move(result.value());
         FL_CHECK(txn.wait());
 
-        fl::optional<fl::Error> txn_result = txn.getResult();
+        fl::optional<fl::task::Error> txn_result = txn.getResult();
         FL_CHECK(!txn_result);  // No error means success
 
         spi.end();
@@ -1266,7 +1266,7 @@ FL_TEST_CASE("Device configuration management") {
         Device spi(cfg);
 
         // Update clock speed before initialization
-        fl::optional<fl::Error> result = spi.setClockSpeed(20000000);  // 20 MHz
+        fl::optional<fl::task::Error> result = spi.setClockSpeed(20000000);  // 20 MHz
         FL_CHECK(!result);  // No error means success
 
         // Verify configuration was updated
@@ -1281,7 +1281,7 @@ FL_TEST_CASE("Device configuration management") {
         FL_CHECK(!spi.begin());  // No error means success
 
         // Update clock speed after initialization
-        fl::optional<fl::Error> result = spi.setClockSpeed(15000000);  // 15 MHz
+        fl::optional<fl::task::Error> result = spi.setClockSpeed(15000000);  // 15 MHz
         FL_CHECK(!result);  // No error means success
 
         // Verify configuration was updated
@@ -1299,7 +1299,7 @@ FL_TEST_CASE("Device configuration management") {
         Device spi(cfg);
 
         // Setting to zero should succeed (though may not be practical)
-        fl::optional<fl::Error> result = spi.setClockSpeed(0);
+        fl::optional<fl::task::Error> result = spi.setClockSpeed(0);
         FL_CHECK(!result);  // No error means success
         FL_CHECK(spi.getConfig().clock_speed_hz == 0);
     }
@@ -1310,7 +1310,7 @@ FL_TEST_CASE("Device configuration management") {
 
         // Setting to very high speed should succeed
         // (hardware will clamp to maximum supported speed)
-        fl::optional<fl::Error> result = spi.setClockSpeed(80000000);  // 80 MHz
+        fl::optional<fl::task::Error> result = spi.setClockSpeed(80000000);  // 80 MHz
         FL_CHECK(!result);  // No error means success
         FL_CHECK(spi.getConfig().clock_speed_hz == 80000000);
     }
@@ -1322,7 +1322,7 @@ FL_TEST_CASE("SPI mode configuration") {
         cfg.spi_mode = 0;
 
         Device spi(cfg);
-        fl::optional<fl::Error> result = spi.begin();
+        fl::optional<fl::task::Error> result = spi.begin();
         FL_CHECK(!result);  // No error means success
 
         spi.end();
@@ -1333,7 +1333,7 @@ FL_TEST_CASE("SPI mode configuration") {
         cfg.spi_mode = 1;
 
         Device spi(cfg);
-        fl::optional<fl::Error> result = spi.begin();
+        fl::optional<fl::task::Error> result = spi.begin();
         // Should succeed despite warning (mode is ignored)
         FL_CHECK(!result);  // No error means success
 
@@ -1345,7 +1345,7 @@ FL_TEST_CASE("SPI mode configuration") {
         cfg.spi_mode = 2;
 
         Device spi(cfg);
-        fl::optional<fl::Error> result = spi.begin();
+        fl::optional<fl::task::Error> result = spi.begin();
         FL_CHECK(!result);  // No error means success
 
         spi.end();
@@ -1356,7 +1356,7 @@ FL_TEST_CASE("SPI mode configuration") {
         cfg.spi_mode = 3;
 
         Device spi(cfg);
-        fl::optional<fl::Error> result = spi.begin();
+        fl::optional<fl::task::Error> result = spi.begin();
         FL_CHECK(!result);  // No error means success
 
         spi.end();
@@ -1367,7 +1367,7 @@ FL_TEST_CASE("SPI mode configuration") {
         cfg.spi_mode = 4;  // Invalid
 
         Device spi(cfg);
-        fl::optional<fl::Error> result = spi.begin();
+        fl::optional<fl::task::Error> result = spi.begin();
         FL_CHECK(result.has_value());  // Error present means failure
     }
 
@@ -1376,7 +1376,7 @@ FL_TEST_CASE("SPI mode configuration") {
         cfg.spi_mode = 255;  // Very invalid
 
         Device spi(cfg);
-        fl::optional<fl::Error> result = spi.begin();
+        fl::optional<fl::task::Error> result = spi.begin();
         FL_CHECK(result.has_value());  // Error present means failure
     }
 

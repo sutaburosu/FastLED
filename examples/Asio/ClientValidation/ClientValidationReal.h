@@ -22,7 +22,7 @@
 
 #include "fl/stl/asio/http/server.h"
 #include "fl/net/http/fetch.h"
-#include "fl/stl/async.h"
+#include "fl/task/executor.h"
 #include <FastLED.h>
 
 // For signaling test completion
@@ -74,8 +74,8 @@ void updateLEDs() {
 void test_json_endpoint() {
     FL_WARN("\n=== Test 1: GET /json (Slideshow Data) ===");
 
-    fl::promise<fl::net::http::Response> promise = fl::net::http::fetch_get("http://localhost:8081/json");
-    fl::promise_result<fl::net::http::Response> result = fl::await_top_level(promise);
+    fl::task::Promise<fl::net::http::Response> promise = fl::net::http::fetch_get("http://localhost:8081/json");
+    fl::task::PromiseResult<fl::net::http::Response> result = fl::task::await_top_level(promise);
 
     if (!result.ok()) {
         FL_WARN("✗ FAILED: " << result.error_message());
@@ -124,8 +124,8 @@ void test_json_endpoint() {
 void test_get_endpoint() {
     FL_WARN("\n=== Test 2: GET /get (Request Echo) ===");
 
-    fl::promise<fl::net::http::Response> promise = fl::net::http::fetch_get("http://localhost:8081/get");
-    fl::promise_result<fl::net::http::Response> result = fl::await_top_level(promise);
+    fl::task::Promise<fl::net::http::Response> promise = fl::net::http::fetch_get("http://localhost:8081/get");
+    fl::task::PromiseResult<fl::net::http::Response> result = fl::task::await_top_level(promise);
 
     if (!result.ok()) {
         FL_WARN("✗ FAILED: " << result.error_message());
@@ -169,8 +169,8 @@ void test_get_endpoint() {
 void test_ping_endpoint() {
     FL_WARN("\n=== Test 3: GET /ping (Health Check) ===");
 
-    fl::promise<fl::net::http::Response> promise = fl::net::http::fetch_get("http://localhost:8081/ping");
-    fl::promise_result<fl::net::http::Response> result = fl::await_top_level(promise);
+    fl::task::Promise<fl::net::http::Response> promise = fl::net::http::fetch_get("http://localhost:8081/ping");
+    fl::task::PromiseResult<fl::net::http::Response> result = fl::task::await_top_level(promise);
 
     if (!result.ok()) {
         FL_WARN("✗ FAILED: " << result.error_message());

@@ -29,7 +29,7 @@
 #include "fl/chipsets/led_timing.h"
 #include "fl/system/log.h"
 #include "fl/system/delay.h"
-#include "fl/stl/async.h"
+#include "fl/task/executor.h"
 #include "fl/system/log.h"
 #include "fl/system/log.h"
 #include "fl/system/pin.h"
@@ -144,7 +144,7 @@ class ChannelEngineRMTImpl : public ChannelEngineRMT {
         int timeout_iterations = 100000; // 10 seconds at 100us per iteration
         DriverState state = poll();
         while (state.state != DriverState::READY && state.state != DriverState::ERROR && timeout_iterations > 0) {
-            async_run(250, AsyncFlags::SYSTEM);
+            task::run(250, task::ExecFlags::SYSTEM);
             timeout_iterations--;
             state = poll();
         }

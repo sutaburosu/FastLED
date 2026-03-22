@@ -1,4 +1,4 @@
-// ok standalone
+
 #pragma once
 
 #include "test.h"

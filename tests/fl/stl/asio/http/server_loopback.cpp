@@ -1,4 +1,4 @@
-// ok standalone
+
 /// Phase 3: Internal Loopback Test
 /// Tests HTTP server by making client requests from within the test
 
@@ -8,7 +8,7 @@
 #include "fl/stl/asio/http/server.h"
 #include "fl/net/http/fetch.h"
 #include "fl/system/log.h"
-#include "fl/stl/async.h"
+#include "fl/task/executor.h"
 
 int main() {
     FL_WARN("Phase 3: Internal Loopback Test");
@@ -53,8 +53,8 @@ int main() {
         FL_WARN("\nTest 1: GET /");
         server.update();  // Process any pending
 
-        fl::promise<fl::net::http::Response> promise = fl::net::http::fetch_get("http://localhost:47801/");
-        fl::promise_result<fl::net::http::Response> result = fl::await_top_level(promise);
+        fl::task::Promise<fl::net::http::Response> promise = fl::net::http::fetch_get("http://localhost:47801/");
+        fl::task::PromiseResult<fl::net::http::Response> result = fl::task::await_top_level(promise);
 
         if (!result.ok()) {
             FL_WARN("  ✗ FAILED: " << result.error_message());
@@ -81,8 +81,8 @@ int main() {
         FL_WARN("\nTest 2: GET /ping");
         server.update();
 
-        fl::promise<fl::net::http::Response> promise = fl::net::http::fetch_get("http://localhost:47801/ping");
-        fl::promise_result<fl::net::http::Response> result = fl::await_top_level(promise);
+        fl::task::Promise<fl::net::http::Response> promise = fl::net::http::fetch_get("http://localhost:47801/ping");
+        fl::task::PromiseResult<fl::net::http::Response> result = fl::task::await_top_level(promise);
 
         if (!result.ok()) {
             FL_WARN("  ✗ FAILED: " << result.error_message());
@@ -109,8 +109,8 @@ int main() {
         FL_WARN("\nTest 3: GET /test (JSON)");
         server.update();
 
-        fl::promise<fl::net::http::Response> promise = fl::net::http::fetch_get("http://localhost:47801/test");
-        fl::promise_result<fl::net::http::Response> result = fl::await_top_level(promise);
+        fl::task::Promise<fl::net::http::Response> promise = fl::net::http::fetch_get("http://localhost:47801/test");
+        fl::task::PromiseResult<fl::net::http::Response> result = fl::task::await_top_level(promise);
 
         if (!result.ok()) {
             FL_WARN("  ✗ FAILED: " << result.error_message());

@@ -65,7 +65,7 @@ struct Transaction::Impl {
     Device* device;                     ///< Back-reference to device
     bool completed;                     ///< Whether transaction has completed
     bool cancelled;                     ///< Whether transaction was cancelled
-    fl::optional<fl::Error> result;     ///< Result of the transaction (nullopt = success)
+    fl::optional<fl::task::Error> result;     ///< Result of the transaction (nullopt = success)
     u32 timeout_ms;                ///< Timeout value in milliseconds
 
     // Platform-specific completion tracking

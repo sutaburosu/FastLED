@@ -1,7 +1,7 @@
 #pragma once
 
 #include "fl/net/http/fetch_request.h"
-#include "fl/stl/async.h"
+#include "fl/task/executor.h"
 #include "fl/system/log.h"
 #include "fl/stl/int.h"
 
@@ -66,7 +66,7 @@ namespace fl {
 namespace net {
 namespace http {
 
-FetchRequest::FetchRequest(const fl::string& url, const FetchOptions& opts, fl::promise<Response> prom)
+FetchRequest::FetchRequest(const fl::string& url, const FetchOptions& opts, fl::task::Promise<Response> prom)
     : mState(DNS_LOOKUP)
     , mPromise(prom)
     , mParsedUrl(url)
@@ -117,7 +117,7 @@ void FetchRequest::update() {
 
 void FetchRequest::handle_dns_lookup() {
     // Pump async system before DNS to keep server responsive
-    fl::async_run(1000);
+    fl::task::run(1000);
 
     FL_WARN("[FETCH] Resolving hostname: " << mHostname);
 
@@ -126,7 +126,7 @@ void FetchRequest::handle_dns_lookup() {
     mDnsResult = gethostbyname(mHostname.c_str());
 
     // Pump async system after DNS to resume server pumping
-    fl::async_run(1000);
+    fl::task::run(1000);
 
     if (!mDnsResult) {
         complete_error("DNS lookup failed");
@@ -341,7 +341,7 @@ void FetchRequest::complete_error(const char* message) {
     mState = FAILED;
 
     if (mPromise.valid() && !mPromise.is_completed()) {
-        mPromise.complete_with_error(Error(message));
+        mPromise.complete_with_error(fl::task::Error(message));
     }
 }
 
