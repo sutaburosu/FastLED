@@ -212,6 +212,18 @@ def build_library(build_dir: Path, verbose: bool = False) -> tuple[bool, bool]:
             print("[WASM] Library up-to-date")
         return True, False
 
+    # Delete stale thin archive before rebuild. When sources change, the
+    # existing thin archive may reference .o files from renamed/deleted
+    # sources. The 'r' flag in emar reads existing members first and fails
+    # on missing paths. Deleting forces a fresh archive.
+    library_archive = build_dir / "ci" / "meson" / "wasm" / "libfastled.a"
+    if library_archive.exists():
+        try:
+            library_archive.unlink()
+            print("[WASM] Deleted stale archive (source fingerprint changed)")
+        except OSError as e:
+            print(f"[WASM] Warning: Could not delete stale archive: {e}")
+
     cmd = [get_meson_executable(), "compile", "-C", str(build_dir), "fastled"]
     if verbose:
         cmd.append("-v")
@@ -219,6 +231,25 @@ def build_library(build_dir: Path, verbose: bool = False) -> tuple[bool, bool]:
     print("[WASM] Building libfastled.a...")
     result = subprocess.run(cmd, cwd=PROJECT_ROOT)
     if result.returncode != 0:
+        # Self-healing: if a thin archive exists after failure, it may have
+        # stale member references. Delete and retry once.
+        if library_archive.exists():
+            try:
+                with open(library_archive, "rb") as f:
+                    is_thin = f.read(8) == b"!<thin>\n"
+            except OSError:
+                is_thin = False
+            if is_thin:
+                print("[WASM] Build failed with thin archive present, retrying...")
+                try:
+                    library_archive.unlink()
+                except OSError:
+                    pass
+                retry = subprocess.run(cmd, cwd=PROJECT_ROOT)
+                if retry.returncode == 0:
+                    _save_library_fingerprint(build_dir)
+                    print("[WASM] Library build successful (after archive cleanup)")
+                    return True, True
         print(f"[WASM] Library build failed with return code {result.returncode}")
         return False, False
 
