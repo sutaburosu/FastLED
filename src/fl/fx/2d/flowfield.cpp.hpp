@@ -15,7 +15,8 @@ namespace fl {
 // ===========================================================================
 
 FlowField::FlowField(const XYMap &xyMap, const Params &params)
-    : Fx2d(xyMap), mParams(params) {}
+    : Fx2d(xyMap), mParams(params),
+      mNoiseBias(xyMap.getWidth(), xyMap.getHeight(), 0.01f, 0.5f) {}
 
 void FlowField::draw(DrawContext context) {
     if (!mInitialized) {
@@ -30,7 +31,27 @@ void FlowField::draw(DrawContext context) {
         dt_ms = 0;
     }
     u32 t_ms = context.now - mT0;
+    mNoiseBias.update(dt_ms * 0.001f);
     drawImpl(context, dt_ms, t_ms);
+}
+
+void FlowField::noisePunch(float amplitude, BumpShape shape) {
+    float cx = getWidth() * 0.5f;
+    float cy = getHeight() * 0.5f;
+    float wx = getWidth() * 0.4f;
+    float wy = getHeight() * 0.4f;
+    mNoiseBias.triggerX(cx, wx, amplitude, shape);
+    mNoiseBias.triggerY(cy, wy, amplitude, shape);
+}
+
+void FlowField::noisePunchX(float center, float width, float amplitude,
+                             BumpShape shape) {
+    mNoiseBias.triggerX(center, width, amplitude, shape);
+}
+
+void FlowField::noisePunchY(float center, float width, float amplitude,
+                             BumpShape shape) {
+    mNoiseBias.triggerY(center, width, amplitude, shape);
 }
 
 // ===========================================================================
@@ -281,6 +302,14 @@ void FlowFieldFloat::flowPrepare(float t) {
         float v = mNoiseGenY.noise(i * kBaseFreq * mParams.noise_freq_y,
                                    t * -mParams.flow_speed_y);
         mYProf[i] = clampf(v * mParams.flow_amp_y, -1.0f, 1.0f);
+    }
+
+    // Apply noise bias (attack/decay bumps from noisePunch triggers).
+    for (int i = 0; i < w; i++) {
+        mXProf[i] = clampf(mXProf[i] + mNoiseBias.getX(i), -1.0f, 1.0f);
+    }
+    for (int i = 0; i < h; i++) {
+        mYProf[i] = clampf(mYProf[i] + mNoiseBias.getY(i), -1.0f, 1.0f);
     }
 }
 
@@ -765,6 +794,18 @@ void FlowFieldFP::flowPrepare(s16x16 t) {
         s16x16 v = s16x16::from_raw(noise_raw);
         s16x16 clamped = s16x16::clamp(v * mFlowAmpY_fp, neg_one, one);
         mState.y_prof[i] = clamped.raw();
+    }
+
+    // Apply noise bias (attack/decay bumps from noisePunch triggers).
+    for (int i = 0; i < w; i++) {
+        i32 bias_raw = s16x16(mNoiseBias.getX(i)).raw();
+        mState.x_prof[i] = clamp_q16(mState.x_prof[i] + bias_raw,
+                                      neg_one.raw(), one.raw());
+    }
+    for (int i = 0; i < h; i++) {
+        i32 bias_raw = s16x16(mNoiseBias.getY(i)).raw();
+        mState.y_prof[i] = clamp_q16(mState.y_prof[i] + bias_raw,
+                                      neg_one.raw(), one.raw());
     }
 }
 

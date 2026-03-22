@@ -8,6 +8,7 @@
 #include "fl/stl/pair.h"
 #include "fl/stl/vector.h"
 #include "fl/stl/allocator.h"
+#include "platforms/assert_defs.h"
 
 namespace fl {
 

@@ -333,3 +333,104 @@ FL_TEST_CASE("flowfield - base class pointer interface") {
     }
     FL_ASSERT(any_nonzero, "FlowFieldFP via base pointer should produce output");
 }
+
+// ---------------------------------------------------------------------------
+//  NoiseBias tests (moved from tests/fl/noise_bias.cpp)
+// ---------------------------------------------------------------------------
+
+FL_TEST_CASE("NoiseBias1D - constructor initializes to zero") {
+    NoiseBias1D bias(16, 0.01f, 0.5f);
+    FL_CHECK_EQ(bias.size(), 16);
+    for (u16 i = 0; i < 16; ++i) {
+        FL_CHECK_EQ(bias.get(i), 0.0f);
+    }
+}
+
+FL_TEST_CASE("NoiseBias1D - trigger produces nonzero at center") {
+    NoiseBias1D bias(16, 0.001f, 0.5f); // very fast attack
+    bias.trigger(8.0f, 5.0f, 1.0f, BumpShape::HalfSine);
+    bias.update(0.1f); // 100ms, well past attack tau
+    float center = bias.get(8);
+    FL_CHECK_GT(center, 0.5f);
+    FL_CHECK_GT(bias.get(7), 0.0f); // neighbors affected
+    FL_CHECK_EQ(bias.get(0), 0.0f); // far away unaffected
+}
+
+FL_TEST_CASE("NoiseBias1D - edges unaffected outside bump width") {
+    NoiseBias1D bias(16, 0.001f, 0.5f);
+    bias.trigger(8.0f, 4.0f, 1.0f);
+    bias.update(0.1f);
+    FL_CHECK_EQ(bias.get(0), 0.0f);
+    FL_CHECK_EQ(bias.get(15), 0.0f);
+}
+
+FL_TEST_CASE("NoiseBias1D - decay after trigger") {
+    NoiseBias1D bias(8, 0.001f, 0.1f); // fast attack, 100ms decay
+    bias.trigger(4.0f, 3.0f, 1.0f);
+    bias.update(0.01f); // attack
+    float peak = bias.get(4);
+    FL_CHECK_GT(peak, 0.0f);
+    for (int i = 0; i < 100; ++i) {
+        bias.update(0.01f);
+    }
+    FL_CHECK_LT(bias.get(4), peak * 0.1f);
+}
+
+FL_TEST_CASE("NoiseBias1D - multiple triggers accumulate") {
+    NoiseBias1D bias(16, 0.001f, 0.5f);
+    bias.trigger(8.0f, 3.0f, 0.5f);
+    bias.trigger(8.0f, 3.0f, 0.5f);
+    bias.update(0.1f);
+
+    NoiseBias1D single(16, 0.001f, 0.5f);
+    single.trigger(8.0f, 3.0f, 1.0f);
+    single.update(0.1f);
+
+    FL_CHECK_CLOSE(bias.get(8), single.get(8), 0.01f);
+}
+
+FL_TEST_CASE("NoiseBias1D - Gaussian shape peaks at center") {
+    NoiseBias1D bias(16, 0.001f, 0.5f);
+    bias.trigger(8.0f, 6.0f, 1.0f, BumpShape::Gaussian);
+    bias.update(0.1f);
+    FL_CHECK_GT(bias.get(8), bias.get(6));
+    FL_CHECK_GT(bias.get(8), 0.0f);
+}
+
+FL_TEST_CASE("NoiseBias1D - reset clears state") {
+    NoiseBias1D bias(8, 0.001f, 0.5f);
+    bias.trigger(4.0f, 3.0f, 1.0f);
+    bias.update(0.1f);
+    FL_CHECK_GT(bias.get(4), 0.0f);
+    bias.reset();
+    FL_CHECK_EQ(bias.get(4), 0.0f);
+}
+
+FL_TEST_CASE("NoiseBias2D - combined bias is additive") {
+    NoiseBias2D bias(16, 16, 0.001f, 0.5f);
+    bias.triggerX(8.0f, 3.0f, 0.5f);
+    bias.triggerY(4.0f, 3.0f, 0.3f);
+    bias.update(0.1f);
+    float combined = bias.get(8, 4);
+    float xOnly = bias.getX(8);
+    float yOnly = bias.getY(4);
+    FL_CHECK_CLOSE(combined, xOnly + yOnly, 0.001f);
+}
+
+FL_TEST_CASE("NoiseBias2D - dimensions") {
+    NoiseBias2D bias(16, 12, 0.01f, 0.5f);
+    FL_CHECK_EQ(bias.width(), 16);
+    FL_CHECK_EQ(bias.height(), 12);
+}
+
+FL_TEST_CASE("NoiseBias2D - reset clears both axes") {
+    NoiseBias2D bias(8, 8, 0.001f, 0.5f);
+    bias.triggerX(4.0f, 3.0f, 1.0f);
+    bias.triggerY(4.0f, 3.0f, 1.0f);
+    bias.update(0.1f);
+    FL_CHECK_GT(bias.getX(4), 0.0f);
+    FL_CHECK_GT(bias.getY(4), 0.0f);
+    bias.reset();
+    FL_CHECK_EQ(bias.getX(4), 0.0f);
+    FL_CHECK_EQ(bias.getY(4), 0.0f);
+}

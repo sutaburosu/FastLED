@@ -6,6 +6,8 @@
 #include "fl/stl/stdint.h"
 
 #include "crgb.h"
+#include "fl/math/filter/filter.h"
+#include "fl/math/math.h"
 #include "fl/stl/shared_ptr.h"
 #include "fl/fx/fx2d.h"
 #include "fl/math/xymap.h"
@@ -14,6 +16,131 @@
 #include "fl/math/fixed_point/s16x16.h"
 
 namespace fl {
+
+/// Shape function for NoiseBias triggers.
+enum class BumpShape : u8 {
+    HalfSine, ///< sin(pi * t), smooth bell, zero at edges
+    Gaussian   ///< exp(-0.5 * ((t-0.5)/sigma)^2), tighter peak
+};
+
+/// Per-position attack/decay bias for one axis.
+///
+/// Each position has an independent AttackDecayFilter<float>.
+/// On a trigger frame the filter input is the shaped amplitude (fast attack).
+/// On subsequent frames the input is 0 (slow decay back to baseline).
+class NoiseBias1D {
+  public:
+    /// @param size      Number of positions along this axis.
+    /// @param attackTau Attack time constant in seconds (fast rise).
+    /// @param decayTau  Decay time constant in seconds (slow fall).
+    NoiseBias1D(u16 size, float attackTau, float decayTau)
+        : mSize(size) {
+        mFilters.reserve(size);
+        for (u16 i = 0; i < size; ++i) {
+            mFilters.push_back(
+                AttackDecayFilter<float>(attackTau, decayTau, 0.0f));
+        }
+        mPending.resize(size);
+        for (u16 i = 0; i < size; ++i) {
+            mPending[i] = 0.0f;
+        }
+    }
+
+    /// Inject a shaped bump. Multiple triggers per frame accumulate additively.
+    void trigger(float center, float width, float amplitude,
+                 BumpShape shape = BumpShape::HalfSine) {
+        if (width <= 0.0f || amplitude == 0.0f || mSize == 0) {
+            return;
+        }
+        const float halfWidth = width * 0.5f;
+        int iStart = fl::max(0, static_cast<int>(fl::floorf(center - halfWidth)));
+        int iEnd = fl::min(static_cast<int>(mSize) - 1,
+                           static_cast<int>(fl::ceilf(center + halfWidth)));
+        for (int i = iStart; i <= iEnd; ++i) {
+            float t = (static_cast<float>(i) - (center - halfWidth)) / width;
+            t = fl::clamp(t, 0.0f, 1.0f);
+            float shaped = 0.0f;
+            switch (shape) {
+            case BumpShape::HalfSine:
+                shaped = fl::sinf(static_cast<float>(FL_PI) * t);
+                break;
+            case BumpShape::Gaussian: {
+                float u = (t - 0.5f) / 0.2f;
+                shaped = fl::expf(-0.5f * u * u);
+                break;
+            }
+            }
+            mPending[i] += amplitude * shaped;
+        }
+    }
+
+    /// Advance all filters by dt seconds.
+    void update(float dtSeconds) {
+        for (u16 i = 0; i < mSize; ++i) {
+            mFilters[i].update(mPending[i], dtSeconds);
+            mPending[i] = 0.0f;
+        }
+    }
+
+    float get(u16 i) const { return mFilters[i].value(); }
+    u16 size() const { return mSize; }
+
+    void reset() {
+        for (u16 i = 0; i < mSize; ++i) {
+            mFilters[i].reset(0.0f);
+            mPending[i] = 0.0f;
+        }
+    }
+
+  private:
+    fl::vector<AttackDecayFilter<float>> mFilters;
+    fl::vector<float> mPending;
+    u16 mSize;
+};
+
+/// Two-axis attack/decay bias for 2D effects (per-column X + per-row Y).
+class NoiseBias2D {
+  public:
+    NoiseBias2D(u16 width, u16 height, float attackTau, float decayTau)
+        : mXBias(width, attackTau, decayTau),
+          mYBias(height, attackTau, decayTau) {}
+
+    void triggerX(float center, float width, float amplitude,
+                  BumpShape shape = BumpShape::HalfSine) {
+        mXBias.trigger(center, width, amplitude, shape);
+    }
+
+    void triggerY(float center, float width, float amplitude,
+                  BumpShape shape = BumpShape::HalfSine) {
+        mYBias.trigger(center, width, amplitude, shape);
+    }
+
+    void update(float dtSeconds) {
+        mXBias.update(dtSeconds);
+        mYBias.update(dtSeconds);
+    }
+
+    float getX(u16 x) const { return mXBias.get(x); }
+    float getY(u16 y) const { return mYBias.get(y); }
+    float get(u16 x, u16 y) const { return mXBias.get(x) + mYBias.get(y); }
+
+    NoiseBias1D &x() { return mXBias; }
+    const NoiseBias1D &x() const { return mXBias; }
+    NoiseBias1D &y() { return mYBias; }
+    const NoiseBias1D &y() const { return mYBias; }
+
+    u16 width() const { return mXBias.size(); }
+    u16 height() const { return mYBias.size(); }
+
+    void reset() {
+        mXBias.reset();
+        mYBias.reset();
+    }
+
+  private:
+    NoiseBias1D mXBias;
+    NoiseBias1D mYBias;
+};
 
 /// SoA (Structure-of-Arrays) state for FlowFieldFP.
 /// All grid arrays are sized to (W*H + 3) & ~3 (padded to next multiple of 4)
@@ -124,6 +251,21 @@ class FlowField : public Fx2d {
     void setReverseXProfile(bool rev) { mParams.reverse_x_profile = rev; }
     void setShowFlowVectors(bool show) { mParams.show_flow_vectors = show; }
 
+    /// Trigger a noise punch on both axes at center with proportional width.
+    void noisePunch(float amplitude = 1.0f,
+                    BumpShape shape = BumpShape::HalfSine);
+
+    /// Trigger a noise punch on the X axis (columns).
+    void noisePunchX(float center, float width, float amplitude = 1.0f,
+                     BumpShape shape = BumpShape::HalfSine);
+
+    /// Trigger a noise punch on the Y axis (rows).
+    void noisePunchY(float center, float width, float amplitude = 1.0f,
+                     BumpShape shape = BumpShape::HalfSine);
+
+    NoiseBias2D &noiseBias() { return mNoiseBias; }
+    const NoiseBias2D &noiseBias() const { return mNoiseBias; }
+
     Params &getParams() { return mParams; }
     const Params &getParams() const { return mParams; }
 
@@ -136,6 +278,7 @@ class FlowField : public Fx2d {
     virtual void drawImpl(DrawContext context, u32 dt_ms, u32 t_ms) = 0;
 
     Params mParams;
+    NoiseBias2D mNoiseBias;
 
   private:
     u32 mLastFrameMs = 0;

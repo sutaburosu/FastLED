@@ -61,6 +61,8 @@ fl::UISlider numDots("Dots", 3, 1, 5, 1);
 fl::UIDropdown emitterMode("Emitter Mode", {"Lissajous", "Dots", "Both"});
 fl::UIGroup appearanceGroup("Appearance", endpointSpeed, colorShift, persistence, flowShift, numDots, emitterMode);
 
+fl::UIButton noisePunch("NoisePunch");
+
 fl::UIDropdown computeMode("Compute Mode", {"Float", "Fixed-Point (Fast)"});
 fl::UICheckbox showFlowVectors("Show Flow Vectors", false);
 fl::UIGroup debugGroup("Debug", computeMode, showFlowVectors);
@@ -96,6 +98,21 @@ void loop() {
     fx.setDotCount(numDots.as<int>());
     fx.setEmitterMode(emitterMode.as_int());
     fx.setShowFlowVectors(showFlowVectors);
+
+    if (noisePunch.clicked()) {
+        // 50% X axis, 50% Y axis; random position; random sign
+        bool pickX = random8() < 128;
+        float sign = (random8() < 128) ? 1.0f : -1.0f;
+        if (pickX) {
+            float cx = random8(0, fx.getWidth());
+            float w = fx.getWidth() * 0.4f;
+            fx.noisePunchX(cx, w, sign);
+        } else {
+            float cy = random8(0, fx.getHeight());
+            float h = fx.getHeight() * 0.4f;
+            fx.noisePunchY(cy, h, sign);
+        }
+    }
 
     fx.draw(ctx);
     FastLED.show();
