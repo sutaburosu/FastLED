@@ -57,11 +57,11 @@ template <typename T> class AtomicFake {
 
     // Basic atomic operations - fake implementation (not actually atomic)
     // Memory order parameters are accepted but ignored (no-op in single-threaded mode)
-    T load(memory_order = memory_order_seq_cst) const {
+    T load(memory_order = memory_order::memory_order_seq_cst) const {
         return mValue;
     }
 
-    void store(T value, memory_order = memory_order_seq_cst) {
+    void store(T value, memory_order = memory_order::memory_order_seq_cst) {
         mValue = value;
     }
     
@@ -71,7 +71,7 @@ template <typename T> class AtomicFake {
         return old;
     }
     
-    bool compare_exchange_weak(T& expected, T desired, memory_order = memory_order_seq_cst) {
+    bool compare_exchange_weak(T& expected, T desired, memory_order = memory_order::memory_order_seq_cst) {
         if (mValue == expected) {
             mValue = desired;
             return true;
@@ -81,7 +81,7 @@ template <typename T> class AtomicFake {
         }
     }
 
-    bool compare_exchange_strong(T& expected, T desired, memory_order = memory_order_seq_cst) {
+    bool compare_exchange_strong(T& expected, T desired, memory_order = memory_order::memory_order_seq_cst) {
         return compare_exchange_weak(expected, desired);
     }
     
