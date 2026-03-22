@@ -10,6 +10,7 @@
 #include "fl/math/math.h"
 #include "fl/stl/shared_ptr.h"
 #include "fl/fx/fx2d.h"
+#include "fl/fx/time.h"
 #include "fl/math/xymap.h"
 #include "fl/stl/align.h"
 #include "fl/stl/vector.h"
@@ -251,6 +252,10 @@ class FlowField : public Fx2d {
     void setReverseXProfile(bool rev) { mParams.reverse_x_profile = rev; }
     void setShowFlowVectors(bool show) { mParams.show_flow_vectors = show; }
 
+    /// Set time speed/scale (1.0 = normal, 0.5 = half speed, etc.)
+    void setSpeed(float speed) { mTimeWarp.setSpeed(speed); }
+    float speed() const { return mTimeWarp.scale(); }
+
     /// Trigger a noise punch on both axes at center with proportional width.
     void noisePunch(float amplitude = 1.0f,
                     BumpShape shape = BumpShape::HalfSine);
@@ -281,9 +286,8 @@ class FlowField : public Fx2d {
     NoiseBias2D mNoiseBias;
 
   private:
-    u32 mLastFrameMs = 0;
-    u32 mT0 = 0;
-    bool mInitialized = false;
+    TimeWarp mTimeWarp;
+    u32 mLastWarpedMs = 0;
 };
 
 /// @brief Float-precision flow field implementation.

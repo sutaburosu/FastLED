@@ -19,18 +19,13 @@ FlowField::FlowField(const XYMap &xyMap, const Params &params)
       mNoiseBias(xyMap.getWidth(), xyMap.getHeight(), 0.01f, 0.5f) {}
 
 void FlowField::draw(DrawContext context) {
-    if (!mInitialized) {
-        mT0 = context.now;
-        mLastFrameMs = context.now;
-        mInitialized = true;
-    }
-    u32 dt_ms = context.now - mLastFrameMs;
-    mLastFrameMs = context.now;
+    u32 t_ms = mTimeWarp.update(context.now);
+    u32 dt_ms = t_ms - mLastWarpedMs;
+    mLastWarpedMs = t_ms;
     // Cap dt to prevent huge jumps when effect was inactive (mode switch).
     if (dt_ms > 500) {
         dt_ms = 0;
     }
-    u32 t_ms = context.now - mT0;
     mNoiseBias.update(dt_ms * 0.001f);
     drawImpl(context, dt_ms, t_ms);
 }
@@ -285,8 +280,9 @@ void FlowFieldFloat::flowPrepare(float t) {
     const float kBaseFreq = 0.23f;
 
     for (int i = 0; i < w; i++) {
-        float v = mNoiseGenX.noise(i * kBaseFreq * mParams.noise_freq_x,
-                                   t * -mParams.flow_speed_x);
+        float v = mNoiseGenX.noise(
+            i * kBaseFreq * mParams.noise_freq_x + t * mParams.flow_speed_x,
+            0.0f);
         mXProf[i] = clampf(v * mParams.flow_amp_x, -1.0f, 1.0f);
     }
 
@@ -299,8 +295,9 @@ void FlowFieldFloat::flowPrepare(float t) {
     }
 
     for (int i = 0; i < h; i++) {
-        float v = mNoiseGenY.noise(i * kBaseFreq * mParams.noise_freq_y,
-                                   t * -mParams.flow_speed_y);
+        float v = mNoiseGenY.noise(
+            i * kBaseFreq * mParams.noise_freq_y + t * mParams.flow_speed_y,
+            0.0f);
         mYProf[i] = clampf(v * mParams.flow_amp_y, -1.0f, 1.0f);
     }
 
@@ -763,13 +760,13 @@ void FlowFieldFP::flowPrepare(s16x16 t) {
     const i32 *fade_lut = mState.fade_lut;
 
     // Hoist loop-invariant products
-    s16x16 freqX = kBaseFreq * mNoiseFreqX_fp;  // was recomputed per pixel
-    s16x16 fyX = t * (s16x16() - mFlowSpeedX_fp);  // constant across all X pixels
+    s16x16 freqX = kBaseFreq * mNoiseFreqX_fp;
+    s16x16 scrollX = t * mFlowSpeedX_fp;  // time offset added to spatial coord
 
     for (int i = 0; i < w; i++) {
-        s16x16 fx = s16x16(i) * freqX;
+        s16x16 fx = s16x16(i) * freqX + scrollX;
         i32 noise_raw = perlin_s16x16::pnoise2d_raw(
-            fx.raw(), fyX.raw(), fade_lut, mPermX);
+            fx.raw(), 0, fade_lut, mPermX);
         s16x16 v = s16x16::from_raw(noise_raw);
         s16x16 clamped = s16x16::clamp(v * mFlowAmpX_fp, neg_one, one);
         mState.x_prof[i] = clamped.raw();
@@ -784,13 +781,13 @@ void FlowFieldFP::flowPrepare(s16x16 t) {
     }
 
     // Hoist loop-invariant products
-    s16x16 freqY = kBaseFreq * mNoiseFreqY_fp;  // was recomputed per pixel
-    s16x16 fyY = t * (s16x16() - mFlowSpeedY_fp);  // constant across all Y pixels
+    s16x16 freqY = kBaseFreq * mNoiseFreqY_fp;
+    s16x16 scrollY = t * mFlowSpeedY_fp;  // time offset added to spatial coord
 
     for (int i = 0; i < h; i++) {
-        s16x16 fx = s16x16(i) * freqY;
+        s16x16 fx = s16x16(i) * freqY + scrollY;
         i32 noise_raw = perlin_s16x16::pnoise2d_raw(
-            fx.raw(), fyY.raw(), fade_lut, mPermY);
+            fx.raw(), 0, fade_lut, mPermY);
         s16x16 v = s16x16::from_raw(noise_raw);
         s16x16 clamped = s16x16::clamp(v * mFlowAmpY_fp, neg_one, one);
         mState.y_prof[i] = clamped.raw();
@@ -986,9 +983,8 @@ void FlowFieldFP::drawFlowVectors(CRGB *leds) {
 void FlowFieldFP::drawImpl(DrawContext context, u32 dt_ms, u32 t_ms) {
     syncParams();
 
-    constexpr s16x16 ms_to_sec(0.001f);
-    s16x16 dt = s16x16(static_cast<i32>(dt_ms)) * ms_to_sec;
-    s16x16 t = s16x16(static_cast<i32>(t_ms)) * ms_to_sec;
+    s16x16 dt = s16x16(dt_ms * 0.001f);
+    s16x16 t = s16x16(t_ms * 0.001f);
 
     i32 dt_raw = dt.raw();
 
