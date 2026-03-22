@@ -49,6 +49,8 @@ fl::UISlider flowShift("Pixel Shift", 1.8f, 0.5f, 4.0f, 0.1f);
 fl::UISlider numDots("Dots", 3, 1, 5, 1);
 fl::UIDropdown emitterMode("Emitter Mode", {"Lissajous", "Dots", "Both"});
 fl::UIDropdown computeMode("Compute Mode", {"Float", "Fixed-Point (Fast)"});
+fl::UITitle title("FlowFields");
+fl::UIDescription description("Flow field visualization with noise-driven advection, creating fluid-like patterns from color emitters. Concept by Stefan Petrick, C++ implementation by 4wheeljive.");
 
 fl::FlowFieldFloat flowFieldFloat(xyMap);
 fl::FlowFieldFP flowFieldFP(xyMap);
