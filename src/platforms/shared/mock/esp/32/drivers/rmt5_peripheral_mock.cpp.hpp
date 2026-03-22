@@ -1,4 +1,6 @@
-/// @file rmt5_peripheral_mock.cpp
+// IWYU pragma: private
+
+/// @file rmt5_peripheral_mock.cpp.hpp
 /// @brief Mock RMT5 peripheral implementation for unit testing
 
 // This mock is only for host testing
