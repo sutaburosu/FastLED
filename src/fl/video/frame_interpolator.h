@@ -2,6 +2,7 @@
 
 #include "fl/stl/flat_map.h"
 #include "fl/stl/span.h"
+#include "fl/fx/frame.h"
 #include "fl/video/frame_tracker.h"
 
 namespace fl {
@@ -104,6 +105,4 @@ class FrameInterpolator {
 };
 
 } // namespace video
-using FrameInterpolator = video::FrameInterpolator;
-using FrameInterpolatorPtr = video::FrameInterpolatorPtr;
 } // namespace fl

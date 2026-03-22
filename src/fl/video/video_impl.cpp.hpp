@@ -2,6 +2,7 @@
 
 #include "fl/video/video_impl.h"
 
+#include "fl/fx/time.h"
 #include "fl/stl/assert.h"
 #include "fl/math/math.h"
 #include "fl/system/log.h"

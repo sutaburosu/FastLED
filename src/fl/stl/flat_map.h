@@ -1,6 +1,7 @@
 #pragma once
 
 #include "fl/stl/stdint.h"
+#include "fl/stl/assert.h"
 #include "fl/stl/algorithm.h"
 #include "fl/stl/comparators.h"
 #include "fl/stl/pair.h"

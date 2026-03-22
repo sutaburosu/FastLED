@@ -4,6 +4,7 @@
 #pragma once
 
 #include "fl/stl/asio/http/server.h"
+#include "fl/task/executor.h"
 #include "platforms/esp/is_esp.h"  // ok platform headers - for FL_IS_ESP32  // IWYU pragma: keep
 
 // Common includes needed by both POSIX/Windows and ESP32 implementations

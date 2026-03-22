@@ -17,6 +17,7 @@
 #include "fl/gfx/five_bit_hd_gamma.h"
 #include "fl/stl/compiler_control.h"
 #include "fl/math/scale8.h"
+#include "fl/math/math8.h"
 #include "eorder.h"
 #include "dither_mode.h"
 #include "pixel_iterator.h"
@@ -345,7 +346,7 @@ struct PixelController {
                 e[i] = s ? (256/s) + 1 : 0;
 
                 // Scale Q by the dither range to get current offset
-                d[i] = scale8(Q, e[i]);
+                d[i] = fl::scale8(Q, e[i]);
 
 #if (FASTLED_SCALE8_FIXED == 1)
                 // Adjust for scale8 implementation quirk
@@ -423,27 +424,27 @@ struct PixelController {
     /// @param pc reference to the pixel controller
     /// @param b the color byte to dither
     /// @returns b + dither offset, clamped to 255
-    template<int SLOT>  FASTLED_FORCE_INLINE static fl::u8 dither(PixelController & pc, fl::u8 b) { return b ? qadd8(b, pc.d[RO(SLOT)]) : 0; }
+    template<int SLOT>  FASTLED_FORCE_INLINE static fl::u8 dither(PixelController & pc, fl::u8 b) { return b ? fl::qadd8(b, pc.d[RO(SLOT)]) : 0; }
 
     /// Add explicit dither offset to pixel value (BEFORE scaling). Black pixels not dithered.
     /// @tparam SLOT The data slot in the output stream
     /// @param b the color byte to dither
     /// @param d dither offset to add
     /// @returns b + d, clamped to 255
-    template<int SLOT>  FASTLED_FORCE_INLINE static fl::u8 dither(PixelController & , fl::u8 b, fl::u8 d) { return b ? qadd8(b,d) : 0; }
+    template<int SLOT>  FASTLED_FORCE_INLINE static fl::u8 dither(PixelController & , fl::u8 b, fl::u8 d) { return b ? fl::qadd8(b,d) : 0; }
 
     /// Scale a value using the per-channel scale data
     /// @tparam SLOT The data slot in the output stream. This is used to select which byte of the output stream is being processed.
     /// @param pc reference to the pixel controller
     /// @param b the color byte to scale
     /// @see PixelController::mScale
-    template<int SLOT>  FASTLED_FORCE_INLINE static fl::u8 scale(PixelController & pc, fl::u8 b) { return scale8(b, pc.mColorAdjustment.premixed.raw[RO(SLOT)]); }
+    template<int SLOT>  FASTLED_FORCE_INLINE static fl::u8 scale(PixelController & pc, fl::u8 b) { return fl::scale8(b, pc.mColorAdjustment.premixed.raw[RO(SLOT)]); }
     
     /// Scale a value
     /// @tparam SLOT The data slot in the output stream. This is used to select which byte of the output stream is being processed.
     /// @param b the byte to scale
     /// @param scale the scale value
-    template<int SLOT>  FASTLED_FORCE_INLINE static fl::u8 scale(PixelController & , fl::u8 b, fl::u8 scale) { return scale8(b, scale); }
+    template<int SLOT>  FASTLED_FORCE_INLINE static fl::u8 scale(PixelController & , fl::u8 b, fl::u8 scale) { return fl::scale8(b, scale); }
 
     /// @name Composite shortcut functions for loading, dithering, and scaling
     /// These composite functions will load color data, dither it, and scale it
@@ -465,7 +466,7 @@ struct PixelController {
 
     /// Complete pipeline: load → dither → scale (explicit dither/scale values)
     template<int SLOT>  FASTLED_FORCE_INLINE static fl::u8 loadAndScale(PixelController & pc, int lane, fl::u8 d, fl::u8 scale) {
-        return scale8(pc.dither<SLOT>(pc, pc.loadByte<SLOT>(pc, lane), d), scale);
+        return fl::scale8(pc.dither<SLOT>(pc, pc.loadByte<SLOT>(pc, lane), d), scale);
     }
 
     /// Loads and scales a single byte for a given output slot and lane
@@ -473,7 +474,7 @@ struct PixelController {
     /// @param pc reference to the pixel controller
     /// @param lane the parallel output lane to read the byte for
     /// @param scale the scale data for the byte
-    template<int SLOT>  FASTLED_FORCE_INLINE static fl::u8 loadAndScale(PixelController & pc, int lane, fl::u8 scale) { return scale8(pc.loadByte<SLOT>(pc, lane), scale); }
+    template<int SLOT>  FASTLED_FORCE_INLINE static fl::u8 loadAndScale(PixelController & pc, int lane, fl::u8 scale) { return fl::scale8(pc.loadByte<SLOT>(pc, lane), scale); }
 
 
     /// A version of loadAndScale() that advances the output data pointer
