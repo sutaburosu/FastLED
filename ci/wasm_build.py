@@ -844,12 +844,16 @@ def link_wasm(
     # Fast path: reuse cached JS glue + run wasm-ld directly.
     # Disabled when asyncify is active — asyncify is a Binaryen pass that
     # only runs through emcc, not wasm-ld.
+    # Disabled when JSPI is active — JSPI requires emcc to generate JS
+    # wrappers (WebAssembly.Suspending/promising) for EM_ASYNC_JS imports
+    # and JSPI_EXPORTS. Stale cached JS glue won't have these wrappers.
     # Also disabled when SEPARATE_DWARF_URL is used — emcc handles DWARF
     # extraction as a post-link step that wasm-ld alone cannot perform.
     link_flags = get_link_flags(mode)
     uses_asyncify = any("ASYNCIFY" in f for f in link_flags)
+    uses_jspi = any("JSPI" in f for f in link_flags)
     needs_separate_dwarf = any("SEPARATE_DWARF" in f for f in link_flags)
-    if not uses_asyncify and not needs_separate_dwarf:
+    if not uses_asyncify and not uses_jspi and not needs_separate_dwarf:
         if _fast_link(sketch_object, cached_wasm, build_dir, verbose):
             _copy_linked_output(sketch_cache_dir, output_js)
             print(f"[WASM] Output: {output_js}")
