@@ -157,6 +157,92 @@ def _save_library_fingerprint(build_dir: Path) -> None:
         pass
 
 
+# Error patterns that indicate stale build state (kept in sync with compile.py)
+_STALE_BUILD_PATTERNS = [
+    "missing and no known rule to make it",
+    "no such file or directory",
+    "file not found",
+    "does not exist",
+    "has been modified since the precompiled header",
+]
+
+
+def _is_stale_build_error(output: str) -> bool:
+    """Check if build output indicates a stale build state error."""
+    output_lower = output.lower()
+    return any(pattern in output_lower for pattern in _STALE_BUILD_PATTERNS)
+
+
+def _recover_stale_wasm_build(build_dir: Path) -> bool:
+    """Recover from stale WASM build state by cleaning deps and reconfiguring.
+
+    Returns True if recovery succeeded and caller should retry the build.
+    """
+    try:
+        # Step 1: Clean stale ninja outputs
+        ninja_exe = shutil.which("ninja") or str(
+            Path(sys.prefix) / "Scripts" / "ninja.EXE"
+        )
+        try:
+            subprocess.run(
+                [ninja_exe, "-C", str(build_dir), "-t", "cleandead"],
+                capture_output=True,
+                text=True,
+                timeout=60,
+            )
+            print("[WASM] Cleaned stale Ninja outputs")
+        except Exception as e:
+            print(f"[WASM] Warning: ninja cleandead failed: {e}")
+
+        # Step 2: Delete .ninja_deps to force full dependency re-scan
+        ninja_deps = build_dir / ".ninja_deps"
+        if ninja_deps.exists():
+            try:
+                ninja_deps.unlink()
+                print("[WASM] Deleted stale .ninja_deps")
+            except OSError as e:
+                print(f"[WASM] Warning: Could not delete .ninja_deps: {e}")
+
+        # Step 3: Clear metadata caches
+        for name in [
+            "src_metadata.cache",
+            ".source_files_hash",
+            "library_src_fingerprint",
+        ]:
+            cache_file = build_dir / name
+            if cache_file.exists():
+                try:
+                    cache_file.unlink()
+                    print(f"[WASM] Deleted cache: {name}")
+                except OSError:
+                    pass
+
+        # Step 4: Force Meson reconfiguration
+        print("[WASM] Forcing Meson reconfiguration...")
+        # Extract mode from build dir name (e.g., "meson-wasm-quick" -> "quick")
+        mode = build_dir.name.replace("meson-wasm-", "")
+        cmd = [
+            get_meson_executable(),
+            "setup",
+            "--reconfigure",
+            "--cross-file",
+            str(CROSS_FILE),
+            str(build_dir),
+            f"-Dbuild_mode={mode}",
+        ]
+        result = subprocess.run(cmd, cwd=PROJECT_ROOT)
+        if result.returncode == 0:
+            print("[WASM] Self-healing reconfiguration complete")
+            return True
+        else:
+            print("[WASM] Self-healing reconfiguration failed")
+            return False
+
+    except Exception as e:
+        print(f"[WASM] Self-healing failed: {e}")
+        return False
+
+
 # ============================================================================
 # Build steps
 # ============================================================================
@@ -229,8 +315,29 @@ def build_library(build_dir: Path, verbose: bool = False) -> tuple[bool, bool]:
         cmd.append("-v")
 
     print("[WASM] Building libfastled.a...")
-    result = subprocess.run(cmd, cwd=PROJECT_ROOT)
+    result = subprocess.run(cmd, cwd=PROJECT_ROOT, capture_output=True, text=True)
     if result.returncode != 0:
+        # Print captured output so the user sees what happened
+        if result.stdout:
+            print(result.stdout, end="")
+        if result.stderr:
+            print(result.stderr, end="", file=sys.stderr)
+
+        # Self-healing: detect stale build state (missing/renamed/deleted files)
+        # and auto-reconfigure meson before retrying.
+        combined_output = (result.stdout or "") + (result.stderr or "")
+        if _is_stale_build_error(combined_output):
+            print("[WASM] Stale build state detected, auto-recovering...")
+            if _recover_stale_wasm_build(build_dir):
+                print("[WASM] Retrying build after recovery...")
+                retry = subprocess.run(cmd, cwd=PROJECT_ROOT)
+                if retry.returncode == 0:
+                    _save_library_fingerprint(build_dir)
+                    print(
+                        "[WASM] Library build successful (after stale build recovery)"
+                    )
+                    return True, True
+
         # Self-healing: if a thin archive exists after failure, it may have
         # stale member references. Delete and retry once.
         if library_archive.exists():
