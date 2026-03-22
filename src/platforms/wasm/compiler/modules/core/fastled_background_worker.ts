@@ -130,6 +130,7 @@ const workerState = {
 
   // Frame capture for main-thread recording (MediaRecorder runs on main thread)
   isCapturingFrames: false,
+  _isCapturingFrame: false, // Re-entrancy guard for captureAndTransferFrame()
   frameCaptureInterval: 16.67, // Default 60 FPS
   lastFrameCaptureTime: 0,
 
@@ -763,6 +764,13 @@ async function captureAndTransferFrame() {
     return;
   }
 
+  // Re-entrancy guard: prevent overlapping GPU readbacks that cause frame drops.
+  // Without this, multiple createImageBitmap() calls queue up, stalling the GPU pipeline.
+  if (workerState._isCapturingFrame) {
+    return;
+  }
+  workerState._isCapturingFrame = true;
+
   try {
     const now = performance.now();
     const elapsed = now - workerState.lastFrameCaptureTime;
@@ -791,6 +799,8 @@ async function captureAndTransferFrame() {
   } catch (error) {
     workerLog('ERROR', 'BACKGROUND_WORKER', 'Frame capture failed', error);
     // Don't stop the loop on capture failure, just log the error
+  } finally {
+    workerState._isCapturingFrame = false;
   }
 }
 

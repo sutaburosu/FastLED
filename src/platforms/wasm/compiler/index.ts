@@ -1254,7 +1254,7 @@ function handleWorkerFrameUpdate(payload) {
  * @param {HTMLElement} recordButton - The record button element
  */
 function initializeWorkerVideoRecorder(recordButton) {
-  console.log('Initializing main-thread video recorder with worker frame transfer');
+  console.log('Initializing video recorder for worker mode');
 
   // Check MediaRecorder support
   if (typeof MediaRecorder === 'undefined') {
@@ -1267,10 +1267,58 @@ function initializeWorkerVideoRecorder(recordButton) {
   recordButton.classList.add('visible');
   console.log('Record button made visible');
 
-  // Set up worker frame listener
-  setupWorkerFrameListener();
+  // Try direct capture from the main canvas. After transferControlToOffscreen(),
+  // the OffscreenCanvas content auto-syncs to the original HTMLCanvasElement.
+  // captureStream() can capture this displayed content directly, eliminating the
+  // expensive ImageBitmap→postMessage→mirror canvas pipeline.
+  const mainCanvas = document.getElementById('myCanvas');
+  let useDirectCapture = false;
+
+  if (mainCanvas) {
+    try {
+      const testStream = /** @type {HTMLCanvasElement} */ (mainCanvas).captureStream(0);
+      if (testStream && testStream.getVideoTracks().length > 0) {
+        testStream.getTracks().forEach((t) => t.stop());
+        useDirectCapture = true;
+        console.log('Direct canvas capture supported - using optimized recording pipeline (no ImageBitmap transfer)');
+      }
+    } catch (e) {
+      console.log('Direct canvas capture not supported, falling back to mirror canvas:', e.message);
+    }
+  }
+
+  if (!useDirectCapture) {
+    // Fall back to mirror canvas approach (worker sends ImageBitmap frames)
+    setupWorkerFrameListener();
+  }
 
   let isRecording = false;
+
+  /**
+   * Updates record button UI state
+   * @param {boolean} recording - Whether currently recording
+   */
+  function updateRecordButtonUI(recording) {
+    isRecording = recording;
+
+    if (recording) {
+      recordButton.classList.add('recording');
+      const recordIcon = /** @type {HTMLElement|null} */ (recordButton.querySelector('.record-icon'));
+      const stopIcon = /** @type {HTMLElement|null} */ (recordButton.querySelector('.stop-icon'));
+      if (recordIcon) recordIcon.style.display = 'none';
+      if (stopIcon) stopIcon.style.display = 'block';
+    } else {
+      recordButton.classList.remove('recording');
+      const recordIcon = /** @type {HTMLElement|null} */ (recordButton.querySelector('.record-icon'));
+      const stopIcon = /** @type {HTMLElement|null} */ (recordButton.querySelector('.stop-icon'));
+      if (recordIcon) recordIcon.style.display = 'block';
+      if (stopIcon) stopIcon.style.display = 'none';
+    }
+
+    if (window.updateRecordButtonTooltip) {
+      window.updateRecordButtonTooltip();
+    }
+  }
 
   // Handle record button click
   recordButton.addEventListener('click', async () => {
@@ -1282,83 +1330,74 @@ function initializeWorkerVideoRecorder(recordButton) {
     try {
       if (!isRecording) {
         // === START RECORDING ===
+        let recordingCanvas;
+        let recordingFps = 60;
 
-        // Send start message to worker to begin frame capture
-        const response = await window.fastLEDWorkerManager.sendMessageWithResponse({
-          type: 'start_recording',
-          payload: {
-            fps: 60,
-            settings: window.getVideoSettings ? window.getVideoSettings() : {}
+        if (useDirectCapture && mainCanvas) {
+          // Direct capture: record from the main canvas directly.
+          // Worker renders to OffscreenCanvas which auto-syncs to the HTMLCanvasElement.
+          // No ImageBitmap creation, no postMessage transfer, no mirror canvas needed.
+          recordingCanvas = mainCanvas;
+          console.log('Starting direct canvas capture recording');
+        } else {
+          // Mirror canvas fallback: tell worker to start frame capture
+          const response = await window.fastLEDWorkerManager.sendMessageWithResponse({
+            type: 'start_recording',
+            payload: {
+              fps: 60,
+              settings: window.getVideoSettings ? window.getVideoSettings() : {}
+            }
+          });
+
+          if (!response.success) {
+            throw new Error('Worker failed to start frame capture');
           }
-        });
 
-        if (!response.success) {
-          throw new Error('Worker failed to start frame capture');
+          console.log('Worker frame capture started:', response);
+          recordingFps = response.fps || 60;
+
+          // Wait for mirror canvas to be created (give frames time to arrive)
+          await new Promise((resolve) => {
+            setTimeout(resolve, 500);
+          });
+
+          if (!mirrorCanvas) {
+            throw new Error('Mirror canvas not created - no frames received from worker');
+          }
+
+          recordingCanvas = mirrorCanvas;
         }
 
-        console.log('Worker frame capture started:', response);
-
-        // Wait for mirror canvas to be created (give frames time to arrive)
-        await new Promise((resolve) => {
-          setTimeout(resolve, 500);
-        });
-
-        if (!mirrorCanvas) {
-          throw new Error('Mirror canvas not created - no frames received from worker');
-        }
-
-        // Create VideoRecorder on main thread with mirror canvas
+        // Create VideoRecorder with the chosen canvas
         const defaultSettings = window.getVideoSettings ? window.getVideoSettings() : {};
 
         mainThreadVideoRecorder = new VideoRecorder({
-          canvas: mirrorCanvas,
-          audioContext: null, // No audio for now
-          fps: response.fps || 60,
+          canvas: recordingCanvas,
+          audioContext: null,
+          fps: recordingFps,
           settings: {
             ...defaultSettings,
-            fps: undefined // Remove fps from settings to use constructor parameter
+            fps: undefined
           },
-          onStateChange: (recording) => {
-            isRecording = recording;
-
-            if (recording) {
-              recordButton.classList.add('recording');
-              const recordIcon = /** @type {HTMLElement|null} */ (recordButton.querySelector('.record-icon'));
-              const stopIcon = /** @type {HTMLElement|null} */ (recordButton.querySelector('.stop-icon'));
-              if (recordIcon) recordIcon.style.display = 'none';
-              if (stopIcon) stopIcon.style.display = 'block';
-            } else {
-              recordButton.classList.remove('recording');
-              const recordIcon = /** @type {HTMLElement|null} */ (recordButton.querySelector('.record-icon'));
-              const stopIcon = /** @type {HTMLElement|null} */ (recordButton.querySelector('.stop-icon'));
-              if (recordIcon) recordIcon.style.display = 'block';
-              if (stopIcon) stopIcon.style.display = 'none';
-            }
-
-            // Update tooltip
-            if (window.updateRecordButtonTooltip) {
-              window.updateRecordButtonTooltip();
-            }
-          }
+          onStateChange: updateRecordButtonUI
         });
 
-        // Start recording on main thread
         mainThreadVideoRecorder.startRecording();
-
-        console.log('Main-thread recording started with codec:', mainThreadVideoRecorder.selectedMimeType);
+        console.log('Recording started with codec:', mainThreadVideoRecorder.selectedMimeType,
+          useDirectCapture ? '(direct capture)' : '(mirror canvas)');
       } else {
         // === STOP RECORDING ===
-
-        // Stop recording on main thread
         if (mainThreadVideoRecorder) {
           mainThreadVideoRecorder.stopRecording();
         }
 
-        // Tell worker to stop frame capture
-        await window.fastLEDWorkerManager.sendMessageWithResponse({
-          type: 'stop_recording',
-          payload: {}
-        });
+        // Only tell worker to stop frame capture if using mirror canvas mode
+        if (!useDirectCapture) {
+          await window.fastLEDWorkerManager.sendMessageWithResponse({
+            type: 'stop_recording',
+            payload: {}
+          });
+        }
 
         console.log('Recording stopped');
       }
@@ -1369,7 +1408,7 @@ function initializeWorkerVideoRecorder(recordButton) {
     }
   });
 
-  console.log('Main-thread video recorder initialized with worker frame transfer');
+  console.log('Video recorder initialized:', useDirectCapture ? 'direct canvas capture' : 'mirror canvas fallback');
 }
 
 /**

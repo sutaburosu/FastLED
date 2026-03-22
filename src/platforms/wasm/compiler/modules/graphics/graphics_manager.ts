@@ -145,6 +145,18 @@ export class GraphicsManager {
     /** @type {number} */
     this.texHeight = 0;
 
+    /** @type {number} LED grid width (before display scaling) */
+    this.gridWidth = 0;
+
+    /** @type {number} LED grid height (before display scaling) */
+    this.gridHeight = 0;
+
+    /** @type {Object|null} Cached global bounds across all screenmaps */
+    this._cachedGlobalBounds = null;
+
+    /** @type {boolean} Whether bounds need recomputation */
+    this._boundsStale = true;
+
     this.initialize();
   }
 
@@ -190,6 +202,15 @@ export class GraphicsManager {
    */
   updateScreenMap(screenMapsData) {
     this.screenMaps = screenMapsData;
+    this._boundsStale = true;
+
+    // Pre-cache per-strip bounds to avoid recomputing in the render loop
+    for (const screenMap of Object.values(this.screenMaps)) {
+      if (screenMap && screenMap.strips) {
+        screenMap._cachedBounds = computeScreenMapBounds(screenMap);
+      }
+    }
+
     console.log('[GraphicsManager] ScreenMaps updated', {
       screenMapCount: Object.keys(screenMapsData || {}).length
     });
@@ -400,27 +421,46 @@ export class GraphicsManager {
 
     // Update canvas size based on composite screenMap dimensions
     if (Object.keys(this.screenMaps).length > 0 && this.canvas) {
-      // Calculate composite bounds across all screenmaps
-      let globalMinX = Infinity, globalMinY = Infinity;
-      let globalMaxX = -Infinity, globalMaxY = -Infinity;
+      // Cache bounds computation - only recompute when screenmaps change
+      if (this._boundsStale || !this._cachedGlobalBounds) {
+        let globalMinX = Infinity, globalMinY = Infinity;
+        let globalMaxX = -Infinity, globalMaxY = -Infinity;
 
-      for (const screenMap of Object.values(this.screenMaps)) {
-        const bounds = computeScreenMapBounds(screenMap);
-        globalMinX = Math.min(globalMinX, bounds.absMin[0]);
-        globalMinY = Math.min(globalMinY, bounds.absMin[1]);
-        globalMaxX = Math.max(globalMaxX, bounds.absMax[0]);
-        globalMaxY = Math.max(globalMaxY, bounds.absMax[1]);
+        for (const screenMap of Object.values(this.screenMaps)) {
+          const bounds = screenMap._cachedBounds || computeScreenMapBounds(screenMap);
+          globalMinX = Math.min(globalMinX, bounds.absMin[0]);
+          globalMinY = Math.min(globalMinY, bounds.absMin[1]);
+          globalMaxX = Math.max(globalMaxX, bounds.absMax[0]);
+          globalMaxY = Math.max(globalMaxY, bounds.absMax[1]);
+        }
+
+        // +1 for inclusive bounds (LED at max position needs a full pixel)
+        this._cachedGlobalBounds = {
+          minX: globalMinX, minY: globalMinY,
+          gridWidth: globalMaxX - globalMinX + 1,
+          gridHeight: globalMaxY - globalMinY + 1
+        };
+        this._boundsStale = false;
       }
 
-      const screenWidth = globalMaxX - globalMinX;
-      const screenHeight = globalMaxY - globalMinY;
+      this.gridWidth = this._cachedGlobalBounds.gridWidth;
+      this.gridHeight = this._cachedGlobalBounds.gridHeight;
+
+      // Display upscaling: canvas should be at least MIN_CANVAS_DIM on its longest side.
+      // This ensures recorded videos have usable resolution (e.g., 64x64 grid -> 640x640 canvas).
+      // WebGL NEAREST filtering provides crisp pixel-perfect upscaling at zero GPU cost.
+      const MIN_CANVAS_DIM = 640;
+      const maxDim = Math.max(this.gridWidth, this.gridHeight);
+      const displayScale = maxDim > 0 ? Math.max(1, Math.ceil(MIN_CANVAS_DIM / maxDim)) : 1;
+      const displayWidth = this.gridWidth * displayScale;
+      const displayHeight = this.gridHeight * displayScale;
 
       // Only update canvas size if it's different from current size
-      if (this.canvas.width !== screenWidth || this.canvas.height !== screenHeight) {
+      if (this.canvas.width !== displayWidth || this.canvas.height !== displayHeight) {
         // Try to resize canvas, but skip if it's been transferred to worker
         try {
-          this.canvas.width = screenWidth;
-          this.canvas.height = screenHeight;
+          this.canvas.width = displayWidth;
+          this.canvas.height = displayHeight;
         } catch (error) {
           // Canvas has been transferred to offscreen worker - this is expected
           console.log('Canvas resize skipped - canvas is controlled by worker');
@@ -429,7 +469,7 @@ export class GraphicsManager {
 
         // Update WebGL viewport to match new canvas size
         if (this.gl) {
-          this.gl.viewport(0, 0, screenWidth, screenHeight);
+          this.gl.viewport(0, 0, displayWidth, displayHeight);
         }
       }
     }
@@ -437,9 +477,13 @@ export class GraphicsManager {
     const canvasWidth = this.gl.canvas.width;
     const canvasHeight = this.gl.canvas.height;
 
-    // Check if we need to reallocate the texture - optimized to reduce reallocations
-    const newTexWidth = 2 ** Math.ceil(Math.log2(canvasWidth));
-    const newTexHeight = 2 ** Math.ceil(Math.log2(canvasHeight));
+    // Texture sized from LED grid dimensions, not canvas display dimensions.
+    // This keeps the texture small (e.g., 64x64) while the canvas can be much larger
+    // (e.g., 640x640). WebGL NEAREST filtering handles the crisp upscaling.
+    const texBaseWidth = this.gridWidth || canvasWidth;
+    const texBaseHeight = this.gridHeight || canvasHeight;
+    const newTexWidth = 2 ** Math.ceil(Math.log2(texBaseWidth));
+    const newTexHeight = 2 ** Math.ceil(Math.log2(texBaseHeight));
 
     if (this.texWidth !== newTexWidth || this.texHeight !== newTexHeight) {
       this.texWidth = newTexWidth;
@@ -503,7 +547,7 @@ export class GraphicsManager {
       const stripData = screenMap.strips[strip_id];
       const pixelCount = data.length / 3;
       const { map } = stripData;
-      const bounds = computeScreenMapBounds(screenMap);
+      const bounds = screenMap._cachedBounds || computeScreenMapBounds(screenMap);
       const min_x = bounds.absMin[0];
       const min_y = bounds.absMin[1];
       const x_array = map.x;
@@ -524,11 +568,11 @@ export class GraphicsManager {
         y -= min_y;
 
         // Can't access the texture with floating point.
-        x = Number.parseInt(x, 10);
-        y = Number.parseInt(y, 10);
+        x = x | 0;
+        y = y | 0;
 
-        // check to make sure that the pixel is within the canvas
-        if (x < 0 || x >= canvasWidth || y < 0 || y >= canvasHeight) {
+        // check to make sure that the pixel is within the grid
+        if (x < 0 || x >= this.gridWidth || y < 0 || y >= this.gridHeight) {
           console.warn(
             `Strip ${strip_id}: Pixel ${i} is outside the canvas at ${x}, ${y}, skipping update`,
           );
@@ -545,7 +589,7 @@ export class GraphicsManager {
             const py = y + dy;
 
             // Check bounds
-            if (px >= 0 && px < canvasWidth && py >= 0 && py < canvasHeight) {
+            if (px >= 0 && px < this.gridWidth && py >= 0 && py < this.gridHeight) {
               const srcIndex = i * 3;
               const destIndex = (py * this.texWidth + px) * 3;
               // Pixel data is already in 0-255 range, use directly
@@ -592,16 +636,19 @@ export class GraphicsManager {
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.texCoordBuffer);
     this.gl.vertexAttribPointer(texCoordLocation, 2, this.gl.FLOAT, false, 0, 0);
 
-    // Update texture coordinates based on actual canvas size
+    // Map the LED grid portion of the texture to the full (upscaled) canvas.
+    // WebGL NEAREST filtering handles crisp pixel-perfect upscaling.
+    const gridW = this.gridWidth || canvasWidth;
+    const gridH = this.gridHeight || canvasHeight;
     const texCoords = new Float32Array([
       0,
       0,
-      canvasWidth / this.texWidth,
+      gridW / this.texWidth,
       0,
       0,
-      canvasHeight / this.texHeight,
-      canvasWidth / this.texWidth,
-      canvasHeight / this.texHeight,
+      gridH / this.texHeight,
+      gridW / this.texWidth,
+      gridH / this.texHeight,
     ]);
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.texCoordBuffer);
     this.gl.bufferData(this.gl.ARRAY_BUFFER, texCoords, this.gl.STREAM_DRAW);
