@@ -3,6 +3,7 @@
 #include "fl/stl/stdint.h"
 #include "fl/stl/assert.h"
 #include "fl/stl/algorithm.h"
+#include "fl/stl/assert.h"  // IWYU pragma: keep
 #include "fl/stl/comparators.h"
 #include "fl/stl/pair.h"
 #include "fl/stl/vector.h"

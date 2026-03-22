@@ -11,6 +11,7 @@
 
 
 #include "fl/math/intmap.h"
+#include "fl/math/math8.h"
 #include "platforms/is_platform.h"
 
 #include "rgbw.h"

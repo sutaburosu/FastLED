@@ -1,6 +1,8 @@
 #pragma once
 
+#include "fl/fx/frame.h"
 #include "fl/stl/flat_map.h"
+#include "fl/stl/shared_ptr.h"
 #include "fl/stl/span.h"
 #include "fl/fx/frame.h"
 #include "fl/video/frame_tracker.h"
