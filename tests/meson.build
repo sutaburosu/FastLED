@@ -23,28 +23,34 @@ test_abs_include_args = [
   '-I' + meson.project_source_root() / 'src',  # for library.
 ]
 
-# Build precompiled header from test_pch.h (contains FastLED.h, doctest + common headers)
+# Build precompiled header from test_pch.h (contains FastLED.h + doctest + common headers)
 # Uses the same C++ compiler configured in meson_native.txt to ensure PCH compatibility
 # Wrapper script fixes the depfile to reference PCH output instead of temp .obj file
+#
+# NOTE: This PCH is standalone (not chained on fastled_pch). PCH chaining caused
+# persistent build failures because zccache/compile_pch.py caching could update
+# FastLED.h.pch mtime after test_pch.h.pch was built, making clang reject the
+# chain with "module file has a different size or modification time than expected".
+# Instead, test_pch.h directly #includes FastLED.h, making this PCH self-contained.
 cpp_compiler = meson.get_compiler('cpp')
 test_pch = custom_target('test_pch',
   input: 'test_pch.h',
   output: 'test_pch.h.pch',      # Only PCH is an output; .d file is depfile only
   depfile: 'test_pch.h.d',
-  depends: [fastled_pch],         # Ensure fastled_pch is built first (chained PCH)
+  depends: [fastled_lib],         # Ensure library is built first (tests link against it)
   command: [
     uv, 'run', 'python',
     meson.project_source_root() / 'ci/compile_pch.py',
     cpp_compiler.cmd_array(),
     '-c',                          # Suppress linker step (MinGW driver adds link job without -c)
     '-x', 'c++-header',           # Treat input as C++ header
-    '-include-pch', fastled_pch_dir / 'FastLED.h.pch',  # Chain: embed fastled PCH
     '@INPUT@',                     # test_pch.h
     '-o', '@OUTPUT@',              # test_pch.h.pch
     '-MD', '-MF', '@DEPFILE@',     # Generate dependency file (will be fixed by wrapper)
     unit_test_compile_args,        # Same flags as all tests
     '-fPIC',                       # Required: tests build as shared_library which needs PIC
     test_abs_include_args,
+    '-I' + meson.project_source_root() / 'src/platforms/stub',  # For Arduino.h in FastLED.h
     # STRICT PCH VALIDATION FLAGS (to catch invalidation issues):
     '-Werror=invalid-pch',                      # Treat invalid PCH as hard error
     '-verify-pch',                              # Load and verify PCH is not stale
@@ -163,7 +169,7 @@ shared_test_cpp_args = test_abs_include_args + unit_test_compile_args + [
     '-DTEST_DLL_MODE',
     '-include-pch', meson.current_build_dir() / 'test_pch.h.pch',
     '-Werror=invalid-pch',
-    '-fpch-validate-input-files-content',
+    '-fpch-validate-input-files-content',       # Validate PCH by content, not mtime
 ]
 
 test_shared_objs_lib = static_library('test_shared_objs',
