@@ -10,6 +10,7 @@ Usage:
 import argparse
 import hashlib
 import json
+import os
 import subprocess
 import sys
 import time
@@ -202,11 +203,25 @@ class ProfileRunner:
             Tuple of (success, output, pid_if_timeout)
         """
         # Start process without built-in timeout (we monitor manually)
+        # Add the DLL/shared library directory to PATH so the binary can find
+        # fastled.dll (or .so) at runtime.
+        env = os.environ.copy()
+        dll_dir = str(Path(f".build/meson-{self.build_mode}/ci/meson/native").resolve())
+        if "PATH" in env:
+            env["PATH"] = dll_dir + os.pathsep + env["PATH"]
+        else:
+            env["PATH"] = dll_dir
+        # Also set LD_LIBRARY_PATH for Linux
+        if "LD_LIBRARY_PATH" in env:
+            env["LD_LIBRARY_PATH"] = dll_dir + os.pathsep + env["LD_LIBRARY_PATH"]
+        else:
+            env["LD_LIBRARY_PATH"] = dll_dir
         proc = subprocess.Popen(
             cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
+            env=env,
         )
 
         start_time = time.time()

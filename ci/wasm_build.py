@@ -655,12 +655,20 @@ def _parse_wasm_ld_from_verbose(stderr_text: str) -> list[str] | None:
     return None
 
 
+def _link_cache_key(library_archive: Path) -> str:
+    """Hash library archive mtime+size to detect when the engine changed."""
+    st = library_archive.stat()
+    content = f"{st.st_mtime}:{st.st_size}".encode()
+    return hashlib.sha256(content).hexdigest()[:16]
+
+
 def _intercept_emcc_link(
     emcc_args: list[str],
     sketch_object: Path,
     cached_wasm: Path,
     build_dir: Path,
     cwd: str,
+    library_archive: Path | None = None,
 ) -> int:
     """Run emcc link as subprocess with verbose output to capture wasm-ld command.
 
@@ -725,6 +733,11 @@ def _intercept_emcc_link(
     cache_file = build_dir / "wasm_ld_args.json"
     cache_file.write_text(json.dumps(template), encoding="utf-8")
 
+    # Save cache key so _fast_link() can detect stale caches
+    if library_archive is not None and library_archive.exists():
+        cache_key_file = build_dir / "wasm_ld_args.key"
+        cache_key_file.write_text(_link_cache_key(library_archive), encoding="utf-8")
+
     # Clean up emcc temp dir (we've saved what we need)
     try:
         shutil.rmtree(str(emcc_temp_dir), ignore_errors=True)
@@ -738,6 +751,7 @@ def _fast_link(
     sketch_object: Path,
     cached_wasm: Path,
     build_dir: Path,
+    library_archive: Path | None = None,
     verbose: bool = False,
 ) -> bool:
     """Fast link using cached wasm-ld args + cached JS glue.
@@ -757,6 +771,22 @@ def _fast_link(
     cached_stub = build_dir / "libemscripten_js_symbols.so"
     if not cached_stub.exists():
         return False
+
+    # Invalidate cache if the library archive changed since last capture
+    cache_key_file = build_dir / "wasm_ld_args.key"
+    if library_archive is not None and library_archive.exists():
+        current_key = _link_cache_key(library_archive)
+        if cache_key_file.exists():
+            stored_key = cache_key_file.read_text(encoding="utf-8").strip()
+            if stored_key != current_key:
+                print("[WASM] Library changed — invalidating linker cache")
+                cache_file.unlink(missing_ok=True)
+                cache_key_file.unlink(missing_ok=True)
+                return False
+        else:
+            # No key file — can't verify, invalidate to be safe
+            cache_file.unlink(missing_ok=True)
+            return False
 
     try:
         template_args: list[str] = json.loads(cache_file.read_text(encoding="utf-8"))
@@ -785,6 +815,9 @@ def _fast_link(
         return False
     if result.returncode != 0:
         print("[WASM] Fast link failed, falling back to full emcc link")
+        # Delete stale cache so next run recaptures
+        cache_file.unlink(missing_ok=True)
+        cache_key_file.unlink(missing_ok=True)
         return False
 
     # Copy cached JS glue to sketch cache dir (use copy, not copy2,
@@ -849,7 +882,7 @@ def link_wasm(
     uses_jspi = any("JSPI" in f for f in link_flags)
     needs_separate_dwarf = any("SEPARATE_DWARF" in f for f in link_flags)
     if not uses_asyncify and not uses_jspi and not needs_separate_dwarf:
-        if _fast_link(sketch_object, cached_wasm, build_dir, verbose):
+        if _fast_link(sketch_object, cached_wasm, build_dir, library_archive, verbose):
             _copy_linked_output(sketch_cache_dir, output_js)
             print(f"[WASM] Output: {output_js}")
             return True
@@ -877,7 +910,12 @@ def link_wasm(
 
     print("[WASM] Linking final WASM module...")
     rc = _intercept_emcc_link(
-        emcc_args, sketch_object, cached_wasm, build_dir, str(PROJECT_ROOT)
+        emcc_args,
+        sketch_object,
+        cached_wasm,
+        build_dir,
+        str(PROJECT_ROOT),
+        library_archive,
     )
     if rc != 0:
         print(f"[WASM] Linking failed with return code {rc}")
