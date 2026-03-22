@@ -4,39 +4,39 @@ Lint check: Validate unity build structure
 
 Validates two aspects of the unity build system:
 
-1. _build.hpp files reference all .cpp.hpp files in their directory
-2. _build.hpp files only include immediate children (one level down)
+1. _build.cpp.hpp files reference all .cpp.hpp files in their directory
+2. _build.cpp.hpp files only include immediate children (one level down)
 
 For each directory in src/** with .cpp.hpp files:
-    ✅ Must have _build.hpp file
-    ✅ Each .cpp.hpp must be referenced in _build.hpp
+    ✅ Must have _build.cpp.hpp file
+    ✅ Each .cpp.hpp must be referenced in _build.cpp.hpp
 
-For each _build.hpp file:
-    ✅ Can only include _build.hpp files from immediate subdirectories
+For each _build.cpp.hpp file:
+    ✅ Can only include _build.cpp.hpp files from immediate subdirectories
     ✅ NOT from grandchildren or deeper (hierarchical structure)
 
-Also validates library.json srcFilter only includes unity build files:
-    ✅ Must reference all _build.cpp files
-    ✅ Must exclude all other .cpp files
+Build files live in src/fl/build/ using Scheme 5 naming:
+    ✅ Dot-delimited path, + suffix = recursive, no + = flat
+    ✅ Every build file must include platform pre-headers
+    ✅ library.json srcFilter must reference all build files
 
 Example .cpp.hpp inclusion:
     src/fl/channels/channel.cpp.hpp
-    → Must appear in src/fl/channels/_build.hpp as:
+    → Must appear in src/fl/channels/_build.cpp.hpp as:
       #include "fl/channels/channel.cpp.hpp"
 
-Example hierarchical _build.hpp inclusion:
-    src/platforms/_build.hpp should include:
-      ✅ #include "platforms/arm/_build.hpp" (one level down)
-      ❌ #include "platforms/arm/d21/_build.hpp" (two levels - should be in platforms/arm/_build.hpp)
+Example hierarchical _build.cpp.hpp inclusion:
+    src/platforms/_build.cpp.hpp should include:
+      ✅ #include "platforms/arm/_build.cpp.hpp" (one level down)
+      ❌ #include "platforms/arm/d21/_build.cpp.hpp" (two levels - should be in platforms/arm/_build.cpp.hpp)
 """
 
 import json
 import re
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
-from ci.util.global_interrupt_handler import handle_keyboard_interrupt
 from ci.util.paths import PROJECT_ROOT
 
 
@@ -47,6 +47,9 @@ BUILD_CPP = "_build.cpp"
 CPP_HPP_PATTERN = "*.cpp.hpp"
 SRC_DIR_NAME = "src"
 
+# Build directory (relative to src/)
+BUILD_DIR = "fl/build"
+
 # Regex patterns
 BUILD_HPP_INCLUDE_PATTERN = re.compile(
     r'^\s*#include\s+"([^"]+/' + BUILD_HPP + r')"', re.MULTILINE
@@ -55,11 +58,29 @@ CPP_HPP_INCLUDE_PATTERN = re.compile(r'^\s*#include\s+"[^"]+\.cpp\.hpp"', re.MUL
 
 # library.json constants
 LIBRARY_JSON_FILE = "library.json"
-EXPECTED_BUILD_CPP_FILES = {
-    "_build.cpp",
-    "fl/_build.cpp",
-    "platforms/_build.cpp",
-    "third_party/_build.cpp",
+EXPECTED_BUILD_FILES = {
+    "fl/build/src.cpp",
+    "fl/build/fl.cpp",
+    "fl/build/fl.audio+.cpp",
+    "fl/build/fl.channels+.cpp",
+    "fl/build/fl.chipsets+.cpp",
+    "fl/build/fl.codec+.cpp",
+    "fl/build/fl.detail+.cpp",
+    "fl/build/fl.details+.cpp",
+    "fl/build/fl.font+.cpp",
+    "fl/build/fl.fx+.cpp",
+    "fl/build/fl.gfx+.cpp",
+    "fl/build/fl.math+.cpp",
+    "fl/build/fl.net+.cpp",
+    "fl/build/fl.remote+.cpp",
+    "fl/build/fl.sensors+.cpp",
+    "fl/build/fl.spi+.cpp",
+    "fl/build/fl.stl+.cpp",
+    "fl/build/fl.system+.cpp",
+    "fl/build/fl.task+.cpp",
+    "fl/build/fl.video+.cpp",
+    "fl/build/platforms+.cpp",
+    "fl/build/third_party+.cpp",
 }
 DANGEROUS_WILDCARD_PATTERNS = [
     "+<*.cpp>",
@@ -68,6 +89,12 @@ DANGEROUS_WILDCARD_PATTERNS = [
     "+<fl/**/*.cpp>",
 ]
 EXCLUDE_PATTERN = "-<**/*.cpp>"
+
+# Required pre-headers that must appear before any .cpp.hpp includes in build files
+REQUIRED_PRE_HEADERS = [
+    "platforms/new.h",
+    "fl/system/arduino.h",
+]
 
 
 # Type aliases for complex types
@@ -83,9 +110,9 @@ class ScannedData:
 
     src_dir: Path
     all_build_hpp_files: list[Path]
-    all_build_cpp_files: list[Path]
+    all_build_files: list[Path]  # Build files in src/fl/build/
     cpp_hpp_by_dir: CppHppByDir
-    build_hpp_includes: IncludeMap
+    independently_compiled_dirs: set[str] = field(default_factory=lambda: set[str]())
 
 
 @dataclass
@@ -98,6 +125,59 @@ class CheckResult:
     def __bool__(self) -> bool:
         """Allow CheckResult to be used in boolean context."""
         return self.success
+
+
+def _parse_build_filename(filename: str) -> tuple[str, bool]:
+    """
+    Parse a build filename into (mapped_directory, is_recursive).
+
+    Args:
+        filename: Build filename (e.g., "src.cpp", "fl.audio+.cpp", "platforms+.cpp")
+
+    Returns:
+        Tuple of (directory path relative to src/, is_recursive)
+
+    Examples:
+        "src.cpp" -> ("", False)           # maps to src/ root, flat
+        "fl.cpp" -> ("fl", False)          # maps to src/fl/, flat
+        "fl.audio+.cpp" -> ("fl/audio", True)
+        "platforms+.cpp" -> ("platforms", True)
+        "third_party+.cpp" -> ("third_party", True)
+    """
+    # Strip .cpp suffix
+    stem = filename.removesuffix(".cpp")
+
+    # Check for recursive marker
+    is_recursive = stem.endswith("+")
+    if is_recursive:
+        stem = stem.removesuffix("+")
+
+    # Special case: "src" maps to root src/ directory (empty relative path)
+    if stem == "src":
+        return ("", is_recursive)
+
+    # Replace dots with slashes to get directory path
+    # Handle "third_party" which contains an underscore (not a dot)
+    dir_path = stem.replace(".", "/")
+    return (dir_path, is_recursive)
+
+
+def _get_independently_compiled_dirs(src_dir: Path) -> set[str]:
+    """
+    Determine which directories are independently compiled by build files in src/fl/build/.
+
+    Returns:
+        Set of directory paths relative to src/ (e.g., {"", "fl", "fl/audio", "platforms", ...})
+    """
+    build_dir = src_dir / "fl" / "build"
+    if not build_dir.exists():
+        return set()
+
+    dirs: set[str] = set()
+    for build_file in build_dir.glob("*.cpp"):
+        dir_path, _ = _parse_build_filename(build_file.name)
+        dirs.add(dir_path)
+    return dirs
 
 
 def _get_namespace_path(file_path: Path, src_dir: Path) -> str | None:
@@ -223,6 +303,11 @@ def _check_cpp_hpp_files(src_dir: Path, cpp_hpp_by_dir: CppHppByDir) -> list[str
     violations: list[str] = []
 
     for dir_path, cpp_hpp_files in sorted(cpp_hpp_by_dir.items()):
+        # Skip the build directory itself — build files aren't tracked by _build.cpp.hpp
+        build_dir = src_dir / "fl" / "build"
+        if dir_path == build_dir or str(dir_path).startswith(str(build_dir)):
+            continue
+
         build_hpp = dir_path / BUILD_HPP
 
         if not build_hpp.exists():
@@ -386,16 +471,18 @@ def _check_build_include_order(src_dir: Path) -> list[str]:
     return violations
 
 
-def _check_subdir_completeness(src_dir: Path) -> list[str]:
+def _check_subdir_completeness(
+    src_dir: Path, independently_compiled_dirs: set[str]
+) -> list[str]:
     """
     Check that _build.cpp.hpp files include ALL immediate subdirectory _build.cpp.hpp files.
 
     For each _build.cpp.hpp, every immediate subdirectory that:
     1. Contains its own _build.cpp.hpp
-    2. Does NOT have its own _build.cpp (independently compiled unit)
+    2. Is NOT independently compiled by a build file in src/fl/build/
 
     ...must be included. This catches the case where a new subdirectory is added
-    to _build.cpp but not to _build.cpp.hpp, causing linker errors.
+    but not included in _build.cpp.hpp, causing linker errors.
 
     Returns:
         list of violation strings
@@ -414,8 +501,13 @@ def _check_subdir_completeness(src_dir: Path) -> list[str]:
             sub_build = subdir / BUILD_HPP
             if not sub_build.exists():
                 continue
-            # Skip subdirs with their own _build.cpp (independently compiled)
-            if (subdir / BUILD_CPP).exists():
+
+            # Skip subdirs that are independently compiled by a build file in src/fl/build/
+            try:
+                subdir_rel = subdir.relative_to(src_dir).as_posix()
+            except ValueError:
+                continue
+            if subdir_rel in independently_compiled_dirs:
                 continue
 
             # This subdir's _build.cpp.hpp should be included
@@ -483,55 +575,6 @@ def _check_alphabetical_order(src_dir: Path) -> list[str]:
                             f"'{paths[i]}' comes before '{paths[i - 1]}' but should come after it."
                         )
                         break
-
-    return violations
-
-
-def _check_build_cpp_simplicity(src_dir: Path) -> list[str]:
-    """
-    Check that _build.cpp files only include their own _build.cpp.hpp, not subdirectory builds.
-
-    _build.cpp is the compilation entry point. It should include:
-    - Its own _build.cpp.hpp (which contains the hierarchical includes)
-    - Optional setup headers (.h files like platforms/new.h, fl/system/arduino.h)
-
-    It should NOT directly include subdirectory _build.cpp.hpp files — those belong
-    in the parent _build.cpp.hpp for proper hierarchical organization.
-
-    Returns:
-        list of violation strings
-    """
-    violations: list[str] = []
-
-    for build_cpp in src_dir.rglob(BUILD_CPP):
-        if build_cpp.name != BUILD_CPP:
-            continue
-        content = build_cpp.read_text(encoding="utf-8")
-        rel_file = build_cpp.relative_to(PROJECT_ROOT).as_posix()
-        dir_path = build_cpp.parent
-
-        # Determine the expected own _build.cpp.hpp path
-        own_build_hpp = dir_path / BUILD_HPP
-        if own_build_hpp.exists():
-            own_path = own_build_hpp.relative_to(src_dir).as_posix()
-        else:
-            own_path = None
-
-        # Find all included _build.cpp.hpp files
-        for match in BUILD_HPP_INCLUDE_PATTERN.finditer(content):
-            included_path = match.group(1)
-
-            # Allow including its own _build.cpp.hpp
-            if own_path and included_path == own_path:
-                continue
-
-            # This is a subdirectory _build.cpp.hpp — should be in _build.cpp.hpp instead
-            line_num = _get_line_number(content, match.start())
-            violations.append(
-                f"{rel_file}:{line_num}: Direct subdirectory include '{included_path}' "
-                f"should be in '{own_path or BUILD_HPP}' instead. "
-                f"_build.cpp should only include its own _build.cpp.hpp (plus optional setup headers)."
-            )
 
     return violations
 
@@ -628,165 +671,259 @@ def _check_no_invalid_include_types(src_dir: Path) -> list[str]:
     return violations
 
 
-def _build_include_map(src_dir: Path, all_build_hpp_files: list[Path]) -> IncludeMap:
+# ---------------------------------------------------------------------------
+# Build file validation (src/fl/build/)
+# ---------------------------------------------------------------------------
+
+
+def _check_build_file_preheaders(src_dir: Path) -> list[str]:
     """
-    Build a map of which _build.hpp files are included by other _build.hpp files.
+    Check that every build file in src/fl/build/ includes required platform pre-headers
+    before any .cpp.hpp or _build.cpp.hpp includes.
 
-    Returns:
-        IncludeMap mapping each _build.hpp to set of _build.hpp files it includes
-    """
-    build_hpp_includes: IncludeMap = {}
-
-    for build_hpp in all_build_hpp_files:
-        content = build_hpp.read_text(encoding="utf-8")
-        includes: set[Path] = set()
-
-        for other_build_hpp in all_build_hpp_files:
-            if other_build_hpp == build_hpp:
-                continue
-
-            # Check both POSIX and Windows-style paths for cross-platform compatibility
-            include_path_posix = other_build_hpp.relative_to(src_dir).as_posix()
-            include_path_win = str(other_build_hpp.relative_to(src_dir)).replace(
-                "/", "\\"
-            )
-
-            if include_path_posix in content or include_path_win in content:
-                includes.add(other_build_hpp)
-
-        build_hpp_includes[build_hpp] = includes
-
-    return build_hpp_includes
-
-
-def _should_skip_build_hpp(
-    build_hpp: Path,
-    build_cpp_dir: Path,
-    parent_build_hpp: Path,
-    build_hpp_includes: IncludeMap,
-    src_dir: Path,
-    build_cpp_content: str = "",
-) -> bool:
-    """
-    Determine if a _build.cpp.hpp file should be skipped (already included hierarchically or in a header).
-
-    Returns:
-        True if this _build.cpp.hpp should be skipped, False otherwise
-    """
-    try:
-        rel_to_cpp_dir = build_hpp.relative_to(build_cpp_dir)
-    except ValueError:
-        return True  # Not under this _build.cpp's directory
-
-    # Check if this is the parent _build.cpp.hpp itself
-    if rel_to_cpp_dir.parts[0] == BUILD_HPP:
-        return False  # Don't skip the parent _build.cpp.hpp
-
-    # This is a subdirectory _build.cpp.hpp
-    subdir = build_cpp_dir / rel_to_cpp_dir.parts[0]
-
-    # Skip if subdirectory has its own _build.cpp
-    if (subdir / BUILD_CPP).exists():
-        return True
-
-    # Check if this _build.cpp.hpp is included in a corresponding .hpp header file
-    # (e.g., animartrix_detail/_build.cpp.hpp might be in animartrix_detail.hpp)
-    build_cpp_hpp_path = build_hpp.relative_to(src_dir).as_posix()
-    # Check for a corresponding header file (directory name + .hpp)
-    dir_name = build_hpp.parent.name
-    potential_header = build_hpp.parent.parent / f"{dir_name}.hpp"
-    if potential_header.exists():
-        try:
-            header_content = potential_header.read_text(encoding="utf-8")
-            if build_cpp_hpp_path in header_content:
-                return True  # Included in header, skip in _build.cpp
-        except KeyboardInterrupt as ki:
-            handle_keyboard_interrupt(ki)
-            raise
-        except Exception:
-            pass
-
-    # Check if parent _build.cpp.hpp includes this file (directly or via intermediate)
-    if not parent_build_hpp.exists():
-        return False
-
-    # Direct inclusion by parent
-    if build_hpp in build_hpp_includes.get(parent_build_hpp, set()):
-        return True
-
-    # For deeply nested files, find the actual parent _build.cpp.hpp by traversing up
-    # Example: fx/2d/animartrix_detail/_build.cpp.hpp -> look for fx/2d/_build.cpp.hpp
-    if len(rel_to_cpp_dir.parts) >= 2:
-        # Try each ancestor directory from immediate parent up to top-level
-        current_path = build_hpp.parent
-        while current_path != build_cpp_dir:
-            potential_parent_hpp = current_path / BUILD_HPP
-            if potential_parent_hpp.exists() and potential_parent_hpp != build_hpp:
-                # Check if this parent is included by the build_cpp's _build.cpp.hpp
-                if potential_parent_hpp in build_hpp_includes.get(
-                    parent_build_hpp, set()
-                ):
-                    return True  # Parent includes intermediate, hierarchy ensures chain
-
-                # Also check if the intermediate parent is directly in _build.cpp content
-                # This handles cases where _build.cpp includes deep _build.cpp.hpp files directly
-                if build_cpp_content:
-                    intermediate_path = potential_parent_hpp.relative_to(
-                        src_dir
-                    ).as_posix()
-                    if intermediate_path in build_cpp_content:
-                        return True  # Parent is in _build.cpp, hierarchy ensures chain
-            current_path = current_path.parent
-            if not current_path.is_relative_to(build_cpp_dir):
-                break
-
-    return False
-
-
-def _check_build_cpp_files(
-    src_dir: Path,
-    all_build_hpp_files: list[Path],
-    all_build_cpp_files: list[Path],
-    build_hpp_includes: IncludeMap,
-) -> list[str]:
-    """
-    Check that all _build.hpp files are properly included by their _build.cpp files.
+    Required pre-headers (in order):
+    1. platforms/new.h — placement new + __cxa_guard_* declarations
+    2. fl/system/arduino.h — Arduino.h trampoline + macro cleanup
 
     Returns:
         list of violation strings
     """
     violations: list[str] = []
+    build_dir = src_dir / "fl" / "build"
+    if not build_dir.exists():
+        return violations
 
-    for build_cpp in all_build_cpp_files:
-        build_cpp_dir = build_cpp.parent
-        build_content = build_cpp.read_text(encoding="utf-8")
-        parent_build_hpp = build_cpp_dir / BUILD_HPP
+    include_pattern = re.compile(r'^\s*#include\s+"([^"]+)"', re.MULTILINE)
 
-        for build_hpp in all_build_hpp_files:
-            if _should_skip_build_hpp(
-                build_hpp,
-                build_cpp_dir,
-                parent_build_hpp,
-                build_hpp_includes,
-                src_dir,
-                build_content,
-            ):
-                continue
+    for build_file in sorted(build_dir.glob("*.cpp")):
+        content = build_file.read_text(encoding="utf-8")
+        rel_file = build_file.relative_to(PROJECT_ROOT).as_posix()
 
-            # This _build.cpp.hpp should be directly included by _build.cpp
-            rel_path = build_hpp.relative_to(src_dir)
-            include_path = rel_path.as_posix()
+        includes = list(include_pattern.finditer(content))
+        if not includes:
+            continue
 
-            if include_path not in build_content:
-                rel_cpp = build_cpp.relative_to(PROJECT_ROOT)
-                violations.append(f"{rel_cpp.as_posix()}: missing {include_path}")
+        # Find the first .cpp.hpp include (the implementation include)
+        first_impl_line: int | None = None
+        for match in includes:
+            if match.group(1).endswith(".cpp.hpp"):
+                first_impl_line = _get_line_number(content, match.start())
+                break
+
+        if first_impl_line is None:
+            violations.append(
+                f"{rel_file}: Build file has no .cpp.hpp includes — this file serves no purpose."
+            )
+            continue
+
+        # Check each required pre-header appears before the first impl include
+        for pre_header in REQUIRED_PRE_HEADERS:
+            found = False
+            for match in includes:
+                if match.group(1) == pre_header:
+                    pre_line = _get_line_number(content, match.start())
+                    if pre_line < first_impl_line:
+                        found = True
+                    else:
+                        violations.append(
+                            f"{rel_file}:{pre_line}: Pre-header '{pre_header}' must appear "
+                            f"BEFORE first .cpp.hpp include (line {first_impl_line})."
+                        )
+                        found = True  # Don't also report missing
+                    break
+            if not found:
+                violations.append(
+                    f"{rel_file}: Missing required pre-header '#include \"{pre_header}\"'. "
+                    f"All build files must include platform pre-headers before implementation includes."
+                )
 
     return violations
 
 
+def _check_build_file_content(src_dir: Path, cpp_hpp_by_dir: CppHppByDir) -> list[str]:
+    """
+    Validate the content of each build file in src/fl/build/:
+    - Flat files (no +): include ALL .cpp.hpp from mapped dir, no _build.cpp.hpp
+    - Recursive files (+): include exactly one _build.cpp.hpp from mapped dir
+
+    Returns:
+        list of violation strings
+    """
+    violations: list[str] = []
+    build_dir = src_dir / "fl" / "build"
+    if not build_dir.exists():
+        return violations
+
+    include_pattern = re.compile(r'^\s*#include\s+"([^"]+\.cpp\.hpp)"', re.MULTILINE)
+
+    for build_file in sorted(build_dir.glob("*.cpp")):
+        content = build_file.read_text(encoding="utf-8")
+        rel_file = build_file.relative_to(PROJECT_ROOT).as_posix()
+
+        dir_path, is_recursive = _parse_build_filename(build_file.name)
+
+        # Get all .cpp.hpp includes from this build file
+        impl_includes: list[str] = []
+        for match in include_pattern.finditer(content):
+            impl_includes.append(match.group(1))
+
+        if is_recursive:
+            # Must include exactly one _build.cpp.hpp from the mapped directory
+            expected_build_hpp = (dir_path + "/" + BUILD_HPP) if dir_path else BUILD_HPP
+            build_hpp_includes = [i for i in impl_includes if i.endswith(BUILD_HPP)]
+            non_build_includes = [i for i in impl_includes if not i.endswith(BUILD_HPP)]
+
+            if len(build_hpp_includes) == 0:
+                violations.append(
+                    f"{rel_file}: Recursive build file must include '{expected_build_hpp}'."
+                )
+            elif len(build_hpp_includes) > 1:
+                violations.append(
+                    f"{rel_file}: Recursive build file must include exactly one _build.cpp.hpp, "
+                    f"found {len(build_hpp_includes)}: {build_hpp_includes}"
+                )
+            elif build_hpp_includes[0] != expected_build_hpp:
+                violations.append(
+                    f"{rel_file}: Expected include '{expected_build_hpp}', "
+                    f"found '{build_hpp_includes[0]}'."
+                )
+
+            if non_build_includes:
+                violations.append(
+                    f"{rel_file}: Recursive build file should only include one _build.cpp.hpp, "
+                    f"found extra .cpp.hpp includes: {non_build_includes}"
+                )
+        else:
+            # Flat: must include ALL .cpp.hpp from mapped dir (excluding _build.cpp.hpp)
+            # Must NOT include any _build.cpp.hpp
+            mapped_dir = src_dir / dir_path if dir_path else src_dir
+            if not mapped_dir.exists():
+                violations.append(
+                    f"{rel_file}: Mapped directory '{dir_path or 'src/'}' does not exist."
+                )
+                continue
+
+            build_hpp_includes = [i for i in impl_includes if i.endswith(BUILD_HPP)]
+            if build_hpp_includes:
+                violations.append(
+                    f"{rel_file}: Flat build file must NOT include _build.cpp.hpp files "
+                    f"(found: {build_hpp_includes}). Use individual .cpp.hpp includes instead."
+                )
+
+            # Determine expected .cpp.hpp files from the directory
+            expected_files: set[str] = set()
+            for cpp_hpp in cpp_hpp_by_dir.get(mapped_dir, []):
+                if cpp_hpp.name == BUILD_HPP:
+                    continue
+                rel_path = cpp_hpp.relative_to(src_dir).as_posix()
+                expected_files.add(rel_path)
+
+            actual_files = set(impl_includes) - set(build_hpp_includes)
+
+            # Check completeness
+            missing = expected_files - actual_files
+            for m in sorted(missing):
+                violations.append(f"{rel_file}: Missing include '{m}'.")
+
+            # Check for extras from wrong directories
+            extras = actual_files - expected_files
+            for e in sorted(extras):
+                violations.append(
+                    f"{rel_file}: Include '{e}' does not belong in this flat build file "
+                    f"(expected only files from '{dir_path or 'src/'}')."
+                )
+
+    return violations
+
+
+def _check_build_file_naming(src_dir: Path) -> list[str]:
+    """
+    Validate that every .cpp file in src/fl/build/ follows the naming convention
+    and maps to a valid directory.
+
+    Returns:
+        list of violation strings
+    """
+    violations: list[str] = []
+    build_dir = src_dir / "fl" / "build"
+    if not build_dir.exists():
+        violations.append("Missing build directory: src/fl/build/")
+        return violations
+
+    actual_files = {f.name for f in build_dir.glob("*.cpp")}
+    expected_files = {f.split("/")[-1] for f in EXPECTED_BUILD_FILES}
+
+    # Check for unexpected files
+    unexpected = actual_files - expected_files
+    for f in sorted(unexpected):
+        violations.append(
+            f"src/fl/build/{f}: Unexpected build file. "
+            f"Not in EXPECTED_BUILD_FILES list."
+        )
+
+    # Check for missing files
+    missing = expected_files - actual_files
+    for f in sorted(missing):
+        violations.append(f"src/fl/build/{f}: Expected build file is missing.")
+
+    # Validate each file maps to a valid directory
+    for build_file in sorted(build_dir.glob("*.cpp")):
+        dir_path, _ = _parse_build_filename(build_file.name)
+        mapped_dir = src_dir / dir_path if dir_path else src_dir
+        if not mapped_dir.exists():
+            rel_file = build_file.relative_to(PROJECT_ROOT).as_posix()
+            violations.append(
+                f"{rel_file}: Maps to non-existent directory '{dir_path or 'src/'}'."
+            )
+
+    return violations
+
+
+def _check_no_orphan_cpp_files(src_dir: Path) -> list[str]:
+    """
+    Check that no .cpp files exist in src/ except in src/fl/build/.
+
+    All implementation code must use .cpp.hpp extension. Only the build files
+    in src/fl/build/ are allowed to be .cpp files.
+
+    Returns:
+        list of violation strings
+    """
+    violations: list[str] = []
+    build_dir = src_dir / "fl" / "build"
+
+    for cpp_file in src_dir.rglob("*.cpp"):
+        # Skip .cpp.hpp files
+        if cpp_file.name.endswith(".cpp.hpp"):
+            continue
+
+        # Allow files in the build directory
+        try:
+            cpp_file.relative_to(build_dir)
+            continue  # It's in build dir, OK
+        except ValueError:
+            pass
+
+        rel_file = cpp_file.relative_to(PROJECT_ROOT).as_posix()
+        violations.append(
+            f"{rel_file}: .cpp file found outside src/fl/build/. "
+            f"All .cpp files must be in src/fl/build/ (unity build entry points). "
+            f"Implementation files should use .cpp.hpp extension."
+        )
+
+    return violations
+
+
+EXPECTED_SRC_FILTER_PATTERN = "+<fl/build/*.cpp>"
+
+
 def _check_library_json_srcfilter() -> list[str]:
     """
-    Check that library.json srcFilter only includes unity build _build.cpp files.
+    Check that library.json srcFilter uses the build glob pattern.
+
+    Required patterns:
+    - "-<**/*.cpp>" to exclude all .cpp files
+    - "+<fl/build/*.cpp>" to include all build files
 
     Returns:
         list of violation strings
@@ -811,29 +948,26 @@ def _check_library_json_srcfilter() -> list[str]:
 
     src_filter: list[str] = data["build"]["srcFilter"]
 
-    # Find all _build.cpp references in srcFilter
-    found_build_files: set[str] = set()
     has_exclude_pattern = False
+    has_build_glob = False
 
     for pattern in src_filter:
-        if pattern.startswith("+<") and pattern.endswith(">"):
-            path = pattern[2:-1]  # Strip "+<" and ">"
-            if path.endswith(BUILD_CPP):
-                found_build_files.add(path)
-        elif pattern == EXCLUDE_PATTERN:
+        if pattern == EXCLUDE_PATTERN:
             has_exclude_pattern = True
-
-    # Check all expected _build.cpp files are referenced
-    missing = EXPECTED_BUILD_CPP_FILES - found_build_files
-    for missing_file in sorted(missing):
-        violations.append(
-            f"{LIBRARY_JSON_FILE}: Missing +<{missing_file}> in srcFilter"
-        )
+        elif pattern == EXPECTED_SRC_FILTER_PATTERN:
+            has_build_glob = True
 
     # Check for exclude pattern
     if not has_exclude_pattern:
         violations.append(
             f"{LIBRARY_JSON_FILE}: Missing {EXCLUDE_PATTERN} exclude pattern in srcFilter"
+        )
+
+    # Check for build glob pattern
+    if not has_build_glob:
+        violations.append(
+            f"{LIBRARY_JSON_FILE}: Missing {EXPECTED_SRC_FILTER_PATTERN} in srcFilter. "
+            f"This pattern auto-discovers all build files in src/fl/build/."
         )
 
     # Check for dangerous wildcard patterns
@@ -859,26 +993,30 @@ def scan() -> ScannedData | None:
     if not src_dir.exists():
         return None
 
-    # 1. Find all _build.hpp files
+    # 1. Find all _build.cpp.hpp files
     all_build_hpp_files = list(src_dir.rglob(BUILD_HPP))
 
-    # 2. Find all _build.cpp files
-    all_build_cpp_files = list(src_dir.rglob(BUILD_CPP))
+    # 2. Find all build files in src/fl/build/
+    build_dir = src_dir / "fl" / "build"
+    if build_dir.exists():
+        all_build_files = list(build_dir.glob("*.cpp"))
+    else:
+        all_build_files = []
 
     # 3. Group .cpp.hpp files by directory
     cpp_hpp_by_dir: CppHppByDir = defaultdict(list)
     for cpp_hpp in src_dir.rglob(CPP_HPP_PATTERN):
         cpp_hpp_by_dir[cpp_hpp.parent].append(cpp_hpp)
 
-    # 4. Build include map for _build.hpp files
-    build_hpp_includes = _build_include_map(src_dir, all_build_hpp_files)
+    # 4. Compute independently compiled directories
+    independently_compiled_dirs = _get_independently_compiled_dirs(src_dir)
 
     return ScannedData(
         src_dir=src_dir,
         all_build_hpp_files=all_build_hpp_files,
-        all_build_cpp_files=all_build_cpp_files,
+        all_build_files=all_build_files,
         cpp_hpp_by_dir=cpp_hpp_by_dir,
-        build_hpp_includes=build_hpp_includes,
+        independently_compiled_dirs=independently_compiled_dirs,
     )
 
 
@@ -900,36 +1038,31 @@ def check_scanned_data(data: ScannedData) -> CheckResult:
     # 2. Check hierarchical structure
     violations.extend(check_hierarchy(data.src_dir))
 
-    # 3. Check all .cpp.hpp files are referenced in _build.hpp
+    # 3. Check all .cpp.hpp files are referenced in _build.cpp.hpp
     violations.extend(_check_cpp_hpp_files(data.src_dir, data.cpp_hpp_by_dir))
 
     # 3b. Check _build.cpp.hpp include ordering (same-level first, subdir last)
     violations.extend(_check_build_include_order(data.src_dir))
 
     # 3c. Check _build.cpp.hpp includes ALL immediate subdirectory _build.cpp.hpp files
-    violations.extend(_check_subdir_completeness(data.src_dir))
+    violations.extend(
+        _check_subdir_completeness(data.src_dir, data.independently_compiled_dirs)
+    )
 
     # 3d. Check alphabetical ordering within sections
     violations.extend(_check_alphabetical_order(data.src_dir))
 
-    # 4. Check _build.cpp files include necessary _build.hpp files
-    violations.extend(
-        _check_build_cpp_files(
-            data.src_dir,
-            data.all_build_hpp_files,
-            data.all_build_cpp_files,
-            data.build_hpp_includes,
-        )
-    )
-
-    # 4b. Check _build.cpp files don't bypass hierarchy with direct subdirectory includes
-    violations.extend(_check_build_cpp_simplicity(data.src_dir))
-
-    # 5. Check no cross-directory includes (files from wrong directory)
+    # 4. Check no cross-directory includes (files from wrong directory)
     violations.extend(_check_no_cross_directory_includes(data.src_dir))
 
-    # 6. Check no invalid include types (.cpp, .c, etc.)
+    # 5. Check no invalid include types (.cpp, .c, etc.)
     violations.extend(_check_no_invalid_include_types(data.src_dir))
+
+    # 6. Validate build files in src/fl/build/
+    violations.extend(_check_build_file_naming(data.src_dir))
+    violations.extend(_check_build_file_preheaders(data.src_dir))
+    violations.extend(_check_build_file_content(data.src_dir, data.cpp_hpp_by_dir))
+    violations.extend(_check_no_orphan_cpp_files(data.src_dir))
 
     # 7. Validate library.json srcFilter
     violations.extend(_check_library_json_srcfilter())
@@ -939,7 +1072,7 @@ def check_scanned_data(data: ScannedData) -> CheckResult:
 
 def check_single_file(file_path: Path) -> CheckResult:
     """
-    Targeted unity build check for a single .cpp.hpp file.
+    Targeted unity build check for a single file.
 
     Used in single-file linting mode (agent hook on save). Only checks the
     immediate directory — does not walk the full project tree.
@@ -949,19 +1082,39 @@ def check_single_file(file_path: Path) -> CheckResult:
       must be listed in it.
     - If file is any other *.cpp.hpp: the _build.cpp.hpp in the same directory
       must include it.
+    - If file is in src/fl/build/: validate preheaders and content.
 
     Returns:
         CheckResult with success flag and list of violations
     """
-    if not file_path.name.endswith(".cpp.hpp"):
+    if not file_path.name.endswith((".cpp.hpp", ".cpp")):
         return CheckResult(success=True, violations=[])
 
     src_dir = PROJECT_ROOT / SRC_DIR_NAME
+    build_dir = src_dir / "fl" / "build"
+
+    # Handle build files in src/fl/build/
+    try:
+        file_path.relative_to(build_dir)
+        # This is a build file — validate it
+        cpp_hpp_by_dir: CppHppByDir = defaultdict(list)
+        for cpp_hpp in src_dir.rglob(CPP_HPP_PATTERN):
+            cpp_hpp_by_dir[cpp_hpp.parent].append(cpp_hpp)
+        violations: list[str] = []
+        violations.extend(_check_build_file_preheaders(src_dir))
+        violations.extend(_check_build_file_content(src_dir, cpp_hpp_by_dir))
+        return CheckResult(success=len(violations) == 0, violations=violations)
+    except ValueError:
+        pass  # Not in build dir
+
+    if not file_path.name.endswith(".cpp.hpp"):
+        return CheckResult(success=True, violations=[])
+
     dir_path = file_path.parent
 
     if file_path.name == BUILD_CPP_HPP:
         # Editing a _build.cpp.hpp: check all sibling .cpp.hpp files are listed.
-        cpp_hpp_by_dir: CppHppByDir = {dir_path: list(dir_path.glob(CPP_HPP_PATTERN))}
+        cpp_hpp_by_dir = {dir_path: list(dir_path.glob(CPP_HPP_PATTERN))}
         violations = _check_cpp_hpp_files(src_dir, cpp_hpp_by_dir)
     else:
         # Editing a regular .cpp.hpp: check its parent _build.cpp.hpp includes it.
@@ -1011,10 +1164,11 @@ def main() -> int:
 
     if result.success:
         print("✅ Unity build integrity verified:")
-        print("  - All .cpp.hpp files referenced in _build.hpp files")
-        print("  - _build.hpp hierarchy correctly structured (one level at a time)")
-        print("  - All _build.hpp files referenced in master _build.cpp files")
-        print("  - library.json srcFilter correctly configured for unity builds")
+        print("  - All .cpp.hpp files referenced in _build.cpp.hpp files")
+        print("  - _build.cpp.hpp hierarchy correctly structured (one level at a time)")
+        print("  - Build files in src/fl/build/ correctly configured")
+        print("  - Platform pre-headers present in all build files")
+        print("  - library.json srcFilter correctly configured")
         return 0
     else:
         print("❌ Unity build violations found:")
@@ -1022,9 +1176,10 @@ def main() -> int:
             print(f"  - {violation}")
         print(f"\nTotal violations: {len(result.violations)}")
         print("\nFixes:")
-        print("  - Add missing #include lines to _build.hpp or _build.cpp files")
-        print("  - Ensure _build.hpp files only include immediate children")
-        print("  - Update library.json srcFilter to only reference _build.cpp files")
+        print("  - Add missing #include lines to _build.cpp.hpp files")
+        print("  - Ensure _build.cpp.hpp files only include immediate children")
+        print("  - Ensure build files in src/fl/build/ have platform pre-headers")
+        print("  - Update library.json srcFilter to reference all build files")
         return 1
 
 

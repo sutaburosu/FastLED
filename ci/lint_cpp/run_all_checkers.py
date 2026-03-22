@@ -49,7 +49,6 @@ from ci.lint_cpp.logging_in_iram_checker import LoggingInIramChecker
 from ci.lint_cpp.member_style_checker import MemberStyleChecker
 from ci.lint_cpp.namespace_platforms_checker import NamespacePlatformsChecker
 from ci.lint_cpp.native_platform_defines_checker import NativePlatformDefinesChecker
-from ci.lint_cpp.no_cpp_in_fl_checker import NoCppInFlChecker
 from ci.lint_cpp.no_namespace_fl_declaration import NamespaceFlDeclarationChecker
 from ci.lint_cpp.no_using_namespace_fl_in_headers import UsingNamespaceFlChecker
 from ci.lint_cpp.numeric_limit_macros_checker import NumericLimitMacroChecker
@@ -76,7 +75,6 @@ from ci.lint_cpp.test_aggregation_checker import check as check_test_aggregation
 from ci.lint_cpp.test_aggregation_checker import (
     check_single_file as check_test_aggregation_single_file,
 )
-from ci.lint_cpp.test_cpp_hpp_includes_checker import TestCppHppIncludesChecker
 from ci.lint_cpp.test_include_paths_checker import TestIncludePathsChecker
 from ci.lint_cpp.test_path_structure_checker import TestPathStructureChecker
 from ci.lint_cpp.test_unity_build import check as check_unity_build
@@ -244,7 +242,6 @@ def create_checkers(
     # fl/ directory checkers with STRICT enforcement
     checkers_by_scope["fl"] = [
         BannedHeadersChecker(banned_headers_list=BANNED_HEADERS_CORE, strict_mode=True),
-        NoCppInFlChecker(),
         CppHppHeaderPairChecker(),  # Checks that *.cpp.hpp files have corresponding *.h headers
         IwyuPragmaBlockChecker(all_headers=all_headers),
         BareUsingChecker(),  # Checks for bare using declarations in headers (unity build safety)
@@ -312,7 +309,6 @@ def create_checkers(
         UnitTestChecker(),
         CtypeGlobalChecker(),  # Checks for bare C ctype/cstring functions (use fl:: variants)
         TestAggregationChecker(),  # Checks that .hpp files in excluded test dirs have parent aggregators
-        TestCppHppIncludesChecker(),  # Bans #include of *.cpp.hpp in tests (use .h headers)
         TestIncludePathsChecker(),  # Checks for bare/relative includes in tests (use full paths)
     ]
 
@@ -765,8 +761,9 @@ def main() -> int:
         # Run all applicable checkers on the single file
         results = run_checkers_on_single_file(str(file_path), checkers_by_scope)
 
-        # Run targeted unity build check for .cpp.hpp and _build.cpp.hpp files
-        if file_path.name.endswith(".cpp.hpp"):
+        # Run targeted unity build check for .cpp.hpp files and build files in src/fl/build/
+        is_build_file = "/fl/build/" in str(file_path).replace("\\", "/")
+        if file_path.name.endswith(".cpp.hpp") or is_build_file:
             unity_result = check_unity_build_single_file(file_path)
             if not unity_result.success:
                 unity_checker_results = CheckerResults()

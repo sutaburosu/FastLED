@@ -9,6 +9,7 @@ components/
 .cached/
 .profile-results/
 build/
+!src/fl/build/
 out/
 emscripten/
 *.o
