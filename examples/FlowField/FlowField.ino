@@ -51,6 +51,7 @@ fl::UIDropdown emitterMode("Emitter Mode", {"Lissajous", "Dots", "Both"});
 fl::UIDropdown computeMode("Compute Mode", {"Float", "Fixed-Point (Fast)"});
 fl::UITitle title("FlowFields");
 fl::UIDescription description("Flow field visualization with noise-driven advection, creating fluid-like patterns from color emitters. Concept by Stefan Petrick, C++ implementation by 4wheeljive.");
+fl::UICheckbox showFlowVectors("Show Flow Vectors", false);
 
 fl::FlowFieldFloat flowFieldFloat(xyMap);
 fl::FlowFieldFP flowFieldFP(xyMap);
@@ -82,6 +83,7 @@ void loop() {
     fx.setFlowShift(flowShift);
     fx.setDotCount(numDots.as<int>());
     fx.setEmitterMode(emitterMode.as_int());
+    fx.setShowFlowVectors(showFlowVectors);
 
     fx.draw(ctx);
     FastLED.show();

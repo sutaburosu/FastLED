@@ -75,6 +75,7 @@ struct FlowFieldParams {
     int emitter_mode = 0;            ///< 0=Lissajous, 1=Dots, 2=Both
     float endpoint_speed = 0.80f;    ///< Lissajous endpoint speed
     bool reverse_x_profile = true;   ///< Reverse X profile (matches Python)
+    bool show_flow_vectors = false;  ///< Draw flow profiles as overlay
 };
 
 /// @brief Abstract base class for 2D flow field effects.
@@ -121,6 +122,7 @@ class FlowField : public Fx2d {
     void setEmitterMode(int mode) { mParams.emitter_mode = mode; }
     void setEndpointSpeed(float speed) { mParams.endpoint_speed = speed; }
     void setReverseXProfile(bool rev) { mParams.reverse_x_profile = rev; }
+    void setShowFlowVectors(bool show) { mParams.show_flow_vectors = show; }
 
     Params &getParams() { return mParams; }
     const Params &getParams() const { return mParams; }
@@ -190,6 +192,8 @@ class FlowFieldFloat : public FlowField {
                     float t, float colorShift);
     void emitLissajousLine(float t);
 
+    void drawFlowVectors(CRGB *leds);
+
     // Float-precision RGB grids (main + temp for advection).
     fl::vector<float> mR, mG, mB;
     fl::vector<float> mTR, mTG, mTB;
@@ -236,6 +240,8 @@ class FlowFieldFP : public FlowField {
     void drawAALine(s16x16 x0, s16x16 y0, s16x16 x1, s16x16 y1,
                     s16x16 t, s16x16 colorShift);
     void emitLissajousLine(s16x16 t);
+
+    void drawFlowVectors(CRGB *leds);
 
     // Convert float params to cached s16x16 values.
     void syncParams();

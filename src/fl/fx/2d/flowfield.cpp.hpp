@@ -4,6 +4,7 @@
 #include "fl/fx/2d/flowfield.h"
 
 #include "fl/fx/2d/animartrix_detail/perlin_s16x16.h"
+#include "fl/gfx/tile2x2.h"
 #include "fl/math/math.h"
 #include "fl/stl/compiler_control.h"
 
@@ -327,6 +328,83 @@ void FlowFieldFloat::flowAdvect(float dt) {
     }
 }
 
+void FlowFieldFloat::drawFlowVectors(CRGB *leds) {
+    int w = (int)getWidth();
+    int h = (int)getHeight();
+
+    // Helper: plot a single subpixel point via Tile2x2 through the XYMap.
+    auto plotTile = [&](const CRGB &color, float px, float py,
+                        bool horiz) {
+        int ix = (int)floorf(px);
+        int iy = (int)floorf(py);
+        float fx = px - (float)ix;
+        float fy = py - (float)iy;
+        Tile2x2_u8 tile;
+        tile.setOrigin((u16)ix, (u16)iy);
+        if (horiz) {
+            // X profile: subpixel along y only (one column wide)
+            tile.at(0, 0) = (u8)((1.0f - fy) * 255.0f);
+            tile.at(1, 0) = 0;
+            tile.at(0, 1) = (u8)(fy * 255.0f);
+            tile.at(1, 1) = 0;
+        } else {
+            // Y profile: subpixel along x only (one row tall)
+            tile.at(0, 0) = (u8)((1.0f - fx) * 255.0f);
+            tile.at(1, 0) = (u8)(fx * 255.0f);
+            tile.at(0, 1) = 0;
+            tile.at(1, 1) = 0;
+        }
+        tile.draw(color, mXyMap, leds);
+    };
+
+    // Display amplitude: 0.3 = profile uses ~30% of the display around center.
+    constexpr float amp = 0.3f;
+
+    // X profile (per-column): plot value as y-position — cyan.
+    // Interpolate between consecutive columns to fill gaps.
+    CRGB xColor(0, 255, 255);
+    float centerY = (float)(h - 1) * 0.5f;
+    float prevPy = 0.0f;
+    for (int x = 0; x < w; x++) {
+        float val = mXProf[x]; // [-1, 1]
+        float py = centerY - val * amp * centerY;
+        plotTile(xColor, (float)x, py, true);
+        if (x > 0) {
+            float dy = py - prevPy;
+            int gap = (int)fabsf(dy);
+            for (int s = 1; s < gap; s++) {
+                float t = (float)s / (float)gap;
+                float midY = prevPy + dy * t;
+                float midX = (float)(x - 1) + t;
+                plotTile(xColor, midX, midY, true);
+            }
+        }
+        prevPy = py;
+    }
+
+    // Y profile (per-row): plot value as x-position — yellow.
+    // Interpolate between consecutive rows to fill gaps.
+    CRGB yColor(255, 255, 0);
+    float centerX = (float)(w - 1) * 0.5f;
+    float prevPx = 0.0f;
+    for (int y = 0; y < h; y++) {
+        float val = mYProf[y]; // [-1, 1]
+        float px = centerX + val * amp * centerX;
+        plotTile(yColor, px, (float)y, false);
+        if (y > 0) {
+            float dx = px - prevPx;
+            int gap = (int)fabsf(dx);
+            for (int s = 1; s < gap; s++) {
+                float t = (float)s / (float)gap;
+                float midX = prevPx + dx * t;
+                float midY = (float)(y - 1) + t;
+                plotTile(yColor, midX, midY, false);
+            }
+        }
+        prevPx = px;
+    }
+}
+
 void FlowFieldFloat::drawImpl(DrawContext context, u32 dt_ms, u32 t_ms) {
     float dt = dt_ms * 0.001f;
     float t = t_ms * 0.001f;
@@ -359,6 +437,10 @@ void FlowFieldFloat::drawImpl(DrawContext context, u32 dt_ms, u32 t_ms) {
             context.leds[ledIdx].g = f2u8(mG[i]);
             context.leds[ledIdx].b = f2u8(mB[i]);
         }
+    }
+
+    if (mParams.show_flow_vectors) {
+        drawFlowVectors(context.leds);
     }
 }
 
@@ -777,6 +859,86 @@ void FlowFieldFP::flowAdvect(i32 dt_raw) {
 }
 
 // ---------------------------------------------------------------------------
+//  Flow vector overlay — fixed-point version
+// ---------------------------------------------------------------------------
+
+void FlowFieldFP::drawFlowVectors(CRGB *leds) {
+    int w = mState.width;
+    int h = mState.height;
+
+    // Helper: plot a single subpixel point via Tile2x2 through the XYMap.
+    // Uses float for the interpolation math (unoptimized debug overlay).
+    auto plotTile = [&](const CRGB &color, float px, float py,
+                        bool horiz) {
+        int ix = (int)floorf(px);
+        int iy = (int)floorf(py);
+        float fx = px - (float)ix;
+        float fy = py - (float)iy;
+        Tile2x2_u8 tile;
+        tile.setOrigin((u16)ix, (u16)iy);
+        if (horiz) {
+            tile.at(0, 0) = (u8)((1.0f - fy) * 255.0f);
+            tile.at(1, 0) = 0;
+            tile.at(0, 1) = (u8)(fy * 255.0f);
+            tile.at(1, 1) = 0;
+        } else {
+            tile.at(0, 0) = (u8)((1.0f - fx) * 255.0f);
+            tile.at(1, 0) = (u8)(fx * 255.0f);
+            tile.at(0, 1) = 0;
+            tile.at(1, 1) = 0;
+        }
+        tile.draw(color, mXyMap, leds);
+    };
+
+    // Display amplitude: 0.3 = profile uses ~30% of the display around center.
+    constexpr float amp = 0.3f;
+
+    // X profile (per-column): plot value as y-position — cyan.
+    // Interpolate between consecutive columns to fill gaps.
+    CRGB xColor(0, 255, 255);
+    float centerY = (float)(h - 1) * 0.5f;
+    float prevPy = 0.0f;
+    for (int x = 0; x < w; x++) {
+        s16x16 val = s16x16::from_raw(mState.x_prof[x]); // [-1, 1]
+        float py = centerY - val.to_float() * amp * centerY;
+        plotTile(xColor, (float)x, py, true);
+        if (x > 0) {
+            float dy = py - prevPy;
+            int gap = (int)fabsf(dy);
+            for (int s = 1; s < gap; s++) {
+                float t = (float)s / (float)gap;
+                float midY = prevPy + dy * t;
+                float midX = (float)(x - 1) + t;
+                plotTile(xColor, midX, midY, true);
+            }
+        }
+        prevPy = py;
+    }
+
+    // Y profile (per-row): plot value as x-position — yellow.
+    // Interpolate between consecutive rows to fill gaps.
+    CRGB yColor(255, 255, 0);
+    float centerX = (float)(w - 1) * 0.5f;
+    float prevPx = 0.0f;
+    for (int y = 0; y < h; y++) {
+        s16x16 val = s16x16::from_raw(mState.y_prof[y]); // [-1, 1]
+        float px = centerX + val.to_float() * amp * centerX;
+        plotTile(yColor, px, (float)y, false);
+        if (y > 0) {
+            float dx = px - prevPx;
+            int gap = (int)fabsf(dx);
+            for (int s = 1; s < gap; s++) {
+                float t = (float)s / (float)gap;
+                float midX = prevPx + dx * t;
+                float midY = (float)(y - 1) + t;
+                plotTile(yColor, midX, midY, false);
+            }
+        }
+        prevPx = px;
+    }
+}
+
+// ---------------------------------------------------------------------------
 //  drawImpl — main entry point
 // ---------------------------------------------------------------------------
 
@@ -823,6 +985,10 @@ void FlowFieldFP::drawImpl(DrawContext context, u32 dt_ms, u32 t_ms) {
             out[ledIdx].g = q16_to_u8(gp[i]);
             out[ledIdx].b = q16_to_u8(bp[i]);
         }
+    }
+
+    if (mParams.show_flow_vectors) {
+        drawFlowVectors(context.leds);
     }
 }
 
