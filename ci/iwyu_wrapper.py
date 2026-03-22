@@ -196,24 +196,6 @@ def main():
     # Exit code 0 = no suggestions, non-zero = suggestions or errors
     iwyu_result = subprocess.run(iwyu_cmd)
 
-    # CRITICAL: Also run the actual compiler to produce .obj files
-    # The build system expects .obj files to exist for linking, but IWYU only analyzes code.
-    # We must invoke the actual compiler after IWYU analysis to create object files.
-    # Note: We ALWAYS run the compiler, even if IWYU had suggestions (non-zero exit).
-    # IWYU suggestions are informational, but the build must complete.
-    compile_returncode = 0
-    if compiler_executable and compiler_args:
-        # Run the actual compilation
-        # Use the original compiler with original arguments (including PCH if present)
-        compile_cmd = [compiler_executable] + compiler_args
-        compile_result = subprocess.run(compile_cmd)
-        compile_returncode = compile_result.returncode
-
-    # Return compilation error if compilation failed (most critical)
-    # Otherwise return IWYU result (suggestions are useful but non-blocking)
-    if compile_returncode != 0:
-        sys.exit(compile_returncode)
-
     sys.exit(iwyu_result.returncode)
 
 
