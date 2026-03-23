@@ -5,6 +5,7 @@
 #include "fl/audio/audio.cpp.hpp"
 #include "fl/audio/audio_context.cpp.hpp"
 #include "fl/audio/audio_input.cpp.hpp"
+#include "fl/audio/audio_manager.cpp.hpp"
 #include "fl/audio/audio_processor.cpp.hpp"
 #include "fl/audio/audio_reactive.cpp.hpp"
 #include "fl/audio/auto_gain.cpp.hpp"

@@ -562,10 +562,7 @@ class CFastLED {
 	fl::u32 mNMinMicros;    ///< minimum µs between frames, used for capping frame rates
 	fl::u32 mNPowerData;    ///< max power use parameter
 	power_func mPPowerFunc;  ///< function for overriding brightness when using FastLED.show();
-	static fl::vector<fl::ChannelPtr> mChannels; ///< stored ChannelPtrs to keep them alive
-#if SKETCH_HAS_LOTS_OF_MEMORY
-	static fl::vector<fl::shared_ptr<fl::audio::Processor>> mAudioProcessors; ///< stored AudioProcessors to keep them alive
-#endif
+	static fl::vector<fl::ChannelPtr>& channels(); ///< stored ChannelPtrs to keep them alive
 
 public:
 	CFastLED();
@@ -797,14 +794,14 @@ public:
 	/// @endcode
 	static void remove(fl::ChannelPtr channel);
 
-	/// @brief Remove an audio processor from the internal list
+	/// @brief Remove the audio processor
 	///
-	/// Removes the audio processor from the active list so it will no longer
-	/// be kept alive by FastLED. If this was the last shared_ptr, the processor
-	/// and its associated mic/task will be destroyed via RAII.
+	/// Clears the stored audio processor if it matches the given processor.
+	/// If this was the last shared_ptr, the processor and its associated
+	/// mic/task will be destroyed via RAII.
 	///
 	/// @param processor Shared pointer to an Processor instance
-	/// @note Safe to call multiple times - no error if processor not in list
+	/// @note Safe to call multiple times - no-op if processor doesn't match
 	static void remove(fl::shared_ptr<fl::audio::Processor> processor);
 
 	/// @}
@@ -1568,5 +1565,3 @@ using fl_string = fl::string;
 // Backdoor to get the size of the CLedController object. The one place
 // that includes this just uses extern to declare the function.
 // Declaration moved to src/fl/fastled.h
-
-

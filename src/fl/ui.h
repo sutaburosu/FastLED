@@ -601,7 +601,4 @@ FASTLED_UI_DEFINE_OPERATORS(UICheckbox);
 FASTLED_UI_DEFINE_OPERATORS(UIButton);
 FASTLED_UI_DEFINE_OPERATORS(UIDropdown);
 
-// Bridge: defined in FastLED.cpp.hpp where CFastLED is complete.
-shared_ptr<audio::Processor> addUIAudioProcessor(UIAudio& audio);
-
 } // end namespace fl

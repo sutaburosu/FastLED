@@ -1,4 +1,5 @@
 #include "fl/ui.h"
+#include "fl/audio/audio_manager.h"
 #include "fl/stl/stdint.h"
 #include "fl/stl/compiler_control.h"
 
@@ -64,7 +65,7 @@ UIAudio::~UIAudio() {}
 
 fl::shared_ptr<audio::Processor> UIAudio::processor() {
     if (!mProcessor) {
-        mProcessor = addUIAudioProcessor(*this);
+        mProcessor = audio::AudioManager::instance().add(*this);
     }
     return mProcessor;
 }

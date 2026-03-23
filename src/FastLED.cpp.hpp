@@ -12,13 +12,13 @@
 #include "fl/channels/driver.h"  // for IChannelDriver
 #include "fl/system/delay.h"  // for delayMicroseconds
 #include "fl/system/log.h"  // for FL_WARN
-#include "fl/audio/input.h"  // for IInput
-#include "fl/ui.h"  // for UIAudio
+#include "fl/audio/audio_manager.h"  // for AudioManager
 #include "fl/stl/assert.h"  // for FL_ASSERT
 #include "hsv2rgb.h"  // for CRGB
 #include "fl/stl/int.h"  // for u32, u16
 #include "platforms/init.h"  // IWYU pragma: keep
 #include "fl/channels/config.h"  // for ChannelConfig
+#include "fl/stl/singleton.h"  // for fl::Singleton
 #include "platforms/is_platform.h"
 
 /// @file FastLED.cpp
@@ -121,20 +121,20 @@ CLEDController &CFastLED::addLeds(CLEDController *pLed,
 	return *pLed;
 }
 
-fl::vector<fl::ChannelPtr> CFastLED::mChannels;
-#if SKETCH_HAS_LOTS_OF_MEMORY
-fl::vector<fl::shared_ptr<fl::audio::Processor>> CFastLED::mAudioProcessors;
-#endif
+fl::vector<fl::ChannelPtr>& CFastLED::channels() {
+	return fl::Singleton<fl::vector<fl::ChannelPtr>>::instance();
+}
 
 void CFastLED::add(fl::ChannelPtr channel) {
 	if (!channel) {
 		return;
 	}
+	auto& chnls = channels();
 	// Protect against double-add
-	if (mChannels.has(channel)) {
+	if (chnls.has(channel)) {
 		return;
 	}
-	mChannels.push_back(channel);
+	chnls.push_back(channel);
 	// Add channel to the CLEDController linked list
 	// Channel uses DeferRegister mode, so explicit addToDrawList() call is required
 	// Note: addToDrawList() now fires onChannelAdded event
@@ -148,7 +148,7 @@ void CFastLED::remove(fl::ChannelPtr channel) {
 	// Note: removeFromDrawList() now fires onChannelRemoved event
 	channel->removeFromDrawList();
 	// Remove from internal storage (safe if not found - erase is a no-op)
-	mChannels.erase(channel);
+	channels().erase(channel);
 }
 
 void CFastLED::clear(ClearFlags flags) {
@@ -190,8 +190,8 @@ void CFastLED::clear(ClearFlags flags) {
 		FastLED.wait(2000);
 
 		// Remove all channels by iterating through a copy of the vector
-		// (we make a copy because remove() modifies mChannels)
-		fl::vector<fl::ChannelPtr> channelsCopy = mChannels;
+		// (we make a copy because remove() modifies channels())
+		fl::vector<fl::ChannelPtr> channelsCopy = channels();
 		for (auto& channel : channelsCopy) {
 			remove(channel);
 		}
@@ -201,7 +201,7 @@ void CFastLED::clear(ClearFlags flags) {
 		manager.reset();
 
 		// Clear the internal storage (should already be empty, but ensure it)
-		mChannels.clear();
+		channels().clear();
 	}
 
 	// Reset CHANNEL_ENGINES - clear all registered channel drivers
@@ -684,66 +684,21 @@ fl::ChannelEvents& CFastLED::channelEvents() {
 }
 
 // ============================================================================
-// Audio Input Integration
+// CFastLED audio method implementations - thin trampolines to AudioManager
 // ============================================================================
 
 fl::shared_ptr<fl::audio::Processor> CFastLED::add(const fl::audio::Config& config) {
-#if SKETCH_HAS_LOTS_OF_MEMORY && FASTLED_HAS_AUDIO_INPUT
-    fl::string errorMsg;
-    auto input = fl::audio::IInput::create(config, &errorMsg);
-    if (!input) {
-        FL_WARN("Failed to create audio input: " << errorMsg);
-        return nullptr;
-    }
-    input->start();
-    auto processor = fl::audio::Processor::createWithAutoInput(fl::move(input));
-    if (config.getMicProfile() != fl::audio::MicProfile::None) {
-        processor->setMicProfile(config.getMicProfile());
-    }
-    mAudioProcessors.push_back(processor);
-    return processor;
-#elif SKETCH_HAS_LOTS_OF_MEMORY
-    (void)config;
-    auto processor = fl::make_shared<fl::audio::Processor>();
-    mAudioProcessors.push_back(processor);
-    return processor;
-#else
-    (void)config;
-    return fl::make_shared<fl::audio::Processor>();
-#endif
+	return fl::audio::AudioManager::instance().add(config);
 }
 
 fl::shared_ptr<fl::audio::Processor> CFastLED::add(fl::shared_ptr<fl::audio::IInput> input) {
-#if SKETCH_HAS_LOTS_OF_MEMORY
-    if (!input) {
-        FL_WARN("Cannot add null audio input");
-        return nullptr;
-    }
-    input->start();
-    auto processor = fl::audio::Processor::createWithAutoInput(fl::move(input));
-    mAudioProcessors.push_back(processor);
-    return processor;
-#else
-    (void)input;
-    return fl::make_shared<fl::audio::Processor>();
-#endif
+	return fl::audio::AudioManager::instance().add(fl::move(input));
 }
 
 fl::shared_ptr<fl::audio::Processor> CFastLED::add(fl::UIAudio& uiAudio) {
-    return add(uiAudio.audioInput());
-}
-
-fl::shared_ptr<fl::audio::Processor> fl::addUIAudioProcessor(fl::UIAudio& audio) {
-    return CFastLED::add(audio);
+	return fl::audio::AudioManager::instance().add(uiAudio);
 }
 
 void CFastLED::remove(fl::shared_ptr<fl::audio::Processor> processor) {
-#if SKETCH_HAS_LOTS_OF_MEMORY
-    if (!processor) {
-        return;
-    }
-    mAudioProcessors.erase(processor);
-#else
-    (void)processor;
-#endif
+	fl::audio::AudioManager::instance().remove(fl::move(processor));
 }

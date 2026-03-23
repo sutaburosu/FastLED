@@ -15,11 +15,10 @@
 #include "fl/stl/vector.h"
 #include "fl/task/task.h"
 
-class CFastLED;
-
 namespace fl {
 namespace audio {
 
+class AudioManager;
 class IInput;
 
 // Forward declarations of detector types (defined in fl::audio::detector)
@@ -388,7 +387,7 @@ private:
 
     static fl::shared_ptr<Processor> createWithAutoInput(
         fl::shared_ptr<IInput> input);
-    friend class ::CFastLED;
+    friend class AudioManager;
 };
 
 } // namespace audio
