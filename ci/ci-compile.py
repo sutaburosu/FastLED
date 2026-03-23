@@ -140,7 +140,16 @@ def handle_docker_compilation(config: CompilationConfig) -> int:
     # Run compilation
     result = orchestrator.run_compilation(compile_cmd, stream_output=True)
 
-    # Copy output artifacts from container to host if compilation succeeded and -o flag was used
+    # Always copy build artifacts (firmware.elf, firmware.bin, firmware.map, build_info)
+    # from the container's .build/pio/{board}/ to the host, so analysis tools work.
+    if result.returncode == 0:
+        build_subdir = f".build/pio/{board_name}"
+        container_build_path = f"/fastled/{build_subdir}"
+        host_build_path = project_root / build_subdir
+        print()
+        orchestrator.copy_artifacts(container_build_path, host_build_path)
+
+    # Copy output artifacts from container to host if -o flag was used
     # Skip if output directory is already mounted as a volume (artifacts are already on host)
     if (
         result.returncode == 0

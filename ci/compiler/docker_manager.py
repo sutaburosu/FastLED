@@ -740,12 +740,26 @@ if [ -d "/fastled/output" ] && [ $EXIT_CODE -eq 0 ]; then
 
     # Find and copy all build artifacts
     if [ -d "/fastled/.pio/build" ]; then
-        # Copy all binary files
-        find /fastled/.pio/build -type f \\( -name "*.bin" -o -name "*.hex" -o -name "*.elf" -o -name "*.factory.bin" \\) \\
+        # Copy all binary and analysis files
+        find /fastled/.pio/build -type f \\( -name "*.bin" -o -name "*.hex" -o -name "*.elf" -o -name "*.map" -o -name "*.factory.bin" \\) \\
             -exec cp -v {} /fastled/output/ \\; 2>/dev/null || true
 
         echo "Build artifacts copied to output directory"
     fi
+
+    # Also copy firmware artifacts to the build directory for analysis tools
+    # (docker cp copies this dir back to the host)
+    for BUILD_ENV_DIR in /fastled/.build/pio/*/; do
+        ENV_NAME=$(basename "$BUILD_ENV_DIR")
+        PIO_BUILD="/fastled/.build/pio/$ENV_NAME/.pio/build/$ENV_NAME"
+        if [ -d "$PIO_BUILD" ]; then
+            for EXT in elf bin map hex; do
+                if [ -f "$PIO_BUILD/firmware.$EXT" ]; then
+                    cp "$PIO_BUILD/firmware.$EXT" "/fastled/.build/pio/$ENV_NAME/" 2>/dev/null || true
+                fi
+            done
+        fi
+    done
 fi
 """
 

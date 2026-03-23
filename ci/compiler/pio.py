@@ -135,8 +135,10 @@ def _init_platformio_build(
                 f"-fopt-info-all={opt_report_path.as_posix()}"
             )
 
-        # Generate linker map in the board directory (file name is sufficient; PIO writes here)
-        board_with_sketch_include.build_flags.append("-Wl,-Map,firmware.map")
+        # Generate linker map in the board build directory using absolute path
+        # (relative paths are unreliable — the linker CWD varies across PIO versions)
+        map_path = (build_dir / "firmware.map").resolve()
+        board_with_sketch_include.build_flags.append(f"-Wl,-Map,{map_path.as_posix()}")
     except KeyboardInterrupt as ki:
         handle_keyboard_interrupt(ki)
         raise
