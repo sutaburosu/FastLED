@@ -12,8 +12,10 @@ void apollo3_compile_tests() {
 #error "FASTLED_USE_PROGMEM should be 0 for Apollo3"
 #endif
 
+#if !defined(SKETCH_HAS_LOTS_OF_MEMORY_OVERRIDDEN)
 #if SKETCH_HAS_LOTS_OF_MEMORY != 1
 #error "SKETCH_HAS_LOTS_OF_MEMORY should be 1 for Apollo3"
+#endif
 #endif
 
 #if FASTLED_ALLOW_INTERRUPTS != 1

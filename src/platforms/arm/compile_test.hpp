@@ -15,6 +15,7 @@ static void arm_compile_tests() {
 #error "FASTLED_USE_PROGMEM should be either 0 or 1 for ARM platforms"
 #endif
 
+#if !defined(SKETCH_HAS_LOTS_OF_MEMORY_OVERRIDDEN)
 #if defined(FL_IS_TEENSY_30) || defined(FL_IS_TEENSY_31) || defined(FL_IS_TEENSY_32)
     // Teensy 3.0/3.1/3.2 have limited memory (16KB-64KB RAM)
     #if SKETCH_HAS_LOTS_OF_MEMORY != 0
@@ -35,6 +36,7 @@ static void arm_compile_tests() {
     #if SKETCH_HAS_LOTS_OF_MEMORY != 1
     #error "SKETCH_HAS_LOTS_OF_MEMORY should be 1 for most ARM platforms"
     #endif
+#endif
 #endif
 
 #if FASTLED_ALLOW_INTERRUPTS != 1 && FASTLED_ALLOW_INTERRUPTS != 0

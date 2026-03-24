@@ -13,8 +13,10 @@ void esp8266_compile_tests() {
 #error "FASTLED_USE_PROGMEM should be 0 for ESP8266"
 #endif
 
+#if !defined(SKETCH_HAS_LOTS_OF_MEMORY_OVERRIDDEN)
 #if SKETCH_HAS_LOTS_OF_MEMORY != 0
 #error "SKETCH_HAS_LOTS_OF_MEMORY should be 0 for ESP8266"
+#endif
 #endif
 
 #if FASTLED_ALLOW_INTERRUPTS != 1
@@ -55,8 +57,10 @@ void esp32_compile_tests() {
 #error "FASTLED_USE_PROGMEM should be 0 for ESP32 platforms"
 #endif
 
+#if !defined(SKETCH_HAS_LOTS_OF_MEMORY_OVERRIDDEN)
 #if SKETCH_HAS_LOTS_OF_MEMORY != 1
 #error "SKETCH_HAS_LOTS_OF_MEMORY should be 1 for ESP32 platforms"
+#endif
 #endif
 
 #if FASTLED_ALLOW_INTERRUPTS != 1

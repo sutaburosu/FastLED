@@ -1,6 +1,10 @@
 #pragma once
 
-#ifndef SKETCH_HAS_LOTS_OF_MEMORY
+#ifdef SKETCH_HAS_LOTS_OF_MEMORY
+// User has manually defined SKETCH_HAS_LOTS_OF_MEMORY via build flags.
+// Mark it as overridden so platform compile tests don't fire.
+#define SKETCH_HAS_LOTS_OF_MEMORY_OVERRIDDEN 1
+#else
 #if defined(FL_IS_AVR) \
   || defined(__AVR_ATtiny85__) \
   || defined(__AVR_ATtiny88__) \
