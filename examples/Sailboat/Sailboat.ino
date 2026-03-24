@@ -32,21 +32,21 @@ void loop() {}
 // ---------------------------------------------------------------------------
 CRGB leds[NUM_LEDS];
 fl::UIAudio audio_ui("Audio Input");
-fl::UICheckbox enableAmbient("Ambient Particles", true);
+fl::UICheckbox enableAmbient("Ambient Particles", false);
 fl::UICheckbox enableMeteors("Beat Meteors", true);
-fl::UICheckbox enableTimeWarp("Noise Time-Warp", true);
+fl::UICheckbox enableTimeWarp("Noise Time-Warp", false);
 // Vibe bass is self-normalizing: ~1.0 = song average.
 // meteorThreshold: bass must exceed this multiple of average to spawn meteor.
-fl::UISlider meteorThreshold("Meteor Threshold", 3.0f, 1.5f, 6.0f, 0.1f);
+fl::UISlider meteorThreshold("Meteor Threshold", 1.5f, 1.5f, 6.0f, 0.1f);
 // ambientThreshold: bass above this spawns ambient particles.
-fl::UISlider ambientThreshold("Ambient Threshold", 1.2f, 0.5f, 3.0f, 0.1f);
-fl::UISlider dragSlider("Particle Drag", 0.05f, 0.0f, 1.0f, 0.01f);
-fl::UISlider speedSlider("Particle Speed", 0.5f, 0.1f, 3.0f, 0.1f);
-fl::UISlider ambientTrailSlider("Ambient Trail", 200.0f, 0.0f, 255.0f, 1.0f);
-fl::UISlider meteorTrailSlider("Meteor Trail", 220.0f, 0.0f, 255.0f, 1.0f);
-fl::UISlider ambientDecaySlider("Ambient Fade", 0.97f, 0.90f, 1.0f, 0.005f);
-fl::UISlider minVelocitySlider("Min Velocity", 0.05f, 0.01f, 0.5f, 0.01f);
-fl::UISlider debrisDecaySlider("Debris Fade", 0.90f, 0.80f, 1.0f, 0.01f);
+fl::UISlider ambientThreshold("Ambient Threshold", 1.0f, 0.5f, 3.0f, 0.1f);
+fl::UISlider dragSlider("Particle Drag", 0.06f, 0.0f, 1.0f, 0.01f);
+fl::UISlider speedSlider("Particle Speed", 2.6f, 0.1f, 3.0f, 0.1f);
+fl::UISlider ambientTrailSlider("Ambient Trail", 217.0f, 0.0f, 255.0f, 1.0f);
+fl::UISlider meteorTrailSlider("Meteor Trail", 171.0f, 0.0f, 255.0f, 1.0f);
+fl::UISlider ambientDecaySlider("Ambient Fade", 0.955f, 0.90f, 1.0f, 0.005f);
+fl::UISlider minVelocitySlider("Min Velocity", 0.01f, 0.01f, 0.5f, 0.01f);
+fl::UISlider debrisDecaySlider("Debris Fade", 0.96f, 0.80f, 1.0f, 0.01f);
 fl::UISlider debrisVelDecaySlider("Debris Drag", 0.95f, 0.85f, 1.0f, 0.01f);
 fl::PerlinParticlePunch sailboatFx(NUM_LEDS);
 
