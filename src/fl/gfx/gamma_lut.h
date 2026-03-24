@@ -300,11 +300,10 @@ typedef ProgmemLUT<GammaEval<gamma<u8x24>(2.8f)>, 256> Gamma28LUT;
 typedef ProgmemLUT16<GammaEval16<gamma<u8x24>(2.2f)>, 256> Gamma22LUT16;
 typedef ProgmemLUT16<GammaEval16<gamma<u8x24>(2.8f)>, 256> Gamma28LUT16;
 
-// Explicit instantiation declarations — suppress per-TU init blocks.
-// Definitions live in gamma_lut.cpp.hpp (compiled once in fl.gfx+).
-extern template struct ProgmemLUT<GammaEval<gamma<u8x24>(2.2f)>, 256>;
-extern template struct ProgmemLUT<GammaEval<gamma<u8x24>(2.8f)>, 256>;
-extern template struct ProgmemLUT16<GammaEval16<gamma<u8x24>(2.2f)>, 256>;
+// Explicit instantiation declaration for the most commonly used LUT.
+// Suppresses per-TU ~6KB _GLOBAL__sub_I_ init blocks across all modules.
+// Definition lives in gamma_lut.cpp.hpp (compiled once in fl.gfx+).
+// Other LUT variants are instantiated implicitly on demand.
 extern template struct ProgmemLUT16<GammaEval16<gamma<u8x24>(2.8f)>, 256>;
 
 } // namespace fl

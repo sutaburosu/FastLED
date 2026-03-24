@@ -7,10 +7,9 @@
 
 namespace fl {
 
-// Explicit instantiation definitions — these are the ONLY copies of the init code.
-template struct ProgmemLUT<GammaEval<gamma<u8x24>(2.2f)>, 256>;
-template struct ProgmemLUT<GammaEval<gamma<u8x24>(2.8f)>, 256>;
-template struct ProgmemLUT16<GammaEval16<gamma<u8x24>(2.2f)>, 256>;
+// Single explicit instantiation of the 2.8 gamma 16-bit LUT.
+// This is the only one used by the core (five-bit brightness, RGBW pipeline).
+// Other LUT variants (2.2, 8-bit) are instantiated on-demand by user code.
 template struct ProgmemLUT16<GammaEval16<gamma<u8x24>(2.8f)>, 256>;
 
 } // namespace fl
