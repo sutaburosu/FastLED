@@ -40,12 +40,17 @@ CRGB leds[NUM_LEDS];
 fl::UIAudio audio_ui("Audio Input");
 fl::UICheckbox allWhite("All White", false);
 
-// Circular screen map so the web simulator knows where to place LEDs
+// Screen map: LEDs follow the main sail hypotenuse with natural sag (catenary)
 fl::ScreenMap screenMap =
     fl::ScreenMap(NUM_LEDS, 0.15f, [](int index, fl::vec2f &pt_out) {
-        float angle = (2.0f * PI * index) / NUM_LEDS;
-        pt_out.x = 50.0f + 48.0f * fl::cos(angle);
-        pt_out.y = 50.0f + 48.0f * fl::sin(angle);
+        float t = float(index) / float(NUM_LEDS - 1);
+        // Straight line: lower-left (15, 5) → upper-right (95, 95)
+        // Y-up coordinate system: high y = top of screen
+        pt_out.x = 15.0f + t * 80.0f;
+        float straight_y = 5.0f + t * 90.0f;
+        // Sag: catenary droop, subtract to bulge downward visually
+        float sag = 15.0f * fl::sin(t * PI);
+        pt_out.y = straight_y - sag;
     });
 
 // ---------------------------------------------------------------------------
