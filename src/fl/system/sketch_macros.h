@@ -1,5 +1,6 @@
 #pragma once
 
+#ifndef SKETCH_HAS_LOTS_OF_MEMORY
 #if defined(FL_IS_AVR) \
   || defined(__AVR_ATtiny85__) \
   || defined(__AVR_ATtiny88__) \
@@ -17,6 +18,7 @@
 #define SKETCH_HAS_LOTS_OF_MEMORY 0
 #else
 #define SKETCH_HAS_LOTS_OF_MEMORY 1
+#endif
 #endif
 
 #ifndef SKETCH_STRINGIFY
