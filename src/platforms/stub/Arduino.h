@@ -18,6 +18,7 @@
 #include "fl/stl/stdint.h"
 #include "fl/stl/ostream.h"
 #include "fl/stl/stdio.h"
+#include "fl/stl/type_traits.h"
 #include "platforms/stub/time_stub.h"
 #include "fl/math/math.h"
 
@@ -108,7 +109,7 @@ void clearAnalogValues();                 // Reset all analog values to default 
 struct SerialEmulation {
     void begin(int);
 
-    // Template methods must stay in header
+    // Single-argument print/println
     template <typename T> void print(T val) {
         fl::cout << val;
     }
@@ -116,11 +117,27 @@ struct SerialEmulation {
         fl::cout << val << fl::endl;
     }
 
-    // Two-argument print overloads for formatting - moved to .cpp
-    void print(float val, int digits);
-    void print(double val, int digits);
-    void print(int val, int base);
-    void print(unsigned int val, int base);
+    // Two-argument floating point: print(float/double, digits)
+    template <typename T>
+    typename fl::enable_if<fl::is_floating_point<T>::value>::type
+    print(T val, int digits);
+
+    template <typename T>
+    typename fl::enable_if<fl::is_floating_point<T>::value>::type
+    println(T val, int digits);
+
+    // Two-argument integer: print(integer, base)
+    // Covers all signed/unsigned integer types including char/u8
+    // (char/u8 are printed as numeric values, not characters)
+    template <typename T>
+    typename fl::enable_if<fl::is_integral<T>::value &&
+                           !fl::is_same<typename fl::remove_cv<T>::type, bool>::value>::type
+    print(T val, int base);
+
+    template <typename T>
+    typename fl::enable_if<fl::is_integral<T>::value &&
+                           !fl::is_same<typename fl::remove_cv<T>::type, bool>::value>::type
+    println(T val, int base);
 
     void println();
 

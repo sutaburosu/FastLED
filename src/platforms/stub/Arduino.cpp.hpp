@@ -91,67 +91,72 @@ void pinMode(int, int) {}
 // SerialEmulation member functions
 void SerialEmulation::begin(int) {}
 
-void SerialEmulation::print(float _val, int digits) {
-    // Clamp digits to reasonable range
+// Two-argument floating point print: print(float/double, digits)
+template <typename T>
+typename fl::enable_if<fl::is_floating_point<T>::value>::type
+SerialEmulation::print(T val, int digits) {
     digits = digits < 0 ? 0 : (digits > 9 ? 9 : digits);
-    double val = static_cast<double>(_val);
-
-    // Use literal format strings to avoid linter warnings
+    double d = static_cast<double>(val);
     switch(digits) {
-        case 0: fl::printf("%.0f", val); break;
-        case 1: fl::printf("%.1f", val); break;
-        case 2: fl::printf("%.2f", val); break;
-        case 3: fl::printf("%.3f", val); break;
-        case 4: fl::printf("%.4f", val); break;
-        case 5: fl::printf("%.5f", val); break;
-        case 6: fl::printf("%.6f", val); break;
-        case 7: fl::printf("%.7f", val); break;
-        case 8: fl::printf("%.8f", val); break;
-        case 9: fl::printf("%.9f", val); break;
+        case 0: fl::printf("%.0f", d); break;
+        case 1: fl::printf("%.1f", d); break;
+        case 2: fl::printf("%.2f", d); break;
+        case 3: fl::printf("%.3f", d); break;
+        case 4: fl::printf("%.4f", d); break;
+        case 5: fl::printf("%.5f", d); break;
+        case 6: fl::printf("%.6f", d); break;
+        case 7: fl::printf("%.7f", d); break;
+        case 8: fl::printf("%.8f", d); break;
+        case 9: fl::printf("%.9f", d); break;
     }
 }
 
-void SerialEmulation::print(double val, int digits) {
-    // Clamp digits to reasonable range
-    digits = digits < 0 ? 0 : (digits > 9 ? 9 : digits);
-
-    // Use literal format strings to avoid linter warnings
-    switch(digits) {
-        case 0: fl::printf("%.0f", val); break;
-        case 1: fl::printf("%.1f", val); break;
-        case 2: fl::printf("%.2f", val); break;
-        case 3: fl::printf("%.3f", val); break;
-        case 4: fl::printf("%.4f", val); break;
-        case 5: fl::printf("%.5f", val); break;
-        case 6: fl::printf("%.6f", val); break;
-        case 7: fl::printf("%.7f", val); break;
-        case 8: fl::printf("%.8f", val); break;
-        case 9: fl::printf("%.9f", val); break;
-    }
-}
-
-void SerialEmulation::print(int val, int base) {
-    if (base == 16) fl::printf("%x", val);
-    else if (base == 8) fl::printf("%o", val);
-    else if (base == 2) {
-        // Binary output
-        for (int i = 31; i >= 0; i--) {
-            fl::printf("%d", (val >> i) & 1);
+// Two-argument integer print: print(integer, base)
+// Works for all signed/unsigned integer types; char/u8 print as numbers
+template <typename T>
+typename fl::enable_if<fl::is_integral<T>::value &&
+                       !fl::is_same<typename fl::remove_cv<T>::type, bool>::value>::type
+SerialEmulation::print(T val, int base) {
+    // Use long long to handle all integer sizes uniformly
+    if (fl::is_signed<T>::value) {
+        long long v = static_cast<long long>(val);
+        if (base == 16) fl::printf("%llx", v);
+        else if (base == 8) fl::printf("%llo", v);
+        else if (base == 2) {
+            int bits = static_cast<int>(sizeof(T) * 8);
+            for (int i = bits - 1; i >= 0; i--) {
+                fl::printf("%d", (int)((v >> i) & 1));
+            }
         }
+        else fl::printf("%lld", v);
+    } else {
+        unsigned long long v = static_cast<unsigned long long>(val);
+        if (base == 16) fl::printf("%llx", v);
+        else if (base == 8) fl::printf("%llo", v);
+        else if (base == 2) {
+            int bits = static_cast<int>(sizeof(T) * 8);
+            for (int i = bits - 1; i >= 0; i--) {
+                fl::printf("%d", (int)((v >> i) & 1));
+            }
+        }
+        else fl::printf("%llu", v);
     }
-    else fl::printf("%d", val);
 }
 
-void SerialEmulation::print(unsigned int val, int base) {
-    if (base == 16) fl::printf("%x", val);
-    else if (base == 8) fl::printf("%o", val);
-    else if (base == 2) {
-        // Binary output
-        for (int i = 31; i >= 0; i--) {
-            fl::printf("%d", (val >> i) & 1);
-        }
-    }
-    else fl::printf("%u", val);
+// println variants just delegate to print + newline
+template <typename T>
+typename fl::enable_if<fl::is_floating_point<T>::value>::type
+SerialEmulation::println(T val, int digits) {
+    print(val, digits);
+    fl::printf("\n");
+}
+
+template <typename T>
+typename fl::enable_if<fl::is_integral<T>::value &&
+                       !fl::is_same<typename fl::remove_cv<T>::type, bool>::value>::type
+SerialEmulation::println(T val, int base) {
+    print(val, base);
+    fl::printf("\n");
 }
 
 void SerialEmulation::println() {
