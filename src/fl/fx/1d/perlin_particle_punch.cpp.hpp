@@ -102,7 +102,7 @@ u8 PerlinParticlePunch::envelopeUpdate(s16x16 vol, u32 duration_ms) {
     s16x16 next_vol;
     constexpr s16x16 e_val(2.71828183f);
     if (vol < mPrevVol) {
-        s16x16 dr = kDecayRate;
+        s16x16 dr = kDecayRate();
         constexpr s16x16 low_thresh(0.2f);
         constexpr s16x16 fp_zero(0.0f);
         constexpr s16x16 fp_one(1.0f);
@@ -112,7 +112,7 @@ u8 PerlinParticlePunch::envelopeUpdate(s16x16 vol, u32 duration_ms) {
         }
         next_vol = mPrevVol * s16x16::pow(e_val, dr * time);
     } else {
-        s16x16 maybe = mPrevVol * s16x16::pow(e_val, kAttackRate * time);
+        s16x16 maybe = mPrevVol * s16x16::pow(e_val, kAttackRate() * time);
         constexpr s16x16 small_thresh(0.01f);
         if (maybe > mPrevVol && maybe > small_thresh) {
             next_vol = vol < maybe ? (vol > mPrevVol ? vol : mPrevVol) : maybe;

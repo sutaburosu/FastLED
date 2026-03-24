@@ -34,8 +34,8 @@ class PerlinParticlePunch : public Fx1d {
   private:
     struct Photon;
 
-    static constexpr s16x16 kAttackRate = s16x16(0.4f);
-    static constexpr s16x16 kDecayRate = s16x16(-0.04f);
+    static constexpr s16x16 kAttackRate() { return s16x16(0.4f); }
+    static constexpr s16x16 kDecayRate() { return s16x16(-0.04f); }
     static constexpr u8 kFrameTimeMs = 3;
 
     s16x16 mPrevVol;

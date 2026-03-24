@@ -45,6 +45,7 @@
 #endif
 
 #define FASTLED_NO_PINMAP
+#include "fl/stl/stdint.h"
 
 typedef volatile fl::u32 RoReg;
 typedef volatile fl::u32 RwReg;

@@ -52,6 +52,7 @@
 #include <nrf_pwm.h>    // for Clockless
 #include <nrf_nvic.h>   // for Clockless / anything else using interrupts
 // IWYU pragma: end_keep
+#include "fl/stl/stdint.h"
 typedef __I  fl::u32 RoReg;
 typedef __IO fl::u32 RwReg;
 
