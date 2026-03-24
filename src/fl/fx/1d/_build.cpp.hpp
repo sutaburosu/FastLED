@@ -3,3 +3,4 @@
 /// Includes all implementation files in alphabetical order
 
 #include "fl/fx/1d/particles.cpp.hpp"
+#include "fl/fx/1d/perlin_particle_punch.cpp.hpp"
