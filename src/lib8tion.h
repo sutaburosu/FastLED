@@ -236,7 +236,13 @@
 // Skip those to avoid redeclaration conflicts.
 #if !defined(FL_IS_AVR)
 using fl::u8;
+// On AVR+Arduino, USBAPI.h (included via Arduino.h) already provides a global
+// 'typedef unsigned short u16;'. fl::u16 on AVR is 'unsigned int' — same width
+// but a different type — so 'using fl::u16;' would conflict. Skip it on AVR and
+// let USBAPI.h's typedef provide the global u16 name instead.
+#if !defined(FL_IS_AVR) || !defined(ARDUINO)
 using fl::u16;
+#endif
 using fl::u32;
 #endif
 using fl::u64;

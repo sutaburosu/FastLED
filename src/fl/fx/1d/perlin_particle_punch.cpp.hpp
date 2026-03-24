@@ -11,6 +11,11 @@ struct PerlinParticlePunch::Photon {
     s16x16 brightness;
 };
 
+// C++11/14 require out-of-class definitions for static constexpr members
+// that are ODR-used (passed by reference, address taken, etc.).
+constexpr s16x16 PerlinParticlePunch::kAttackRate;
+constexpr s16x16 PerlinParticlePunch::kDecayRate;
+
 PerlinParticlePunch::PerlinParticlePunch(u16 num_leds, u16 n_photons)
     : Fx1d(num_leds) {
     mPhotons.resize(n_photons);

@@ -21,7 +21,7 @@ void setup() {
     FastLED.addLeds<WS2812B, LED_PIN, GRB>(leds, NUM_LEDS);
     FastLED.setBrightness(128);
 
-    auto config = fl::audio::Config::CreateInmp441(I2S_WS, I2S_SD, I2S_CLK, fl::Right);
+    auto config = fl::audio::Config::CreateInmp441(I2S_WS, I2S_SD, I2S_CLK, fl::audio::AudioChannel::Right);
     audio = FastLED.add(config);
     audio->setGain(2.0f);  // Boost input by 2x
 

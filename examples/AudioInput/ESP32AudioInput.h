@@ -26,7 +26,7 @@
 #define I2S_WS_PIN 7  // Word Select (LRCLK)
 #define I2S_SD_PIN 8  // Serial Data (DIN)
 #define I2S_CLK_PIN 4 // Serial Clock (BCLK)
-#define I2S_CHANNEL fl::Right
+#define I2S_CHANNEL fl::audio::AudioChannel::Right
 
 // Platform-specific initialization delay (ESP32 needs longer startup time)
 #define PLATFORM_INIT_DELAY_MS 5000
@@ -49,5 +49,5 @@ inline void printPlatformInfo() {
     Serial.print("  Data Pin: ");
     Serial.println(I2S_SD_PIN);
     Serial.print("  Channel: ");
-    Serial.println(I2S_CHANNEL == fl::Right ? "Right" : "Left");
+    Serial.println(I2S_CHANNEL == fl::audio::AudioChannel::Right ? "Right" : "Left");
 }
