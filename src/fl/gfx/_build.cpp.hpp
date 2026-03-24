@@ -10,6 +10,7 @@
 #include "fl/gfx/downscale.cpp.hpp"
 #include "fl/gfx/fill.cpp.hpp"
 #include "fl/gfx/five_bit_hd_gamma.cpp.hpp"
+#include "fl/gfx/gamma_lut.cpp.hpp"
 #include "fl/gfx/gradient.cpp.hpp"
 #include "fl/gfx/hsv16.cpp.hpp"
 #include "fl/gfx/leds.cpp.hpp"
