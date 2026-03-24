@@ -4,17 +4,67 @@
 
 namespace fl {
 
-struct PerlinParticlePunch::Photon {
+// ---------------------------------------------------------------------------
+// Particle structs
+// ---------------------------------------------------------------------------
+
+struct PerlinParticlePunch::AmbientParticle {
     bool alive = false;
-    s16x16 velocity;
-    s16x16 position;
-    s16x16 brightness;
+    float position = 0.0f;
+    float velocity = 0.0f;
+    float brightness = 0.0f;
+    u8 paletteIndex = 0;
+    u8 headWidth = 3;
 };
 
+struct PerlinParticlePunch::MeteorParticle {
+    bool alive = false;
+    float position = 0.0f;
+    float velocity = 0.0f;
+    float intensity = 0.0f;
+    u32 birthTime = 0;
+    u8 debrisSpawned = 0;
+    u8 maxDebris = 5;
+    u8 frameCounter = 0;
 
-PerlinParticlePunch::PerlinParticlePunch(u16 num_leds, u16 n_photons)
-    : Fx1d(num_leds) {
-    mPhotons.resize(n_photons);
+    float tailLength() const {
+        float len = velocity * 3.0f;
+        if (len < 5.0f)
+            len = 5.0f;
+        if (len > 25.0f)
+            len = 25.0f;
+        return len;
+    }
+
+    bool shouldSpawnDebris() const {
+        return alive && debrisSpawned < maxDebris && frameCounter > 2 &&
+               (frameCounter % 5 == 0);
+    }
+};
+
+struct PerlinParticlePunch::DebrisParticle {
+    bool alive = false;
+    float position = 0.0f;
+    float velocity = 0.0f;
+    float brightness = 0.0f;
+    CRGB color = CRGB::Black;
+};
+
+// ---------------------------------------------------------------------------
+// Construction
+// ---------------------------------------------------------------------------
+
+PerlinParticlePunch::PerlinParticlePunch(u16 num_leds) : Fx1d(num_leds) {
+    mAmbientParticles.resize(50);
+    mMeteorParticles.resize(5);
+    mDebrisParticles.resize(50);
+    mTrailBuffer.resize(num_leds);
+    // Default blue-white palette
+    CRGBPalette16 defaultPalette(CRGB(0, 0, 40), CRGB(0, 40, 120),
+                                  CRGB(100, 160, 255),
+                                  CRGB(255, 255, 255));
+    mNoisePalette = defaultPalette;
+    mAmbientPalette = defaultPalette;
 }
 
 PerlinParticlePunch::~PerlinParticlePunch() = default;
@@ -23,42 +73,160 @@ fl::string PerlinParticlePunch::fxName() const {
     return "PerlinParticlePunch";
 }
 
-void PerlinParticlePunch::setAudioLevel(float vol) { mAudioVol = s16x16(vol); }
-void PerlinParticlePunch::setDrag(float drag) { mDrag = s16x16(drag); }
-void PerlinParticlePunch::setSpeed(float speed) { mSpeed = s16x16(speed); }
+// ---------------------------------------------------------------------------
+// Setters
+// ---------------------------------------------------------------------------
+
+void PerlinParticlePunch::setTimeMultiplier(float mult) {
+    mTimeMultiplier = mult;
+}
+
+void PerlinParticlePunch::setNoisePalette(const CRGBPalette16 &palette) {
+    mNoisePalette = palette;
+}
+
+void PerlinParticlePunch::setAmbientPalette(const CRGBPalette16 &palette) {
+    mAmbientPalette = palette;
+}
+
+void PerlinParticlePunch::setMeteorGradient(CRGB headColor, CRGB midColor,
+                                             CRGB tailColor) {
+    mMeteorHeadColor = headColor;
+    mMeteorMidColor = midColor;
+    mMeteorTailColor = tailColor;
+}
+
+void PerlinParticlePunch::setDrag(float drag) {
+    mDrag = drag;
+    // Meteor drag is slightly heavier than ambient.
+    // Scale the difference from 1.0, not the value itself.
+    // drag=0.99 → meteorDrag=0.985, drag=0.80 → meteorDrag=0.74
+    float diff = 1.0f - drag;
+    mMeteorDrag = 1.0f - diff * 1.5f;
+    if (mMeteorDrag < 0.0f)
+        mMeteorDrag = 0.0f;
+}
+
+void PerlinParticlePunch::setSpeed(float speed) { mSpeed = speed; }
+
+void PerlinParticlePunch::setAmbientTrailIntensity(u8 intensity) {
+    mAmbientTrailIntensity = intensity;
+}
+
+void PerlinParticlePunch::setMeteorTrailIntensity(u8 intensity) {
+    mMeteorTrailIntensity = intensity;
+}
+
+void PerlinParticlePunch::setAmbientBrightnessDecay(float decay) {
+    mAmbientBrightnessDecay = decay;
+}
+
+void PerlinParticlePunch::setMinVelocity(float minVel) {
+    mMinVelocity = minVel;
+}
+
+void PerlinParticlePunch::setDebrisBrightnessDecay(float decay) {
+    mDebrisBrightnessDecay = decay;
+}
+
+void PerlinParticlePunch::setDebrisVelocityDecay(float decay) {
+    mDebrisVelocityDecay = decay;
+}
+
+// ---------------------------------------------------------------------------
+// Spawning
+// ---------------------------------------------------------------------------
+
+void PerlinParticlePunch::spawnAmbient(float intensity) {
+    AmbientParticle *p = tryAllocateAmbient();
+    if (!p)
+        return;
+    p->alive = true;
+    p->position = 0.0f; // All particles punch out from position 0 (ground)
+    float jitter = float(random8(80, 120)) / 100.0f;
+    p->velocity = (0.5f + intensity * 1.5f) * mSpeed * jitter;
+    p->brightness = 128.0f + intensity * 127.0f;
+    p->paletteIndex = random8();
+    p->headWidth = 3 + random8(3); // 3, 4, or 5
+}
+
+void PerlinParticlePunch::spawnMeteor(float intensity) {
+    MeteorParticle *m = tryAllocateMeteor();
+    if (!m)
+        return;
+    if (intensity < 0.0f)
+        intensity = 0.0f;
+    if (intensity > 1.0f)
+        intensity = 1.0f;
+    m->alive = true;
+    m->position = 0.0f;
+    m->velocity = (1.5f + intensity * 5.0f) * mSpeed;
+    m->intensity = intensity;
+    m->birthTime = 0; // will be set in draw()
+    m->debrisSpawned = 0;
+    m->maxDebris = u8(5 + intensity * 5);
+    m->frameCounter = 0;
+}
+
+// ---------------------------------------------------------------------------
+// Pool allocation
+// ---------------------------------------------------------------------------
+
+PerlinParticlePunch::AmbientParticle *
+PerlinParticlePunch::tryAllocateAmbient() {
+    u16 n = (u16)mAmbientParticles.size();
+    for (u16 i = 0; i < n; ++i) {
+        if (!mAmbientParticles[i].alive) {
+            mAmbientParticles[i] = AmbientParticle();
+            return &mAmbientParticles[i];
+        }
+    }
+    return nullptr;
+}
+
+PerlinParticlePunch::MeteorParticle *
+PerlinParticlePunch::tryAllocateMeteor() {
+    u16 n = (u16)mMeteorParticles.size();
+    for (u16 i = 0; i < n; ++i) {
+        if (!mMeteorParticles[i].alive) {
+            mMeteorParticles[i] = MeteorParticle();
+            return &mMeteorParticles[i];
+        }
+    }
+    return nullptr;
+}
+
+PerlinParticlePunch::DebrisParticle *
+PerlinParticlePunch::tryAllocateDebris() {
+    u16 n = (u16)mDebrisParticles.size();
+    for (u16 i = 0; i < n; ++i) {
+        if (!mDebrisParticles[i].alive) {
+            mDebrisParticles[i] = DebrisParticle();
+            return &mDebrisParticles[i];
+        }
+    }
+    return nullptr;
+}
+
+// ---------------------------------------------------------------------------
+// Perlin noise (kept from original, with time-warp and palette)
+// ---------------------------------------------------------------------------
 
 s16x16 PerlinParticlePunch::mapf(s16x16 x, s16x16 in_min, s16x16 in_max,
                                   s16x16 out_min, s16x16 out_max) {
     return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
-s16x16 PerlinParticlePunch::mapfClamped(s16x16 x, s16x16 in_min,
-                                         s16x16 in_max, s16x16 out_min,
-                                         s16x16 out_max) {
-    s16x16 v = mapf(x, in_min, in_max, out_min, out_max);
-    if (v < out_min)
-        return out_min;
-    if (v > out_max)
-        return out_max;
-    return v;
-}
-
-u8 PerlinParticlePunch::max3(u8 a, u8 b, u8 c) {
-    u8 ab = a > b ? a : b;
-    return ab > c ? ab : c;
-}
-
-s16x16 PerlinParticlePunch::circleNoiseGen(u32 now, s16x16 theta) {
+s16x16 PerlinParticlePunch::circleNoiseGen(u32 now, s16x16 theta) const {
     s16x16 sin_val, cos_val;
     s16x16::sincos(theta, sin_val, cos_val);
-    // Map cos/sin from [-1,1] to noise coordinates [0, 2*0xafff]
     u32 x =
         u32((i64(cos_val.raw() + s16x16::SCALE) * 0xafff) >> s16x16::FRAC_BITS);
     u32 y =
         u32((i64(sin_val.raw() + s16x16::SCALE) * 0xafff) >> s16x16::FRAC_BITS);
-    u32 z = now * 0x000f;
+    // Time dimension with time-warp multiplier
+    u32 z = u32(float(now * 0x000fu) * mTimeMultiplier);
     u16 val = inoise16(x, y, z);
-    // val / 0xcfff, clamped to [0, 1], quartic curve, scaled to 255
     s16x16 tmp = s16x16::from_raw(
         i32((u32(val) << s16x16::FRAC_BITS) / 0xcfffu));
     constexpr s16x16 one(1.0f);
@@ -71,8 +239,9 @@ s16x16 PerlinParticlePunch::circleNoiseGen(u32 now, s16x16 theta) {
 }
 
 void PerlinParticlePunch::noiseCircleDraw(u32 now, CRGB *dst) {
-    // time_factor = now / 2048.0, as s16x16 (wraps, fine for angles)
-    s16x16 time_factor = s16x16::from_raw(static_cast<i32>(now * 32u));
+    // Apply time-warp to rotation speed — this is the visible acceleration
+    u32 warped_now = u32(float(now) * mTimeMultiplier);
+    s16x16 time_factor = s16x16::from_raw(static_cast<i32>(warped_now * 32u));
     constexpr s16x16 two_pi(6.2831853f);
     s16x16 step = two_pi / s16x16(i32(mNumLeds));
     s16x16 theta = -time_factor;
@@ -80,7 +249,6 @@ void PerlinParticlePunch::noiseCircleDraw(u32 now, CRGB *dst) {
     constexpr s16x16 zero(0.0f);
     constexpr s16x16 max_val(255.0f);
     for (u16 i = 0; i < mNumLeds; ++i) {
-        u8 hue = 155;
         s16x16 val = circleNoiseGen(now + 1000, theta);
         if (val < threshold) {
             val = zero;
@@ -88,130 +256,232 @@ void PerlinParticlePunch::noiseCircleDraw(u32 now, CRGB *dst) {
             val = mapf(val, threshold, max_val, zero, max_val);
         }
         u8 val_u8 = u8(val.to_int());
-        hsv2rgb_spectrum(CHSV(hue, 255 - val_u8, val_u8), dst[i]);
+        // Palette lookup: val_u8 selects color AND brightness
+        dst[i] = ColorFromPalette(mNoisePalette, val_u8, val_u8, LINEARBLEND);
         theta = theta + step;
     }
 }
 
-u8 PerlinParticlePunch::envelopeUpdate(s16x16 vol, u32 duration_ms) {
-    s16x16 time = s16x16(i32(duration_ms)) / s16x16(i32(kFrameTimeMs));
-    s16x16 next_vol;
-    constexpr s16x16 e_val(2.71828183f);
-    if (vol < mPrevVol) {
-        s16x16 dr = kDecayRate();
-        constexpr s16x16 low_thresh(0.2f);
-        constexpr s16x16 fp_zero(0.0f);
-        constexpr s16x16 fp_one(1.0f);
-        if (mPrevVol < low_thresh) {
-            dr = dr * mapfClamped(mPrevVol, low_thresh, fp_zero, fp_one,
-                                  fp_zero);
-        }
-        next_vol = mPrevVol * s16x16::pow(e_val, dr * time);
-    } else {
-        s16x16 maybe = mPrevVol * s16x16::pow(e_val, kAttackRate() * time);
-        constexpr s16x16 small_thresh(0.01f);
-        if (maybe > mPrevVol && maybe > small_thresh) {
-            next_vol = vol < maybe ? (vol > mPrevVol ? vol : mPrevVol) : maybe;
-        } else {
-            next_vol = vol;
-        }
-    }
-    mPrevVol = next_vol;
-    return u8((next_vol * s16x16(255)).to_int());
+// ---------------------------------------------------------------------------
+// Rendering helpers
+// ---------------------------------------------------------------------------
+
+void PerlinParticlePunch::writeMax(CRGB &dst, const CRGB &src) {
+    if (src.r > dst.r)
+        dst.r = src.r;
+    if (src.g > dst.g)
+        dst.g = src.g;
+    if (src.b > dst.b)
+        dst.b = src.b;
 }
 
-PerlinParticlePunch::Photon *PerlinParticlePunch::tryAllocatePhoton() {
-    u16 n = (u16)mPhotons.size();
-    for (u16 i = 0; i < n; ++i) {
-        if (!mPhotons[i].alive) {
-            mPhotons[i] = Photon();
-            mPhotons[i].alive = true;
-            return &mPhotons[i];
-        }
-    }
-    return nullptr;
-}
+void PerlinParticlePunch::renderAmbient(const AmbientParticle &p) {
+    int center = int(p.position);
+    float frac = p.position - float(center);
+    u8 bri = u8(p.brightness);
+    CRGB baseColor =
+        ColorFromPalette(mAmbientPalette, p.paletteIndex, bri, LINEARBLEND);
 
-void PerlinParticlePunch::photonDraw(CRGB *dst, u8 led_value) {
-    const bool is_rising = led_value > mLastLedValue;
-    mLastLedValue = led_value;
-
-    if (led_value > 16 && is_rising) {
-        Photon *p = tryAllocatePhoton();
-        if (p) {
-            s16x16 energy = s16x16(i32(led_value)) / s16x16(255);
-            s16x16 base_speed = s16x16(4) + energy * s16x16(12);
-            s16x16 jitter =
-                s16x16(i32(random(85, 115))) / s16x16(100);
-            p->velocity = base_speed * jitter * mSpeed;
-            p->position = s16x16(0);
-            p->brightness = s16x16(i32(led_value));
-        }
-    }
-
-    constexpr s16x16 kBrightnessDecay(0.98f);
-    constexpr s16x16 kMinBrightness(12.0f);
-    constexpr s16x16 kMinVelocity(0.3f);
-    s16x16 num_leds_fp{i32(mNumLeds)};
-
-    u16 n = (u16)mPhotons.size();
-    for (u16 i = 0; i < n; ++i) {
-        Photon *p = &mPhotons[i];
-        if (!p->alive)
+    for (int offset = 0; offset < p.headWidth; ++offset) {
+        int idx = center - offset; // trail extends behind (toward pos 0)
+        if (idx < 0 || idx >= mNumLeds)
             continue;
 
-        s16x16 prev_pos = p->position;
-        p->velocity = p->velocity * mDrag;
-        p->position = p->position + p->velocity;
-        p->brightness = p->brightness * kBrightnessDecay;
+        // Linear falloff: 100% at head → 20% at tail of gradient
+        float falloff = 1.0f - (float(offset) / float(p.headWidth)) * 0.8f;
+        CRGB pixel = baseColor;
+        pixel.nscale8(u8(falloff * 255.0f));
 
-        if (p->position > num_leds_fp || p->brightness < kMinBrightness ||
-            p->velocity < kMinVelocity) {
-            p->alive = false;
-            continue;
-        }
-
-        CHSV tmp(160, 0, u8(p->brightness.to_int()));
-        int idx_start = prev_pos.to_int();
-        int idx_end = p->position.to_int();
-
-        for (int j = idx_start; j <= idx_end; ++j) {
-            if (j >= 0 && j < mNumLeds) {
-                u8 existing = max3(dst[j].r, dst[j].g, dst[j].b);
-                if (tmp.v > existing) {
-                    CRGB rgb;
-                    hsv2rgb_spectrum(tmp, rgb);
-                    dst[j] = rgb;
-                } else {
-                    CRGB rgb;
-                    hsv2rgb_spectrum(tmp, rgb);
-                    rgb.nscale8_video(existing);
-                    dst[j] += rgb;
-                }
+        // Sub-pixel blending for the leading edge
+        if (offset == 0 && frac > 0.01f) {
+            int nextIdx = center + 1;
+            if (nextIdx < mNumLeds) {
+                CRGB subPixel = pixel;
+                subPixel.nscale8(u8(frac * 255.0f));
+                writeMax(mTrailBuffer[nextIdx], subPixel);
             }
+            pixel.nscale8(u8((1.0f - frac) * 255.0f));
         }
+
+        writeMax(mTrailBuffer[idx], pixel);
     }
 }
+
+void PerlinParticlePunch::renderMeteor(const MeteorParticle &m) {
+    int center = int(m.position);
+
+    // --- Head: 5-pixel gaussian kernel ---
+    static const float kGaussian[] = {0.15f, 0.60f, 1.0f, 0.60f, 0.15f};
+    for (int offset = -2; offset <= 2; ++offset) {
+        int idx = center + offset;
+        if (idx < 0 || idx >= mNumLeds)
+            continue;
+        float weight = kGaussian[offset + 2];
+        u8 bri = u8(255.0f * m.intensity * weight);
+        // Re-entry sparkle: random brightness jitter per pixel per frame
+        bri = scale8(bri, random8(153, 255));
+        CRGB headColor = mMeteorHeadColor;
+        headColor.nscale8(bri);
+        writeMax(mTrailBuffer[idx], headColor);
+    }
+
+    // --- Tail: gradient behind the head ---
+    float tailLen = m.tailLength();
+    int tailPixels = int(tailLen);
+    for (int i = 1; i <= tailPixels; ++i) {
+        int idx = center - i;
+        if (idx < 0)
+            break;
+        if (idx >= mNumLeds)
+            continue;
+
+        // t: 0.0 at head, 1.0 at tail tip
+        float t = float(i) / float(tailPixels);
+        fract8 blendAmt = u8(t * 255.0f);
+        CRGB tailColor = blend(mMeteorMidColor, mMeteorTailColor, blendAmt);
+        // Quadratic brightness falloff along tail
+        float bri = (1.0f - t * t) * m.intensity;
+        tailColor.nscale8(u8(bri * 255.0f));
+        writeMax(mTrailBuffer[idx], tailColor);
+    }
+}
+
+void PerlinParticlePunch::renderDebris(const DebrisParticle &d) {
+    int idx = int(d.position);
+    float frac = d.position - float(idx);
+    u8 bri = u8(d.brightness);
+    CRGB pixel = d.color;
+    pixel.nscale8(bri);
+
+    if (idx >= 0 && idx < mNumLeds) {
+        CRGB main = pixel;
+        main.nscale8(u8((1.0f - frac) * 255.0f));
+        writeMax(mTrailBuffer[idx], main);
+    }
+    int nextIdx = idx + 1;
+    if (nextIdx >= 0 && nextIdx < mNumLeds && frac > 0.01f) {
+        CRGB sub = pixel;
+        sub.nscale8(u8(frac * 255.0f));
+        writeMax(mTrailBuffer[nextIdx], sub);
+    }
+}
+
+void PerlinParticlePunch::spawnDebrisFromMeteor(MeteorParticle &m, u32) {
+    DebrisParticle *d = tryAllocateDebris();
+    if (!d)
+        return;
+
+    float tailLen = m.tailLength();
+    u8 maxOffset = u8(tailLen);
+    if (maxOffset < 3)
+        maxOffset = 3;
+    float spawnOffset = float(random8(2, maxOffset));
+    float spawnPos = m.position - spawnOffset;
+    if (spawnPos < 0.0f)
+        spawnPos = 0.0f;
+
+    // Interpolate meteor tail color at detach point
+    float t = spawnOffset / tailLen;
+    if (t > 1.0f)
+        t = 1.0f;
+    fract8 blendAmt = u8(t * 255.0f);
+    CRGB debrisColor = blend(mMeteorMidColor, mMeteorTailColor, blendAmt);
+
+    d->alive = true;
+    d->position = spawnPos;
+    d->velocity = float(random8(10, 40)) / 100.0f; // 0.1-0.4 LEDs/frame
+    d->brightness = 180.0f;
+    d->color = debrisColor;
+    m.debrisSpawned++;
+}
+
+// ---------------------------------------------------------------------------
+// Main draw
+// ---------------------------------------------------------------------------
 
 void PerlinParticlePunch::draw(DrawContext context) {
     CRGB *leds = context.leds;
     if (leds == nullptr || mNumLeds == 0) {
         return;
     }
-
     u32 now = context.now;
 
-    // 1. Perlin-noise background
+    // --- Layer 1: Perlin noise background (fresh each frame) ---
     noiseCircleDraw(now, leds);
 
-    // 2. Run audio envelope (repeated for smoother response)
-    u8 led_value = 0;
-    for (int i = 0; i < 10; ++i) {
-        led_value = envelopeUpdate(mAudioVol, kFrameTimeMs);
+    // --- Trail buffer decay ---
+    // Use the larger of the two trail intensities for the shared buffer.
+    // Higher intensity value = less fade per frame = longer trails.
+    u8 trailIntensity = mAmbientTrailIntensity > mMeteorTrailIntensity
+                            ? mAmbientTrailIntensity
+                            : mMeteorTrailIntensity;
+    u8 decayRate = 255 - trailIntensity;
+    fadeToBlackBy(mTrailBuffer.data(), mNumLeds, decayRate);
+
+    // --- Layer 2: Ambient particles ---
+    for (u16 i = 0; i < (u16)mAmbientParticles.size(); ++i) {
+        AmbientParticle &p = mAmbientParticles[i];
+        if (!p.alive)
+            continue;
+        // Physics update
+        p.velocity *= mDrag;
+        p.position += p.velocity;
+        p.brightness *= mAmbientBrightnessDecay;
+        if (p.position >= float(mNumLeds) || p.position < 0.0f ||
+            p.brightness < 8.0f || p.velocity < mMinVelocity) {
+            p.alive = false;
+            continue;
+        }
+        renderAmbient(p);
     }
 
-    // 3. Photon particles driven by audio envelope
-    photonDraw(leds, led_value);
+    // --- Layer 3: Meteors ---
+    for (u16 i = 0; i < (u16)mMeteorParticles.size(); ++i) {
+        MeteorParticle &m = mMeteorParticles[i];
+        if (!m.alive)
+            continue;
+        if (m.birthTime == 0)
+            m.birthTime = now;
+        // Debris spawn check before physics update
+        if (m.shouldSpawnDebris()) {
+            spawnDebrisFromMeteor(m, now);
+        }
+        // Physics update
+        m.velocity *= mMeteorDrag;
+        m.position += m.velocity;
+        m.frameCounter++;
+        if (m.position >= float(mNumLeds) || m.velocity < mMinVelocity) {
+            m.alive = false;
+            continue;
+        }
+        renderMeteor(m);
+    }
+
+    // --- Debris ---
+    for (u16 i = 0; i < (u16)mDebrisParticles.size(); ++i) {
+        DebrisParticle &d = mDebrisParticles[i];
+        if (!d.alive)
+            continue;
+        // Physics update
+        d.position += d.velocity;
+        d.velocity *= mDebrisVelocityDecay;
+        d.brightness *= mDebrisBrightnessDecay;
+        if (d.brightness < 5.0f || d.position >= float(mNumLeds)) {
+            d.alive = false;
+            continue;
+        }
+        renderDebris(d);
+    }
+
+    // --- Composite: max(noise, trail) per channel ---
+    for (u16 i = 0; i < mNumLeds; ++i) {
+        if (mTrailBuffer[i].r > leds[i].r)
+            leds[i].r = mTrailBuffer[i].r;
+        if (mTrailBuffer[i].g > leds[i].g)
+            leds[i].g = mTrailBuffer[i].g;
+        if (mTrailBuffer[i].b > leds[i].b)
+            leds[i].b = mTrailBuffer[i].b;
+    }
 }
 
 } // namespace fl
