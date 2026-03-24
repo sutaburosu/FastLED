@@ -9,9 +9,14 @@
 #include "fl/stl/map.h"               // For fl::map
 #include "fl/stl/string.h"  // For fl::string
 #include "fl/fx/video.h"
-#include "fl/codec/jpeg.h"
-#include "fl/codec/mp3.h"
+#include "fl/codec/jpeg.h"  // For JpegConfig (lightweight struct, no linker symbols)
 #include "fl/stl/compiler_control.h"
+
+// Forward declaration — concrete Mp3Decoder lives in fl/codec/mp3.h
+namespace fl {
+class Mp3Decoder;
+using Mp3DecoderPtr = fl::shared_ptr<Mp3Decoder>;
+}
 
 namespace fl {
 

@@ -3,9 +3,10 @@
 #include "fl/stl/stdint.h"
 
 #include "fl/stl/function.h"
-#include "fl/stl/shared_ptr.h"         // For FASTLED_SHARED_PTR macros
-#include "fl/ui.h"
+#include "fl/stl/shared_ptr.h"
+#include "fl/system/engine_events.h"
 #include "fl/sensors/digital_pin.h"
+#include "fl/ui.h"  // For IButtonInput
 
 namespace fl {
 
@@ -48,7 +49,7 @@ class ButtonLowLevel {
 // The default button type hooks into the FastLED EngineEvents to monitor
 // whether the button is pressed or not. You do not need to run an update
 // function. If you need more control, use ButtonLowLevel directly.
-class Button {
+class Button : public IButtonInput {
   public:
     Button(int pin,
            ButtonStrategy strategy = ButtonStrategy::kHighLowFloating);
@@ -62,12 +63,11 @@ class Button {
         mButton.setStrategy(strategy);
     }
 
-    bool isPressed() {
+    bool isPressed() override {
         return mButton.isPressed();
     }
 
-    bool clicked() const {
-        // If we have a real button, check if it's pressed
+    bool clicked() override {
         return mClickedThisFrame;
     }
 

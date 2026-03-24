@@ -1,9 +1,14 @@
+// ok no header
 #include "fl/spi.h"
 #include "fl/spi/multi_lane_device.h"
 #include "fl/system/log.h"
 #include "fl/system/log.h"
 
 namespace fl {
+
+// Out-of-line destructor: ensures unique_ptr<MultiLaneDevice> destruction
+// happens here (in fl.spi+), not in every TU that includes spi.h.
+Spi::~Spi() = default;
 
 // ============================================================================
 // Spi Constructors

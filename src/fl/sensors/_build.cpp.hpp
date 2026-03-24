@@ -6,3 +6,4 @@
 #include "fl/sensors/digital_pin.cpp.hpp"
 #include "fl/sensors/pir.cpp.hpp"
 #include "fl/sensors/potentiometer.cpp.hpp"
+#include "fl/sensors/ui_button_integration.cpp.hpp"

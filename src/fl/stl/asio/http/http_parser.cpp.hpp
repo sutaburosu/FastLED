@@ -1,6 +1,9 @@
 #pragma once
 
 #include "fl/stl/asio/http/http_parser.h"
+// IWYU pragma: begin_keep
+#include "fl/net/http/chunked_encoding.h"  // Full type for shared_ptr<ChunkedReader>
+// IWYU pragma: end_keep
 #include "fl/stl/algorithm.h"
 #include "fl/stl/cstring.h"
 #include "fl/stl/cctype.h"
@@ -57,10 +60,13 @@ bool parseInt(const fl::string& str, int& out) {
 HttpRequestParser::HttpRequestParser()
     : mState(READ_REQUEST_LINE)
     , mRequest(fl::make_shared<HttpRequest>())
+    , mChunkedReader(fl::make_shared<net::http::ChunkedReader>())
     , mContentLength(0)
     , mIsChunked(false)
 {
 }
+
+HttpRequestParser::~HttpRequestParser() = default;
 
 void HttpRequestParser::feed(fl::span<const u8> data) {
     mBuffer.insert(mBuffer.end(), data.begin(), data.end());
@@ -146,7 +152,7 @@ void HttpRequestParser::reset() {
     mState = READ_REQUEST_LINE;
     mBuffer.clear();
     mRequest = fl::make_shared<HttpRequest>();
-    mChunkedReader.reset();
+    mChunkedReader->reset();
     mContentLength = 0;
     mIsChunked = false;
 }
@@ -214,22 +220,22 @@ void HttpRequestParser::parseBody() {
     if (mIsChunked) {
         // Feed buffer to chunked reader
         if (!mBuffer.empty()) {
-            mChunkedReader.feed(mBuffer);
+            mChunkedReader->feed(mBuffer);
             mBuffer.clear();
         }
 
         // Read all available chunks
-        while (mChunkedReader.hasChunk()) {
-            size_t chunkSz = mChunkedReader.nextChunkSize();
+        while (mChunkedReader->hasChunk()) {
+            size_t chunkSz = mChunkedReader->nextChunkSize();
             size_t offset = req().body.size();
             req().body.resize(offset + chunkSz);
-            auto result = mChunkedReader.readChunk(
+            auto result = mChunkedReader->readChunk(
                 fl::span<u8>(req().body.data() + offset, chunkSz));
             (void)result;
         }
 
         // Check if final chunk received
-        if (mChunkedReader.isFinal()) {
+        if (mChunkedReader->isFinal()) {
             mState = COMPLETE;
         }
     } else {
@@ -282,10 +288,13 @@ fl::optional<fl::string> HttpRequestParser::getHeader(const char* name) const {
 HttpResponseParser::HttpResponseParser()
     : mState(READ_STATUS_LINE)
     , mResponse(fl::make_shared<HttpResponse>())
+    , mChunkedReader(fl::make_shared<net::http::ChunkedReader>())
     , mContentLength(0)
     , mIsChunked(false)
 {
 }
+
+HttpResponseParser::~HttpResponseParser() = default;
 
 void HttpResponseParser::feed(fl::span<const u8> data) {
     mBuffer.insert(mBuffer.end(), data.begin(), data.end());
@@ -371,7 +380,7 @@ void HttpResponseParser::reset() {
     mState = READ_STATUS_LINE;
     mBuffer.clear();
     mResponse = fl::make_shared<HttpResponse>();
-    mChunkedReader.reset();
+    mChunkedReader->reset();
     mContentLength = 0;
     mIsChunked = false;
 }
@@ -446,22 +455,22 @@ void HttpResponseParser::parseBody() {
     if (mIsChunked) {
         // Feed buffer to chunked reader
         if (!mBuffer.empty()) {
-            mChunkedReader.feed(mBuffer);
+            mChunkedReader->feed(mBuffer);
             mBuffer.clear();
         }
 
         // Read all available chunks
-        while (mChunkedReader.hasChunk()) {
-            size_t chunkSz = mChunkedReader.nextChunkSize();
+        while (mChunkedReader->hasChunk()) {
+            size_t chunkSz = mChunkedReader->nextChunkSize();
             size_t offset = resp().body.size();
             resp().body.resize(offset + chunkSz);
-            auto result = mChunkedReader.readChunk(
+            auto result = mChunkedReader->readChunk(
                 fl::span<u8>(resp().body.data() + offset, chunkSz));
             (void)result;
         }
 
         // Check if final chunk received
-        if (mChunkedReader.isFinal()) {
+        if (mChunkedReader->isFinal()) {
             mState = COMPLETE;
         }
     } else {

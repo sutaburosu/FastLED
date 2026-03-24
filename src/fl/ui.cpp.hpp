@@ -117,12 +117,11 @@ void UIButton::Listener::onBeginFrame() {
     bool clicked_this_frame = mOwner->clicked();
     bool pressed_this_frame = mOwner->isPressed();
 
-    // Check the real button if one is attached
-    if (mOwner->mRealButton) {
-        if (mOwner->mRealButton->isPressed()) {
+    // Check the real button if one is attached (via IButtonInput interface)
+    if (mOwner->mButtonInput) {
+        if (mOwner->mButtonInput->isPressed()) {
             clicked_this_frame = true;
             pressed_this_frame = true;
-            //mOwner->click(); // Update the UI button state
         }
     }
 
@@ -179,7 +178,7 @@ void UINumberField::Listener::onBeginFrame() {
 void UIDropdown::Listener::onBeginFrame() {
     UIDropdown &owner = *mOwner;
     
-    // Check the next button if one is attached
+    // Check the next button if one is attached (via IButtonInput interface)
     bool shouldAdvance = false;
     if (owner.mNextButton) {
         if (owner.mNextButton->clicked()) {

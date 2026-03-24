@@ -1,3 +1,4 @@
+// ok no header
 #include "fl/codec/pixel.h"
 #include "fastled_progmem.h"
 

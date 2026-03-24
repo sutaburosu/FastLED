@@ -5,7 +5,9 @@
 // begin current directory includes
 #include "fl/remote/remote.cpp.hpp"
 #include "fl/remote/types.cpp.hpp"
+#include "fl/remote/wled.cpp.hpp"
 
 // begin sub directory includes
 #include "fl/remote/rpc/_build.cpp.hpp"
 #include "fl/remote/transport/_build.cpp.hpp"
+#include "fl/remote/wled/_build.cpp.hpp"

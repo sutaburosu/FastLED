@@ -3,6 +3,7 @@
 #include "fl/stl/stdint.h"
 #include "fl/stl/cstddef.h"
 #include "fl/stl/atomic.h"
+#include "fl/stl/function.h"
 #include "fl/stl/functional.h"
 #include "fl/stl/int.h"
 #include "fl/stl/singleton.h"

@@ -15,7 +15,6 @@
 #include "fl/ui_impl.h"
 #include "fl/stl/compiler_control.h"  // IWYU pragma: keep
 #include "platforms/ui_defs.h"
-#include "fl/sensors/button.h"  // IWYU pragma: keep
 #include "fl/stl/int.h"  // IWYU pragma: keep
 
 #define FL_NO_COPY(CLASS)                                                      \
@@ -23,6 +22,18 @@
     CLASS &operator=(const CLASS &) = delete;
 
 namespace fl {
+
+// Virtual interface for physical button input - breaks fl.cpp -> fl.sensors+ link chain.
+// Concrete Button class implements this in fl/sensors/button.h.
+class IButtonInput {
+  public:
+    virtual ~IButtonInput() = default;
+    virtual bool isPressed() = 0;
+    virtual bool clicked() = 0;
+};
+
+// Forward declaration only - concrete type lives in fl/sensors/button.h
+class Button;
 
 // Base class for UI elements that provides string-based group functionality
 class UIElement {
@@ -136,20 +147,17 @@ class UIButton : public UIElement {
         if (mImpl.isPressed()) {
             return true;
         }
-        // If we have a real button, check if it's pressed
-        if (mRealButton) {
-            return mRealButton->isPressed();
+        if (mButtonInput) {
+            return mButtonInput->isPressed();
         }
-        // Otherwise, return the default state
         return false;
     }
     bool clicked() const {
         if (mImpl.clicked()) {
             return true;
         }
-        if (mRealButton) {
-            // If we have a real button, check if it was clicked
-            return mRealButton->isPressed();
+        if (mButtonInput) {
+            return mButtonInput->clicked();
         }
         return false;
     }
@@ -157,9 +165,7 @@ class UIButton : public UIElement {
     operator bool() const { return clicked(); }
     bool value() const { return clicked(); }
 
-    void addRealButton(fl::shared_ptr<Button> button) {
-        mRealButton = button;
-    }
+    void addRealButton(fl::shared_ptr<Button> button);
 
     void click() { mImpl.click(); }
     
@@ -233,7 +239,7 @@ class UIButton : public UIElement {
     function_list<void()> mPressCallbacks;
     function_list<void()> mReleaseCallbacks;
     Listener mListener;
-    fl::shared_ptr<Button> mRealButton;
+    fl::shared_ptr<IButtonInput> mButtonInput;
 };
 
 class UICheckbox : public UIElement {
@@ -480,9 +486,7 @@ class UIDropdown : public UIElement {
     }
     
     // Add a physical button that will advance to the next option when pressed
-    void addNextButton(int pin) {
-        mNextButton = fl::make_shared<Button>(pin);
-    }
+    void addNextButton(int pin);
     
     // Advance to the next option (cycles back to first option after last)
     void nextOption() {
@@ -535,7 +539,7 @@ class UIDropdown : public UIElement {
     function_list<void(UIDropdown &)> mCallbacks;
     int mLastFrameValue = -1;
     bool mLastFrameValueValid = false;
-    fl::shared_ptr<Button> mNextButton;  // Must be before mListener to ensure proper initialization order
+    fl::shared_ptr<IButtonInput> mNextButton;  // Must be before mListener to ensure proper initialization order
     Listener mListener;
 };
 

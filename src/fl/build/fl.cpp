@@ -11,7 +11,6 @@
 #include "fl/fltest.cpp.hpp"
 #include "fl/id_tracker.cpp.hpp"
 #include "fl/rx_device.cpp.hpp"
-#include "fl/spi.cpp.hpp"
 #include "fl/static_constexpr_defs.cpp.hpp"
 #include "fl/str_ui.cpp.hpp"
 #include "fl/time_alpha.cpp.hpp"

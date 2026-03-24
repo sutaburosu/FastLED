@@ -1,3 +1,4 @@
+// ok no header
 #include "fl/fx/wled/adapter.h"
 #include "FastLED.h"  // ok include - WLED adapter needs global FastLED object
 #include "fl/stl/memory.h"

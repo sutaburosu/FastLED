@@ -6,3 +6,4 @@
 #include "fl/spi/lane.cpp.hpp"
 #include "fl/spi/multi_lane_device.cpp.hpp"
 #include "fl/spi/parallel_device.cpp.hpp"
+#include "fl/spi/spi.cpp.hpp"

@@ -7,6 +7,8 @@
 
 namespace fl {
 
+class string;  // Forward declaration for push(const fl::string&)
+
 /// @brief High-performance SPSC async log queue
 /// @tparam DescriptorCount Number of message descriptors (must be power of 2)
 /// @tparam ArenaSize Size of string arena in bytes (must be power of 2)

@@ -6,7 +6,7 @@
 // SIMD batch version: Process 4 Perlin evaluations in parallel
 // Uses FastLED SIMD abstraction layer for vectorizable operations
 
-#include "fl/fx/2d/animartrix_detail/perlin_s16x16.h"
+#include "fl/math/noise/perlin_s16x16.h"
 #include "fl/math/simd.h"
 
 namespace fl {

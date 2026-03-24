@@ -7,7 +7,9 @@
 #include "fl/stl/string.h"
 #include "fl/stl/map.h"
 #include "fl/stl/stdint.h"
-#include "fl/net/http/chunked_encoding.h"
+
+// Forward declaration — breaks fl.stl+ -> fl.net+ link chain
+namespace fl { namespace net { namespace http { class ChunkedReader; } } }
 
 namespace fl {
 
@@ -38,6 +40,7 @@ using HttpResponsePtrConst = fl::shared_ptr<const HttpResponse>;
 class HttpRequestParser {
 public:
     HttpRequestParser();
+    ~HttpRequestParser();
 
     // Feed raw bytes received from a socket into the parser (incremental/streaming)
     void feed(fl::span<const u8> data);
@@ -70,7 +73,7 @@ private:
     State mState;
     fl::vector<u8> mBuffer;
     fl::shared_ptr<HttpRequest> mRequest;
-    net::http::ChunkedReader mChunkedReader;  // For Transfer-Encoding: chunked
+    fl::shared_ptr<net::http::ChunkedReader> mChunkedReader;  // For Transfer-Encoding: chunked
     size_t mContentLength;
     bool mIsChunked;
 
@@ -100,6 +103,7 @@ private:
 class HttpResponseParser {
 public:
     HttpResponseParser();
+    ~HttpResponseParser();
 
     // Feed raw bytes received from a socket into the parser (incremental/streaming)
     void feed(fl::span<const u8> data);
@@ -132,7 +136,7 @@ private:
     State mState;
     fl::vector<u8> mBuffer;
     fl::shared_ptr<HttpResponse> mResponse;
-    net::http::ChunkedReader mChunkedReader;
+    fl::shared_ptr<net::http::ChunkedReader> mChunkedReader;
     size_t mContentLength;
     bool mIsChunked;
 

@@ -73,6 +73,10 @@ public:
     /// @brief Move assignment
     Spi& operator=(Spi&& other) noexcept;
 
+    /// @brief Destructor (defined out-of-line in spi.cpp.hpp to keep
+    ///        MultiLaneDevice destructor out of callers' compilation units)
+    ~Spi();
+
     /// @brief Check if device was created and initialized successfully
     bool ok() const { return is_ok; }
 
