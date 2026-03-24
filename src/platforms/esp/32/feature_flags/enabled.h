@@ -42,7 +42,9 @@ FL_EXTERN_C_END
 // Note: wave8 encoding is always enabled (FASTLED_SPI_USE_WAVE8 flag removed)
 
 // RMT driver availability - use SoC capability macro
+#if !defined(FASTLED_ESP32_HAS_RMT)
 #define FASTLED_ESP32_HAS_RMT SOC_RMT_SUPPORTED
+#endif
 
 // Helper macro: Platforms that ONLY support RMT5 (no RMT4 fallback)
 // These chips have newer RMT architecture incompatible with legacy RMT4 driver
