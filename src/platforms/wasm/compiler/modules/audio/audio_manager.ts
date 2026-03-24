@@ -385,8 +385,11 @@ The system will automatically fall back to ScriptProcessor.`);
    * Handle messages from the AudioWorklet
    * @param {Object} data - Message data from worklet
    */
-  handleWorkletMessage(data) {
-    const { type, samples, timestamp } = data;
+  handleWorkletMessage(message) {
+    const { type, data } = message;
+    // The worklet sends: { type: 'audioData', data: { samples, timestamp, ... } }
+    const samples = data?.samples;
+    const timestamp = data?.timestamp;
 
     switch (type) {
       case 'audioData':
@@ -834,7 +837,10 @@ export class AudioManager {
    */
   handleAudioSamples(sampleBuffer, timestamp, audioElement) {
     // Push audio samples directly to C++ via WASM (no JS buffering needed)
-    if (!audioElement.paused) {
+    // For microphone streams, always push (worklet runs regardless of play state).
+    // For file-based audio, only push when playing.
+    const isStream = audioElement.srcObject instanceof MediaStream;
+    if (isStream || !audioElement.paused) {
       this.updateProcessingIndicator();
       this.pushSamplesToWasm(sampleBuffer, timestamp);
     }

@@ -25,6 +25,8 @@ WasmAudioInput::WasmAudioInput()
     , mRunning(false)
     , mHasError(false)
     , mDroppedBlocks(0)
+    , mAccumPos(0)
+    , mAccumTimestamp(0)
 {
     // Initialize ring buffer
     for (int i = 0; i < RING_BUFFER_SLOTS; i++) {
@@ -114,36 +116,52 @@ void WasmAudioInput::pushSamples(const fl::i16* samples, int count, fl::u32 time
         return;
     }
 
-    if (count != BLOCK_SIZE) {
-        FL_WARN("WasmAudioInput::pushSamples - unexpected block size: " << count << " (expected " << BLOCK_SIZE << ")");
+    if (count <= 0 || count > BLOCK_SIZE) {
+        FL_WARN("WasmAudioInput::pushSamples - invalid block size: " << count << " (max " << BLOCK_SIZE << ")");
         return;
     }
 
+    // Accumulate samples until we have a full BLOCK_SIZE block.
+    // AudioWorklet sends 128-sample frames; ScriptProcessor sends 512.
+    int srcPos = 0;
+    while (srcPos < count) {
+        if (mAccumPos == 0) {
+            mAccumTimestamp = timestamp;
+        }
+        int space = BLOCK_SIZE - mAccumPos;
+        int toCopy = (count - srcPos) < space ? (count - srcPos) : space;
+        fl::memcpy(mAccumBuf + mAccumPos, samples + srcPos, toCopy * sizeof(fl::i16));
+        mAccumPos += toCopy;
+        srcPos += toCopy;
+
+        if (mAccumPos >= BLOCK_SIZE) {
+            flushAccumBuffer();
+        }
+    }
+}
+
+void WasmAudioInput::flushAccumBuffer() {
     if (isFull()) {
-        // Ring buffer is full - drop oldest block
         mDroppedBlocks++;
-        if (mDroppedBlocks % 100 == 1) {  // Log every 100 drops
+        if (mDroppedBlocks % 100 == 1) {
             FL_WARN("WasmAudioInput ring buffer overflow - dropped " << mDroppedBlocks << " blocks total");
         }
-        // Clear valid flag on the dropped block before advancing tail
         mRingBuffer[mTail].valid = false;
         mTail = nextIndex(mTail);
     }
 
-    // Write to head
     AudioBlock& block = mRingBuffer[mHead];
-    fl::memcpy(block.samples, samples, BLOCK_SIZE * sizeof(fl::i16));
-    block.timestamp = timestamp;
+    fl::memcpy(block.samples, mAccumBuf, BLOCK_SIZE * sizeof(fl::i16));
+    block.timestamp = mAccumTimestamp;
     block.valid = true;
 
-    // Advance head
     mHead = nextIndex(mHead);
     mPushedBlocks++;
+    mAccumPos = 0;
 
-    // Periodic diagnostic: log every ~2 seconds at 44100Hz/512 = ~86 blocks/sec
     if (mPushedBlocks == 1) {
         printf("WasmAudioInput: First audio block received from JS "
-               "(timestamp=%u ms)\n", (unsigned)timestamp);
+               "(timestamp=%u ms)\n", (unsigned)mAccumTimestamp);
     } else if (mPushedBlocks % 172 == 0) {
         printf("WasmAudioInput: %u blocks received, %u read, %u dropped\n",
                (unsigned)mPushedBlocks, (unsigned)mReadBlocks,

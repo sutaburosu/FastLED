@@ -52,6 +52,12 @@ private:
     fl::u32 mPushedBlocks = 0;   // Total blocks received from JS
     fl::u32 mReadBlocks = 0;     // Total blocks consumed by sketch
 
+    // Accumulation buffer for sub-BLOCK_SIZE pushes (e.g. AudioWorklet sends 128)
+    fl::i16 mAccumBuf[BLOCK_SIZE];
+    int mAccumPos = 0;
+    fl::u32 mAccumTimestamp = 0;
+
+    void flushAccumBuffer();
     bool isFull() const;
     bool isEmpty() const;
     int nextIndex(int index) const;

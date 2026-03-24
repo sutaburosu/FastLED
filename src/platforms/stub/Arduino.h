@@ -120,11 +120,29 @@ struct SerialEmulation {
     // Two-argument floating point: print(float/double, digits)
     template <typename T>
     typename fl::enable_if<fl::is_floating_point<T>::value>::type
-    print(T val, int digits);
+    print(T val, int digits) {
+        digits = digits < 0 ? 0 : (digits > 9 ? 9 : digits);
+        double d = static_cast<double>(val);
+        switch(digits) {
+            case 0: fl::printf("%.0f", d); break;
+            case 1: fl::printf("%.1f", d); break;
+            case 2: fl::printf("%.2f", d); break;
+            case 3: fl::printf("%.3f", d); break;
+            case 4: fl::printf("%.4f", d); break;
+            case 5: fl::printf("%.5f", d); break;
+            case 6: fl::printf("%.6f", d); break;
+            case 7: fl::printf("%.7f", d); break;
+            case 8: fl::printf("%.8f", d); break;
+            case 9: fl::printf("%.9f", d); break;
+        }
+    }
 
     template <typename T>
     typename fl::enable_if<fl::is_floating_point<T>::value>::type
-    println(T val, int digits);
+    println(T val, int digits) {
+        print(val, digits);
+        fl::printf("\n");
+    }
 
     // Two-argument integer: print(integer, base)
     // Covers all signed/unsigned integer types including char/u8
@@ -132,12 +150,37 @@ struct SerialEmulation {
     template <typename T>
     typename fl::enable_if<fl::is_integral<T>::value &&
                            !fl::is_same<typename fl::remove_cv<T>::type, bool>::value>::type
-    print(T val, int base);
+    print(T val, int base) {
+        if (fl::is_signed<T>::value) {
+            long long v = static_cast<long long>(val);
+            if (base == 16) fl::printf("%llx", v);
+            else if (base == 8) fl::printf("%llo", v);
+            else if (base == 2) {
+                int bits = static_cast<int>(sizeof(T) * 8);
+                for (int i = bits - 1; i >= 0; i--)
+                    fl::printf("%d", (int)((v >> i) & 1));
+            }
+            else fl::printf("%lld", v);
+        } else {
+            unsigned long long v = static_cast<unsigned long long>(val);
+            if (base == 16) fl::printf("%llx", v);
+            else if (base == 8) fl::printf("%llo", v);
+            else if (base == 2) {
+                int bits = static_cast<int>(sizeof(T) * 8);
+                for (int i = bits - 1; i >= 0; i--)
+                    fl::printf("%d", (int)((v >> i) & 1));
+            }
+            else fl::printf("%llu", v);
+        }
+    }
 
     template <typename T>
     typename fl::enable_if<fl::is_integral<T>::value &&
                            !fl::is_same<typename fl::remove_cv<T>::type, bool>::value>::type
-    println(T val, int base);
+    println(T val, int base) {
+        print(val, base);
+        fl::printf("\n");
+    }
 
     void println();
 
