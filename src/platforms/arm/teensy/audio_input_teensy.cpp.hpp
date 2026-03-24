@@ -2,6 +2,7 @@
 
 #include "platforms/arm/teensy/audio_input_teensy.h"
 #include "platforms/arm/teensy/is_teensy.h"
+#include "fl/audio/input.h"  // For TeensyI2S namespace
 
 namespace fl {
 
@@ -104,7 +105,7 @@ Teensy_I2S_Audio::Teensy_I2S_Audio(const audio::ConfigI2S& config)
 
 #if defined(FL_IS_TEENSY_3X)
     // Teensy 3.x only has I2S1
-    if (static_cast<TeensyI2S::I2SPort>(mConfig.mI2sNum) == TeensyI2S::I2S2) {
+    if (static_cast<audio::TeensyI2S::I2SPort>(mConfig.mI2sNum) == audio::TeensyI2S::I2SPort::I2S2) {
         mHasError = true;
         mErrorMessage = "I2S2 is not available on Teensy 3.x (only I2S1 supported)";
         FL_WARN(mErrorMessage.c_str());
@@ -116,14 +117,14 @@ Teensy_I2S_Audio::Teensy_I2S_Audio(const audio::ConfigI2S& config)
     mRecorder = fl::make_shared<TeensyAudioRecorder>();
 
     // Create the appropriate I2S input object and connections based on port selection
-    if (static_cast<TeensyI2S::I2SPort>(mConfig.mI2sNum) == TeensyI2S::I2S1) {
+    if (static_cast<audio::TeensyI2S::I2SPort>(mConfig.mI2sNum) == audio::TeensyI2S::I2SPort::I2S1) {
         mI2sInput = fl::make_shared<AudioInputI2S>();
         // Create connections: I2S -> Recorder
         mConnectionLeft = fl::make_shared<AudioConnection>(*mI2sInput, 0, *mRecorder, 0);   // Left
         mConnectionRight = fl::make_shared<AudioConnection>(*mI2sInput, 1, *mRecorder, 1);  // Right
     }
 #if defined(FL_IS_TEENSY_4X)
-    else if (static_cast<TeensyI2S::I2SPort>(mConfig.mI2sNum) == TeensyI2S::I2S2) {
+    else if (static_cast<audio::TeensyI2S::I2SPort>(mConfig.mI2sNum) == audio::TeensyI2S::I2SPort::I2S2) {
         mI2sInput2 = fl::make_shared<AudioInputI2S2>();
         // Create connections: I2S2 -> Recorder
         mConnectionLeft = fl::make_shared<AudioConnection>(*mI2sInput2, 0, *mRecorder, 0);   // Left
@@ -168,7 +169,7 @@ void Teensy_I2S_Audio::start() {
 #if defined(FL_IS_TEENSY_3X)
     FL_WARN("  Teensy 3.x I2S1 pins: BCLK=9, MCLK=11, RX=13, LRCLK=23");
 #elif defined(FL_IS_TEENSY_4X)
-    if (static_cast<TeensyI2S::I2SPort>(mConfig.mI2sNum) == TeensyI2S::I2S1) {
+    if (static_cast<audio::TeensyI2S::I2SPort>(mConfig.mI2sNum) == audio::TeensyI2S::I2SPort::I2S1) {
         FL_WARN("  Teensy 4.x I2S1 pins: BCLK=21, MCLK=23, RX=8, LRCLK=20");
     } else {
         FL_WARN("  Teensy 4.x I2S2 pins: BCLK=4, MCLK=33, RX=5, LRCLK=3");
@@ -176,8 +177,8 @@ void Teensy_I2S_Audio::start() {
 #endif
 
     // Log channel selection
-    FL_WARN("  Channel: " << ((mConfig.mAudioChannel == Channel::Left) ? "Left" :
-                              (mConfig.mAudioChannel == Channel::Right) ? "Right" : "Both (downmixed)"));
+    FL_WARN("  Channel: " << ((mConfig.mAudioChannel == audio::AudioChannel::Left) ? "Left" :
+                              (mConfig.mAudioChannel == audio::AudioChannel::Right) ? "Right" : "Both (downmixed)"));
 }
 
 void Teensy_I2S_Audio::stop() {
@@ -212,7 +213,7 @@ audio::Sample Teensy_I2S_Audio::read() {
 
     u32 firstBlockTimestamp = 0;
 
-    if (mConfig.mAudioChannel == Channel::Both) {
+    if (mConfig.mAudioChannel == audio::AudioChannel::Both) {
         // Stereo downmix mode: accumulate L/R blocks and downmix to mono
         // Each iteration: get L block + R block, average them -> 128 mono samples
         // Repeat 4 times -> 512 mono samples total
@@ -247,7 +248,7 @@ audio::Sample Teensy_I2S_Audio::read() {
     } else {
         // Mono mode: accumulate single channel blocks
         // Target: 512 samples from one channel (Left or Right)
-        u8 expectedChannel = (mConfig.mAudioChannel == Channel::Left) ? 0 : 1;
+        u8 expectedChannel = (mConfig.mAudioChannel == audio::AudioChannel::Left) ? 0 : 1;
 
         while (mBlocksAccumulated < BLOCKS_TO_ACCUMULATE) {
             fl::vector<fl::i16> samples;

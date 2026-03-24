@@ -230,9 +230,15 @@
 // Bring types and common math functions into global scope for backward compatibility.
 // Only import names that are actually defined in namespace fl (via platforms/ headers).
 // Functions defined with LIB8STATIC outside namespace fl (e.g., random8.h) are already global.
+//
+// On AVR, Arduino's USBAPI.h defines u8/u16/u32 at global scope with potentially
+// different underlying types (e.g. unsigned short vs unsigned int for u16).
+// Skip those to avoid redeclaration conflicts.
+#if !defined(FL_IS_AVR)
 using fl::u8;
 using fl::u16;
 using fl::u32;
+#endif
 using fl::u64;
 using fl::i8;
 using fl::i16;
@@ -838,7 +844,7 @@ LIB8STATIC fl::u8 beat8( accum88 beats_per_minute, u32 timebase = 0)
 /// @warning The BPM parameter **MUST** be provided in Q8.8 format! E.g.
 /// for 120 BPM it would be 120*256 = 30720. If you just want to specify
 /// "120", use beatsin16() or beatsin8().
-LIB8STATIC fl::u16 beatsin88( accum88 beats_per_minute_88, fl::u16 lowest = 0, u16 highest = 65535,
+LIB8STATIC fl::u16 beatsin88( accum88 beats_per_minute_88, fl::u16 lowest = 0, fl::u16 highest = 65535,
                               fl::u32 timebase = 0, fl::u16 phase_offset = 0)
 {
     fl::u16 beat = beat88( beats_per_minute_88, timebase);
@@ -860,7 +866,7 @@ LIB8STATIC fl::u16 beatsin88( accum88 beats_per_minute_88, fl::u16 lowest = 0, u
 /// @param highest the highest output value of the sine wave
 /// @param timebase the time offset of the wave from the millis() timer
 /// @param phase_offset phase offset of the wave from the current position
-LIB8STATIC fl::u16 beatsin16( accum88 beats_per_minute, fl::u16 lowest = 0, u16 highest = 65535,
+LIB8STATIC fl::u16 beatsin16( accum88 beats_per_minute, fl::u16 lowest = 0, fl::u16 highest = 65535,
                                fl::u32 timebase = 0, fl::u16 phase_offset = 0)
 {
     fl::u16 beat = beat16( beats_per_minute, timebase);

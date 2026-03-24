@@ -54,7 +54,7 @@ namespace detail {
 namespace gamma_constexpr {
 
 constexpr int FRAC = 24;
-constexpr u32 SCALE = 1u << FRAC; // 16777216
+constexpr u32 SCALE = (u32)1 << FRAC; // 16777216
 
 // ---- Highest-bit finder (constexpr recursive) ----
 

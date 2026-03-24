@@ -8,6 +8,10 @@
 // Include ARM platform detection before any ARM headers
 #include "platforms/arm/is_arm.h"  // ok platform headers
 
+// Ensure fl:: integer types are available for platform sysdefs headers
+// (e.g. led_sysdefs_arm_mxrt1062.h uses fl::u32 for RwReg/RoReg)
+#include "fl/stl/stdint.h"  // IWYU pragma: keep
+
 // Arduino.h needed for convenience functions digitalPinToPort/BitMask/portOutputRegister and the pinMode methods.
 #if defined(ARDUINO) && !defined(__EMSCRIPTEN__)
 // IWYU pragma: begin_keep

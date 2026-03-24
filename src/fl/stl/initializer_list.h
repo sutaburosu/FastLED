@@ -5,6 +5,8 @@
 // IWYU pragma: no_include "__config"
 // IWYU pragma: no_include "version"
 
+#include "platforms/is_platform.h"  // IWYU pragma: keep
+
 // Define if initializer_list is available
 // Check for C++11 and if std::initializer_list exists
 #if !defined(FL_IS_AVR)

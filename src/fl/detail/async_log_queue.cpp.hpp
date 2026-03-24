@@ -2,6 +2,7 @@
 /// @brief High-performance ISR-safe async logging queue implementation
 
 #include "fl/detail/async_log_queue.h"
+#include "fl/stl/string.h"
 #include "fl/stl/isr/critical_section.h"
 #include "fl/stl/string.h"
 #include "fl/math/math.h"
