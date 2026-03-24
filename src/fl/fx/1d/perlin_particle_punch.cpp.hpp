@@ -1,5 +1,6 @@
 #include "fl/fx/1d/perlin_particle_punch.h"
 #include "fl/math/math.h"
+#include "noise.h"
 
 namespace fl {
 
@@ -150,7 +151,7 @@ void PerlinParticlePunch::photonDraw(CRGB *dst, u8 led_value) {
     constexpr s16x16 kBrightnessDecay(0.98f);
     constexpr s16x16 kMinBrightness(12.0f);
     constexpr s16x16 kMinVelocity(0.3f);
-    s16x16 num_leds_fp(i32(mNumLeds));
+    s16x16 num_leds_fp{i32(mNumLeds)};
 
     u16 n = (u16)mPhotons.size();
     for (u16 i = 0; i < n; ++i) {
