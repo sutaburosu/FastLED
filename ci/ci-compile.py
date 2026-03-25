@@ -392,8 +392,16 @@ def main() -> int:
             )
         else:
             # Normal Docker auto-detection for non-CI environments
+            # Skip Docker entirely for fbuild boards (esp32s3, esp32c3, esp32c6)
+            from ci.compiler.fbuild_boards import FBUILD_BOARDS
+
             board_name = config.boards[0].board_name
-            use_docker, reason = should_use_docker_for_board(board_name, verbose=False)
+            if board_name.lower() in FBUILD_BOARDS:
+                use_docker = False
+            else:
+                use_docker, reason = should_use_docker_for_board(
+                    board_name, verbose=False
+                )
             if use_docker:
                 print(
                     green_text(
@@ -675,16 +683,6 @@ def main() -> int:
 if __name__ == "__main__":
     try:
         sys.exit(main())
-    except KeyboardInterrupt as ki:
-        from ci.util.global_interrupt_handler import (
-            handle_keyboard_interrupt,
-            signal_interrupt,
-            wait_for_cleanup,
-        )
-
-        handle_keyboard_interrupt(ki)
-        raise
-        print("\nInterrupted by user")
-        signal_interrupt()
-        wait_for_cleanup()
+    except KeyboardInterrupt:  # noqa: KBI002 - top-level handler, just exit cleanly
+        print("Ctrl-c pressed, exiting...")
         sys.exit(130)

@@ -120,10 +120,8 @@ class GlobalInterruptHandler:
             """Handle SIGINT (Ctrl-C) by setting the interrupt flag."""
             _print_caller("sigint_handler (SIGINT received)")
             self.signal_interrupt()
-            # Raise KeyboardInterrupt to allow exception handlers to run.
-            # Use ``from`` to preserve the causal chain so tracebacks show
-            # the original exception context.
-            raise KeyboardInterrupt() from KeyboardInterrupt("SIGINT")
+            # Raise KeyboardInterrupt so except handlers can run cleanup.
+            raise KeyboardInterrupt()
 
         signal.signal(signal.SIGINT, sigint_handler)
         self._signal_handler_installed = True
@@ -186,7 +184,7 @@ def handle_keyboard_interrupt(ki: KeyboardInterrupt) -> None:
     """
     _print_caller("handle_keyboard_interrupt")
     if threading.current_thread() is threading.main_thread():
-        raise KeyboardInterrupt() from ki
+        raise KeyboardInterrupt()
     notify_main_thread()
 
 

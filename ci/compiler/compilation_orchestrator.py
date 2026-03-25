@@ -16,6 +16,7 @@ from typeguard import typechecked
 from ci.boards import Board
 from ci.compiler.board_example_utils import get_filtered_examples
 from ci.compiler.compiler import CacheType, SketchResult
+from ci.compiler.fbuild_boards import FBUILD_BOARDS
 from ci.compiler.pio import FastLEDPaths, PioCompiler
 from ci.util.global_interrupt_handler import handle_keyboard_interrupt
 
@@ -114,6 +115,9 @@ def compile_board_examples(
             else CacheType.NO_CACHE
         )
 
+        # Use fbuild for supported boards (esp32s3, esp32c3, esp32c6)
+        use_fbuild = board.board_name.lower() in FBUILD_BOARDS
+
         # Create PioCompiler instance
         compiler = PioCompiler(
             board=board,
@@ -122,6 +126,7 @@ def compile_board_examples(
             additional_defines=defines,
             additional_libs=extra_packages,
             cache_type=cache_type,
+            use_fbuild=use_fbuild,
         )
 
         # Build all examples - use merged-bin method if requested

@@ -16,11 +16,11 @@ Key functions:
     - is_fbuild_available: Check if fbuild is available
     - get_fbuild_version: Get fbuild version string
 
-For daemon management, use the new DaemonConnection API (v1.2.12+):
-    from fbuild import connect_daemon
+For daemon management, use the fbuild 2.0 API:
+    from fbuild import Daemon, connect_daemon
 
+    Daemon.ensure_running()
     with connect_daemon(project_dir, environment) as conn:
-        conn.install_dependencies()
         conn.build()
         conn.deploy(port=port)
 """
@@ -37,9 +37,9 @@ def is_fbuild_available() -> bool:
         True if fbuild can be imported, False otherwise.
     """
     try:
-        import fbuild
+        import fbuild  # noqa: F401
 
-        return fbuild.is_available()
+        return True
     except ImportError:
         return False
 
@@ -82,22 +82,15 @@ def fbuild_build_and_upload(
         Tuple of (success: bool, message: str)
     """
     try:
-        from fbuild import connect_daemon
-        from fbuild.daemon import (
-            ensure_daemon_running,
-        )
+        from fbuild import Daemon, connect_daemon
     except ImportError as e:
         return False, f"fbuild not available: {e}"
 
     try:
-        # Ensure daemon is running
-        if not ensure_daemon_running():
-            return False, "Failed to start fbuild daemon"
+        Daemon.ensure_running()
 
-        # Use the new DaemonConnection context manager API
         with connect_daemon(project_dir, environment) as conn:
-            # Request deploy (build + upload, no monitor)
-            success = conn.deploy(
+            success: bool = conn.deploy(
                 port=port,
                 clean=clean_build,
                 monitor_after=False,  # We'll handle monitoring separately via run_monitor
@@ -136,22 +129,15 @@ def fbuild_build_only(
         Tuple of (success: bool, message: str)
     """
     try:
-        from fbuild import connect_daemon
-        from fbuild.daemon import (
-            ensure_daemon_running,
-        )
+        from fbuild import Daemon, connect_daemon
     except ImportError as e:
         return False, f"fbuild not available: {e}"
 
     try:
-        # Ensure daemon is running
-        if not ensure_daemon_running():
-            return False, "Failed to start fbuild daemon"
+        Daemon.ensure_running()
 
-        # Use the new DaemonConnection context manager API
         with connect_daemon(project_dir, environment) as conn:
-            # Request build only
-            success = conn.build(
+            success: bool = conn.build(
                 clean=clean_build,
                 verbose=verbose,
                 timeout=timeout,

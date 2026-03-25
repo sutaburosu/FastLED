@@ -1170,10 +1170,12 @@ def _should_use_fbuild(
     if use_fbuild_flag:
         return True
 
-    # Default: use fbuild for esp32s3 and esp32c6
+    # Default: use fbuild for boards in FBUILD_BOARDS
     if environment:
+        from ci.compiler.fbuild_boards import FBUILD_BOARDS
+
         env_lower = environment.lower()
-        if "esp32s3" in env_lower or "esp32c6" in env_lower:
+        if any(board in env_lower for board in FBUILD_BOARDS):
             return True
 
     return False

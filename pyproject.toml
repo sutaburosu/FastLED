@@ -3,9 +3,9 @@ name = "ci"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.13"
 dependencies = [
-    "fbuild>=1.4.13",
+    "fbuild>=2.0.1",
     "platformio==6.1.18",
     "python-dateutil",
     "ruff",

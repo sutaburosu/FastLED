@@ -65,15 +65,24 @@ def _init_platformio_build(
     additional_include_dirs: Optional[list[str]] = None,
     additional_libs: Optional[list[str]] = None,
     cache_type: CacheType = CacheType.NO_CACHE,
+    use_fbuild: bool = False,
 ) -> InitResult:
-    """Initialize the PlatformIO build directory. Assumes lock is already held by caller."""
+    """Initialize the PlatformIO build directory. Assumes lock is already held by caller.
+
+    When use_fbuild=True, skips PIO-specific package management and the pio run build.
+    The build directory, platformio.ini, and source files are still set up since fbuild
+    uses the same project structure.
+    """
     project_root = resolve_project_root()
     build_dir = project_root / ".build" / "pio" / board.board_name
 
-    # Check for and fix corrupted packages before building
-    # Find platform path based on board's platform URL (works for any platform)
-    platform_path = find_platform_path_from_board(board, paths)
-    detect_and_fix_corrupted_packages_dynamic(paths, board.board_name, platform_path)
+    if not use_fbuild:
+        # Check for and fix corrupted packages before building
+        # Find platform path based on board's platform URL (works for any platform)
+        platform_path = find_platform_path_from_board(board, paths)
+        detect_and_fix_corrupted_packages_dynamic(
+            paths, board.board_name, platform_path
+        )
 
     # Lock is already held by build() - no need to acquire again
 
@@ -81,13 +90,14 @@ def _init_platformio_build(
     build_dir.mkdir(parents=True, exist_ok=True)
     platformio_ini = build_dir / "platformio.ini"
 
-    # Ensure platform is installed if needed
-    if not ensure_platform_installed(board):
-        return InitResult(
-            success=False,
-            output=f"Failed to install platform for {board.board_name}",
-            build_dir=build_dir,
-        )
+    if not use_fbuild:
+        # Ensure platform is installed if needed (fbuild handles this itself)
+        if not ensure_platform_installed(board):
+            return InitResult(
+                success=False,
+                output=f"Failed to install platform for {board.board_name}",
+                build_dir=build_dir,
+            )
 
     # Clone board and add sketch directory include path (enables "shared/file.h" style includes)
     board_with_sketch_include = board.clone()
@@ -221,6 +231,21 @@ def _init_platformio_build(
     # Final platformio.ini is already written by apply_board_specific_config
     # No need to write it again
 
+    if use_fbuild:
+        # fbuild handles compilation itself — init only sets up the project structure
+        if verbose:
+            platformio_ini_path = build_dir / "platformio.ini"
+            if platformio_ini_path.exists():
+                print()
+                print("=" * 60)
+                print("PLATFORMIO.INI CONFIGURATION (fbuild):")
+                print("=" * 60)
+                ini_content = platformio_ini_path.read_text()
+                print(ini_content)
+                print("=" * 60)
+                print()
+        return InitResult(success=True, output="", build_dir=build_dir)
+
     # Run initial build with LDF enabled to set up the environment
     run_cmd: list[str] = ["pio", "run", "--project-dir", str(build_dir)]
     if verbose:
@@ -290,6 +315,7 @@ class PioCompiler(Compiler):
         additional_include_dirs: Optional[list[str]] = None,
         additional_libs: Optional[list[str]] = None,
         cache_type: CacheType = CacheType.NO_CACHE,
+        use_fbuild: bool = False,
     ) -> None:
         # Call parent constructor
         super().__init__()
@@ -304,6 +330,7 @@ class PioCompiler(Compiler):
         self.additional_include_dirs = additional_include_dirs
         self.additional_libs = additional_libs
         self.cache_type = cache_type
+        self.use_fbuild = use_fbuild
 
         # Global cache directory is already resolved by caller
         self.global_cache_dir = global_cache_dir
@@ -342,6 +369,7 @@ class PioCompiler(Compiler):
             self.additional_include_dirs,
             self.additional_libs,
             self.cache_type,
+            use_fbuild=self.use_fbuild,
         )
         if result.success:
             self.initialized = True
@@ -357,9 +385,19 @@ class PioCompiler(Compiler):
         sys.stdout.flush()
 
     def build(self, examples: list[str]) -> list[Future[SketchResult]]:
-        """Build a list of examples with proper lock management."""
+        """Build a list of examples with proper lock management.
+
+        For fbuild boards, runs synchronously on the main thread so that
+        Ctrl+C / SIGINT is delivered immediately.  The Rust native extension
+        (conn.build) can hold the GIL in a worker thread, preventing signal
+        delivery on Windows.
+        """
         if not examples:
             return []
+
+        # fbuild path: run on main thread for reliable Ctrl+C handling
+        if self.use_fbuild:
+            return self._build_fbuild_sync(examples)
 
         # Acquire the global package lock for the first build (package installation)
 
@@ -400,6 +438,61 @@ class PioCompiler(Compiler):
 
         return futures
 
+    def _build_fbuild_sync(self, examples: list[str]) -> list[Future[SketchResult]]:
+        """Build examples using fbuild synchronously on the main thread.
+
+        Returns completed futures for API compatibility with the async path.
+        """
+        futures: list[Future[SketchResult]] = []
+
+        for example in examples:
+            # Initialize build directory (once)
+            if not self.initialized:
+                init_result = self._internal_init_build_no_lock(example)
+                if not init_result.success:
+                    red_color = "\033[31m"
+                    reset_color = "\033[0m"
+                    print(f"{red_color}FAILED: {example}{reset_color}")
+                    result = SketchResult(
+                        success=False,
+                        output=init_result.output,
+                        build_dir=init_result.build_dir,
+                        example=example,
+                    )
+                    future: Future[SketchResult] = Future()
+                    future.set_result(result)
+                    futures.append(future)
+                    continue
+
+            # Copy example source for subsequent examples
+            if self.initialized:
+                project_root = resolve_project_root()
+                ok_copy_src = copy_example_source(project_root, self.build_dir, example)
+                if not ok_copy_src:
+                    error_msg = get_example_error_message(project_root, example)
+                    result = SketchResult(
+                        success=False,
+                        output=error_msg,
+                        build_dir=self.build_dir,
+                        example=example,
+                    )
+                    future = Future()
+                    future.set_result(result)
+                    futures.append(future)
+                    continue
+
+            # Run fbuild on main thread — Ctrl+C works directly
+            result = self._build_with_fbuild(example)
+            future = Future()
+            future.set_result(result)
+            futures.append(future)
+
+        # Release platform lock
+        print(f"Releasing platform lock: {self.platform_lock.lock_file_path}\n")
+        self.platform_lock.release()
+
+        return futures
+
     def _build_internal(self, example: str) -> SketchResult:
         """Internal build method without lock management."""
         # Print building banner first
@@ -418,6 +511,10 @@ class PioCompiler(Compiler):
             )
 
         # Cache configuration is handled through build flags during initialization
+
+        # Use fbuild for compilation if enabled
+        if self.use_fbuild:
+            return self._build_with_fbuild(example)
 
         # Attempt build with retry on PackageException
         max_attempts = 2
@@ -528,6 +625,36 @@ class PioCompiler(Compiler):
             example=example,
         )
 
+    def _build_with_fbuild(self, example: str) -> SketchResult:
+        """Build using fbuild instead of PlatformIO CLI."""
+        from ci.util.fbuild_runner import run_fbuild_compile
+
+        environment = self.board.board_name
+        success = run_fbuild_compile(
+            self.build_dir,
+            environment=environment,
+            verbose=self.verbose,
+        )
+
+        if success:
+            green_color = "\033[32m"
+            reset_color = "\033[0m"
+            print(f"{green_color}SUCCESS: {example}{reset_color}")
+            generate_build_info_json_from_existing_build(
+                self.build_dir, self.board, example
+            )
+        else:
+            red_color = "\033[31m"
+            reset_color = "\033[0m"
+            print(f"{red_color}FAILED: {example}{reset_color}")
+
+        return SketchResult(
+            success=success,
+            output="fbuild compilation",
+            build_dir=self.build_dir,
+            example=example,
+        )
+
     def get_cache_stats(self) -> str:
         """Get compiler statistics as a formatted string.
 
@@ -601,6 +728,10 @@ class PioCompiler(Compiler):
                         build_dir=init_result.build_dir,
                         example=example,
                     )
+
+                if self.use_fbuild:
+                    # fbuild handles packages and compilation — build the first example now
+                    return self._build_with_fbuild(example)
 
                 # ============================================================
                 # PHASE 1: Ensure packages installed via daemon (ONCE per compiler instance)

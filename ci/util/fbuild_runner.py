@@ -8,7 +8,6 @@ Usage:
     from ci.util.fbuild_runner import (
         run_fbuild_compile,
         run_fbuild_upload,
-        ensure_fbuild_packages,
     )
 
     # Compile using fbuild
@@ -21,23 +20,12 @@ Usage:
 from pathlib import Path
 from typing import Any
 
-from fbuild import connect_daemon
-from fbuild.daemon import (
-    ensure_daemon_running,
-    get_daemon_status,
-    stop_daemon,
-)
-from fbuild.daemon.client import is_daemon_running
+from fbuild import Daemon, connect_daemon
 
 
-def ensure_fbuild_daemon() -> bool:
-    """Ensure the fbuild daemon is running.
-
-    Returns:
-        True if daemon is running or was started successfully, False otherwise
-    """
-    ensure_daemon_running()
-    return is_daemon_running()
+def ensure_fbuild_daemon() -> None:
+    """Ensure the fbuild daemon is running."""
+    Daemon.ensure_running()
 
 
 def run_fbuild_compile(
@@ -47,7 +35,10 @@ def run_fbuild_compile(
     clean: bool = False,
     timeout: float = 1800,
 ) -> bool:
-    """Compile the project using fbuild.
+    """Compile the project using fbuild CLI subprocess.
+
+    Uses ``fbuild build`` as a subprocess so that Ctrl+C terminates it
+    immediately (the Rust binary handles SIGINT natively).
 
     Args:
         build_dir: Project directory containing platformio.ini
@@ -59,63 +50,61 @@ def run_fbuild_compile(
     Returns:
         True if compilation succeeded, False otherwise
     """
-    import os
+    import shutil
+    import subprocess
+
+    if environment is None:
+        raise ValueError("environment must be specified for fbuild compilation")
 
     print("=" * 60)
     print("COMPILING (fbuild)")
     print("=" * 60)
 
-    # Log which sketch is being compiled (from PLATFORMIO_SRC_DIR env var)
-    src_dir = os.environ.get("PLATFORMIO_SRC_DIR")
-    if src_dir:
-        # Convert to relative path for cleaner output
-        try:
-            rel_path = Path(src_dir).relative_to(build_dir)
-            print(f"📁 Source: {rel_path}")
-        except ValueError:
-            # Not relative to build_dir, show absolute path
-            print(f"📁 Source: {src_dir}")
-    else:
-        print("📁 Source: (using platformio.ini default)")
-    print()
-
-    # Ensure daemon is running before attempting to connect
-    if not ensure_fbuild_daemon():
-        print("\n❌ Failed to start fbuild daemon\n")
+    fbuild_exe = shutil.which("fbuild")
+    if fbuild_exe is None:
+        print("❌ fbuild CLI not found on PATH")
         return False
 
+    cmd: list[str] = [
+        fbuild_exe,
+        str(build_dir),
+        "build",
+        "-e",
+        environment,
+    ]
+    if verbose:
+        cmd.append("-v")
+    if clean:
+        cmd.append("-c")
+
+    print(f"Running: {subprocess.list2cmdline(cmd)}")
+    print()
+
     try:
-        # Determine environment if not specified
-        env_name = environment
-        if env_name is None:
-            from fbuild.cli_utils import EnvironmentDetector
-
-            env_name = EnvironmentDetector.detect_environment(build_dir, None)
-
-        # Use the new DaemonConnection context manager API
-        with connect_daemon(build_dir, env_name) as conn:
-            success = conn.build(
-                clean=clean,
-                verbose=verbose,
-                timeout=timeout,
-            )
-
-        if success:
-            print("\n✅ Compilation succeeded (fbuild)\n")
-        else:
-            print("\n❌ Compilation failed (fbuild)\n")
-
-        return success
-
+        result = subprocess.run(
+            cmd,
+            timeout=timeout,
+        )
+        success = result.returncode == 0
     except KeyboardInterrupt as ki:
         from ci.util.global_interrupt_handler import handle_keyboard_interrupt
 
         print("\nKeyboardInterrupt: Stopping compilation")
         handle_keyboard_interrupt(ki)
         raise
+    except subprocess.TimeoutExpired:
+        print(f"\n❌ Compilation timed out after {timeout}s\n")
+        return False
     except Exception as e:
         print(f"\n❌ Compilation error: {e}\n")
         return False
+
+    if success:
+        print("\n✅ Compilation succeeded (fbuild)\n")
+    else:
+        print("\n❌ Compilation failed (fbuild)\n")
+
+    return success
 
 
 def run_fbuild_upload(
@@ -144,22 +133,14 @@ def run_fbuild_upload(
     print("UPLOADING (fbuild)")
     print("=" * 60)
 
-    # Ensure daemon is running before attempting to connect
-    if not ensure_fbuild_daemon():
-        print("\n❌ Failed to start fbuild daemon\n")
-        return False
+    ensure_fbuild_daemon()
 
     try:
-        # Determine environment if not specified
-        env_name = environment
-        if env_name is None:
-            from fbuild.cli_utils import EnvironmentDetector
+        if environment is None:
+            raise ValueError("environment must be specified for fbuild upload")
 
-            env_name = EnvironmentDetector.detect_environment(build_dir, None)
-
-        # Use the new DaemonConnection context manager API
-        with connect_daemon(build_dir, env_name) as conn:
-            success = conn.deploy(
+        with connect_daemon(build_dir, environment) as conn:
+            success: bool = conn.deploy(
                 port=upload_port,
                 clean=False,
                 skip_build=True,  # Upload-only mode - firmware already compiled
@@ -192,17 +173,9 @@ def run_fbuild_deploy(
     verbose: bool = False,
     clean: bool = False,
     monitor_after: bool = False,
-    monitor_timeout: float | None = None,
-    monitor_halt_on_error: str | None = None,
-    monitor_halt_on_success: str | None = None,
-    monitor_expect: str | None = None,
     timeout: float = 1800,
 ) -> bool:
     """Deploy firmware using fbuild with optional monitoring.
-
-    This function uses fbuild deploy with optional built-in monitoring.
-    For FastLED's advanced monitoring features (JSON-RPC, multiple patterns, etc.),
-    use run_fbuild_upload + the existing run_monitor function instead.
 
     Args:
         build_dir: Project directory containing platformio.ini
@@ -211,10 +184,6 @@ def run_fbuild_deploy(
         verbose: Enable verbose output
         clean: Perform clean build before deploy
         monitor_after: Start monitoring after deploy
-        monitor_timeout: Monitoring timeout in seconds
-        monitor_halt_on_error: Pattern that triggers error exit (regex)
-        monitor_halt_on_success: Pattern that triggers success exit (regex)
-        monitor_expect: Expected pattern to check at timeout/success (regex)
         timeout: Maximum deploy time in seconds (default: 30 minutes)
 
     Returns:
@@ -224,29 +193,17 @@ def run_fbuild_deploy(
     print("DEPLOYING (fbuild)")
     print("=" * 60)
 
-    # Ensure daemon is running before attempting to connect
-    if not ensure_fbuild_daemon():
-        print("\n❌ Failed to start fbuild daemon\n")
-        return False
+    ensure_fbuild_daemon()
 
     try:
-        # Determine environment if not specified
-        env_name = environment
-        if env_name is None:
-            from fbuild.cli_utils import EnvironmentDetector
+        if environment is None:
+            raise ValueError("environment must be specified for fbuild deploy")
 
-            env_name = EnvironmentDetector.detect_environment(build_dir, None)
-
-        # Use the new DaemonConnection context manager API
-        with connect_daemon(build_dir, env_name) as conn:
-            success = conn.deploy(
+        with connect_daemon(build_dir, environment) as conn:
+            success: bool = conn.deploy(
                 port=upload_port,
                 clean=clean,
                 monitor_after=monitor_after,
-                monitor_timeout=monitor_timeout,
-                monitor_halt_on_error=monitor_halt_on_error,
-                monitor_halt_on_success=monitor_halt_on_success,
-                monitor_expect=monitor_expect,
                 timeout=timeout,
             )
 
@@ -274,15 +231,8 @@ def run_fbuild_monitor(
     port: str | None = None,
     baud_rate: int = 115200,
     timeout: float | None = None,
-    halt_on_error: str | None = None,
-    halt_on_success: str | None = None,
-    expect: str | None = None,
 ) -> bool:
     """Monitor serial output using fbuild.
-
-    Note: fbuild monitor is simpler than FastLED's run_monitor. For advanced
-    features like multiple expect patterns, JSON-RPC, input-on-trigger, etc.,
-    use the existing run_monitor function instead.
 
     Args:
         build_dir: Project directory
@@ -290,34 +240,20 @@ def run_fbuild_monitor(
         port: Serial port (None = auto-detect)
         baud_rate: Serial baud rate (default: 115200)
         timeout: Monitoring timeout in seconds (None = no timeout)
-        halt_on_error: Pattern that triggers error exit (regex)
-        halt_on_success: Pattern that triggers success exit (regex)
-        expect: Expected pattern to check at timeout/success (regex)
 
     Returns:
         True if monitoring succeeded, False otherwise
     """
-    # Ensure daemon is running before attempting to connect
-    if not ensure_fbuild_daemon():
-        print("\n❌ Failed to start fbuild daemon\n")
-        return False
+    ensure_fbuild_daemon()
 
     try:
-        # Determine environment if not specified
-        env_name = environment
-        if env_name is None:
-            from fbuild.cli_utils import EnvironmentDetector
+        if environment is None:
+            raise ValueError("environment must be specified for fbuild monitor")
 
-            env_name = EnvironmentDetector.detect_environment(build_dir, None)
-
-        # Use the new DaemonConnection context manager API
-        with connect_daemon(build_dir, env_name) as conn:
-            success = conn.monitor(
+        with connect_daemon(build_dir, environment) as conn:
+            success: bool = conn.monitor(
                 port=port,
                 baud_rate=baud_rate,
-                halt_on_error=halt_on_error,
-                halt_on_success=halt_on_success,
-                expect=expect,
                 timeout=timeout,
             )
 
@@ -334,13 +270,9 @@ def run_fbuild_monitor(
         return False
 
 
-def stop_fbuild_daemon() -> bool:
-    """Stop the fbuild daemon.
-
-    Returns:
-        True if daemon was stopped, False otherwise
-    """
-    return stop_daemon()
+def stop_fbuild_daemon() -> None:
+    """Stop the fbuild daemon."""
+    Daemon.stop()
 
 
 def get_fbuild_daemon_status() -> dict[str, Any]:
@@ -349,13 +281,4 @@ def get_fbuild_daemon_status() -> dict[str, Any]:
     Returns:
         Dictionary with daemon status information
     """
-    return get_daemon_status()
-
-
-def is_fbuild_daemon_running() -> bool:
-    """Check if fbuild daemon is running.
-
-    Returns:
-        True if daemon is running, False otherwise
-    """
-    return is_daemon_running()
+    return Daemon.status()  # type: ignore[return-value]

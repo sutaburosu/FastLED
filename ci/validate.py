@@ -84,23 +84,11 @@ from ci.util.port_utils import (
     environment_has_wifi,
     kill_port_users,
 )
+from ci.util.sketch_resolver import parse_timeout
 from ci.validate.ble import run_ble_validation
 from ci.validate.decode import run_decode_validation, run_device_decode_validation
 from ci.validate.net import run_net_loopback_validation, run_net_validation
 from ci.validate.ota import run_ota_validation
-
-
-# Try to import fbuild ledger for cached chip detection
-try:
-    from fbuild.ledger import (  # pyright: ignore[reportMissingImports]
-        detect_and_cache as fbuild_detect_and_cache,
-    )
-
-    FBUILD_LEDGER_AVAILABLE = True
-except ImportError:
-    FBUILD_LEDGER_AVAILABLE = False
-    fbuild_detect_and_cache = None  # type: ignore[assignment,misc]
-from ci.util.sketch_resolver import parse_timeout
 
 
 if TYPE_CHECKING:
@@ -1113,10 +1101,12 @@ def _should_use_fbuild(
     if use_fbuild_flag:
         return True
 
-    # Default: use fbuild for esp32s3 and esp32c6
+    # Default: use fbuild for boards in FBUILD_BOARDS
     if environment:
+        from ci.compiler.fbuild_boards import FBUILD_BOARDS
+
         env_lower = environment.lower()
-        if "esp32s3" in env_lower or "esp32c6" in env_lower:
+        if any(board in env_lower for board in FBUILD_BOARDS):
             return True
 
     return False
@@ -1835,59 +1825,15 @@ async def run(args: Args | None = None) -> int:  # pyright: ignore[reportGeneral
     if not final_environment:
         print("🔍 Detecting attached chip type...")
 
-        # Try fbuild ledger first (faster when cached), but only if fbuild is not disabled
-        skip_fbuild_detection = args.no_fbuild
-        if skip_fbuild_detection:
-            print("   (skipping fbuild ledger due to --no-fbuild)")
-        if (
-            not skip_fbuild_detection
-            and FBUILD_LEDGER_AVAILABLE
-            and fbuild_detect_and_cache is not None
-        ):
-            try:
-                # Use cast(Any, ...) to silence pyright errors from unresolved fbuild module
-                ledger_result = cast(Any, fbuild_detect_and_cache)(upload_port)
-                detected_chip_type: str | None = (
-                    str(ledger_result.chip_type) if ledger_result.chip_type else None
-                )
-                detected_environment: str | None = (
-                    str(ledger_result.environment)
-                    if ledger_result.environment
-                    else None
-                )
-                was_cached: bool = bool(ledger_result.was_cached)
-                final_environment: str | None = detected_environment
-                cache_indicator = " (cached)" if was_cached else ""
-                print(
-                    f"✅ Detected {detected_chip_type} → using environment '{final_environment}'{cache_indicator}"
-                )
-            except KeyboardInterrupt as ki:
-                handle_keyboard_interrupt(ki)
-                raise
-            except Exception as e:
-                # fbuild ledger failed, fall back to esptool
-                print(f"⚠️  fbuild ledger failed ({e}), trying esptool...")
-                chip_result = detect_attached_chip(upload_port)
-                if chip_result.ok and chip_result.environment:
-                    detected_chip_type = chip_result.chip_type
-                    detected_environment = chip_result.environment
-                    final_environment = detected_environment
-                    print(
-                        f"✅ Detected {chip_result.chip_type} → using environment '{final_environment}'"
-                    )
-                else:
-                    detected_chip_type = None
-                    detected_environment = None
-        else:
-            # fbuild ledger not available, use esptool directly
-            chip_result = detect_attached_chip(upload_port)
-            if chip_result.ok and chip_result.environment:
-                detected_chip_type = chip_result.chip_type
-                detected_environment = chip_result.environment
-                final_environment = detected_environment
-                print(
-                    f"✅ Detected {chip_result.chip_type} → using environment '{final_environment}'"
-                )
+        # Detect chip using esptool
+        chip_result = detect_attached_chip(upload_port)
+        if chip_result.ok and chip_result.environment:
+            detected_chip_type = chip_result.chip_type
+            detected_environment = chip_result.environment
+            final_environment = detected_environment
+            print(
+                f"✅ Detected {chip_result.chip_type} → using environment '{final_environment}'"
+            )
 
         # Fall back to platformio.ini default_envs if detection failed
         if not final_environment:
