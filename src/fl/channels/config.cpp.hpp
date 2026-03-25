@@ -18,27 +18,21 @@ ChannelConfig::ChannelConfig(const ChipsetVariant& chipset, fl::span<CRGB> leds,
     : chipset(chipset)
     , mLeds(leds)
     , rgb_order(rgbOrder)
-    , options(options)
-    , pin(getDataPin())  // Initialize deprecated member for backwards compatibility
-    , timing(isClockless() ? getClocklessChipset()->timing : ChipsetTimingConfig(0, 0, 0, 0)) {}
+    , options(options) {}
 
 ChannelConfig::ChannelConfig(const ClocklessChipset& clockless, fl::span<CRGB> leds,
                               EOrder rgbOrder, const ChannelOptions& options)
     : chipset(clockless)
     , mLeds(leds)
     , rgb_order(rgbOrder)
-    , options(options)
-    , pin(clockless.pin)
-    , timing(clockless.timing) {}
+    , options(options) {}
 
 ChannelConfig::ChannelConfig(const SpiChipsetConfig& spi, fl::span<CRGB> leds,
                               EOrder rgbOrder, const ChannelOptions& options)
     : chipset(spi)
     , mLeds(leds)
     , rgb_order(rgbOrder)
-    , options(options)
-    , pin(spi.dataPin)
-    , timing(0, 0, 0, 0) {}  // SPI chipsets don't use T1/T2/T3 timing
+    , options(options) {}
 
 // ========== Backwards-Compatible Constructors ==========
 
@@ -47,9 +41,7 @@ ChannelConfig::ChannelConfig(int pin, const ChipsetTimingConfig& timing, fl::spa
     : chipset(ClocklessChipset(pin, timing))
     , mLeds(leds)
     , rgb_order(rgbOrder)
-    , options(options)
-    , pin(pin)
-    , timing(timing) {}
+    , options(options) {}
 
 ChannelConfig::ChannelConfig(const ChannelConfig& other)
     : chipset(other.chipset)
@@ -57,9 +49,7 @@ ChannelConfig::ChannelConfig(const ChannelConfig& other)
     , rgb_order(other.rgb_order)
     , options(other.options)
     , mScreenMap(other.mScreenMap)
-    , mName(other.mName)
-    , pin(other.pin)
-    , timing(other.timing) {}
+    , mName(other.mName) {}
 
 ChannelConfig::ChannelConfig(ChannelConfig&& other)
     : chipset(fl::move(other.chipset))
@@ -67,9 +57,7 @@ ChannelConfig::ChannelConfig(ChannelConfig&& other)
     , rgb_order(other.rgb_order)
     , options(fl::move(other.options))
     , mScreenMap(fl::move(other.mScreenMap))
-    , mName(fl::move(other.mName))
-    , pin(other.pin)
-    , timing(other.timing) {}
+    , mName(fl::move(other.mName)) {}
 
 // ========== Accessor Methods ==========
 

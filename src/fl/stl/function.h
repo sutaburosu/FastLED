@@ -8,8 +8,6 @@
 #include "fl/stl/align.h"
 #include "fl/stl/pair.h"
 #include "fl/stl/vector.h"
-#include "fl/stl/algorithm.h"  // for fl::sort
-#include "fl/stl/noexcept.h"
 
 #ifndef FASTLED_INLINE_LAMBDA_SIZE
 #define FASTLED_INLINE_LAMBDA_SIZE 64
@@ -381,6 +379,24 @@ class function_list<void(Args...)> {
     int mIdCounter = 0;
 
     bool mNeedsCompact = false;  // True when functions have been cleared during invocation
+    bool mNeedsSort = false;     // True when non-zero priority was used in add()
+
+    // Inline insertion sort by priority descending - avoids fl::sort template instantiation.
+    // Only called when non-zero priorities are used (mNeedsSort == true), which is rare.
+    void sortByPriority() {
+        for (size_t i = 1; i < mFunctions.size(); ++i) {
+            if (mFunctions[i].priority > mFunctions[i - 1].priority) {
+                auto temp = fl::move(mFunctions[i]);
+                size_t j = i;
+                while (j > 0 && mFunctions[j - 1].priority < temp.priority) {
+                    mFunctions[j] = fl::move(mFunctions[j - 1]);
+                    --j;
+                }
+                mFunctions[j] = fl::move(temp);
+            }
+        }
+        mNeedsSort = false;
+    }
 
   public:
     function_list() FL_NOEXCEPT = default;
@@ -393,6 +409,9 @@ class function_list<void(Args...)> {
     int add(function<void(Args...)> fn, int priority = 0) FL_NOEXCEPT {
         int id = mIdCounter++;
         mFunctions.push_back(FunctionEntry(id, priority, fn));
+        if (priority != 0) {
+            mNeedsSort = true;
+        }
         return id;
     }
 
@@ -444,40 +463,18 @@ class function_list<void(Args...)> {
 
     void invoke(Args... args) FL_NOEXCEPT {
         if (mFunctions.empty()) return;
-        // Compact the storage by removing invalid (cleared) callbacks
         compact();
+        if (mNeedsSort) {
+            sortByPriority();
+        }
         // Save size at start - newly added callbacks won't execute until next call
         const size_t invoke_size = mFunctions.size();
-        // Early return if no callbacks
-        if (invoke_size == 0) {
-            return;
-        }
-
-        // Collect unique priorities into a small vector (usually very few unique values)
-        fl::vector_inlined<int, 16> priorities;
+        if (invoke_size == 0) return;
+        // Already sorted by priority (if priorities were used) - iterate linearly
         for (size_t i = 0; i < invoke_size; ++i) {
-            if (!mFunctions[i].fn) continue;  // Skip already-cleared functions
-
-            int p = mFunctions[i].priority;
-            // Only add if not already present
-            if (priorities.find(p) == priorities.end()) {
-                priorities.push_back(p);
-            }
-        }
-
-        // Sort priorities (higher priority first) - cheap since there are usually very few unique priorities
-        fl::sort(priorities.begin(), priorities.end(), [](int a, int b) { return a > b; }) FL_NOEXCEPT;
-
-        // Iterate through priorities (highest first), then through functions matching each priority
-        for (size_t p_idx = 0; p_idx < priorities.size(); ++p_idx) {
-            int current_priority = priorities[p_idx];
-            for (size_t i = 0; i < invoke_size; ++i) {
-                if (mFunctions.empty()) {
-                    return;  // Clear happened.
-                }
-                if (mFunctions[i].fn && mFunctions[i].priority == current_priority) {
-                    mFunctions[i].fn(args...);
-                }
+            if (mFunctions.empty()) return;  // Clear happened during callback
+            if (mFunctions[i].fn) {
+                mFunctions[i].fn(args...);
             }
         }
         compact();

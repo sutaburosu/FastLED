@@ -58,7 +58,7 @@ public:
     );
 
     /// @brief Get the GPIO pin number
-    int getPin() const { return mPin; }
+    int getPin() const;
 
     /// @brief Get the chipset configuration variant
     const ChipsetVariant& getChipset() const { return mChipset; }
@@ -71,7 +71,7 @@ public:
 
     /// @brief Get the timing configuration (clockless chipsets only)
     /// @deprecated Use getChipset() instead
-    const ChipsetTimingConfig& getTiming() const { return mTiming; }
+    const ChipsetTimingConfig& getTiming() const;
 
     /// @brief Get the encoded transmission data
     const fl::vector_psram<u8>& getData() const { return mEncodedData; }
@@ -144,8 +144,6 @@ private:
     ChannelData& operator=(const ChannelData&) = delete;
 
     ChipsetVariant mChipset;                ///< Chipset configuration (clockless or SPI)
-    int mPin;                               ///< GPIO pin number (extracted from chipset for convenience)
-    ChipsetTimingConfig mTiming;            ///< Chipset timing (T0H, T1H, T0L, reset) - backwards compatibility, clockless only
     PaddingGenerator mPaddingGenerator;     ///< Optional padding generator for block-size alignment
     fl::vector_psram<u8> mEncodedData; ///< Encoded transmission bytes (PSRAM)
     volatile bool mInUse = false;           ///< Engine is transmitting this data (prevents creator updates)

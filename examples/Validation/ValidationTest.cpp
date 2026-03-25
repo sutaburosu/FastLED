@@ -420,11 +420,11 @@ void runTest(const char* test_name,
             static_cast<int>(config_idx),
             config.base_strip_size,
             static_cast<int>(num_leds),
-            config.tx_configs[config_idx].pin
+            config.tx_configs[config_idx].getDataPin()
         };
 
         FL_WARN("\n=== " << test_name << " [Lane " << config_idx << "/" << config.tx_configs.size()
-                << ", Pin " << config.tx_configs[config_idx].pin
+                << ", Pin " << config.tx_configs[config_idx].getDataPin()
                 << ", LEDs " << config.tx_configs[config_idx].mLeds.size() << "] ===");
 
         // Use RX channel provided via config (created in .ino file, never created dynamically here)
@@ -802,11 +802,11 @@ void validateChipsetTiming(fl::ValidationConfig& config,
     fl::vector<fl::shared_ptr<fl::Channel>> channels;
     for (size_t i = 0; i < config.tx_configs.size(); i++) {
         // Create channel config with runtime timing
-        fl::ChannelConfig channel_config(config.tx_configs[i].pin, config.timing, config.tx_configs[i].mLeds, config.tx_configs[i].rgb_order);
+        fl::ChannelConfig channel_config(config.tx_configs[i].getDataPin(), config.timing, config.tx_configs[i].mLeds, config.tx_configs[i].rgb_order);
 
         auto channel = FastLED.add(channel_config);
         if (!channel) {
-            FL_ERROR("Failed to create channel " << i << " (pin " << config.tx_configs[i].pin << ") - platform not supported");
+            FL_ERROR("Failed to create channel " << i << " (pin " << config.tx_configs[i].getDataPin() << ") - platform not supported");
             // Clean up previously created channels
             for (auto& ch : channels) {
                 ch.reset();
@@ -894,7 +894,7 @@ void validateChipsetTimingLegacy(fl::ValidationConfig& config,
     ss << "  RESET: " << config.timing.reset_us << "us\n";
     ss << "  Lanes: " << config.tx_configs.size() << "\n";
     for (size_t i = 0; i < config.tx_configs.size(); i++) {
-        ss << "  Lane " << i << ": pin=" << config.tx_configs[i].pin
+        ss << "  Lane " << i << ": pin=" << config.tx_configs[i].getDataPin()
            << " LEDs=" << config.tx_configs[i].mLeds.size() << "\n";
     }
     ss << "========================================";
@@ -903,7 +903,7 @@ void validateChipsetTimingLegacy(fl::ValidationConfig& config,
     // Create one legacy proxy per lane (each maps runtime pin to WS2812B<PIN> template)
     fl::vector<fl::unique_ptr<LegacyClocklessProxy>> proxies;
     for (size_t i = 0; i < config.tx_configs.size(); i++) {
-        int pin = config.tx_configs[i].pin;
+        int pin = config.tx_configs[i].getDataPin();
         CRGB* leds = config.tx_configs[i].mLeds.data();
         int numLeds = static_cast<int>(config.tx_configs[i].mLeds.size());
 

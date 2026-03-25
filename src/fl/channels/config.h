@@ -241,18 +241,6 @@ struct ChannelConfig {
 
     /// Optional user-specified name (if not set, Channel generates one automatically)
     fl::optional<fl::string> mName;
-
-    // ========== Deprecated Members (for compatibility during migration) ==========
-
-    /// @deprecated Use getDataPin() instead
-    /// @brief GPIO pin (clockless chipsets only)
-    /// @note This is maintained for backwards compatibility with existing code
-    const int pin;
-
-    /// @deprecated Use getChipset() instead
-    /// @brief Chipset timing (clockless chipsets only)
-    /// @note This is maintained for backwards compatibility with existing code
-    const ChipsetTimingConfig timing;
 };
 
 FASTLED_SHARED_PTR_STRUCT(ChannelConfig);

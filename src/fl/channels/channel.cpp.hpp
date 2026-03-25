@@ -4,14 +4,11 @@
 #include "platforms/is_platform.h"
 #include "fl/channels/channel.h"
 #include "fl/channels/channel_events.h"
-#include "fl/channels/chipset_helpers.h"
 #include "fl/channels/config.h"
 #include "fl/channels/data.h"
 #include "fl/channels/driver.h"
 #include "fl/channels/manager.h"
 #include "fl/stl/atomic.h"
-#include "fl/system/log.h"
-#include "fl/system/log.h"
 #include "fl/system/log.h"
 #include "fl/channels/options.h"
 #include "fl/gfx/pixel_iterator_any.h"
@@ -129,17 +126,33 @@ ChannelPtr Channel::create(const ChannelConfig &config) {
     return channel;
 }
 
+int Channel::getPin() const {
+    if (const ClocklessChipset* cs = mChipset.ptr<ClocklessChipset>()) {
+        return cs->pin;
+    }
+    if (const SpiChipsetConfig* spi = mChipset.ptr<SpiChipsetConfig>()) {
+        return spi->dataPin;
+    }
+    return -1;
+}
+
+const ChipsetTimingConfig& Channel::getTiming() const {
+    if (const ClocklessChipset* cs = mChipset.ptr<ClocklessChipset>()) {
+        return cs->timing;
+    }
+    static const ChipsetTimingConfig sEmpty(0, 0, 0, 0);
+    return sEmpty;
+}
+
 Channel::Channel(const ChipsetVariant& chipset, EOrder rgbOrder, RegistrationMode mode)
     : CPixelLEDController<RGB>(mode)
     , mChipset(chipset)
-    , mPin(getDataPinFromChipset(chipset))
-    , mTiming(getTimingFromChipset(chipset))
     , mRgbOrder(rgbOrder)
     , mDriver()
     , mAffinity()
     , mId(nextId())
     , mName(makeName(mId)) {
-    fl::pinMode(mPin, fl::PinMode::InputPulldown);
+    fl::pinMode(getPin(), fl::PinMode::InputPulldown);
     if (const SpiChipsetConfig* spi = chipset.ptr<SpiChipsetConfig>()) {
         fl::pinMode(spi->clockPin, fl::PinMode::InputPulldown);
     }
@@ -150,8 +163,6 @@ Channel::Channel(const ChipsetVariant& chipset, fl::span<CRGB> leds,
                  EOrder rgbOrder, const ChannelOptions& options)
     : CPixelLEDController<RGB>(RegistrationMode::DeferRegister)  // Defer registration until FastLED.add()
     , mChipset(chipset)
-    , mPin(getDataPinFromChipset(chipset))
-    , mTiming(getTimingFromChipset(chipset))
     , mRgbOrder(rgbOrder)
     , mDriver()  // Empty weak_ptr - late binding on first showPixels()
     , mAffinity(options.mAffinity)  // Get affinity from ChannelOptions
@@ -160,7 +171,7 @@ Channel::Channel(const ChipsetVariant& chipset, fl::span<CRGB> leds,
     // Initialize GPIO with pulldown to ensure stable LOW state
     // This prevents RX from capturing noise/glitches on uninitialized pins
     // Must happen before any driver initialization
-    fl::pinMode(mPin, fl::PinMode::InputPulldown);
+    fl::pinMode(getPin(), fl::PinMode::InputPulldown);
 
     // For SPI chipsets, also initialize the clock pin
     if (const SpiChipsetConfig* spi = chipset.ptr<SpiChipsetConfig>()) {
@@ -185,8 +196,6 @@ Channel::Channel(int pin, const ChipsetTimingConfig& timing, fl::span<CRGB> leds
                  EOrder rgbOrder, const ChannelOptions& options)
     : CPixelLEDController<RGB>(RegistrationMode::DeferRegister)  // Defer registration until FastLED.add()
     , mChipset(ClocklessChipset(pin, timing))  // Convert to variant
-    , mPin(pin)
-    , mTiming(timing)
     , mRgbOrder(rgbOrder)
     , mDriver()  // Empty weak_ptr - late binding on first showPixels()
     , mAffinity(options.mAffinity)  // Get affinity from ChannelOptions
@@ -205,7 +214,7 @@ Channel::Channel(int pin, const ChipsetTimingConfig& timing, fl::span<CRGB> leds
     setRgbw(options.mRgbw);
 
     // Create ChannelData during construction
-    mChannelData = ChannelData::create(mPin, mTiming);
+    mChannelData = ChannelData::create(mChipset);
 }
 
 Channel::~Channel() {

@@ -59,7 +59,7 @@ public:
 
     /// @brief Get the pin number for this channel (data pin)
     /// @return Pin number
-    int getPin() const { return mPin; }
+    int getPin() const;
 
     /// @brief Get the clock pin for this channel (SPI only, -1 for clockless)
     /// @return Clock pin number or -1
@@ -77,7 +77,7 @@ public:
     /// @brief Get the timing configuration for this channel (clockless only)
     /// @return ChipsetTimingConfig reference
     /// @deprecated Use getChipset() instead
-    const ChipsetTimingConfig& getTiming() const { return mTiming; }
+    const ChipsetTimingConfig& getTiming() const;
 
     /// @brief Get the chipset configuration variant
     /// @return ChipsetVariant reference
@@ -95,7 +95,7 @@ public:
 
     /// @brief Apply reconfigurable settings from a ChannelConfig
     /// @param config The configuration to apply
-    /// @note Does NOT change: mPin, mTiming, mChipset, mDriver, mId
+    /// @note Does NOT change: mChipset, mDriver, mId
     void applyConfig(const ChannelConfig& config);
 
     // Re-expose protected base class methods for external access
@@ -212,8 +212,6 @@ private:
     static fl::string makeName(i32 id, const fl::optional<fl::string>& configName = fl::optional<fl::string>());
 
     ChipsetVariant mChipset;         // Chipset configuration (clockless or SPI)
-    int mPin;                        // Data pin (backwards compatibility)
-    ChipsetTimingConfig mTiming;     // Timing (backwards compatibility, clockless only)
     EOrder mRgbOrder;
     fl::weak_ptr<IChannelDriver> mDriver;  // Weak reference to driver (prevents dangling pointers)
     fl::string mAffinity;            // Engine affinity name (empty = no affinity, dynamic selection)

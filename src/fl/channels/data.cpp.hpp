@@ -2,7 +2,6 @@
 /// @brief Channel transmission data implementation
 
 #include "fl/channels/data.h"
-#include "fl/channels/chipset_helpers.h"
 #include "fl/stl/algorithm.h"
 #include "fl/stl/cstring.h"
 #include "fl/system/log.h"
@@ -24,13 +23,29 @@ ChannelDataPtr ChannelData::create(
     return fl::make_shared<ChannelData>(pin, timing, fl::move(encodedData));
 }
 
+int ChannelData::getPin() const {
+    if (const ClocklessChipset* cs = mChipset.ptr<ClocklessChipset>()) {
+        return cs->pin;
+    }
+    if (const SpiChipsetConfig* spi = mChipset.ptr<SpiChipsetConfig>()) {
+        return spi->dataPin;
+    }
+    return -1;
+}
+
+const ChipsetTimingConfig& ChannelData::getTiming() const {
+    if (const ClocklessChipset* cs = mChipset.ptr<ClocklessChipset>()) {
+        return cs->timing;
+    }
+    static const ChipsetTimingConfig sEmpty(0, 0, 0, 0);
+    return sEmpty;
+}
+
 ChannelData::ChannelData(
     const ChipsetVariant& chipset,
     fl::vector_psram<u8>&& encodedData
 )
     : mChipset(chipset)
-    , mPin(getDataPinFromChipset(chipset))
-    , mTiming(getTimingFromChipset(chipset))
     , mEncodedData(fl::move(encodedData))
 {}
 
@@ -40,8 +55,6 @@ ChannelData::ChannelData(
     fl::vector_psram<u8>&& encodedData
 )
     : mChipset(ClocklessChipset(pin, timing))
-    , mPin(pin)
-    , mTiming(timing)
     , mEncodedData(fl::move(encodedData))
 {}
 
