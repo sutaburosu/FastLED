@@ -22,7 +22,6 @@ struct PerlinParticlePunch::MeteorParticle {
     float position = 0.0f;
     float velocity = 0.0f;
     float intensity = 0.0f;
-    u32 birthTime = 0;
     u8 debrisSpawned = 0;
     u8 maxDebris = 5;
     u8 frameCounter = 0;
@@ -162,7 +161,6 @@ void PerlinParticlePunch::spawnMeteor(float intensity) {
     m->position = 0.0f;
     m->velocity = (1.5f + intensity * 5.0f) * mSpeed;
     m->intensity = intensity;
-    m->birthTime = 0; // will be set in draw()
     m->debrisSpawned = 0;
     m->maxDebris = u8(5 + intensity * 5);
     m->frameCounter = 0;
@@ -214,7 +212,9 @@ PerlinParticlePunch::tryAllocateDebris() {
 
 s16x16 PerlinParticlePunch::mapf(s16x16 x, s16x16 in_min, s16x16 in_max,
                                   s16x16 out_min, s16x16 out_max) {
-    return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+    // Divide first to avoid s16x16 overflow on large intermediate products.
+    // e.g. (223 * 255) exceeds s16x16 max (~32767), but 223/223 * 255 = 255 fits.
+    return (x - in_min) / (in_max - in_min) * (out_max - out_min) + out_min;
 }
 
 s16x16 PerlinParticlePunch::circleNoiseGen(u32 now, s16x16 theta) const {
@@ -440,8 +440,6 @@ void PerlinParticlePunch::draw(DrawContext context) {
         MeteorParticle &m = mMeteorParticles[i];
         if (!m.alive)
             continue;
-        if (m.birthTime == 0)
-            m.birthTime = now;
         // Debris spawn check before physics update
         if (m.shouldSpawnDebris()) {
             spawnDebrisFromMeteor(m, now);
