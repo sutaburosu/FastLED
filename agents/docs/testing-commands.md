@@ -4,11 +4,14 @@
 
 **ALWAYS use bash wrapper scripts. DO NOT run low-level build tools or Python scripts directly.**
 
+**WASM is the default compilation target.** Only use hardware platforms when the user explicitly requests it.
+
 ```bash
 # ✅ CORRECT - Use bash wrapper scripts
 bash test                           # Run all tests
 bash test <test_name>               # Build and run specific test
-bash compile <platform>             # Compile for platforms
+bash compile wasm --examples Blink  # Compile for WASM (default target)
+bash compile <platform> --examples X # Only when user requests specific platform
 bash lint                           # Run linting
 bash validate --parlio              # Hardware validation
 
@@ -64,7 +67,7 @@ THREAD STACK TRACES:
 # ✅ CORRECT - Use clean flag
 bash test --clean                          # Clean and rebuild all tests
 bash test --clean tests/fl/async           # Clean and rebuild specific test
-bash compile --clean esp32s3               # Clean and rebuild platform
+bash compile --clean wasm --examples Blink  # Clean and rebuild WASM
 
 # ❌ FORBIDDEN - Never manually delete build caches
 rm -rf .build/meson-quick                  # WRONG - use --clean instead

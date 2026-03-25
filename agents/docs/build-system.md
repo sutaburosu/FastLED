@@ -4,13 +4,18 @@
 
 **ALWAYS use bash wrapper scripts for all build operations. DO NOT run low-level tools directly.**
 
+### Default Compilation Target: WASM
+
+**WASM is the default compilation target for verifying examples.** Only compile for specific hardware platforms (esp32dev, uno, esp32s3, etc.) when the user explicitly requests it.
+
 ### Use These Commands
 
 ```bash
 # ✅ CORRECT - Use bash wrapper scripts
 bash test                            # Run all tests
 bash test <test_name>                # Run specific test
-bash compile <platform>              # Compile for platforms
+bash compile wasm --examples Blink   # Compile for WASM (default target)
+bash compile <platform> --examples X # Only when user requests specific platform
 bash lint                            # Run linting
 bash validate --parlio               # Hardware validation
 
@@ -84,7 +89,7 @@ rm -rf .build && bash test
 # ✅ CORRECT - Use clean flag to rebuild from scratch
 bash test --clean                          # Clean and rebuild all tests
 bash test --clean tests/fl/stl/move        # Clean and rebuild specific test
-bash compile --clean esp32s3               # Clean and rebuild platform
+bash compile --clean wasm --examples Blink  # Clean and rebuild WASM
 
 # ✅ CORRECT - Just run the command (build system self-heals)
 bash test tests/fl/stl/move                # Build system revalidates automatically
