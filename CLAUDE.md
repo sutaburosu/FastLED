@@ -45,6 +45,12 @@ See `agents/docs/build-system.md` for full command execution rules and forbidden
 - **ALWAYS stop and fix Write/Edit hook errors immediately** before writing the next file
 - **IWYU errors may be deferred** when laying down multiple new files in a batch
 
+### Test Failure Debug Policy
+- **When ANY test fails in quick mode, you MUST immediately re-run it in debug mode**: `bash test <TestName> --debug`
+- Debug mode enables ASAN/LSAN/UBSAN sanitizers that catch memory errors, undefined behavior, and leaks
+- Quick mode failures without debug re-run are INCOMPLETE — the root cause is often only visible with sanitizers
+- Do NOT attempt to fix the code based only on quick-mode output — always get debug output first
+
 ### Error Fixing Policy
 - **Fix ALL encountered errors immediately**, even pre-existing ones unrelated to your current task
 

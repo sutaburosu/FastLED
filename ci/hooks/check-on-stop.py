@@ -18,12 +18,27 @@ import json
 import subprocess
 import sys
 import threading
+from dataclasses import dataclass
 from pathlib import Path
 
 
 SCRIPT_DIR = Path(__file__).parent.resolve()
 PROJECT_ROOT = SCRIPT_DIR.parent.parent
 SESSION_FINGERPRINT_FILE = PROJECT_ROOT / ".cache" / "session_fingerprint.json"
+
+
+@dataclass
+class FailedTest:
+    """A test that failed during the on-stop hook run."""
+
+    name: str
+    category: str  # "unit" or "example"
+
+    @property
+    def debug_cmd(self) -> str:
+        if self.category == "example":
+            return f"bash test {self.name} --examples --debug"
+        return f"bash test {self.name} --debug"
 
 
 def run_cmd(cmd: list[str]) -> subprocess.CompletedProcess[str]:
@@ -35,6 +50,20 @@ def run_cmd(cmd: list[str]) -> subprocess.CompletedProcess[str]:
         errors="replace",
         cwd=str(PROJECT_ROOT),
     )
+
+
+def extract_failed_tests(output: str) -> list[FailedTest]:
+    """Extract failed test names from test runner output."""
+    import re
+
+    failed: list[FailedTest] = []
+    # Match lines like "  test_name | unit     | bash test test_name --cpp"
+    # from the FAILED TESTS SUMMARY table
+    for line in output.splitlines():
+        m = re.match(r"^\s+(\S+)\s+\|\s+(unit|example)\s+\|", line)
+        if m:
+            failed.append(FailedTest(name=m.group(1), category=m.group(2)))
+    return failed
 
 
 def report_failure(label: str, result: subprocess.CompletedProcess[str]) -> None:
@@ -152,6 +181,34 @@ def main() -> int:
 
     if test_result.returncode != 0:
         report_failure("C++ tests failed", test_result)
+        # Extract failed test names and emit debug rerun directive
+        combined_output = (test_result.stdout or "") + (test_result.stderr or "")
+        failed = extract_failed_tests(combined_output)
+        if failed:
+            max_show = 3
+            print("", file=sys.stderr)
+            print("!" * 60, file=sys.stderr)
+            print(
+                "!!  AGENT ACTION REQUIRED: RE-RUN IN DEBUG MODE  !!", file=sys.stderr
+            )
+            print("!" * 60, file=sys.stderr)
+            print("", file=sys.stderr)
+            print("Quick mode does NOT enable sanitizers.", file=sys.stderr)
+            print(
+                "You MUST re-run failed tests with --debug for full diagnostics.",
+                file=sys.stderr,
+            )
+            print("", file=sys.stderr)
+            print("Run these commands NOW:", file=sys.stderr)
+            for ft in failed[:max_show]:
+                print(f"  {ft.debug_cmd}", file=sys.stderr)
+            if len(failed) > max_show:
+                print(
+                    f"  ... and {len(failed) - max_show} more failed tests",
+                    file=sys.stderr,
+                )
+            print("", file=sys.stderr)
+            print("!" * 60, file=sys.stderr)
         return 2
 
     return 0
