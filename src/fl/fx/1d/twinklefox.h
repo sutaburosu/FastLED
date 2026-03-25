@@ -122,7 +122,7 @@ class TwinkleFox : public Fx1d {
         EVERY_N_MILLISECONDS(10) {
             nblendPaletteTowardPalette(currentPalette, targetPalette, 12);
         }
-        drawTwinkleFox(context.leds.data());
+        drawTwinkleFox(context.leds);
     }
 
     void chooseNextColorPalette(CRGBPalette16 &pal);

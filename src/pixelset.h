@@ -9,6 +9,7 @@
 #include "fl/gfx/blur.h"
 
 #include "fl/fastled.h"
+#include "fl/stl/span.h"
 
 #define FUNCTION_FILL_RAINBOW(a,b,c,d) fl::fill_rainbow(a,b,c,d)
 #define FUNCTION_NAPPLY_GAMMA(a,b,c) fl::napplyGamma_video(a,b,c)
@@ -501,6 +502,8 @@ public:
     CRGB* get() { return &rawleds[0]; }
     const CRGB* get() const {  return &rawleds[0]; }
     size_t size() const { return SIZE; }
+    operator fl::span<CRGB>() { return fl::span<CRGB>(rawleds, SIZE); }
+    operator fl::span<const CRGB>() const { return fl::span<const CRGB>(rawleds, SIZE); }
 };
 
 /// @} PixelSet
