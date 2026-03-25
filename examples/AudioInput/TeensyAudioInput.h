@@ -65,7 +65,7 @@
 
 // Select I2S Port (I2S1 is available on all Teensy 3.x and 4.x)
 // I2S2 is only available on Teensy 4.x
-#define USE_I2S_PORT fl::audio::TeensyI2S::I2S1
+#define USE_I2S_PORT fl::audio::TeensyI2S::I2SPort::I2S1
 
 // Select audio channel (Left or Right)
 // Match this to your INMP441 L/R pin connection
@@ -102,7 +102,7 @@ inline void printPlatformInfo() {
     Serial.println("Detected: Teensy (model unknown)");
 #endif
     Serial.print("Using I2S Port: ");
-    Serial.println(USE_I2S_PORT == fl::audio::TeensyI2S::I2S1 ? "I2S1" : "I2S2");
+    Serial.println(USE_I2S_PORT == fl::audio::TeensyI2S::I2SPort::I2S1 ? "I2S1" : "I2S2");
     Serial.print("Channel: ");
     Serial.println(AUDIO_CHANNEL == fl::audio::AudioChannel::Right ? "Right" : "Left");
     Serial.print("Sample Rate: ");
