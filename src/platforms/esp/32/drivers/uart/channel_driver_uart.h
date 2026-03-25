@@ -48,7 +48,7 @@ namespace fl {
 /// LED data transmission. Uses wave10 encoding with dynamic LUT generation.
 class ChannelEngineUART : public IChannelDriver {
 public:
-    explicit ChannelEngineUART(fl::shared_ptr<IUartPeripheral> peripheral);
+    explicit ChannelEngineUART(fl::shared_ptr<IUartPeripheral> peripheral) FL_NOEXCEPT;
     ~ChannelEngineUART() override;
 
     bool canHandle(const ChannelDataPtr& data) const FL_NOEXCEPT override;

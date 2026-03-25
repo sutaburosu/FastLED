@@ -439,7 +439,7 @@ class ChannelDriverPARLIOImpl : public IChannelDriver {
   public:
     /// @brief Constructor with runtime data width selection
     /// @param data_width PARLIO data width (1, 2, 4, 8, or 16)
-    explicit ChannelDriverPARLIOImpl(size_t data_width);
+    explicit ChannelDriverPARLIOImpl(size_t data_width) FL_NOEXCEPT;
     ~ChannelDriverPARLIOImpl() override;
 
     /// @brief Check if driver can handle channel data (clockless only)
@@ -570,7 +570,7 @@ class ChannelDriverPARLIOImpl : public IChannelDriver {
 class ChannelDriverPARLIO : public IChannelDriver {
   public:
     /// @brief Constructor - lazy initialization (no driver created)
-    ChannelDriverPARLIO();
+    ChannelDriverPARLIO() FL_NOEXCEPT;
     ~ChannelDriverPARLIO() override;
 
     /// @brief Check if driver can handle channel data (clockless and SPI)
