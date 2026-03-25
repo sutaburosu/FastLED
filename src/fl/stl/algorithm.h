@@ -595,35 +595,6 @@ void stable_sort(Iterator first, Iterator last) FL_NOEXCEPT {
     stable_sort(first, last, [](const value_type& a, const value_type& b) { return a < b; });
 }
 
-// Bubble sort with custom comparator - O(n²) worst case, O(n) on sorted data.
-// Lightweight alternative to sort() for small or nearly-sorted ranges.
-template <typename Iterator, typename Compare>
-void bubble_sort(Iterator first, Iterator last, Compare comp) {
-    if (first == last || first + 1 == last) {
-        return;
-    }
-    bool swapped = true;
-    while (swapped) {
-        swapped = false;
-        Iterator prev = first;
-        for (Iterator it = first + 1; it != last; ++it) {
-            if (comp(*it, *prev)) {
-                swap(*it, *prev);
-                swapped = true;
-            }
-            prev = it;
-        }
-        --last;  // Largest element bubbled to end
-    }
-}
-
-// Bubble sort with default comparator (operator<)
-template <typename Iterator>
-void bubble_sort(Iterator first, Iterator last) {
-    typedef typename fl::remove_reference<decltype(*first)>::type value_type;
-    bubble_sort(first, last, [](const value_type& a, const value_type& b) { return a < b; });
-}
-
 // Shuffle function with custom random generator (Fisher-Yates shuffle)
 template <typename Iterator, typename RandomGenerator>
 void shuffle(Iterator first, Iterator last, RandomGenerator& g) FL_NOEXCEPT {

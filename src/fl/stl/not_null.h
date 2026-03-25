@@ -218,13 +218,14 @@ public:
     ///////////////////////////////////////////////////////////////////////////
 
     // Get underlying pointer (explicit)
-    constexpr T get() const noexcept {
+    // Returns by const reference to avoid inflating shared_ptr use_count
+    constexpr const T& get() const noexcept {
         return mPtr;
     }
 
     // Implicit conversion to underlying pointer type
     // Allows seamless integration with existing APIs expecting raw pointers
-    constexpr operator T() const noexcept {
+    constexpr operator const T&() const noexcept {
         return mPtr;
     }
 

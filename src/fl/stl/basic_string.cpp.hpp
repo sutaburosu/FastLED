@@ -19,10 +19,37 @@ const char* basic_string::c_str() const {
 }
 
 char* basic_string::c_str_mutable() {
-    if (isNonOwning()) {
-        materialize();
+    // Inline mode — already mutable
+    if (mStorage.empty()) {
+        return inlineBufferPtr();
     }
-    return hasHeapData() ? heapData()->data() : inlineBufferPtr();
+    struct Visitor {
+        basic_string* self;
+        char* result;
+        void accept(NotNullStringHolderPtr& heap) {
+            if (heap.get().use_count() > 1) {
+                // COW: detach from shared data before returning mutable pointer
+                self->mStorage = NotNullStringHolderPtr(
+                    fl::make_shared<StringHolder>(heap->data(), self->mLength));
+                result = self->heapData()->data();
+            } else {
+                result = heap->data();
+            }
+        }
+        void accept(ConstLiteral&) {
+            self->materialize();
+            result = self->hasHeapData() ? self->heapData()->data()
+                                         : self->inlineBufferPtr();
+        }
+        void accept(ConstView&) {
+            self->materialize();
+            result = self->hasHeapData() ? self->heapData()->data()
+                                         : self->inlineBufferPtr();
+        }
+    };
+    Visitor v{this, nullptr};
+    mStorage.visit(v);
+    return v.result;
 }
 
 fl::size basic_string::capacity() const {
@@ -205,8 +232,17 @@ fl::size basic_string::write(const char* str, fl::size n) {
     if (hasHeapData() && heapData().get().use_count() <= 1) {
         NotNullStringHolderPtr& heap = heapData();
         if (!heap->hasCapacity(newLen)) {
+            // Check if str points into our buffer (self-referential write).
+            // grow() uses realloc which can relocate the buffer.
+            const char* bufStart = heap->data();
             fl::size grow_length = fl::max(3, newLen * 3 / 2);
-            heap->grow(grow_length);
+            if (str >= bufStart && str < bufStart + mLength + 1) {
+                fl::size offset = static_cast<fl::size>(str - bufStart);
+                heap->grow(grow_length);
+                str = heap->data() + offset; // update to new location
+            } else {
+                heap->grow(grow_length);
+            }
         }
         fl::memcpy(heap->data() + mLength, str, n);
         mLength = newLen;
@@ -699,6 +735,11 @@ basic_string& basic_string::insert(fl::size pos, fl::size count, char ch) {
     if (pos > mLength) pos = mLength;
     if (count == 0) return *this;
 
+    // Materialize non-owning storage before modifying
+    if (isNonOwning()) {
+        materialize();
+    }
+
     fl::size newLen = mLength + count;
 
     // Handle COW
@@ -772,6 +813,11 @@ basic_string& basic_string::insert(fl::size pos, const basic_string& str, fl::si
 basic_string& basic_string::insert(fl::size pos, const char* s, fl::size count) {
     if (pos > mLength) pos = mLength;
     if (!s || count == 0) return *this;
+
+    // Materialize non-owning storage before modifying
+    if (isNonOwning()) {
+        materialize();
+    }
 
     fl::size newLen = mLength + count;
 
@@ -881,6 +927,11 @@ basic_string& basic_string::replace(fl::size pos, fl::size count, const char* s,
     if (pos > mLength) return *this;
     if (!s) return erase(pos, count);
 
+    // Materialize non-owning storage before modifying
+    if (isNonOwning()) {
+        materialize();
+    }
+
     fl::size actualCount = count;
     if (actualCount == npos || pos + actualCount > mLength) {
         actualCount = mLength - pos;
@@ -958,6 +1009,11 @@ basic_string& basic_string::replace(fl::size pos, fl::size count, const char* s)
 
 basic_string& basic_string::replace(fl::size pos, fl::size count, fl::size count2, char ch) {
     if (pos > mLength) return *this;
+
+    // Materialize non-owning storage before modifying
+    if (isNonOwning()) {
+        materialize();
+    }
 
     fl::size actualCount = count;
     if (actualCount == npos || pos + actualCount > mLength) {
@@ -1164,14 +1220,41 @@ void basic_string::swapWith(basic_string& other) {
         fl::swap(mStorage, other.mStorage);
         fl::swap(mLength, other.mLength);
     } else if (thisInline && otherInline) {
-        // Both inline: swap buffer contents
-        fl::size maxLen = fl::max(mLength, other.mLength);
-        for (fl::size i = 0; i <= maxLen; ++i) {
-            char tmp = inlineBufferPtr()[i];
-            inlineBufferPtr()[i] = other.inlineBufferPtr()[i];
-            other.inlineBufferPtr()[i] = tmp;
+        // Both inline: check capacity before swapping
+        bool thisFits = other.mLength + 1 <= mInlineCapacity;
+        bool otherFits = mLength + 1 <= other.mInlineCapacity;
+        if (thisFits && otherFits) {
+            // Both fit: swap buffer contents directly
+            fl::size maxLen = fl::max(mLength, other.mLength);
+            for (fl::size i = 0; i <= maxLen; ++i) {
+                char tmp = inlineBufferPtr()[i];
+                inlineBufferPtr()[i] = other.inlineBufferPtr()[i];
+                other.inlineBufferPtr()[i] = tmp;
+            }
+            fl::swap(mLength, other.mLength);
+        } else {
+            // Capacity mismatch: promote to heap where needed
+            NotNullStringHolderPtr thisData(
+                fl::make_shared<StringHolder>(inlineBufferPtr(), mLength));
+            NotNullStringHolderPtr otherData(
+                fl::make_shared<StringHolder>(other.inlineBufferPtr(), other.mLength));
+            fl::size thisLen = mLength;
+            fl::size otherLen = other.mLength;
+            if (thisFits) {
+                mStorage.reset();
+                fl::memcpy(inlineBufferPtr(), otherData->data(), otherLen + 1);
+            } else {
+                mStorage = otherData;
+            }
+            mLength = otherLen;
+            if (otherFits) {
+                other.mStorage.reset();
+                fl::memcpy(other.inlineBufferPtr(), thisData->data(), thisLen + 1);
+            } else {
+                other.mStorage = thisData;
+            }
+            other.mLength = thisLen;
         }
-        fl::swap(mLength, other.mLength);
     } else if (thisInline) {
         // this inline, other non-inline
         fl::size thisLen = mLength;
@@ -1180,7 +1263,12 @@ void basic_string::swapWith(basic_string& other) {
         mLength = other.mLength;
         // Put this's old inline data into other
         other.mStorage.reset();
-        fl::memcpy(other.inlineBufferPtr(), inlineBufferPtr(), thisLen + 1);
+        if (thisLen + 1 <= other.mInlineCapacity) {
+            fl::memcpy(other.inlineBufferPtr(), inlineBufferPtr(), thisLen + 1);
+        } else {
+            other.mStorage = NotNullStringHolderPtr(
+                fl::make_shared<StringHolder>(inlineBufferPtr(), thisLen));
+        }
         other.mLength = thisLen;
     } else {
         // this non-inline, other inline — reverse

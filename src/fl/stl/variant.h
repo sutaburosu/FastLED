@@ -76,8 +76,11 @@ class FL_ALIGN_AS_T(max_align<Types...>::value) variant {
     template <typename T, typename = typename fl::enable_if<
                               contains_type<T, Types...>::value>::type>
     variant &operator=(const T &value) FL_NOEXCEPT {
+        // Copy first to handle self-referential values (e.g. assigning
+        // from a reference into this variant's own storage)
+        T value_copy(value);
         reset();
-        construct<T>(value);
+        construct<T>(fl::move(value_copy));
         return *this;
     }
 
