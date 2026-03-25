@@ -31,6 +31,7 @@
 #include "fl/stl/stdint.h"
 #include "fl/stl/cstddef.h"
 #include "fl/stl/vector.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 namespace detail {
@@ -58,7 +59,7 @@ struct LcdRgbPeripheralConfig {
     bool use_psram;                      ///< Allocate buffers in PSRAM
 
     /// @brief Default constructor
-    LcdRgbPeripheralConfig()
+    LcdRgbPeripheralConfig() FL_NOEXCEPT
         : pclk_gpio(-1),
           vsync_gpio(-1),
           hsync_gpio(-1),
@@ -73,7 +74,7 @@ struct LcdRgbPeripheralConfig {
           use_psram(true) {}
 
     /// @brief Constructor with mandatory parameters
-    LcdRgbPeripheralConfig(int pclk, u32 freq, size_t lanes, size_t hres)
+    LcdRgbPeripheralConfig(int pclk, u32 freq, size_t lanes, size_t hres) FL_NOEXCEPT
         : pclk_gpio(pclk),
           vsync_gpio(-1),
           hsync_gpio(-1),

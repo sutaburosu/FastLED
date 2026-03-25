@@ -49,6 +49,7 @@
 
 #include "fl/stl/stdint.h"
 #include "fl/stl/cstddef.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 
@@ -71,7 +72,7 @@ struct UartPeripheralConfig {
     int mUartNum;                ///< UART peripheral number (0, 1, or 2)
 
     /// @brief Default constructor (for mock testing)
-    UartPeripheralConfig()
+    UartPeripheralConfig() FL_NOEXCEPT
         : mBaudRate(0),
           mTxPin(-1),
           mRxPin(-1),
@@ -87,7 +88,7 @@ struct UartPeripheralConfig {
                          u32 tx_buffer_size,
                          u32 rx_buffer_size,
                          u8 stop_bits,
-                         int uart_num)
+                         int uart_num) FL_NOEXCEPT
         : mBaudRate(baud_rate),
           mTxPin(tx_pin),
           mRxPin(rx_pin),

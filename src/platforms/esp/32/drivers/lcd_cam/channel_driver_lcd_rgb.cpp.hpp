@@ -32,7 +32,7 @@ namespace fl {
 // Constructor / Destructor
 //=============================================================================
 
-ChannelEngineLcdRgb::ChannelEngineLcdRgb(fl::shared_ptr<detail::ILcdRgbPeripheral> peripheral)
+ChannelEngineLcdRgb::ChannelEngineLcdRgb(fl::shared_ptr<detail::ILcdRgbPeripheral> peripheral) FL_NOEXCEPT
     : mPeripheral(fl::move(peripheral)),
       mInitialized(false),
       mConfig(),
@@ -393,7 +393,7 @@ void ChannelEngineLcdRgb::encodeFrame() FL_NOEXCEPT {
 /// the singleton manages its own lifetime.
 class LcdRgbPeripheralSingletonWrapper : public detail::ILcdRgbPeripheral {
 public:
-    LcdRgbPeripheralSingletonWrapper(detail::ILcdRgbPeripheral& impl) : mImpl(impl) {}
+    LcdRgbPeripheralSingletonWrapper(detail::ILcdRgbPeripheral& impl) FL_NOEXCEPT : mImpl(impl) {}
 
     bool initialize(const detail::LcdRgbPeripheralConfig& config) FL_NOEXCEPT override {
         return mImpl.initialize(config);

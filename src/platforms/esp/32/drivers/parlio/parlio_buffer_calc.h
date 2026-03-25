@@ -65,11 +65,11 @@ struct ParlioBufferCalculator {
     u32 mClockFreqHz;
 
     /// @brief Construct for wave8 mode (default, backward compatible)
-    explicit ParlioBufferCalculator(size_t dataWidth)
+    explicit ParlioBufferCalculator(size_t dataWidth) FL_NOEXCEPT
         : mDataWidth(dataWidth), mUseWave3(false), mClockFreqHz(8000000) {}
 
     /// @brief Construct with explicit wave mode and clock frequency
-    ParlioBufferCalculator(size_t dataWidth, bool useWave3, u32 clockFreqHz)
+    ParlioBufferCalculator(size_t dataWidth, bool useWave3, u32 clockFreqHz) FL_NOEXCEPT
         : mDataWidth(dataWidth), mUseWave3(useWave3), mClockFreqHz(clockFreqHz) {}
 
     /// @brief Calculate output bytes per input byte after wave encoding + transpose

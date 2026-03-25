@@ -370,7 +370,7 @@ struct FL_ALIGNAS(64) ParlioIsrContext {
     fl::deque<u8> mDebugDmaOutput; ///< Copy of all DMA buffer data for validation (uses deque to avoid large contiguous allocation)
 
     // Constructor: Initialize all fields to safe defaults
-    ParlioIsrContext()
+    ParlioIsrContext() FL_NOEXCEPT
         : stream_complete(false)
         , transmitting(false)
         , current_led(0)

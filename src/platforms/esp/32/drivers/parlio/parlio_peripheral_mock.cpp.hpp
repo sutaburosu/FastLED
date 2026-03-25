@@ -81,33 +81,33 @@ public:
     ~ParlioPeripheralMockImpl() override;
 
     // IParlioPeripheral Interface
-    bool initialize(const ParlioPeripheralConfig& config) override;
-    bool deinitialize() override;
-    bool enable() override;
-    bool disable() override;
-    bool transmit(const u8* buffer, size_t bit_count, u16 idle_value) override;
-    bool waitAllDone(u32 timeout_ms) override;
-    bool registerTxDoneCallback(void* callback, void* user_ctx) override;
-    u8* allocateDmaBuffer(size_t size) override;
-    void freeDmaBuffer(u8* buffer) override;
-    void delay(u32 ms) override;
-    void delayMicroseconds(u32 us) override;
-    u32 millis() override;
-    u64 getMicroseconds() override;
-    void freeDmaBuffer(void* ptr) override;
+    bool initialize(const ParlioPeripheralConfig& config) FL_NOEXCEPT override;
+    bool deinitialize() FL_NOEXCEPT override;
+    bool enable() FL_NOEXCEPT override;
+    bool disable() FL_NOEXCEPT override;
+    bool transmit(const u8* buffer, size_t bit_count, u16 idle_value) FL_NOEXCEPT override;
+    bool waitAllDone(u32 timeout_ms) FL_NOEXCEPT override;
+    bool registerTxDoneCallback(void* callback, void* user_ctx) FL_NOEXCEPT override;
+    u8* allocateDmaBuffer(size_t size) FL_NOEXCEPT override;
+    void freeDmaBuffer(u8* buffer) FL_NOEXCEPT override;
+    void delay(u32 ms) FL_NOEXCEPT override;
+    void delayMicroseconds(u32 us) FL_NOEXCEPT override;
+    u32 millis() FL_NOEXCEPT override;
+    u64 getMicroseconds() FL_NOEXCEPT override;
+    void freeDmaBuffer(void* ptr) FL_NOEXCEPT override;
 
     // Mock-Specific API
-    void setTransmitDelay(u32 microseconds) override;
-    void simulateTransmitComplete() override;
-    void setTransmitFailure(bool should_fail) override;
-    const fl::vector<TransmissionRecord>& getTransmissionHistory() const override;
-    void clearTransmissionHistory() override;
-    fl::span<const u8> getTransmissionDataForPin(int gpio_pin) const override;
-    bool isInitialized() const override;
-    bool isEnabled() const override;
-    bool isTransmitting() const override;
-    size_t getTransmitCount() const override;
-    const ParlioPeripheralConfig& getConfig() const override;
+    void setTransmitDelay(u32 microseconds) FL_NOEXCEPT override;
+    void simulateTransmitComplete() FL_NOEXCEPT override;
+    void setTransmitFailure(bool should_fail) FL_NOEXCEPT override;
+    const fl::vector<TransmissionRecord>& getTransmissionHistory() const FL_NOEXCEPT override;
+    void clearTransmissionHistory() FL_NOEXCEPT override;
+    fl::span<const u8> getTransmissionDataForPin(int gpio_pin) const FL_NOEXCEPT override;
+    bool isInitialized() const FL_NOEXCEPT override;
+    bool isEnabled() const FL_NOEXCEPT override;
+    bool isTransmitting() const FL_NOEXCEPT override;
+    size_t getTransmitCount() const FL_NOEXCEPT override;
+    const ParlioPeripheralConfig& getConfig() const FL_NOEXCEPT override;
     void reset() override;
 
 private:
@@ -160,7 +160,7 @@ ParlioPeripheralMock& ParlioPeripheralMock::instance() FL_NOEXCEPT {
 // Constructor / Destructor
 //=============================================================================
 
-ParlioPeripheralMockImpl::ParlioPeripheralMockImpl()
+ParlioPeripheralMockImpl::ParlioPeripheralMockImpl() FL_NOEXCEPT
     : mInitialized(false),
       mEnabled(false),
       mTransmitting(false),

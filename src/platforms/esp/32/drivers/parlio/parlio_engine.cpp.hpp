@@ -142,7 +142,7 @@ struct BufferPopulationParams {
 /// @param params Input parameters for calculation
 /// @return Number of input bytes to process for this buffer
 FL_OPTIMIZE_FUNCTION static inline size_t FL_IRAM
-calculateBufferByteCount(const BufferPopulationParams& params) {
+calculateBufferByteCount(const BufferPopulationParams& params) FL_NOEXCEPT {
     // Calculate remaining bytes
     size_t bytes_remaining = params.totalBytes - params.nextByteOffset;
     if (bytes_remaining == 0) {
@@ -276,7 +276,7 @@ calculateBufferByteCount(const BufferPopulationParams& params) {
 // ParlioEngine - Singleton Implementation
 //=============================================================================
 
-ParlioEngine::ParlioEngine()
+ParlioEngine::ParlioEngine() FL_NOEXCEPT
     : mInitialized(false),
       mDataWidth(0),
       mActualChannels(0),
@@ -1111,7 +1111,7 @@ bool ParlioEngine::allocateRingBuffers() FL_NOEXCEPT {
     mRingBuffer = fl::make_unique<ParlioRingBuffer3>(
         buffers[0], buffers[1], buffers[2],
         mRingBufferCapacity,
-        [peripheral](u8* ptr) {
+        [peripheral](u8* ptr) FL_NOEXCEPT {
             peripheral->freeDmaBuffer(ptr);
         }
     );

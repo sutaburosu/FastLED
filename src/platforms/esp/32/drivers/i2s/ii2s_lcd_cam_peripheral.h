@@ -41,6 +41,7 @@
 #include "fl/stl/stdint.h"
 #include "fl/stl/cstddef.h"
 #include "fl/stl/vector.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 namespace detail {
@@ -61,7 +62,7 @@ struct I2sLcdCamConfig {
     bool use_psram;                         ///< Allocate buffers in PSRAM
 
     /// @brief Default constructor
-    I2sLcdCamConfig()
+    I2sLcdCamConfig() FL_NOEXCEPT
         : data_gpios(),
           num_lanes(0),
           pclk_hz(0),
@@ -74,7 +75,7 @@ struct I2sLcdCamConfig {
     }
 
     /// @brief Constructor with mandatory parameters
-    I2sLcdCamConfig(int lanes, u32 freq, size_t max_bytes)
+    I2sLcdCamConfig(int lanes, u32 freq, size_t max_bytes) FL_NOEXCEPT
         : data_gpios(),
           num_lanes(lanes),
           pclk_hz(freq),

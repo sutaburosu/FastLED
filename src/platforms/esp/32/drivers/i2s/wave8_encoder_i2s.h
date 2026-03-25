@@ -80,7 +80,7 @@ static constexpr size_t kWave8I2sExpansionFactor = 8 * 8;
 ///
 /// @param input_bytes Number of input LED bytes per lane
 /// @return Required output buffer size in uint16_t words
-constexpr size_t wave8CalculateI2sOutputSize(size_t input_bytes) {
+constexpr size_t wave8CalculateI2sOutputSize(size_t input_bytes) FL_NOEXCEPT {
     return input_bytes * kWave8I2sExpansionFactor;
 }
 

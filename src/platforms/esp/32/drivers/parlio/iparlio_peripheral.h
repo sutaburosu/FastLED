@@ -51,6 +51,7 @@
 #include "fl/stl/cstddef.h"
 #include "fl/task/task.h"  // For OS-level task management (fl::os_task namespace)
 #include "fl/stl/vector.h"  // For fl::vector_fixed
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 namespace detail {
@@ -86,7 +87,7 @@ struct ParlioPeripheralConfig {
     bool prefer_psram;                  ///< Prefer PSRAM for DMA buffers (falls back to internal RAM if unavailable)
 
     /// @brief Default constructor (for mock testing)
-    ParlioPeripheralConfig()
+    ParlioPeripheralConfig() FL_NOEXCEPT
         : data_width(0),
           gpio_pins(),
           clock_freq_hz(0),
@@ -108,7 +109,7 @@ struct ParlioPeripheralConfig {
                            size_t queue_depth_val,
                            size_t max_transfer,
                            ParlioBitPackOrder pack_order = ParlioBitPackOrder::FL_PARLIO_MSB,
-                           bool psram = true)
+                           bool psram = true) FL_NOEXCEPT
         : data_width(pins.size()),
           gpio_pins(),
           clock_freq_hz(clock_freq),

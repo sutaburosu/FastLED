@@ -191,7 +191,7 @@ private:
         fl::vector<ChannelDataPtr> mChannels; ///< Channels in this group
 
         /// @brief Construct with timing config
-        explicit ChipsetGroup(const ChipsetTimingConfig& timing)
+        explicit ChipsetGroup(const ChipsetTimingConfig& timing) FL_NOEXCEPT
             : mTiming(timing), mChannels() {}
     };
 

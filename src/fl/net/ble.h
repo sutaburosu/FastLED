@@ -20,6 +20,7 @@
 #include "fl/stl/has_include.h"
 #include "fl/stl/function.h"
 #include "fl/stl/optional.h"
+#include "fl/stl/noexcept.h"
 #include "fl/stl/pair.h"
 
 // BLE requires: JSON enabled + ESP32 + IDF 5+ + NimBLE headers present
@@ -75,22 +76,22 @@ struct TransportState;
 /// @param deviceName BLE advertising name (e.g., "FastLED-C6")
 /// @return Heap-allocated state pointer (caller owns, free with destroyTransport)
 ///         Returns nullptr on platforms without BLE support.
-TransportState* createTransport(const char* deviceName);
+TransportState* createTransport(const char* deviceName) FL_NOEXCEPT;
 
 /// @brief Deinitialize BLE stack and free heap state
 /// @param state Pointer returned by createTransport (safe to call with nullptr)
-void destroyTransport(TransportState* state);
+void destroyTransport(TransportState* state) FL_NOEXCEPT;
 
 /// @brief Query BLE connection/subscription diagnostics
 /// @param state Pointer returned by createTransport
 /// @return Platform-neutral status snapshot
-StatusInfo queryStatus(const TransportState* state);
+StatusInfo queryStatus(const TransportState* state) FL_NOEXCEPT;
 
 /// @brief Get RequestSource and ResponseSink lambdas for fl::Remote
 /// @param state Pointer returned by createTransport (must outlive returned lambdas)
 /// @return Pair of {RequestSource, ResponseSink} ready for fl::Remote constructor
 fl::pair<fl::function<fl::optional<fl::json>()>, fl::function<void(const fl::json&)>>
-getTransportCallbacks(TransportState* state);
+getTransportCallbacks(TransportState* state) FL_NOEXCEPT;
 
 } // namespace ble
 } // namespace net

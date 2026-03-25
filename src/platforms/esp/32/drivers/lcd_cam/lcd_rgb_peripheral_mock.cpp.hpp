@@ -53,36 +53,36 @@ public:
     // ILcdRgbPeripheral Interface Implementation
     //=========================================================================
 
-    bool initialize(const LcdRgbPeripheralConfig& config) override;
-    void deinitialize() override;
-    bool isInitialized() const override;
+    bool initialize(const LcdRgbPeripheralConfig& config) FL_NOEXCEPT override;
+    void deinitialize() FL_NOEXCEPT override;
+    bool isInitialized() const FL_NOEXCEPT override;
 
-    u16* allocateFrameBuffer(size_t size_bytes) override;
-    void freeFrameBuffer(u16* buffer) override;
+    u16* allocateFrameBuffer(size_t size_bytes) FL_NOEXCEPT override;
+    void freeFrameBuffer(u16* buffer) FL_NOEXCEPT override;
 
-    bool drawFrame(const u16* buffer, size_t size_bytes) override;
-    bool waitFrameDone(u32 timeout_ms) override;
-    bool isBusy() const override;
+    bool drawFrame(const u16* buffer, size_t size_bytes) FL_NOEXCEPT override;
+    bool waitFrameDone(u32 timeout_ms) FL_NOEXCEPT override;
+    bool isBusy() const FL_NOEXCEPT override;
 
-    bool registerDrawCallback(void* callback, void* user_ctx) override;
-    const LcdRgbPeripheralConfig& getConfig() const override;
+    bool registerDrawCallback(void* callback, void* user_ctx) FL_NOEXCEPT override;
+    const LcdRgbPeripheralConfig& getConfig() const FL_NOEXCEPT override;
 
-    u64 getMicroseconds() override;
-    void delay(u32 ms) override;
+    u64 getMicroseconds() FL_NOEXCEPT override;
+    void delay(u32 ms) FL_NOEXCEPT override;
 
     //=========================================================================
     // Mock-Specific API
     //=========================================================================
 
-    void simulateDrawComplete() override;
-    void setDrawFailure(bool should_fail) override;
-    void setDrawDelay(u32 microseconds) override;
-    const fl::vector<FrameRecord>& getFrameHistory() const override;
-    void clearFrameHistory() override;
-    fl::span<const u16> getLastFrameData() const override;
-    bool isEnabled() const override;
-    size_t getDrawCount() const override;
-    void reset() override;
+    void simulateDrawComplete() FL_NOEXCEPT override;
+    void setDrawFailure(bool should_fail) FL_NOEXCEPT override;
+    void setDrawDelay(u32 microseconds) FL_NOEXCEPT override;
+    const fl::vector<FrameRecord>& getFrameHistory() const FL_NOEXCEPT override;
+    void clearFrameHistory() FL_NOEXCEPT override;
+    fl::span<const u16> getLastFrameData() const FL_NOEXCEPT override;
+    bool isEnabled() const FL_NOEXCEPT override;
+    size_t getDrawCount() const FL_NOEXCEPT override;
+    void reset() FL_NOEXCEPT override;
 
 private:
     //=========================================================================
@@ -140,7 +140,7 @@ LcdRgbPeripheralMock& LcdRgbPeripheralMock::instance() FL_NOEXCEPT {
 // Constructor / Destructor
 //=============================================================================
 
-LcdRgbPeripheralMockImpl::LcdRgbPeripheralMockImpl()
+LcdRgbPeripheralMockImpl::LcdRgbPeripheralMockImpl() FL_NOEXCEPT
     : mInitialized(false),
       mEnabled(false),
       mBusy(false),
@@ -160,7 +160,7 @@ LcdRgbPeripheralMockImpl::LcdRgbPeripheralMockImpl()
       mSimulationThread(),
       mSimulationThreadShouldStop(false) {
     // Start simulation thread after all members initialized
-    mSimulationThread = fl::make_unique<fl::thread>([this]() { simulationThreadFunc(); });
+    mSimulationThread = fl::make_unique<fl::thread>([this]() FL_NOEXCEPT { simulationThreadFunc(); });
 }
 
 LcdRgbPeripheralMockImpl::~LcdRgbPeripheralMockImpl() {

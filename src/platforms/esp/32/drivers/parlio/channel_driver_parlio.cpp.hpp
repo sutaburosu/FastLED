@@ -40,7 +40,7 @@ namespace fl {
 // Constructors / Destructors - Implementation Class
 //=============================================================================
 
-ChannelDriverPARLIOImpl::ChannelDriverPARLIOImpl(size_t data_width)
+ChannelDriverPARLIOImpl::ChannelDriverPARLIOImpl(size_t data_width) FL_NOEXCEPT
     : mDriver(detail::ParlioEngine::getInstance()),
       mInitialized(false),
       mDataWidth(data_width),
@@ -153,7 +153,7 @@ void ChannelDriverPARLIOImpl::show() FL_NOEXCEPT {
         // This allows faster transmissions to complete first, reducing latency
         // for shorter/faster strips while longer/slower strips are still being prepared
         fl::sort(mChipsetGroups.begin(), mChipsetGroups.end(),
-                 [](const ChipsetGroup& a, const ChipsetGroup& b) {
+                 [](const ChipsetGroup& a, const ChipsetGroup& b) FL_NOEXCEPT {
                      // Find max channel size in group a
                      size_t maxSizeA = 0;
                      for (const auto& channel : a.mChannels) {
@@ -184,7 +184,7 @@ void ChannelDriverPARLIOImpl::show() FL_NOEXCEPT {
         for (auto& group : mChipsetGroups) {
             // sort each member of the group by their pin orders.
             bool reversed = mReversedPinOrder;
-            fl::sort(group.mChannels.begin(), group.mChannels.end(), [reversed](const ChannelDataPtr& a, const ChannelDataPtr& b) {
+            fl::sort(group.mChannels.begin(), group.mChannels.end(), [reversed](const ChannelDataPtr& a, const ChannelDataPtr& b) FL_NOEXCEPT {
                 if (reversed) {
                     return b->getPin() < a->getPin();
                 }
@@ -408,7 +408,7 @@ void ChannelDriverPARLIOImpl::prepareScratchBuffer(
 // Polymorphic Wrapper Class Implementation
 //=============================================================================
 
-ChannelDriverPARLIO::ChannelDriverPARLIO()
+ChannelDriverPARLIO::ChannelDriverPARLIO() FL_NOEXCEPT
     : mCurrentDataWidth(0),
       mPhase(TransmitPhase::IDLE),
       mCurrentSpiChannelIndex(0),

@@ -25,7 +25,7 @@ namespace fl {
 // Constructor / Destructor
 //=============================================================================
 
-ChannelEngineUART::ChannelEngineUART(fl::shared_ptr<IUartPeripheral> peripheral)
+ChannelEngineUART::ChannelEngineUART(fl::shared_ptr<IUartPeripheral> peripheral) FL_NOEXCEPT
     : mPeripheral(fl::move(peripheral)),
       mInitialized(false),
       mCurrentBaudRate(0),
@@ -115,7 +115,7 @@ void ChannelEngineUART::show() FL_NOEXCEPT {
 
         // Sort groups by transmission time (fastest first)
         fl::sort(mChipsetGroups.begin(), mChipsetGroups.end(),
-                 [](const ChipsetGroup& a, const ChipsetGroup& b) {
+                 [](const ChipsetGroup& a, const ChipsetGroup& b) FL_NOEXCEPT {
                      size_t maxSizeA = 0;
                      for (const auto& channel : a.mChannels) {
                          size_t size = channel->getSize();

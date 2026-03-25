@@ -49,6 +49,7 @@
 
 #include "fl/stl/stdint.h"
 #include "fl/stl/cstddef.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 
@@ -95,7 +96,7 @@ struct Rmt5ChannelConfig {
     int intr_priority;              ///< Interrupt priority (0 = default, 1-7 = custom)
 
     /// @brief Default constructor (for mock testing)
-    Rmt5ChannelConfig()
+    Rmt5ChannelConfig() FL_NOEXCEPT
         : gpio_num(-1),
           resolution_hz(0),
           mem_block_symbols(0),
@@ -112,7 +113,7 @@ struct Rmt5ChannelConfig {
     /// @param use_dma Enable DMA
     /// @param intr_pri Interrupt priority
     Rmt5ChannelConfig(int pin, u32 res_hz, size_t mem_blocks,
-                      size_t queue_depth, bool use_dma, int intr_pri = 0)
+                      size_t queue_depth, bool use_dma, int intr_pri = 0) FL_NOEXCEPT
         : gpio_num(pin),
           resolution_hz(res_hz),
           mem_block_symbols(mem_blocks),

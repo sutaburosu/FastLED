@@ -83,6 +83,7 @@
 
 #include "fl/stl/compiler_control.h"
 #include "fl/stl/function.h"
+#include "fl/stl/noexcept.h"
 
 // Forward declarations
 extern "C" void heap_caps_free(void *ptr);
@@ -95,7 +96,7 @@ namespace detail {
 //=============================================================================
 
 struct HeapCapsDeleter {
-    void operator()(u8 *ptr) const {
+    void operator()(u8 *ptr) const FL_NOEXCEPT {
         if (ptr) {
             heap_caps_free(ptr);
         }
@@ -135,7 +136,7 @@ struct ParlioRingBuffer3 {
     /// @param destroy_callback Function to call on destruction to free each buffer
     ParlioRingBuffer3(u8* buffer0, u8* buffer1, u8* buffer2,
                       size_t buffer_capacity,
-                      fl::function<void(u8*)> destroy_callback)
+                      fl::function<void(u8*)> destroy_callback) FL_NOEXCEPT
         : ptrs{buffer0, buffer1, buffer2},
           sizes{0, 0, 0},
           input_sizes{0, 0, 0},

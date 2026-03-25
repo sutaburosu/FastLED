@@ -350,7 +350,7 @@ class ChannelEngineRMTImpl : public ChannelEngineRMT {
         for (const auto& data : channelData) {
             sorted.push_back(data);
         }
-        fl::sort(sorted.begin(), sorted.end(), [](const ChannelDataPtr& a, const ChannelDataPtr& b) {
+        fl::sort(sorted.begin(), sorted.end(), [](const ChannelDataPtr& a, const ChannelDataPtr& b) FL_NOEXCEPT {
             return a->getSize() > b->getSize();  // Reverse order for back-to-front processing
         });
 

@@ -43,6 +43,7 @@
 #include "fl/stl/isr/memcpy.h"
 #include "platforms/memory_barrier.h"
 #include "fl/stl/align.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 namespace detail {
@@ -85,7 +86,7 @@ struct FL_ALIGNAS(64) ParlioIsrContext {
     volatile u64 mDebugLastTxDoneTime;    // esp_timer_get_time() at last txDone
     volatile u64 mDebugLastWorkerIsrTime; // esp_timer_get_time() at last worker ISR
 
-    ParlioIsrContext()
+    ParlioIsrContext() FL_NOEXCEPT
         : mStreamComplete(false), mTransmitting(false), mCurrentByte(0),
           mRingReadIdx(0), mRingWriteIdx(0), mRingCount(0), mRingError(false),
           mHardwareIdle(false), mNextByteOffset(0),
