@@ -27,11 +27,18 @@ void loop() {}
 #define BRIGHTNESS 255
 #define COLOR_ORDER BGR
 
+// I2S pins for INMP441 microphone (adjust for your board)
+#define I2S_WS  7
+#define I2S_SD  8
+#define I2S_CLK 4
+
 // ---------------------------------------------------------------------------
 // Globals
 // ---------------------------------------------------------------------------
 CRGB leds[NUM_LEDS];
-fl::UIAudio audio_ui("Audio Input");
+fl::audio::Config audioConfig = fl::audio::Config::CreateInmp441(
+    I2S_WS, I2S_SD, I2S_CLK, fl::audio::AudioChannel::Right);
+fl::UIAudio audio_ui("Audio Input", audioConfig);
 fl::UICheckbox enableAmbient("Ambient Particles", true);
 fl::UICheckbox enableMeteors("Beat Meteors", true);
 fl::UICheckbox enableTimeWarp("Noise Time-Warp", false);
