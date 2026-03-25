@@ -23,7 +23,7 @@ on:
       - 'platformio.ini'
       - 'library.json'
       - 'library.properties'
-  pull_request_target:
+  pull_request:
     branches:
       - master
     paths:
