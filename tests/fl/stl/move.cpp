@@ -1192,42 +1192,28 @@ FL_TEST_CASE("Allocator propagation on move") {
         FL_CHECK(source.size() == 0);
     }
 
-    FL_SUBCASE("fl::deque - allocator propagation") {
-        IDAllocator<int> alloc1(100);
-        IDAllocator<int> alloc2(200);
-
-        fl::deque<int, IDAllocator<int>> source(alloc1);
+    FL_SUBCASE("fl::deque - move transfers data") {
+        fl::deque<int> source;
         source.push_back(1);
         source.push_back(2);
 
-        fl::deque<int, IDAllocator<int>> destination(alloc2);
-
-        FL_REQUIRE(source.get_allocator().id == 100);
-        FL_REQUIRE(destination.get_allocator().id == 200);
+        fl::deque<int> destination;
 
         destination = fl::move(source);
 
-        FL_CHECK(destination.get_allocator().id == 100);
         FL_CHECK(destination.size() == 2);
         FL_CHECK(source.size() == 0);
     }
 
-    FL_SUBCASE("fl::list - allocator propagation") {
-        IDAllocator<int> alloc1(100);
-        IDAllocator<int> alloc2(200);
-
-        fl::list<int, IDAllocator<int>> source(alloc1);
+    FL_SUBCASE("fl::list - move transfers data") {
+        fl::list<int> source;
         source.push_back(1);
         source.push_back(2);
 
-        fl::list<int, IDAllocator<int>> destination(alloc2);
-
-        FL_REQUIRE(source.get_allocator().id == 100);
-        FL_REQUIRE(destination.get_allocator().id == 200);
+        fl::list<int> destination;
 
         destination = fl::move(source);
 
-        FL_CHECK(destination.get_allocator().id == 100);
         FL_CHECK(destination.size() == 2);
         FL_CHECK(source.size() == 0);
     }

@@ -24,6 +24,7 @@ and removals.
 #include "fl/stl/type_traits.h"
 #include "fl/stl/vector.h"
 #include "fl/stl/initializer_list.h"  // IWYU pragma: keep
+#include "fl/stl/memory_resource.h"
 
 FL_DISABLE_WARNING_PUSH
 FL_DISABLE_WARNING_SHORTEN_64_TO_32
@@ -57,6 +58,14 @@ class FL_ALIGN unordered_map {
   public:
     unordered_map() : unordered_map(FASTLED_HASHMAP_INLINED_COUNT, 0.7f) {}
     unordered_map(fl::size initial_capacity) : unordered_map(initial_capacity, 0.7f) {}
+
+    explicit unordered_map(memory_resource* resource)
+        : _buckets(resource), _size(0),
+          _tombstones(0), _occupied(next_power_of_two(FASTLED_HASHMAP_INLINED_COUNT)),
+          _deleted(next_power_of_two(FASTLED_HASHMAP_INLINED_COUNT)) {
+        _buckets.resize(next_power_of_two(FASTLED_HASHMAP_INLINED_COUNT));
+        setLoadFactor(0.7f);
+    }
 
     unordered_map(fl::size initial_capacity, float max_load)
         : _buckets(next_power_of_two(initial_capacity)), _size(0),
@@ -973,7 +982,7 @@ class FL_ALIGN unordered_map {
 
     void rehash_internal(fl::size new_cap) {
         new_cap = next_power_of_two(new_cap);
-        fl::vector_inlined<Entry, INLINED_COUNT> old;
+        fl::vector_inlined<Entry, INLINED_COUNT> old(_buckets.get_resource());
         fl::bitset<1024> old_occupied = _occupied;
 
         _buckets.swap(old);
@@ -1085,6 +1094,7 @@ class FL_ALIGN unordered_map {
     }
     FL_DISABLE_WARNING_POP
 
+  public:
     /// Equality comparison (map equality: same key-value pairs, order-independent)
     bool operator==(const unordered_map& other) const {
         if (size() != other.size()) return false;
@@ -1099,6 +1109,8 @@ class FL_ALIGN unordered_map {
     bool operator!=(const unordered_map& other) const {
         return !(*this == other);
     }
+
+    memory_resource* get_memory_resource() const { return _buckets.get_resource(); }
 
   private:
     fl::vector_inlined<Entry, INLINED_COUNT> _buckets;

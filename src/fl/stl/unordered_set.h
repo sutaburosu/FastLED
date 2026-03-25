@@ -6,6 +6,7 @@
 #include "fl/stl/move.h"
 #include "fl/stl/type_traits.h"
 #include "fl/stl/int.h"
+#include "fl/stl/memory_resource.h"
 
 namespace fl {
 
@@ -67,6 +68,7 @@ class unordered_set {
     };
 
     unordered_set() = default;
+    explicit unordered_set(memory_resource* resource) : data(resource) {}
     unordered_set(const unordered_set& other) = default;
     unordered_set(unordered_set&& other) = default;
     unordered_set& operator=(const unordered_set& other) = default;
@@ -160,6 +162,8 @@ class unordered_set {
     bool operator!=(const unordered_set& other) const {
         return !(*this == other);
     }
+
+    memory_resource* get_memory_resource() const { return data.get_memory_resource(); }
 
   private:
     fl::unordered_map<Key, bool, Hash, KeyEqual> data;

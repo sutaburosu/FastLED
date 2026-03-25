@@ -1,10 +1,11 @@
 #pragma once
 
 #include "fl/stl/stdint.h"
-#include "fl/stl/allocator.h"
 #include "fl/stl/move.h"
 #include "fl/stl/type_traits.h"
 #include "fl/stl/iterator.h"
+#include "fl/stl/memory_resource.h"
+#include "fl/stl/new.h"  // IWYU pragma: keep
 
 namespace fl {
 
@@ -15,8 +16,7 @@ namespace fl {
 /// you have an iterator to that position.
 ///
 /// @tparam T The type of elements stored in the list
-/// @tparam Allocator The allocator type for memory management
-template <typename T, typename Allocator = fl::allocator<T>>
+template <typename T>
 class list {
 private:
     struct Node {
@@ -28,15 +28,12 @@ private:
         Node(Args&&... args) : data(fl::forward<Args>(args)...), next(nullptr), prev(nullptr) {}
     };
 
-    // Node allocator (rebind T allocator to Node allocator)
-    using NodeAllocator = typename Allocator::template rebind<Node>::other;
-
     Node* mHead;  // Sentinel node (circular list)
     fl::size mSize;
-    NodeAllocator mAlloc;
+    memory_resource* mResource = default_memory_resource();
 
     void init_sentinel() {
-        mHead = mAlloc.allocate(1);
+        mHead = static_cast<Node*>(mResource->allocate(sizeof(Node)));
         mHead->next = mHead;
         mHead->prev = mHead;
         mSize = 0;
@@ -44,27 +41,27 @@ private:
 
     void destroy_sentinel() {
         if (mHead) {
-            mAlloc.deallocate(mHead, 1);
+            mResource->deallocate(mHead, sizeof(Node));
             mHead = nullptr;
         }
     }
 
     Node* create_node(const T& value) {
-        Node* node = mAlloc.allocate(1);
-        mAlloc.construct(node, value);
+        Node* node = static_cast<Node*>(mResource->allocate(sizeof(Node)));
+        new (node) Node(value);
         return node;
     }
 
     Node* create_node(T&& value) {
-        Node* node = mAlloc.allocate(1);
-        mAlloc.construct(node, fl::move(value));
+        Node* node = static_cast<Node*>(mResource->allocate(sizeof(Node)));
+        new (node) Node(fl::move(value));
         return node;
     }
 
     void destroy_node(Node* node) {
         if (node && node != mHead) {
-            mAlloc.destroy(node);
-            mAlloc.deallocate(node, 1);
+            node->~Node();
+            mResource->deallocate(node, sizeof(Node));
         }
     }
 
@@ -191,7 +188,6 @@ public:
         }
     };
 
-    typedef Allocator allocator_type;
     typedef fl::reverse_iterator<iterator> reverse_iterator;
     typedef fl::reverse_iterator<const_iterator> const_reverse_iterator;
 
@@ -200,7 +196,7 @@ public:
         init_sentinel();
     }
 
-    explicit list(const Allocator& alloc) : mAlloc(alloc) {
+    explicit list(memory_resource* resource) : mResource(resource) {
         init_sentinel();
     }
 
@@ -323,8 +319,8 @@ public:
         return mSize;
     }
 
-    allocator_type get_allocator() const {
-        return mAlloc;
+    memory_resource* get_memory_resource() const {
+        return mResource;
     }
 
     void shrink_to_fit() {
@@ -389,16 +385,16 @@ public:
 
     template<typename... Args>
     void emplace_back(Args&&... args) {
-        Node* node = mAlloc.allocate(1);
-        mAlloc.construct(node, fl::forward<Args>(args)...);
+        Node* node = static_cast<Node*>(mResource->allocate(sizeof(Node)));
+        new (node) Node(fl::forward<Args>(args)...);
         link_before(mHead, node);
         ++mSize;
     }
 
     template<typename... Args>
     void emplace_front(Args&&... args) {
-        Node* node = mAlloc.allocate(1);
-        mAlloc.construct(node, fl::forward<Args>(args)...);
+        Node* node = static_cast<Node*>(mResource->allocate(sizeof(Node)));
+        new (node) Node(fl::forward<Args>(args)...);
         link_before(mHead->next, node);
         ++mSize;
     }
@@ -432,15 +428,15 @@ public:
         if (this != &other) {
             Node* temp_head = mHead;
             fl::size temp_size = mSize;
-            NodeAllocator temp_alloc = mAlloc;
+            memory_resource* temp_resource = mResource;
 
             mHead = other.mHead;
             mSize = other.mSize;
-            mAlloc = other.mAlloc;
+            mResource = other.mResource;
 
             other.mHead = temp_head;
             other.mSize = temp_size;
-            other.mAlloc = temp_alloc;
+            other.mResource = temp_resource;
         }
     }
 
@@ -631,7 +627,7 @@ public:
     }
 
     // Comparison operators
-    bool operator==(const list<T, Allocator>& other) const {
+    bool operator==(const list& other) const {
         if (mSize != other.mSize) {
             return false;
         }
@@ -643,11 +639,11 @@ public:
         return true;
     }
 
-    bool operator!=(const list<T, Allocator>& other) const {
+    bool operator!=(const list& other) const {
         return !(*this == other);
     }
 
-    bool operator<(const list<T, Allocator>& other) const {
+    bool operator<(const list& other) const {
         for (const_iterator it1 = begin(), it2 = other.begin();
              it1 != end() && it2 != other.end(); ++it1, ++it2) {
             if (*it1 < *it2) {
@@ -660,22 +656,22 @@ public:
         return mSize < other.mSize;
     }
 
-    bool operator<=(const list<T, Allocator>& other) const {
+    bool operator<=(const list& other) const {
         return *this < other || *this == other;
     }
 
-    bool operator>(const list<T, Allocator>& other) const {
+    bool operator>(const list& other) const {
         return other < *this;
     }
 
-    bool operator>=(const list<T, Allocator>& other) const {
+    bool operator>=(const list& other) const {
         return *this > other || *this == other;
     }
 };
 
 // Swap function (non-member)
-template <typename T, typename Allocator>
-void swap(list<T, Allocator>& lhs, list<T, Allocator>& rhs) {
+template <typename T>
+void swap(list<T>& lhs, list<T>& rhs) {
     lhs.swap(rhs);
 }
 

@@ -3,6 +3,7 @@
 #include "fl/stl/int.h"
 #include "fl/stl/move.h"    // for fl::move
 #include "fl/stl/vector.h"  // for fl::vector_inlined
+#include "fl/stl/memory_resource.h"
 
 namespace fl {
 
@@ -168,8 +169,22 @@ class circular_buffer {
         mCore.assign(mStorage.data(), N);
     }
 
+    // PMR-aware constructor.
+    explicit circular_buffer(memory_resource* resource)
+        : mStorage(resource) {
+        mStorage.resize(N);
+        mCore.assign(mStorage.data(), N);
+    }
+
     // Capacity constructor — for dynamic (N==0) or overriding static size.
     explicit circular_buffer(fl::size capacity) {
+        mStorage.resize(capacity);
+        mCore.assign(mStorage.data(), capacity);
+    }
+
+    // Capacity constructor with PMR.
+    circular_buffer(fl::size capacity, memory_resource* resource)
+        : mStorage(resource) {
         mStorage.resize(capacity);
         mCore.assign(mStorage.data(), capacity);
     }
@@ -300,6 +315,8 @@ class circular_buffer {
     bool operator>=(const circular_buffer& other) const {
         return other <= *this;
     }
+
+    memory_resource* get_memory_resource() const { return mStorage.get_resource(); }
 
   private:
     vector_inlined<T, (N > 0 ? N : 1)> mStorage;

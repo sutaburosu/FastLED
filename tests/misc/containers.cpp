@@ -165,6 +165,8 @@
 #include "test.h"
 #include "test_container_helpers.h"
 #include "fl/stl/vector.h"
+#include "fl/stl/memory_resource.h"
+#include "fl/stl/allocator.h"
 #include "fl/stl/deque.h"
 #include "fl/stl/list.h"
 #include "fl/stl/queue.h"
@@ -1482,6 +1484,209 @@ FL_TEST_CASE("erase while iterating - map containers") {
     FL_SUBCASE("fl::unordered_map") { test_map_erase_while_iterating<fl::unordered_map<int, int>>(); }
     FL_SUBCASE("fl::unordered_map_small") { test_map_erase_while_iterating<fl::unordered_map_small<int, int>>(); }
     FL_SUBCASE("fl::multi_map") { test_map_erase_while_iterating<fl::multi_map<int, int>>(); }
+}
+
+// ============================================================================
+// PMR ALLOCATION TESTS
+// ============================================================================
+// Verifies that containers allocate from a custom memory_resource when one
+// is provided. Uses a tracking_memory_resource that counts allocate/deallocate
+// calls, proving the container actually routes through the PMR.
+//
+// Template test pattern: each container provides a factory that creates the
+// container with a tracking_memory_resource, plus insert/clear helpers.
+
+class tracking_memory_resource : public fl::memory_resource {
+  public:
+    int allocate_count = 0;
+    int deallocate_count = 0;
+    fl::size total_bytes_allocated = 0;
+
+    void reset_counts() {
+        allocate_count = 0;
+        deallocate_count = 0;
+        total_bytes_allocated = 0;
+    }
+
+  protected:
+    void* do_allocate(fl::size bytes) override {
+        ++allocate_count;
+        total_bytes_allocated += bytes;
+        return fl::Malloc(bytes);
+    }
+    void do_deallocate(void* p, fl::size bytes) override {
+        ++deallocate_count;
+        fl::Free(p);
+        (void)bytes;
+    }
+};
+
+// PMR factory: creates container with tracking_memory_resource, provides
+// insert/remove/clear/size and resource pointer access.
+struct PmrVectorFactory {
+    using container_type = fl::vector<int>;
+    static container_type create(tracking_memory_resource& mr) { return container_type(&mr); }
+    static void insert(container_type& c, int v) { c.push_back(v); }
+    static void remove_one(container_type& c) { c.pop_back(); }
+};
+
+struct PmrFlatMapFactory {
+    using container_type = fl::flat_map<int, int>;
+    static container_type create(tracking_memory_resource& mr) { return container_type(&mr); }
+    static void insert(container_type& c, int v) { c.insert(fl::pair<int,int>(v, v * 10)); }
+    static void remove_one(container_type& c) { c.erase(c.begin()); }
+};
+
+struct PmrFlatSetFactory {
+    using container_type = fl::flat_set<int>;
+    static container_type create(tracking_memory_resource& mr) { return container_type(&mr); }
+    static void insert(container_type& c, int v) { c.insert(v); }
+    static void remove_one(container_type& c) { c.erase(c.begin()); }
+};
+
+struct PmrUnorderedMapFactory {
+    using container_type = fl::unordered_map<int, int>;
+    static container_type create(tracking_memory_resource& mr) { return container_type(&mr); }
+    static void insert(container_type& c, int v) { c.insert(v, v * 10); }
+    static void remove_one(container_type& c) { c.erase(c.begin()); }
+};
+
+struct PmrUnorderedMapSmallFactory {
+    using container_type = fl::unordered_map_small<int, int>;
+    static container_type create(tracking_memory_resource& mr) { return container_type(&mr); }
+    static void insert(container_type& c, int v) { c.insert(v, v * 10); }
+    static void remove_one(container_type& c) { c.erase(c.begin()); }
+};
+
+struct PmrUnorderedSetFactory {
+    using container_type = fl::unordered_set<int>;
+    static container_type create(tracking_memory_resource& mr) { return container_type(&mr); }
+    static void insert(container_type& c, int v) { c.insert(v); }
+    static void remove_one(container_type& c) { c.erase(c.begin()); }
+};
+
+struct PmrDequeFactory {
+    using container_type = fl::deque<int>;
+    static container_type create(tracking_memory_resource& mr) { return container_type(&mr); }
+    static void insert(container_type& c, int v) { c.push_back(v); }
+    static void remove_one(container_type& c) { c.pop_back(); }
+};
+
+struct PmrListFactory {
+    using container_type = fl::list<int>;
+    static container_type create(tracking_memory_resource& mr) { return container_type(&mr); }
+    static void insert(container_type& c, int v) { c.push_back(v); }
+    static void remove_one(container_type& c) { c.pop_back(); }
+};
+
+struct PmrCircularBufferFactory {
+    using container_type = fl::circular_buffer<int, 0>;
+    static container_type create(tracking_memory_resource& mr) { return container_type(32, &mr); }
+    static void insert(container_type& c, int v) { c.push_back(v); }
+    static void remove_one(container_type& c) { c.pop_back(); }
+};
+
+// Insert enough items to exceed inline capacity of containers like
+// unordered_map (INLINED_COUNT=8), forcing heap allocation through PMR.
+static const int kPmrInsertCount = 20;
+
+template <typename Factory>
+void test_pmr_insert_allocates() {
+    tracking_memory_resource mr;
+    typename Factory::container_type c = Factory::create(mr);
+    for (int i = 0; i < kPmrInsertCount; ++i) {
+        Factory::insert(c, i);
+    }
+    // PMR was used at some point (construction or insert that exceeds inline capacity)
+    FL_CHECK(mr.allocate_count > 0);
+    FL_CHECK(c.size() == static_cast<fl::size>(kPmrInsertCount));
+}
+
+template <typename Factory>
+void test_pmr_clear_empties() {
+    tracking_memory_resource mr;
+    typename Factory::container_type c = Factory::create(mr);
+    for (int i = 0; i < kPmrInsertCount; ++i) {
+        Factory::insert(c, i);
+    }
+    FL_CHECK(mr.allocate_count > 0);
+    c.clear();
+    FL_CHECK(c.size() == 0);
+    FL_CHECK(c.empty());
+}
+
+template <typename Factory>
+void test_pmr_remove_one() {
+    tracking_memory_resource mr;
+    typename Factory::container_type c = Factory::create(mr);
+    for (int i = 0; i < kPmrInsertCount; ++i) {
+        Factory::insert(c, i);
+    }
+    FL_CHECK(c.size() == static_cast<fl::size>(kPmrInsertCount));
+    Factory::remove_one(c);
+    FL_CHECK(c.size() == static_cast<fl::size>(kPmrInsertCount - 1));
+}
+
+template <typename Factory>
+void test_pmr_destructor_deallocates() {
+    tracking_memory_resource mr;
+    {
+        typename Factory::container_type c = Factory::create(mr);
+        for (int i = 0; i < kPmrInsertCount; ++i) {
+            Factory::insert(c, i);
+        }
+        FL_CHECK(mr.allocate_count > 0);
+    }
+    // After destruction, deallocate should have been called
+    FL_CHECK(mr.deallocate_count > 0);
+}
+
+FL_TEST_CASE("PMR allocation - insert causes allocations through memory_resource") {
+    FL_SUBCASE("fl::vector") { test_pmr_insert_allocates<PmrVectorFactory>(); }
+    FL_SUBCASE("fl::flat_map") { test_pmr_insert_allocates<PmrFlatMapFactory>(); }
+    FL_SUBCASE("fl::flat_set") { test_pmr_insert_allocates<PmrFlatSetFactory>(); }
+    FL_SUBCASE("fl::unordered_map") { test_pmr_insert_allocates<PmrUnorderedMapFactory>(); }
+    FL_SUBCASE("fl::unordered_map_small") { test_pmr_insert_allocates<PmrUnorderedMapSmallFactory>(); }
+    FL_SUBCASE("fl::unordered_set") { test_pmr_insert_allocates<PmrUnorderedSetFactory>(); }
+    FL_SUBCASE("fl::deque") { test_pmr_insert_allocates<PmrDequeFactory>(); }
+    FL_SUBCASE("fl::list") { test_pmr_insert_allocates<PmrListFactory>(); }
+    FL_SUBCASE("fl::circular_buffer") { test_pmr_insert_allocates<PmrCircularBufferFactory>(); }
+}
+
+FL_TEST_CASE("PMR allocation - clear empties container") {
+    FL_SUBCASE("fl::vector") { test_pmr_clear_empties<PmrVectorFactory>(); }
+    FL_SUBCASE("fl::flat_map") { test_pmr_clear_empties<PmrFlatMapFactory>(); }
+    FL_SUBCASE("fl::flat_set") { test_pmr_clear_empties<PmrFlatSetFactory>(); }
+    FL_SUBCASE("fl::unordered_map") { test_pmr_clear_empties<PmrUnorderedMapFactory>(); }
+    FL_SUBCASE("fl::unordered_map_small") { test_pmr_clear_empties<PmrUnorderedMapSmallFactory>(); }
+    FL_SUBCASE("fl::unordered_set") { test_pmr_clear_empties<PmrUnorderedSetFactory>(); }
+    FL_SUBCASE("fl::deque") { test_pmr_clear_empties<PmrDequeFactory>(); }
+    FL_SUBCASE("fl::list") { test_pmr_clear_empties<PmrListFactory>(); }
+    FL_SUBCASE("fl::circular_buffer") { test_pmr_clear_empties<PmrCircularBufferFactory>(); }
+}
+
+FL_TEST_CASE("PMR allocation - remove element") {
+    FL_SUBCASE("fl::vector") { test_pmr_remove_one<PmrVectorFactory>(); }
+    FL_SUBCASE("fl::flat_map") { test_pmr_remove_one<PmrFlatMapFactory>(); }
+    FL_SUBCASE("fl::flat_set") { test_pmr_remove_one<PmrFlatSetFactory>(); }
+    FL_SUBCASE("fl::unordered_map") { test_pmr_remove_one<PmrUnorderedMapFactory>(); }
+    FL_SUBCASE("fl::unordered_map_small") { test_pmr_remove_one<PmrUnorderedMapSmallFactory>(); }
+    FL_SUBCASE("fl::unordered_set") { test_pmr_remove_one<PmrUnorderedSetFactory>(); }
+    FL_SUBCASE("fl::deque") { test_pmr_remove_one<PmrDequeFactory>(); }
+    FL_SUBCASE("fl::list") { test_pmr_remove_one<PmrListFactory>(); }
+    FL_SUBCASE("fl::circular_buffer") { test_pmr_remove_one<PmrCircularBufferFactory>(); }
+}
+
+FL_TEST_CASE("PMR allocation - destructor deallocates through memory_resource") {
+    FL_SUBCASE("fl::vector") { test_pmr_destructor_deallocates<PmrVectorFactory>(); }
+    FL_SUBCASE("fl::flat_map") { test_pmr_destructor_deallocates<PmrFlatMapFactory>(); }
+    FL_SUBCASE("fl::flat_set") { test_pmr_destructor_deallocates<PmrFlatSetFactory>(); }
+    FL_SUBCASE("fl::unordered_map") { test_pmr_destructor_deallocates<PmrUnorderedMapFactory>(); }
+    FL_SUBCASE("fl::unordered_map_small") { test_pmr_destructor_deallocates<PmrUnorderedMapSmallFactory>(); }
+    FL_SUBCASE("fl::unordered_set") { test_pmr_destructor_deallocates<PmrUnorderedSetFactory>(); }
+    FL_SUBCASE("fl::deque") { test_pmr_destructor_deallocates<PmrDequeFactory>(); }
+    FL_SUBCASE("fl::list") { test_pmr_destructor_deallocates<PmrListFactory>(); }
+    FL_SUBCASE("fl::circular_buffer") { test_pmr_destructor_deallocates<PmrCircularBufferFactory>(); }
 }
 
 } // FL_TEST_FILE

@@ -2,20 +2,21 @@
 
 #include "fl/stl/stdint.h"
 
-#include "fl/stl/allocator.h"
 #include "fl/stl/move.h"
 #include "fl/stl/iterator.h"
+#include "fl/stl/memory_resource.h"
+#include "fl/stl/new.h"  // IWYU pragma: keep
 
 namespace fl {
 
-template <typename T, typename Allocator = fl::allocator<T>>
+template <typename T>
 class deque {
 private:
     T* mData = nullptr;
     fl::size mCapacity = 0;
     fl::size mSize = 0;
     fl::size mFront = 0;  // Index of the front element
-    Allocator mAlloc;
+    memory_resource* mResource = default_memory_resource();
 
     static const fl::size kInitialCapacity = 8;
 
@@ -29,7 +30,7 @@ private:
             new_capacity *= 2;
         }
 
-        T* new_data = mAlloc.allocate(new_capacity);
+        T* new_data = static_cast<T*>(mResource->allocate(new_capacity * sizeof(T)));
         if (!new_data) {
             return; // Allocation failed
         }
@@ -37,12 +38,12 @@ private:
         // Copy existing elements to new buffer in linear order
         for (fl::size i = 0; i < mSize; ++i) {
             fl::size old_idx = (mFront + i) % mCapacity;
-            mAlloc.construct(&new_data[i], fl::move(mData[old_idx]));
-            mAlloc.destroy(&mData[old_idx]);
+            new (&new_data[i]) T(fl::move(mData[old_idx]));
+            mData[old_idx].~T();
         }
 
         if (mData) {
-            mAlloc.deallocate(mData, mCapacity);
+            mResource->deallocate(mData, mCapacity * sizeof(T));
         }
 
         mData = new_data;
@@ -259,14 +260,13 @@ public:
         }
     };
 
-    typedef Allocator allocator_type;
     typedef fl::reverse_iterator<iterator> reverse_iterator;
     typedef fl::reverse_iterator<const_iterator> const_reverse_iterator;
 
     // Constructors
     deque() : mData(nullptr), mCapacity(0), mSize(0), mFront(0) {}
 
-    explicit deque(const Allocator& alloc) : mData(nullptr), mCapacity(0), mSize(0), mFront(0), mAlloc(alloc) {}
+    explicit deque(memory_resource* resource) : mData(nullptr), mCapacity(0), mSize(0), mFront(0), mResource(resource) {}
 
     explicit deque(fl::size count, const T& value = T()) : deque() {
         resize(count, value);
@@ -290,7 +290,7 @@ public:
     ~deque() {
         clear();
         if (mData) {
-            mAlloc.deallocate(mData, mCapacity);
+            mResource->deallocate(mData, mCapacity * sizeof(T));
         }
     }
 
@@ -309,14 +309,14 @@ public:
         if (this != &other) {
             clear();
             if (mData) {
-                mAlloc.deallocate(mData, mCapacity);
+                mResource->deallocate(mData, mCapacity * sizeof(T));
             }
 
             mData = other.mData;
             mCapacity = other.mCapacity;
             mSize = other.mSize;
             mFront = other.mFront;
-            mAlloc = other.mAlloc;
+            mResource = other.mResource;
 
             other.mData = nullptr;
             other.mCapacity = 0;
@@ -447,14 +447,14 @@ public:
         if (mSize < mCapacity) {
             if (mSize == 0) {
                 if (mData) {
-                    mAlloc.deallocate(mData, mCapacity);
+                    mResource->deallocate(mData, mCapacity * sizeof(T));
                 }
                 mData = nullptr;
                 mCapacity = 0;
                 mFront = 0;
             } else {
                 // Reallocate to exact size
-                T* new_data = mAlloc.allocate(mSize);
+                T* new_data = static_cast<T*>(mResource->allocate(mSize * sizeof(T)));
                 if (!new_data) {
                     return; // Allocation failed
                 }
@@ -462,12 +462,12 @@ public:
                 // Copy elements to new buffer
                 for (fl::size i = 0; i < mSize; ++i) {
                     fl::size old_idx = (mFront + i) % mCapacity;
-                    mAlloc.construct(&new_data[i], fl::move(mData[old_idx]));
-                    mAlloc.destroy(&mData[old_idx]);
+                    new (&new_data[i]) T(fl::move(mData[old_idx]));
+                    mData[old_idx].~T();
                 }
 
                 if (mData) {
-                    mAlloc.deallocate(mData, mCapacity);
+                    mResource->deallocate(mData, mCapacity * sizeof(T));
                 }
 
                 mData = new_data;
@@ -477,8 +477,8 @@ public:
         }
     }
 
-    allocator_type get_allocator() const {
-        return mAlloc;
+    memory_resource* get_memory_resource() const {
+        return mResource;
     }
 
     // Modifiers
@@ -491,42 +491,42 @@ public:
     void push_back(const T& value) {
         ensure_capacity(mSize + 1);
         fl::size back_index = get_index(mSize);
-        mAlloc.construct(&mData[back_index], value);
+        new (&mData[back_index]) T(value);
         ++mSize;
     }
 
     void push_back(T&& value) {
         ensure_capacity(mSize + 1);
         fl::size back_index = get_index(mSize);
-        mAlloc.construct(&mData[back_index], fl::move(value));
+        new (&mData[back_index]) T(fl::move(value));
         ++mSize;
     }
 
     void push_front(const T& value) {
         ensure_capacity(mSize + 1);
         mFront = (mFront - 1 + mCapacity) % mCapacity;
-        mAlloc.construct(&mData[mFront], value);
+        new (&mData[mFront]) T(value);
         ++mSize;
     }
 
     void push_front(T&& value) {
         ensure_capacity(mSize + 1);
         mFront = (mFront - 1 + mCapacity) % mCapacity;
-        mAlloc.construct(&mData[mFront], fl::move(value));
+        new (&mData[mFront]) T(fl::move(value));
         ++mSize;
     }
 
     void pop_back() {
         if (mSize > 0) {
             fl::size back_index = get_index(mSize - 1);
-            mAlloc.destroy(&mData[back_index]);
+            mData[back_index].~T();
             --mSize;
         }
     }
 
     void pop_front() {
         if (mSize > 0) {
-            mAlloc.destroy(&mData[mFront]);
+            mData[mFront].~T();
             mFront = (mFront + 1) % mCapacity;
             --mSize;
         }
@@ -558,19 +558,19 @@ public:
             fl::size temp_capacity = mCapacity;
             fl::size temp_size = mSize;
             fl::size temp_front = mFront;
-            Allocator temp_alloc = mAlloc;
+            memory_resource* temp_resource = mResource;
 
             mData = other.mData;
             mCapacity = other.mCapacity;
             mSize = other.mSize;
             mFront = other.mFront;
-            mAlloc = other.mAlloc;
+            mResource = other.mResource;
 
             other.mData = temp_data;
             other.mCapacity = temp_capacity;
             other.mSize = temp_size;
             other.mFront = temp_front;
-            other.mAlloc = temp_alloc;
+            other.mResource = temp_resource;
         }
     }
 
@@ -583,13 +583,13 @@ public:
         for (fl::size i = mSize; i > index; --i) {
             fl::size from_idx = get_index(i - 1);
             fl::size to_idx = get_index(i);
-            mAlloc.construct(&mData[to_idx], fl::move(mData[from_idx]));
-            mAlloc.destroy(&mData[from_idx]);
+            new (&mData[to_idx]) T(fl::move(mData[from_idx]));
+            mData[from_idx].~T();
         }
 
         // Insert new element
         fl::size insert_idx = get_index(index);
-        mAlloc.construct(&mData[insert_idx], value);
+        new (&mData[insert_idx]) T(value);
         ++mSize;
 
         return iterator(this, index);
@@ -603,13 +603,13 @@ public:
         for (fl::size i = mSize; i > index; --i) {
             fl::size from_idx = get_index(i - 1);
             fl::size to_idx = get_index(i);
-            mAlloc.construct(&mData[to_idx], fl::move(mData[from_idx]));
-            mAlloc.destroy(&mData[from_idx]);
+            new (&mData[to_idx]) T(fl::move(mData[from_idx]));
+            mData[from_idx].~T();
         }
 
         // Insert new element
         fl::size insert_idx = get_index(index);
-        mAlloc.construct(&mData[insert_idx], fl::move(value));
+        new (&mData[insert_idx]) T(fl::move(value));
         ++mSize;
 
         return iterator(this, index);
@@ -623,14 +623,14 @@ public:
         for (fl::size i = mSize + count - 1; i >= index + count; --i) {
             fl::size from_idx = get_index(i - count);
             fl::size to_idx = get_index(i);
-            mAlloc.construct(&mData[to_idx], fl::move(mData[from_idx]));
-            mAlloc.destroy(&mData[from_idx]);
+            new (&mData[to_idx]) T(fl::move(mData[from_idx]));
+            mData[from_idx].~T();
         }
 
         // Insert new elements
         for (fl::size i = 0; i < count; ++i) {
             fl::size insert_idx = get_index(index + i);
-            mAlloc.construct(&mData[insert_idx], value);
+            new (&mData[insert_idx]) T(value);
         }
         mSize += count;
 
@@ -645,14 +645,14 @@ public:
 
         // Destroy element at pos
         fl::size erase_idx = get_index(index);
-        mAlloc.destroy(&mData[erase_idx]);
+        mData[erase_idx].~T();
 
         // Shift elements from pos+1 to end one position to the left
         for (fl::size i = index; i < mSize - 1; ++i) {
             fl::size from_idx = get_index(i + 1);
             fl::size to_idx = get_index(i);
-            mAlloc.construct(&mData[to_idx], fl::move(mData[from_idx]));
-            mAlloc.destroy(&mData[from_idx]);
+            new (&mData[to_idx]) T(fl::move(mData[from_idx]));
+            mData[from_idx].~T();
         }
 
         --mSize;
@@ -668,15 +668,15 @@ public:
         // Destroy elements in range
         for (fl::size i = 0; i < count; ++i) {
             fl::size destroy_idx = get_index(start_idx + i);
-            mAlloc.destroy(&mData[destroy_idx]);
+            mData[destroy_idx].~T();
         }
 
         // Shift remaining elements left
         for (fl::size i = start_idx; i < mSize - count; ++i) {
             fl::size from_idx = get_index(i + count);
             fl::size to_idx = get_index(i);
-            mAlloc.construct(&mData[to_idx], fl::move(mData[from_idx]));
-            mAlloc.destroy(&mData[from_idx]);
+            new (&mData[to_idx]) T(fl::move(mData[from_idx]));
+            mData[from_idx].~T();
         }
 
         mSize -= count;
@@ -693,13 +693,13 @@ public:
         for (fl::size i = mSize; i > index; --i) {
             fl::size from_idx = get_index(i - 1);
             fl::size to_idx = get_index(i);
-            mAlloc.construct(&mData[to_idx], fl::move(mData[from_idx]));
-            mAlloc.destroy(&mData[from_idx]);
+            new (&mData[to_idx]) T(fl::move(mData[from_idx]));
+            mData[from_idx].~T();
         }
 
         // Construct new element in place
         fl::size emplace_idx = get_index(index);
-        mAlloc.construct(&mData[emplace_idx], fl::forward<Args>(args)...);
+        new (&mData[emplace_idx]) T(fl::forward<Args>(args)...);
         ++mSize;
 
         return iterator(this, index);
@@ -709,7 +709,7 @@ public:
     T& emplace_back(Args&&... args) {
         ensure_capacity(mSize + 1);
         fl::size back_index = get_index(mSize);
-        mAlloc.construct(&mData[back_index], fl::forward<Args>(args)...);
+        new (&mData[back_index]) T(fl::forward<Args>(args)...);
         ++mSize;
         return mData[back_index];
     }
@@ -718,7 +718,7 @@ public:
     T& emplace_front(Args&&... args) {
         ensure_capacity(mSize + 1);
         mFront = (mFront - 1 + mCapacity) % mCapacity;
-        mAlloc.construct(&mData[mFront], fl::forward<Args>(args)...);
+        new (&mData[mFront]) T(fl::forward<Args>(args)...);
         ++mSize;
         return mData[mFront];
     }

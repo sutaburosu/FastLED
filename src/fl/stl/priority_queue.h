@@ -5,6 +5,7 @@
 #include "fl/stl/move.h"                   // for remove_reference
 #include "fl/stl/utility.h"                // for greater, less
 #include "fl/stl/int.h"                        // for size  // IWYU pragma: keep
+#include "fl/stl/memory_resource.h"
 
 namespace fl {
 
@@ -76,7 +77,9 @@ class PriorityQueue {
     using compare_type = Compare;
 
     PriorityQueue() = default;
+    explicit PriorityQueue(memory_resource* resource) : _data(resource) {}
     explicit PriorityQueue(const Compare &comp) : _comp(comp) {}
+    PriorityQueue(const Compare &comp, memory_resource* resource) : _data(resource), _comp(comp) {}
 
     void push(const T &value) {
         _data.push_back(value);
@@ -105,6 +108,7 @@ class PriorityQueue {
     fl::size size() const { return _data.size(); }
 
     const Compare &compare() const { return _comp; }
+    memory_resource* get_memory_resource() const { return _data.get_resource(); }
 
     /// Equality comparison
     bool operator==(const PriorityQueue& other) const {

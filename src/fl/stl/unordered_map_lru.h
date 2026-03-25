@@ -11,6 +11,7 @@ recently used items when it reaches capacity.
 #include "fl/stl/hash.h"
 #include "fl/stl/limits.h"
 #include "fl/stl/int.h"
+#include "fl/stl/memory_resource.h"
 
 namespace fl {
 
@@ -32,6 +33,12 @@ class HashMapLru {
   public:
     HashMapLru(fl::size max_size) : mMaxSize(max_size), mCurrentTime(0) {
         // Ensure max size is at least 1
+        if (mMaxSize < 1)
+            mMaxSize = 1;
+    }
+
+    HashMapLru(fl::size max_size, memory_resource* resource)
+        : mMap(resource), mMaxSize(max_size), mCurrentTime(0) {
         if (mMaxSize < 1)
             mMaxSize = 1;
     }
@@ -128,6 +135,7 @@ class HashMapLru {
     fl::size size() const { return mMap.size(); }
     bool empty() const { return mMap.empty(); }
     fl::size capacity() const { return mMaxSize; }
+    memory_resource* get_memory_resource() const { return mMap.get_memory_resource(); }
 
   private:
     // Evict the least recently used item

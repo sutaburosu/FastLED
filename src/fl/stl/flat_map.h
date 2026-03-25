@@ -8,6 +8,7 @@
 #include "fl/stl/pair.h"
 #include "fl/stl/vector.h"
 #include "fl/stl/allocator.h"
+#include "fl/stl/memory_resource.h"
 #include "platforms/assert_defs.h"
 #include "fl/stl/noexcept.h"
 
@@ -54,8 +55,14 @@ class flat_map {
     // Constructors
     flat_map() FL_NOEXCEPT = default;
 
+    explicit flat_map(memory_resource* resource) FL_NOEXCEPT
+        : mData(resource) {}
+
     explicit flat_map(const Less& less) FL_NOEXCEPT
         : mLess(less) {}
+
+    flat_map(const Less& less, memory_resource* resource) FL_NOEXCEPT
+        : mData(resource), mLess(less) {}
 
     flat_map(const flat_map& other) FL_NOEXCEPT = default;
     flat_map& operator=(const flat_map& other) FL_NOEXCEPT = default;
@@ -495,6 +502,8 @@ class flat_map {
     void shrink_to_fit() FL_NOEXCEPT {
         mData.shrink_to_fit();
     }
+
+    memory_resource* get_memory_resource() const FL_NOEXCEPT { return mData.get_resource(); }
 };
 
 // Comparison operators

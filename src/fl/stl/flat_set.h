@@ -4,6 +4,7 @@
 #include "fl/stl/algorithm.h"
 #include "fl/stl/comparators.h"
 #include "fl/stl/vector.h"
+#include "fl/stl/memory_resource.h"
 
 namespace fl {
 
@@ -46,8 +47,14 @@ class flat_set {
     // Constructors
     flat_set() = default;
 
+    explicit flat_set(memory_resource* resource)
+        : mData(resource) {}
+
     explicit flat_set(const Less& less)
         : mLess(less) {}
+
+    flat_set(const Less& less, memory_resource* resource)
+        : mData(resource), mLess(less) {}
 
     flat_set(const flat_set& other) = default;
     flat_set& operator=(const flat_set& other) = default;
@@ -309,6 +316,8 @@ class flat_set {
     void reserve(size_type n) {
         mData.reserve(n);
     }
+
+    memory_resource* get_memory_resource() const { return mData.get_resource(); }
 };
 
 // Comparison operators
