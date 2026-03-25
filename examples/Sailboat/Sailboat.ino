@@ -17,7 +17,9 @@ void loop() {}
 #else
 
 #include "fl/fx/1d/perlin_particle_punch.h"
+#include "fl/fx/fx_engine.h"
 #include "fl/ui.h"
+
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -56,6 +58,8 @@ fl::UISlider minVelocitySlider("Min Velocity", 0.01f, 0.01f, 0.5f, 0.01f);
 fl::UISlider debrisDecaySlider("Debris Fade", 0.96f, 0.80f, 1.0f, 0.01f);
 fl::UISlider debrisVelDecaySlider("Debris Drag", 0.95f, 0.85f, 1.0f, 0.01f);
 fl::PerlinParticlePunch sailboatFx(NUM_LEDS);
+
+fl::FxEngine fxEngine(NUM_LEDS);
 
 // Perlin time-warp state (decays each frame in loop())
 float noiseTimeMultiplier = 1.0f;
@@ -110,12 +114,16 @@ void setup() {
                                  CRGB(140, 180, 255),   // light blue mid
                                  CRGB(0, 40, 120));     // deep blue tail
 
+    // Register effect with engine
+    fxEngine.addFx(sailboatFx);
+
     // --- Wire up audio detector callbacks ---
     // Uses the Vibe detector which self-normalizes bass levels:
     //   getVibeBass() ~1.0 = average for current song
     //   >1.0 = louder than average, <1.0 = quieter
     // This approach works across all music volumes and styles.
-    auto audio = audio_ui.processor();
+    auto audio = FastLED.add(audio_ui);
+    fxEngine.setAudio(audio); // delivers AudioBatch to effects via DrawContext
     if (audio) {
         // Called every frame with full vibe data — we do threshold
         // checks here for both ambient and meteor spawning.
@@ -178,9 +186,8 @@ void loop() {
     sailboatFx.setDebrisBrightnessDecay(debrisDecaySlider.value());
     sailboatFx.setDebrisVelocityDecay(debrisVelDecaySlider.value());
 
-    // Draw and show
-    fl::Fx::DrawContext ctx(millis(), leds);
-    sailboatFx.draw(ctx);
+    // Draw current effect and show
+    fxEngine.draw(millis(), leds);
     FastLED.show();
 }
 

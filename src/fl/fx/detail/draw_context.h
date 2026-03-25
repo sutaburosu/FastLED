@@ -5,16 +5,18 @@
 
 namespace fl {
 
-// Abstract base class for effects on a strip/grid of LEDs.
+class AudioBatch; // forward declaration — pointer only, no include needed
 
-struct _DrawContext {
+struct DrawContext {
     fl::u32 now;
     fl::span<CRGB> leds;
     u16 frame_time = 0;
     float speed = 1.0f;
-    _DrawContext(fl::u32 now, fl::span<CRGB> leds, u16 frame_time = 0,
-                 float speed = 1.0f)
-        : now(now), leds(leds), frame_time(frame_time), speed(speed) {}
+    const AudioBatch *audio = nullptr; ///< Non-owning. Null when no audio.
+    DrawContext(fl::u32 now, fl::span<CRGB> leds, u16 frame_time = 0,
+                float speed = 1.0f, const AudioBatch *audio = nullptr)
+        : now(now), leds(leds), frame_time(frame_time), speed(speed),
+          audio(audio) {}
 };
 
 } // namespace fl

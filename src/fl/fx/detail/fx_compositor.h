@@ -42,7 +42,8 @@ class FxCompositor {
         mTransition.end();
     }
 
-    void draw(fl::u32 now, fl::u32 warpedTime, fl::span<CRGB> finalBuffer);
+    void draw(fl::u32 now, fl::u32 warpedTime, fl::span<CRGB> finalBuffer,
+              float speed = 1.0f, const AudioBatch *audio = nullptr);
 
   private:
     void swapLayers() {
@@ -57,18 +58,19 @@ class FxCompositor {
 };
 
 inline void FxCompositor::draw(fl::u32 now, fl::u32 warpedTime,
-                               fl::span<CRGB> finalBuffer) {
+                               fl::span<CRGB> finalBuffer,
+                               float speed, const AudioBatch *audio) {
     if (!mLayers[0]->getFx()) {
         return;
     }
-    mLayers[0]->draw(warpedTime);
+    mLayers[0]->draw(warpedTime, speed, audio);
     u8 progress = mTransition.getProgress(now);
     if (!progress) {
         fl::span<CRGB> surface0 = mLayers[0]->getSurface();
         fl::memcpy(finalBuffer.data(), surface0.data(), sizeof(CRGB) * mNumLeds);
         return;
     }
-    mLayers[1]->draw(warpedTime);
+    mLayers[1]->draw(warpedTime, speed, audio);
     fl::span<CRGB> surface0 = mLayers[0]->getSurface();
     fl::span<CRGB> surface1 = mLayers[1]->getSurface();
 

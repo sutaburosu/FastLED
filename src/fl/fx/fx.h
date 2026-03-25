@@ -16,8 +16,8 @@ FASTLED_SHARED_PTR(Fx);
 // Abstract base class for effects on a strip/grid of LEDs.
 class Fx {
   public:
-    // Alias DrawContext for use within Fx
-    using DrawContext = _DrawContext;
+    // Alias so Fx::DrawContext keeps working in existing code.
+    using DrawContext = ::fl::DrawContext;
 
     Fx(u16 numLeds) : mNumLeds(numLeds) {}
 

@@ -16,7 +16,7 @@ void FxLayer::setFx(fl::shared_ptr<Fx> newFx) {
     }
 }
 
-void FxLayer::draw(fl::u32 now) {
+void FxLayer::draw(fl::u32 now, float speed, const AudioBatch *audio) {
     // assert(fx);
     if (!frame) {
         frame = fl::make_shared<Frame>(fx->getNumLeds());
@@ -26,9 +26,12 @@ void FxLayer::draw(fl::u32 now) {
         // Clear the frame
         fl::memset((u8*)frame->rgb().data(), 0, frame->size() * sizeof(CRGB));
         fx->resume(now);
+        mLastNow = now;
         running = true;
     }
-    Fx::DrawContext context = {now, frame->rgb()};
+    u16 frame_time = static_cast<u16>(now - mLastNow);
+    mLastNow = now;
+    Fx::DrawContext context(now, frame->rgb(), frame_time, speed, audio);
     fx->draw(context);
 }
 

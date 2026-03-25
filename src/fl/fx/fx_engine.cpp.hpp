@@ -1,5 +1,8 @@
 #include "fl/fx/fx_engine.h"
+#include "fl/audio/audio_batch.h"
 #include "fl/fx/video.h"
+#include "fl/audio/audio_processor.h"
+#include "fl/task/scheduler.h"
 
 namespace fl {
 
@@ -10,6 +13,14 @@ FxEngine::FxEngine(u16 numLeds, bool interpolate)
 }
 
 FxEngine::~FxEngine() {}
+
+void FxEngine::pushAudioFrame(const AudioFrame &frame) {
+    mAudioBack.push_back(frame);
+}
+
+void FxEngine::setAudio(fl::shared_ptr<fl::audio::Processor> proc) {
+    mAudioProcessor = fl::move(proc);
+}
 
 int FxEngine::addFx(FxPtr effect) {
     float fps = 0;
@@ -85,6 +96,36 @@ bool FxEngine::draw(fl::u32 now, fl::span<CRGB> finalBuffer) {
     mTimeFunction.update(now);
     fl::u32 warpedTime = mTimeFunction.time();
 
+    // Swap audio double-buffers: back → front, then clear back for next frame.
+    mAudioFront.swap(mAudioBack);
+    mAudioBack.clear();
+
+    // Bump the task scheduler so the audio auto-pump task runs NOW,
+    // feeding any pending I2S samples into the Processor before we read levels.
+    // Without this, draw() would read stale levels from the previous frame.
+    if (mAudioProcessor) {
+        fl::task::Scheduler::instance().update();
+    }
+
+    // If an audio processor is wired, poll it for one frame per draw cycle.
+    if (mAudioProcessor) {
+        AudioFrame af;
+        af.bass = mAudioProcessor->getBassLevel();
+        af.mid = mAudioProcessor->getMidLevel();
+        af.treble = mAudioProcessor->getTrebleLevel();
+        af.volume = mAudioProcessor->getEnergy();
+        af.beat = mAudioProcessor->isVibeBassSpike();
+        af.timestamp = now;
+        mAudioFront.push_back(af);
+    }
+
+    // Build AudioBatch on the stack — shared across both compositor layers.
+    // Passes Processor pointer for lazy access to vibe/equalizer/percussion.
+    fl::span<const AudioFrame> audioSpan(mAudioFront);
+    AudioBatch audioBatch(audioSpan, mAudioProcessor.get());
+    const AudioBatch *audioPtr =
+        (mAudioFront.empty() && !mAudioProcessor) ? nullptr : &audioBatch;
+
     if (mEffects.empty()) {
         return false;
     }
@@ -99,7 +140,8 @@ bool FxEngine::draw(fl::u32 now, fl::span<CRGB> finalBuffer) {
         mDurationSet = false;
     }
     if (!mEffects.empty()) {
-        mCompositor.draw(now, warpedTime, finalBuffer);
+        float speed = mTimeFunction.scale();
+        mCompositor.draw(now, warpedTime, finalBuffer, speed, audioPtr);
     }
     return true;
 }

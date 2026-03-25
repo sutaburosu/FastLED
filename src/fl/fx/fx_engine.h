@@ -2,11 +2,15 @@
 
 #include "fl/stl/flat_map.h"
 #include "fl/stl/shared_ptr.h"         // For FASTLED_SHARED_PTR macros
+#include "fl/stl/vector.h"
+#include "fl/audio/audio_frame.h"  // AudioFrame (stored in vectors)
 #include "fl/fx/detail/fx_compositor.h"
 #include "fl/fx/fx.h"
 #include "fl/fx/time.h"
 #include "fl/fx/video.h"
 #include "fl/stl/stdint.h"
+
+namespace fl { namespace audio { class Processor; } }
 
 // TimeFunction is defined in fx/time.h (fl::TimeFunction)
 
@@ -100,6 +104,23 @@ class FxEngine {
     IntFxMap &_getEffects() { return mEffects; }
 
     /**
+     * @brief Pushes an audio frame into the back buffer.
+     *
+     * Call this between draw() calls as audio samples arrive. During the
+     * next draw(), all accumulated frames are frozen and delivered to
+     * effects via DrawContext::audio.
+     */
+    void pushAudioFrame(const AudioFrame &frame);
+
+    /**
+     * @brief Connects an audio processor for automatic audio delivery.
+     *
+     * Each draw() polls the processor's current levels and pushes one
+     * AudioFrame. Wire once in setup(), forget about it.
+     */
+    void setAudio(fl::shared_ptr<fl::audio::Processor> proc);
+
+    /**
      * @brief Sets the speed of the fx engine, which will impact the speed of
      * all effects.
      * @param timeScale The new time scale value.
@@ -118,6 +139,15 @@ class FxEngine {
     bool mDurationSet =
         false; ///< Flag indicating if a new transition has been set
     bool mInterpolate = true;
+
+    // Double-buffered audio frame accumulator.
+    // mAudioBack: frames pushed between draw() calls (write buffer).
+    // mAudioFront: frozen snapshot passed to effects during draw() (read buffer).
+    fl::vector<AudioFrame> mAudioFront;
+    fl::vector<AudioFrame> mAudioBack;
+
+    // Optional auto-polled audio source (set via setAudio()).
+    fl::shared_ptr<fl::audio::Processor> mAudioProcessor;
 };
 
 } // namespace fl

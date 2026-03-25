@@ -173,6 +173,10 @@ def main() -> int:
         for proc in test_proc_holder:
             proc.kill()
         report_failure("Lint failed", lint_result)
+        print(
+            "\nREMINDER - FIX ALL ERRORS FROM STOP HOOK, MAKE AT LEAST TWO ATTEMPTS!",
+            file=sys.stderr,
+        )
         return 2
 
     # Lint passed — wait for tests
@@ -209,6 +213,10 @@ def main() -> int:
                 )
             print("", file=sys.stderr)
             print("!" * 60, file=sys.stderr)
+        print(
+            "\nREMINDER - FIX ALL ERRORS FROM STOP HOOK, MAKE AT LEAST TWO ATTEMPTS!",
+            file=sys.stderr,
+        )
         return 2
 
     return 0
