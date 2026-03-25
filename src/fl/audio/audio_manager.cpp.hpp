@@ -59,7 +59,18 @@ shared_ptr<Processor> AudioManager::add(shared_ptr<IInput> input) {
 }
 
 shared_ptr<Processor> AudioManager::add(UIAudio &uiAudio) {
-    return add(uiAudio.audioInput());
+    auto input = uiAudio.audioInput();
+    if (input) {
+        return add(fl::move(input));
+    }
+    // No platform audio input (e.g. hardware stub) — use the stored config
+    // to create a real hardware audio input.
+    const auto& cfg = uiAudio.config();
+    if (cfg.has_value()) {
+        return add(*cfg);
+    }
+    FL_WARN("UIAudio has no audio input and no hardware config");
+    return nullptr;
 }
 
 void AudioManager::remove(shared_ptr<Processor> proc) {

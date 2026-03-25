@@ -6,6 +6,7 @@
 #include "fl/stl/string.h"
 #include "fl/stl/url.h"
 #include "fl/stl/int.h"  // IWYU pragma: keep
+#include "fl/stl/optional.h"
 #include "fl/audio/audio.h"
 #include "fl/audio/audio_input.h"  // For audio::Config  // IWYU pragma: keep
 #include "fl/system/engine_events.h"
@@ -436,6 +437,9 @@ class UIAudio : public UIElement {
     // Expose underlying audio input for FastLED.add() auto-pump
     fl::shared_ptr<audio::IInput> audioInput() { return mImpl.audioInput(); }
 
+    // Returns the hardware microphone config, if one was provided.
+    const fl::optional<audio::Config>& config() const { return mConfig; }
+
     // Lazily registers with CFastLED::add() on first call and returns the
     // auto-pumped audio::Processor. Subsequent calls return the cached processor.
     fl::shared_ptr<audio::Processor> processor();
@@ -449,6 +453,7 @@ class UIAudio : public UIElement {
 
   protected:
     UIAudioImpl mImpl;
+    fl::optional<audio::Config> mConfig;
     fl::shared_ptr<audio::Processor> mProcessor;
 };
 
