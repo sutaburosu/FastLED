@@ -17,22 +17,22 @@ namespace fl {
 namespace net {
 namespace ble {
 
-TransportState* createTransport(const char*) {
+TransportState* createTransport(const char*) FL_NOEXCEPT {
     FL_ERROR("BLE not implemented on this platform");
     return nullptr;
 }
 
-void destroyTransport(TransportState*) {
+void destroyTransport(TransportState*) FL_NOEXCEPT {
     FL_ERROR("BLE not implemented on this platform");
 }
 
-StatusInfo queryStatus(const TransportState*) {
+StatusInfo queryStatus(const TransportState*) FL_NOEXCEPT {
     FL_ERROR("BLE not implemented on this platform");
     return StatusInfo{};
 }
 
 fl::pair<fl::function<fl::optional<fl::json>()>, fl::function<void(const fl::json&)>>
-getTransportCallbacks(TransportState*) {
+getTransportCallbacks(TransportState*) FL_NOEXCEPT {
     FL_ERROR("BLE not implemented on this platform");
     return {
         fl::function<fl::optional<fl::json>()>([]() -> fl::optional<fl::json> { return fl::optional<fl::json>(); }),
