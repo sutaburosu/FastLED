@@ -24,11 +24,23 @@
 fl::UIAudio audio_ui("Audio Input");
 fl::UISlider sensitivity("Sensitivity", 1.5f, 0.3f, 4.0f, 0.1f);
 
+// Panel 1 controls
+fl::UISlider threshold1("Threshold", 0.2f, 0.0f, 1.0f, 0.01f);
+fl::UISlider attack1("Attack", 0.08f, 0.001f, 0.5f, 0.005f);
+fl::UISlider decay1("Decay", 0.3f, 0.01f, 1.0f, 0.01f);
+fl::UIGroup group1("Panel 1", threshold1, attack1, decay1);
+
+// Panel 2 controls
+fl::UISlider threshold2("Threshold", 0.2f, 0.0f, 1.0f, 0.01f);
+fl::UISlider attack2("Attack", 0.08f, 0.001f, 0.5f, 0.005f);
+fl::UISlider decay2("Decay", 0.3f, 0.01f, 1.0f, 0.01f);
+fl::UIGroup group2("Panel 2", threshold2, attack2, decay2);
+
 // ---------------------------------------------------------------------------
-// Attack/Decay filters — fast attack, slow decay
+// Attack/Decay filters
 // ---------------------------------------------------------------------------
-static fl::AttackDecayFilter<float> filterHigh(0.001f, 0.3f);
-static fl::AttackDecayFilter<float> filterLow(0.001f, 0.3f);
+static fl::AttackDecayFilter<float> filterHigh(0.08f, 0.3f);
+static fl::AttackDecayFilter<float> filterLow(0.08f, 0.3f);
 
 // ---------------------------------------------------------------------------
 // Adaptive bass window (ported from songstone led_controller)
@@ -128,16 +140,29 @@ void setup() {
                 float dt = (now - lastMillis) / 1000.0f;
                 lastMillis = now;
 
-                // High panel: stronger signal (squared for contrast)
+                // Apply UI-driven attack/decay settings
+                filterHigh.setAttackTau(attack1.value());
+                filterHigh.setDecayTau(decay1.value());
+                filterLow.setAttackTau(attack2.value());
+                filterLow.setDecayTau(decay2.value());
+
+                // Panel 1: stronger signal (squared for contrast)
                 filterHigh.update(signal * signal, dt);
-                // Low panel: more responsive (linear)
+                // Panel 2: more responsive (linear)
                 filterLow.update(signal, dt);
             });
     }
 }
 
 void loop() {
-    setPanelHigh(filterHigh.value());
-    setPanelLow(filterLow.value());
+    float left = filterHigh.value();
+    float right = filterLow.value();
+    // Remap through threshold: [threshold..1] → [0..1], below threshold → 0
+    float t1 = threshold1.value();
+    float t2 = threshold2.value();
+    left  = fl::clamp((left  - t1) / (1.0f - t1 + 1e-6f), 0.0f, 1.0f);
+    right = fl::clamp((right - t2) / (1.0f - t2 + 1e-6f), 0.0f, 1.0f);
+    setPanelHigh(left);
+    setPanelLow(right);
     showPanels();
 }
