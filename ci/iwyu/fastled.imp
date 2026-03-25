@@ -77,6 +77,57 @@
   # Animartrix detail headers are private implementation details
   { include: ['"fl/fx/2d/animartrix_detail.h"', 'private', '"fl/fx/2d/animartrix.hpp"', 'public'] },
 
+  # ========================================================================
+  # Umbrella Header Sub-components
+  # ========================================================================
+  # Sub-headers that are re-exported by umbrella headers.
+  # Mark as private so IWYU suggests the umbrella instead.
+
+  # fl/math/simd.h umbrella
+  { include: ['"fl/math/simd/u8x16.h"', 'private', '"fl/math/simd.h"', 'public'] },
+  { include: ['"fl/math/simd/u8x32.h"', 'private', '"fl/math/simd.h"', 'public'] },
+  { include: ['"fl/math/simd/u16x8.h"', 'private', '"fl/math/simd.h"', 'public'] },
+  { include: ['"fl/math/simd/u16x16.h"', 'private', '"fl/math/simd.h"', 'public'] },
+  { include: ['"fl/math/simd/u32x4.h"', 'private', '"fl/math/simd.h"', 'public'] },
+  { include: ['"fl/math/simd/f32x4.h"', 'private', '"fl/math/simd.h"', 'public'] },
+  { include: ['"fl/math/simd/types.h"', 'private', '"fl/math/simd.h"', 'public'] },
+
+  # fl/stl/isr.h umbrella
+  { include: ['"fl/stl/isr/constants.h"', 'private', '"fl/stl/isr.h"', 'public'] },
+  { include: ['"fl/stl/isr/memcpy.h"', 'private', '"fl/stl/isr.h"', 'public'] },
+  { include: ['"fl/stl/isr/handler.h"', 'private', '"fl/stl/isr.h"', 'public'] },
+  { include: ['"fl/stl/isr/critical_section.h"', 'private', '"fl/stl/isr.h"', 'public'] },
+
+  # fl/net/net.h umbrella
+  { include: ['"fl/net/http.h"', 'private', '"fl/net/net.h"', 'public'] },
+  { include: ['"fl/net/ble.h"', 'private', '"fl/net/net.h"', 'public'] },
+  { include: ['"fl/net/ota.h"', 'private', '"fl/net/net.h"', 'public'] },
+  { include: ['"fl/net/rpc.h"', 'private', '"fl/net/net.h"', 'public'] },
+
+  # fl/net/http.h umbrella
+  { include: ['"fl/net/http/fetch.h"', 'private', '"fl/net/http.h"', 'public'] },
+  { include: ['"fl/net/http/stream_client.h"', 'private', '"fl/net/http.h"', 'public'] },
+  { include: ['"fl/net/http/stream_server.h"', 'private', '"fl/net/http.h"', 'public'] },
+
+  # fl/spi.h umbrella
+  { include: ['"fl/spi/config.h"', 'private', '"fl/spi.h"', 'public'] },
+  { include: ['"fl/spi/transaction.h"', 'private', '"fl/spi.h"', 'public'] },
+  { include: ['"fl/spi/device.h"', 'private', '"fl/spi.h"', 'public'] },
+  { include: ['"fl/spi/lane.h"', 'private', '"fl/spi.h"', 'public'] },
+  { include: ['"fl/spi/write_result.h"', 'private', '"fl/spi.h"', 'public'] },
+  { include: ['"fl/spi/multi_lane_device.h"', 'private', '"fl/spi.h"', 'public'] },
+
+  # fl/fx/2d/animartrix_detail/ sub-headers → animartrix_detail.h
+  { include: ['@"fl/fx/2d/animartrix_detail/.*"', 'private', '"fl/fx/2d/animartrix_detail.h"', 'public'] },
+
+  # fl/math/noise.h umbrella
+  { include: ['"fl/math/noise/noise_woryley.h"', 'private', '"fl/math/noise.h"', 'public'] },
+  { include: ['"fl/math/noise/perlin_s16x16_simd.h"', 'private', '"fl/math/noise.h"', 'public'] },
+
+  # Platform dispatch re-exports (math8.h, scale8.h, simd.h)
+  { include: ['"platforms/math8.h"', 'private', '"fl/math/math8.h"', 'public'] },
+  { include: ['"platforms/scale8.h"', 'private', '"fl/math/scale8.h"', 'public'] },
+
   # Third-party headers should not be suggested for user code
   # Note: third_party/.* is now marked with pragma in source files
 

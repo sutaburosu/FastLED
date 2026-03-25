@@ -13,7 +13,7 @@
 ///   - fl::net::mqtt  — MQTT pub/sub
 ///   - fl::net::lora  — LoRa radio transport
 
-#include "fl/net/http.h"
-#include "fl/net/ota.h"
-#include "fl/net/rpc.h"
-#include "fl/net/ble.h"
+#include "fl/net/http.h"  // IWYU pragma: export
+#include "fl/net/ota.h"   // IWYU pragma: export
+#include "fl/net/rpc.h"   // IWYU pragma: export
+#include "fl/net/ble.h"   // IWYU pragma: export

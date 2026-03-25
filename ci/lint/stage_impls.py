@@ -244,7 +244,12 @@ def run_iwyu_pragma_check() -> bool:
         return False
 
 
-def run_iwyu_analysis(run_full: bool, run_iwyu: bool, run_strict: bool = False) -> bool:
+def run_iwyu_analysis(
+    run_full: bool,
+    run_iwyu: bool,
+    run_strict: bool = False,
+    iwyu_fix: bool = False,
+) -> bool:
     """
     Run IWYU (Include-What-You-Use) analysis.
 
@@ -252,6 +257,7 @@ def run_iwyu_analysis(run_full: bool, run_iwyu: bool, run_strict: bool = False) 
         run_full: Run full analysis
         run_iwyu: Run IWYU only
         run_strict: Run IWYU with --strict flag
+        iwyu_fix: Auto-fix violations
 
     Returns:
         True if analysis passed, False otherwise
@@ -267,9 +273,14 @@ def run_iwyu_analysis(run_full: bool, run_iwyu: bool, run_strict: bool = False) 
         return True
 
     if run_full or run_iwyu or run_strict:
-        print("Running IWYU on C++ test suite...")
+        cmd = ["uv", "run", "python", "ci/ci-iwyu.py", "--quiet"]
+        if iwyu_fix:
+            cmd.append("--fix")
+            print("Running IWYU with auto-fix on C++ headers...")
+        else:
+            print("Running IWYU on C++ test suite...")
         result = subprocess.run(
-            ["uv", "run", "python", "ci/ci-iwyu.py", "--quiet"],
+            cmd,
             capture_output=False,
         )
 

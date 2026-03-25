@@ -4,13 +4,13 @@
 
 #include "fl/stl/int.h"
 
-#include "fl/stl/shared_ptr.h"         // For FASTLED_SHARED_PTR macros
-#include "fl/stl/fstream.h"            // For fl::ifstream (STL-like file I/O)
-#include "fl/stl/flat_map.h"          // For fl::flat_map
-#include "fl/stl/string.h"  // For fl::string
-#include "fl/fx/video.h"
-#include "fl/codec/jpeg.h"  // For JpegConfig (lightweight struct, no linker symbols)
-#include "fl/stl/compiler_control.h"
+#include "fl/stl/shared_ptr.h"         // IWYU pragma: export
+#include "fl/stl/fstream.h"            // IWYU pragma: export
+#include "fl/stl/flat_map.h"           // IWYU pragma: export
+#include "fl/stl/string.h"             // IWYU pragma: export
+#include "fl/fx/video.h"               // IWYU pragma: export
+#include "fl/codec/jpeg.h"             // IWYU pragma: export
+#include "fl/stl/compiler_control.h"   // IWYU pragma: export
 
 // Forward declaration — concrete Mp3Decoder lives in fl/codec/mp3.h
 namespace fl {

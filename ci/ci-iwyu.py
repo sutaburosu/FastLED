@@ -434,6 +434,83 @@ def apply_iwyu_fixes(source_dir: Path) -> int:
         return e.returncode
 
 
+def fix_iwyu_violations(violations: dict[str, list[str]]) -> int:
+    """Auto-fix IWYU violations by removing offending lines.
+
+    Args:
+        violations: {relative_file_path: [removal_strings]} where each
+            removal string contains '// lines N-N' with the line number.
+
+    Returns:
+        0 on success, 1 on any error.
+    """
+    if not violations:
+        print("✅ No violations to fix")
+        return 0
+
+    total_fixes = 0
+    total_files = 0
+
+    for rel_path, removals in sorted(violations.items()):
+        file_path = _PROJECT_ROOT / rel_path
+        if not file_path.exists():
+            print(f"  ⚠️  {rel_path}: file not found, skipping")
+            continue
+
+        # Collect line numbers to remove
+        lines_to_remove: set[int] = set()
+        for removal in removals:
+            line_num = _extract_line_number(removal)
+            if line_num is not None:
+                lines_to_remove.add(line_num)
+
+        if not lines_to_remove:
+            continue
+
+        try:
+            original = file_path.read_text(encoding="utf-8", errors="replace")
+            original_lines = original.splitlines(keepends=True)
+            new_lines: list[str] = []
+            removed_count = 0
+
+            for i, line in enumerate(original_lines, start=1):
+                if i in lines_to_remove:
+                    removed_count += 1
+                    # Also skip blank line immediately after removal if it
+                    # would leave two consecutive blank lines.
+                else:
+                    new_lines.append(line)
+
+            # Clean up: collapse runs of 3+ blank lines into 2
+            cleaned: list[str] = []
+            blank_run = 0
+            for line in new_lines:
+                if line.strip() == "":
+                    blank_run += 1
+                    if blank_run <= 2:
+                        cleaned.append(line)
+                else:
+                    blank_run = 0
+                    cleaned.append(line)
+
+            file_path.write_text("".join(cleaned), encoding="utf-8")
+            total_fixes += removed_count
+            total_files += 1
+            print(f"  ✅ {rel_path}: removed {removed_count} line(s)")
+
+        except KeyboardInterrupt:
+            import _thread
+
+            _thread.interrupt_main()
+            raise
+        except Exception as e:
+            print(f"  ❌ {rel_path}: error: {e}")
+            return 1
+
+    print(f"\n🔧 Fixed {total_fixes} violation(s) across {total_files} file(s)")
+    return 0
+
+
 # ---------------------------------------------------------------------------
 # main
 # ---------------------------------------------------------------------------
@@ -475,6 +552,31 @@ def main() -> int:
         if args.json:
             print(json.dumps(violations, indent=2))
         if violations:
+            if args.fix:
+                max_passes = 5
+                for pass_num in range(1, max_passes + 1):
+                    print(
+                        f"\n🔧 Fix pass {pass_num}: fixing {len(violations)} file(s)..."
+                    )
+                    fix_result = fix_iwyu_violations(violations)
+                    if fix_result != 0:
+                        return fix_result
+                    # Re-scan to check for remaining violations
+                    print(f"\n🔍 Re-scanning after pass {pass_num}...")
+                    violations = scan_fl_headers(quiet=args.quiet)
+                    if not violations:
+                        print("✅ All violations fixed successfully")
+                        return 0
+                # Exhausted passes
+                print(
+                    f"\n⚠️  {len(violations)} files still have violations after"
+                    f" {max_passes} passes:"
+                )
+                for file, removals in sorted(violations.items()):
+                    print(f"\n  {file}:")
+                    for r in removals:
+                        print(f"    - {r}")
+                return 1
             if not args.json:
                 print(f"\n❌ {len(violations)} files with IWYU violations:")
                 for file, removals in sorted(violations.items()):

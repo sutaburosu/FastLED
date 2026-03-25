@@ -17,6 +17,7 @@
 // NOTE: This is an internal implementation header. Do not include directly.
 //       Include "fl/fx/2d/animartrix.hpp" instead.
 
+// IWYU pragma: begin_exports
 // Include standalone Animartrix core functionality
 #include "fl/fx/2d/animartrix_detail/core_types.h"
 #include "fl/fx/2d/animartrix_detail/perlin_float.h"
@@ -109,6 +110,7 @@ FL_OPTIMIZATION_LEVEL_O3_BEGIN
 #include "fl/fx/2d/animartrix_detail/viz/module_experiment9.h"
 #include "fl/fx/2d/animartrix_detail/viz/module_experiment10.h"
 #include "fl/fx/2d/animartrix_detail/viz/fluffy_blobs.h"
+// IWYU pragma: end_exports
 
 namespace fl {
 

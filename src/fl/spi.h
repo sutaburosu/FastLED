@@ -12,12 +12,12 @@
 #include "fl/stl/span.h"
 
 // SPI components
-#include "fl/spi/config.h"
-#include "fl/spi/transaction.h"
-#include "fl/spi/device.h"
-#include "fl/spi/lane.h"
-#include "fl/spi/write_result.h"  // Defines WriteResult with wait() method
-#include "fl/spi/multi_lane_device.h"
+#include "fl/spi/config.h"             // IWYU pragma: export
+#include "fl/spi/transaction.h"        // IWYU pragma: export
+#include "fl/spi/device.h"             // IWYU pragma: export
+#include "fl/spi/lane.h"               // IWYU pragma: export
+#include "fl/spi/write_result.h"       // IWYU pragma: export
+#include "fl/spi/multi_lane_device.h"  // IWYU pragma: export
 // IWYU pragma: begin_keep
 #include "platforms/shared/spi_types.h"  // ok platform headers
 // IWYU pragma: end_keep  // ok platform headers

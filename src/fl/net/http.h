@@ -23,14 +23,14 @@
 /// @endcode
 
 // Client types
-#include "fl/net/http/fetch.h"
+#include "fl/net/http/fetch.h"          // IWYU pragma: export
 
 // Server types
-#include "fl/stl/asio/http/server.h"
+#include "fl/stl/asio/http/server.h"    // IWYU pragma: export
 
 // Stream transport types
-#include "fl/net/http/stream_client.h"
-#include "fl/net/http/stream_server.h"
+#include "fl/net/http/stream_client.h"  // IWYU pragma: export
+#include "fl/net/http/stream_server.h"  // IWYU pragma: export
 
 // Note: fl::asio::http::Server, Request, Response live in fl/stl/asio/http/server.h
 // and will eventually migrate to fl::net::http.

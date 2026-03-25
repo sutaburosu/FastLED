@@ -17,6 +17,7 @@ class LintArgs:
     run_iwyu: bool = False
     run_pyright: bool = False
     run_tidy: bool = False
+    iwyu_fix: bool = False
     files: list[str] = field(default_factory=lambda: list[str]())
 
 
@@ -104,6 +105,12 @@ Examples:
     )
 
     parser.add_argument(
+        "--fix",
+        action="store_true",
+        help="Auto-fix IWYU violations (implies --iwyu)",
+    )
+
+    parser.add_argument(
         "files",
         nargs="*",
         default=[],
@@ -120,13 +127,17 @@ Examples:
     # Single-file mode must never use fingerprint cache — always lint the file
     no_fingerprint = args.no_fingerprint or bool(files)
 
+    # --fix implies --iwyu
+    run_iwyu = args.iwyu or args.fix
+
     return LintArgs(
         js_only=args.js,
         cpp_only=args.cpp,
         no_fingerprint=no_fingerprint,
         run_full=args.full,
-        run_iwyu=args.iwyu,
+        run_iwyu=run_iwyu,
         run_pyright=args.strict,
         run_tidy=args.tidy,
+        iwyu_fix=args.fix,
         files=files,
     )

@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "fl/stl/isr/constants.h"
-#include "fl/stl/isr/memcpy.h"
-#include "fl/stl/isr/handler.h"
-#include "fl/stl/isr/critical_section.h"
+#include "fl/stl/isr/constants.h"        // IWYU pragma: export
+#include "fl/stl/isr/memcpy.h"           // IWYU pragma: export
+#include "fl/stl/isr/handler.h"          // IWYU pragma: export
+#include "fl/stl/isr/critical_section.h" // IWYU pragma: export

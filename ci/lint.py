@@ -110,6 +110,7 @@ def print_ai_hints() -> None:
     print("  - Use 'bash lint --cpp' for C++ linting only")
     print("  - Use 'bash lint --full' to include IWYU (Include-What-You-Use) analysis")
     print("  - Use 'bash lint --iwyu' to run IWYU analysis only")
+    print("  - Use 'bash lint --iwyu --fix' to auto-fix IWYU violations")
     print("  - Use 'bash lint --tidy' to run clang-tidy static analysis on src/fl")
     print("  - Python linting includes: ruff (lint + format) + KBI checker + ty")
     print("  - Use --strict to also run pyright (strict type checking)")
@@ -153,7 +154,9 @@ def create_stages(args: LintArgs) -> list[LintStage]:
                 return False
             if not run_iwyu_pragma_check():
                 return False
-            if not run_iwyu_analysis(args.run_full, args.run_iwyu, args.run_pyright):
+            if not run_iwyu_analysis(
+                args.run_full, args.run_iwyu, args.run_pyright, args.iwyu_fix
+            ):
                 return False
             if not run_clang_tidy(args.no_fingerprint, args.run_tidy):
                 return False
