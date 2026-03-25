@@ -74,6 +74,36 @@ def cleanup_visual_studio_files() -> None:
                     pass  # Ignore errors
 
 
+def cleanup_crash_dump_files() -> None:
+    """Remove crash dump and leftover GDB temp files from .gdb_crash/ and project root."""
+    import shutil
+
+    # Clean up .gdb_crash/ directory
+    crash_dir = Path(".gdb_crash")
+    if crash_dir.exists():
+        count = sum(1 for _ in crash_dir.iterdir())
+        if count > 0:
+            print(f"🧹 Cleaning {count} crash dump file(s) from .gdb_crash/")
+        try:
+            shutil.rmtree(crash_dir)
+        except KeyboardInterrupt:
+            _thread.interrupt_main()
+            raise
+        except Exception:
+            pass
+
+    # Clean up legacy gdb_temp_*.gdb files left in project root
+    for file_path in Path(".").glob("gdb_temp_*.gdb"):
+        try:
+            print(f"🧹 Removing legacy crash file: {file_path}")
+            file_path.unlink()
+        except KeyboardInterrupt:
+            _thread.interrupt_main()
+            raise
+        except Exception:
+            pass
+
+
 def print_header(js_only: bool, cpp_only: bool) -> None:
     """Print the header based on mode."""
     if js_only:
@@ -201,8 +231,9 @@ def main() -> int:
         success = run_single_file_mode(args.files, strict=args.run_pyright)
         return 0 if success else 1
 
-    # Cleanup Visual Studio files
+    # Cleanup Visual Studio files and crash dumps
     cleanup_visual_studio_files()
+    cleanup_crash_dump_files()
 
     # Print header
     print_header(args.js_only, args.cpp_only)

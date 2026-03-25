@@ -25,9 +25,6 @@ namespace fl {
 // Define static constexpr member for npos (required for ODR-uses)
 const fl::size string::npos;
 
-// Explicit template instantiations for commonly used sizes
-template class StrN<64>;
-
 int string::strcmp(const string& a, const string& b) {
     return fl::strcmp(a.c_str(), b.c_str());
 }
@@ -79,10 +76,10 @@ string &string::append(const Tile2x2_u8_wrap &tile) {
 }
 
 void string::swap(string &other) {
-    if (this != &other) {
-        fl::swap(mLength, other.mLength);
-        fl::swap(mStorage, other.mStorage);
-    }
+    if (this == &other) return;
+    string tmp(fl::move(*this));
+    *this = fl::move(other);
+    other = fl::move(tmp);
 }
 
 void string::compileTimeAssertions() {
@@ -156,7 +153,7 @@ string &string::append(const ::String &str) {
 // String interning method implementation
 string& string::intern() {
     // Skip interning if using inline storage (SSO) - already efficient, no heap allocation
-    if (mStorage.template is<InlinedBuffer>()) {
+    if (isInline()) {
         return *this;
     }
 

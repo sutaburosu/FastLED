@@ -71,6 +71,56 @@ _CANCEL_WATCHDOG = threading.Event()
 
 _TIMEOUT_EVERYTHING = 600
 
+_GDB_CRASH_DIR = Path(".gdb_crash")
+_GDB_CRASH_SEEN = _GDB_CRASH_DIR / ".seen"
+
+
+def _check_crash_dumps() -> None:
+    """Check for crash dump files and warn the user."""
+    if not _GDB_CRASH_DIR.exists():
+        return
+    dumps = sorted(_GDB_CRASH_DIR.glob("crash_*.txt"))
+    if not dumps:
+        return
+
+    # Build a content fingerprint from file names + sizes + mtimes
+    import hashlib
+
+    h = hashlib.md5()
+    for d in dumps:
+        stat = d.stat()
+        h.update(f"{d.name}:{stat.st_size}:{stat.st_mtime_ns}".encode())
+    current_hash = h.hexdigest()
+
+    # Check if we already warned about these exact dumps
+    seen_hash = ""
+    if _GDB_CRASH_SEEN.exists():
+        seen_hash = _GDB_CRASH_SEEN.read_text().strip()
+
+    RED = "\033[91m"
+    YELLOW = "\033[93m"
+    RESET = "\033[0m"
+    BOLD = "\033[1m"
+
+    if current_hash == seen_hash:
+        # Already seen — muted one-liner
+        print(
+            f"{YELLOW}(crash dumps unchanged in .gdb_crash/ — {len(dumps)} file(s), run `bash lint` to clean){RESET}"
+        )
+    else:
+        # New or changed dumps — loud red warning
+        print(f"\n{RED}{BOLD}{'=' * 60}")
+        print(f"  CRASH DUMP(S) DETECTED — {len(dumps)} file(s) in .gdb_crash/")
+        print(f"{'=' * 60}{RESET}")
+        for d in dumps:
+            size = d.stat().st_size
+            print(f"  {RED}{d.name}{RESET}  ({size} bytes)")
+        print(f"{RED}{BOLD}Inspect with: cat .gdb_crash/<file>{RESET}")
+        print(f"{RED}{BOLD}Clean with:   bash lint{RESET}")
+        print(f"{RED}{BOLD}{'=' * 60}{RESET}\n")
+        # Stamp so subsequent runs show the muted warning
+        _GDB_CRASH_SEEN.write_text(current_hash)
+
 
 # Platform to emulator backend mapping for --run command
 def _load_backends():
@@ -132,6 +182,9 @@ def main() -> None:
 
         # Parse and process arguments
         args = parse_args()
+
+        # Warn about any leftover crash dumps from previous runs
+        _check_crash_dumps()
 
         if args.debug_test:
             from ci.util.global_interrupt_handler import set_debug_test

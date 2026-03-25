@@ -89,6 +89,7 @@ tests/x64/
 tests/bin
 qemu_output.log
 gdb*.txt
+.gdb_crash/
 qemu-build
 test_output.txt
 ci/**/node_modules

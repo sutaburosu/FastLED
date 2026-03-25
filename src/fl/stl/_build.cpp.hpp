@@ -4,6 +4,7 @@
 
 // begin current directory includes
 #include "fl/stl/allocator.cpp.hpp"
+#include "fl/stl/basic_string.cpp.hpp"
 #include "fl/stl/bitset.cpp.hpp"
 #include "fl/stl/charconv.cpp.hpp"
 #include "fl/stl/chrono.cpp.hpp"

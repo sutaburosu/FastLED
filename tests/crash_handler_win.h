@@ -21,8 +21,12 @@ FL_DISABLE_WARNING_POP
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <io.h>
+#include <fcntl.h>
 #include <vector>
 #include <string>
+
+#include "fl/stl/singleton.h"
 
 #ifdef _MSC_VER
 #pragma comment(lib, "dbghelp.lib")
@@ -31,191 +35,235 @@ FL_DISABLE_WARNING_POP
 
 namespace crash_handler_win {
 
-// Global flag to track if symbols are initialized
-static bool g_symbols_initialized = false;
+/// All crash-handler state and logic, managed as a process-wide singleton.
+struct CrashHandlerState {
+    // --- State ---
+    bool symbols_initialized = false;
+    char crash_dump_path[MAX_PATH] = {0};
+    int saved_stdout_fd = -1;
+    int crash_dump_fd = -1;
+    int script_counter = 0;
 
-// Helper function to get module name from address
-inline std::string get_module_name(DWORD64 address) {
-    HMODULE hModule;
-    if (GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | 
-                         GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-                         (LPCTSTR)address, &hModule)) {
-        char moduleName[MAX_PATH];
-        if (GetModuleFileNameA(hModule, moduleName, MAX_PATH)) {
-            // Extract just the filename
-            char* fileName = strrchr(moduleName, '\\');
-            if (fileName) fileName++;
-            else fileName = moduleName;
-            return std::string(fileName);
+    static constexpr const char* kCrashDumpDir = ".gdb_crash";
+
+    static CrashHandlerState& instance() {
+        return fl::Singleton<CrashHandlerState>::instance();
+    }
+
+    // --- Crash dump file support ---
+
+    bool begin_crash_dump() {
+        CreateDirectoryA(kCrashDumpDir, NULL);
+        // Extract executable basename
+        char exePath[MAX_PATH] = {0};
+        GetModuleFileNameA(NULL, exePath, MAX_PATH);
+        const char* baseName = strrchr(exePath, '\\');
+        if (!baseName) baseName = strrchr(exePath, '/');
+        baseName = baseName ? baseName + 1 : exePath;
+        // Strip .exe / .dll extension
+        char cleanName[MAX_PATH];
+        strncpy(cleanName, baseName, MAX_PATH - 1);
+        cleanName[MAX_PATH - 1] = '\0';
+        char* dot = strrchr(cleanName, '.');
+        if (dot) *dot = '\0';
+        // Use executable name + PID for uniqueness
+        snprintf(crash_dump_path, sizeof(crash_dump_path),
+                 "%s/crash_%s_%lu.txt", kCrashDumpDir, cleanName, GetCurrentProcessId());
+        // Save original stdout fd
+        saved_stdout_fd = _dup(_fileno(stdout));
+        if (saved_stdout_fd < 0) return false;
+        // Open dump file
+        crash_dump_fd = _open(crash_dump_path,
+                              _O_WRONLY | _O_CREAT | _O_TRUNC,
+                              0666);
+        if (crash_dump_fd < 0) {
+            _close(saved_stdout_fd);
+            saved_stdout_fd = -1;
+            return false;
         }
-    }
-    return "unknown";
-}
-
-// Helper function to demangle C++ symbols
-inline std::string demangle_symbol(const char* symbol_name) {
-    if (!symbol_name) return "unknown";
-    
-    // For now, return as-is. In a full implementation, you might want to use
-    // a C++ demangler library or call the Windows undecorate function
-    return std::string(symbol_name);
-}
-
-inline std::string get_symbol_with_gdb(DWORD64 address) {
-    // Get the module base address to calculate file offset
-    HMODULE hModule = nullptr;
-    if (!GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
-                           (LPCSTR)address, &hModule)) {
-        return "-- module not found";
+        // Redirect stdout to crash dump file
+        _dup2(crash_dump_fd, _fileno(stdout));
+        return true;
     }
 
-    // Calculate file offset by subtracting module base
-    DWORD64 fileOffset = address - (DWORD64)hModule;
-
-    // Get module filename
-    char modulePath[MAX_PATH];
-    if (!GetModuleFileNameA(hModule, modulePath, MAX_PATH)) {
-        return "-- module path not found";
+    void end_crash_dump() {
+        fflush(stdout);
+        if (saved_stdout_fd >= 0) {
+            _dup2(saved_stdout_fd, _fileno(stdout));
+            _close(saved_stdout_fd);
+            saved_stdout_fd = -1;
+        }
+        if (crash_dump_fd >= 0) {
+            _close(crash_dump_fd);
+            crash_dump_fd = -1;
+        }
+        // Now stdout is back to console - print the dump to console too
+        FILE* dump = fopen(crash_dump_path, "r");
+        if (dump) {
+            char buf[512];
+            while (fgets(buf, sizeof(buf), dump)) {
+                fputs(buf, stdout);
+            }
+            fclose(dump);
+        }
+        // Print marker so AI agents / test harness can find the dump
+        printf("\n[CRASH_DUMP_FILE: %s]\n", crash_dump_path);
+        fflush(stdout);
     }
 
-    // Get PE ImageBase from the executable headers
-    // For 64-bit PE files, the standard ImageBase is 0x140000000
-    IMAGE_DOS_HEADER dosHeader;
-    IMAGE_NT_HEADERS64 ntHeaders;
-    DWORD64 peImageBase = 0x140000000;  // Default for 64-bit PE
+    // --- Symbol helpers ---
 
-    FILE* exeFile = fopen(modulePath, "rb");
-    if (exeFile) {
-        // Read DOS header
-        if (fread(&dosHeader, sizeof(IMAGE_DOS_HEADER), 1, exeFile) == 1) {
-            // Seek to NT headers
-            if (fseek(exeFile, dosHeader.e_lfanew, SEEK_SET) == 0) {
-                // Read NT headers
-                if (fread(&ntHeaders, sizeof(IMAGE_NT_HEADERS64), 1, exeFile) == 1) {
-                    if (ntHeaders.Signature == IMAGE_NT_SIGNATURE) {
-                        peImageBase = ntHeaders.OptionalHeader.ImageBase;
+    std::string get_module_name(DWORD64 address) {
+        HMODULE hModule;
+        if (GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
+                             GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                             (LPCTSTR)address, &hModule)) {
+            char moduleName[MAX_PATH];
+            if (GetModuleFileNameA(hModule, moduleName, MAX_PATH)) {
+                char* fileName = strrchr(moduleName, '\\');
+                if (fileName) fileName++;
+                else fileName = moduleName;
+                return std::string(fileName);
+            }
+        }
+        return "unknown";
+    }
+
+    std::string demangle_symbol(const char* symbol_name) {
+        if (!symbol_name) return "unknown";
+        return std::string(symbol_name);
+    }
+
+    std::string get_symbol_with_gdb(DWORD64 address) {
+        HMODULE hModule = nullptr;
+        if (!GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
+                               (LPCSTR)address, &hModule)) {
+            return "-- module not found";
+        }
+
+        DWORD64 fileOffset = address - (DWORD64)hModule;
+
+        char modulePath[MAX_PATH];
+        if (!GetModuleFileNameA(hModule, modulePath, MAX_PATH)) {
+            return "-- module path not found";
+        }
+
+        // Get PE ImageBase from the executable headers
+        IMAGE_DOS_HEADER dosHeader;
+        IMAGE_NT_HEADERS64 ntHeaders;
+        DWORD64 peImageBase = 0x140000000;  // Default for 64-bit PE
+
+        FILE* exeFile = fopen(modulePath, "rb");
+        if (exeFile) {
+            if (fread(&dosHeader, sizeof(IMAGE_DOS_HEADER), 1, exeFile) == 1) {
+                if (fseek(exeFile, dosHeader.e_lfanew, SEEK_SET) == 0) {
+                    if (fread(&ntHeaders, sizeof(IMAGE_NT_HEADERS64), 1, exeFile) == 1) {
+                        if (ntHeaders.Signature == IMAGE_NT_SIGNATURE) {
+                            peImageBase = ntHeaders.OptionalHeader.ImageBase;
+                        }
                     }
                 }
             }
-        }
-        fclose(exeFile);
-    }
-
-    // Convert runtime address to PE file address for GDB
-    // GDB expects addresses relative to the PE ImageBase, not the runtime load address
-    DWORD64 peAddress = peImageBase + fileOffset;
-
-    // Build gdb command for symbol resolution (much better with PE+DWARF than addr2line)
-    // Use a temporary script file to avoid quoting issues
-    static int script_counter = 0; // okay static in header
-    char script_name[256];
-    snprintf(script_name, sizeof(script_name), "gdb_temp_%d.gdb", ++script_counter);
-
-    // Create temporary GDB script
-    FILE* script = fopen(script_name, "w");
-    if (!script) {
-        return "-- gdb script creation failed";
-    }
-
-    // Convert backslashes to forward slashes for GDB (GDB on Windows accepts both)
-    char gdbPath[MAX_PATH];
-    strncpy(gdbPath, modulePath, MAX_PATH);
-    for (char* p = gdbPath; *p; p++) {
-        if (*p == '\\') *p = '/';
-    }
-
-    fprintf(script, "file %s\n", gdbPath);
-    fprintf(script, "info symbol 0x%llx\n", peAddress);
-    fprintf(script, "info line *0x%llx\n", peAddress);
-    fprintf(script, "quit\n");
-    fclose(script);
-
-    // Build command using script file
-    char command[1024];
-    snprintf(command, sizeof(command), "gdb -batch -x %s 2>&1", script_name);
-
-    // Execute gdb
-    FILE* pipe = _popen(command, "r");
-    if (!pipe) {
-        return "-- gdb failed";
-    }
-
-    char output[512] = {0};
-    std::string symbol_result;
-    std::string line_result;
-
-    // Read gdb output
-    while (fgets(output, sizeof(output), pipe)) {
-        std::string line(output);
-
-        // Remove newline
-        if (!line.empty() && line.back() == '\n') {
-            line.pop_back();
+            fclose(exeFile);
         }
 
-        // Skip copyright and other non-symbol lines
-        if (line.find("Copyright") != std::string::npos ||
-            line.find("This GDB") != std::string::npos ||
-            line.find("License") != std::string::npos ||
-            line.empty()) {
-            continue;
+        DWORD64 peAddress = peImageBase + fileOffset;
+
+        CreateDirectoryA(kCrashDumpDir, NULL);
+        char script_name[256];
+        snprintf(script_name, sizeof(script_name), "%s/gdb_temp_%d.gdb",
+                 kCrashDumpDir, ++script_counter);
+
+        FILE* script = fopen(script_name, "w");
+        if (!script) {
+            return "-- gdb script creation failed";
         }
 
-        // Look for symbol information
-        if (line.find(" in section ") != std::string::npos) {
-            // Parse gdb "info symbol" output format: "symbol_name in section .text"
-            size_t in_pos = line.find(" in section ");
-            if (in_pos != std::string::npos) {
-                symbol_result = line.substr(0, in_pos);
+        char gdbPath[MAX_PATH];
+        strncpy(gdbPath, modulePath, MAX_PATH);
+        for (char* p = gdbPath; *p; p++) {
+            if (*p == '\\') *p = '/';
+        }
+
+        fprintf(script, "file %s\n", gdbPath);
+        fprintf(script, "info symbol 0x%llx\n", peAddress);
+        fprintf(script, "info line *0x%llx\n", peAddress);
+        fprintf(script, "quit\n");
+        fclose(script);
+
+        char command[1024];
+        snprintf(command, sizeof(command), "gdb -batch -x %s 2>&1", script_name);
+
+        FILE* pipe = _popen(command, "r");
+        if (!pipe) {
+            return "-- gdb failed";
+        }
+
+        char output[512] = {0};
+        std::string symbol_result;
+        std::string line_result;
+
+        while (fgets(output, sizeof(output), pipe)) {
+            std::string line(output);
+
+            if (!line.empty() && line.back() == '\n') {
+                line.pop_back();
             }
-        } else if (line.find("No symbol matches") != std::string::npos) {
-            symbol_result = "-- symbol not found";
-        } else if (line.find("Line ") != std::string::npos && line.find(" of ") != std::string::npos) {
-            // Parse gdb "info line" output format: "Line 123 of \"file.cpp\" starts at address 0x..."
-            line_result = line;
-        } else if (line.find("No line number information") != std::string::npos) {
-            line_result = "-- no line info";
+
+            if (line.find("Copyright") != std::string::npos ||
+                line.find("This GDB") != std::string::npos ||
+                line.find("License") != std::string::npos ||
+                line.empty()) {
+                continue;
+            }
+
+            if (line.find(" in section ") != std::string::npos) {
+                size_t in_pos = line.find(" in section ");
+                if (in_pos != std::string::npos) {
+                    symbol_result = line.substr(0, in_pos);
+                }
+            } else if (line.find("No symbol matches") != std::string::npos) {
+                symbol_result = "-- symbol not found";
+            } else if (line.find("Line ") != std::string::npos && line.find(" of ") != std::string::npos) {
+                line_result = line;
+            } else if (line.find("No line number information") != std::string::npos) {
+                line_result = "-- no line info";
+            }
         }
+
+        _pclose(pipe);
+        remove(script_name);
+
+        std::string result;
+        if (!symbol_result.empty() && symbol_result != "-- symbol not found") {
+            result = symbol_result;
+            if (!line_result.empty() && line_result != "-- no line info") {
+                result += " (" + line_result + ")";
+            }
+        } else if (!line_result.empty() && line_result != "-- no line info") {
+            result = line_result;
+        } else {
+            result = "-- no debug information available";
+        }
+
+        return result;
     }
 
-    _pclose(pipe);
+    // --- Stack trace printers ---
 
-    // Clean up temporary script file
-    remove(script_name);
-
-    // Combine symbol and line information for comprehensive debugging
-    std::string result;
-    if (!symbol_result.empty() && symbol_result != "-- symbol not found") {
-        result = symbol_result;
-        if (!line_result.empty() && line_result != "-- no line info") {
-            result += " (" + line_result + ")";
-        }
-    } else if (!line_result.empty() && line_result != "-- no line info") {
-        result = line_result;
-    } else {
-        result = "-- no debug information available";
-    }
-
-    return result;
-}
-
-inline void print_stacktrace_windows() {
-    HANDLE process = GetCurrentProcess();
-    
-    // Initialize symbol handler if not already done
-    if (!g_symbols_initialized) {
-        // Set symbol options for better debugging with Clang symbols
-        SymSetOptions(SYMOPT_LOAD_LINES | 
-                     SYMOPT_DEFERRED_LOADS | 
-                     SYMOPT_UNDNAME | 
+    void init_symbols() {
+        if (symbols_initialized) return;
+        HANDLE process = GetCurrentProcess();
+        SymSetOptions(SYMOPT_LOAD_LINES |
+                     SYMOPT_DEFERRED_LOADS |
+                     SYMOPT_UNDNAME |
                      SYMOPT_DEBUG |
-                     SYMOPT_LOAD_ANYTHING |           // Load any kind of debug info
-                     SYMOPT_CASE_INSENSITIVE |        // Case insensitive symbol lookup
-                     SYMOPT_FAVOR_COMPRESSED |        // Prefer compressed symbols
-                     SYMOPT_INCLUDE_32BIT_MODULES |   // Include 32-bit modules
-                     SYMOPT_AUTO_PUBLICS);            // Automatically load public symbols
-        
-        // Try to initialize with symbol search path including current directory
+                     SYMOPT_LOAD_ANYTHING |
+                     SYMOPT_CASE_INSENSITIVE |
+                     SYMOPT_FAVOR_COMPRESSED |
+                     SYMOPT_INCLUDE_32BIT_MODULES |
+                     SYMOPT_AUTO_PUBLICS);
+
         char currentPath[MAX_PATH];
         GetCurrentDirectoryA(MAX_PATH, currentPath);
         if (!SymInitialize(process, currentPath, TRUE)) {
@@ -224,52 +272,34 @@ inline void print_stacktrace_windows() {
             printf("This may be due to missing debug symbols or insufficient permissions.\n");
             printf("Try running as administrator or ensure debug symbols are available.\n\n");
         } else {
-            g_symbols_initialized = true;
+            symbols_initialized = true;
             printf("Symbol handler initialized successfully.\n");
         }
     }
-    
-    // Get stack trace
-    void* stack[100];
-    WORD numberOfFrames = CaptureStackBackTrace(0, 100, stack, nullptr);
-    
-    printf("Stack trace (Windows):\n");
-    printf("Captured %d frames:\n\n", numberOfFrames);
-    
-    // Buffer for symbol information
-    char symbolBuffer[sizeof(SYMBOL_INFO) + MAX_SYM_NAME * sizeof(TCHAR)];
-    PSYMBOL_INFO pSymbol = (PSYMBOL_INFO)symbolBuffer;
-    pSymbol->SizeOfStruct = sizeof(SYMBOL_INFO);
-    pSymbol->MaxNameLen = MAX_SYM_NAME;
-    
-    // Line information
-    IMAGEHLP_LINE64 line;
-    line.SizeOfStruct = sizeof(IMAGEHLP_LINE64);
-    
-    for (WORD i = 0; i < numberOfFrames; i++) {
-        DWORD64 address = (DWORD64)(stack[i]);
-        
-        printf("#%-2d 0x%016llx", i, address);
-        
-        // Get module name first
+
+    void print_symbol_for_address(DWORD64 address) {
+        HANDLE process = GetCurrentProcess();
         std::string moduleName = get_module_name(address);
         printf(" [%s]", moduleName.c_str());
-        
-        // Try to get symbol information - prioritize gdb for DWARF symbols in PE files
+
         std::string gdb_result = get_symbol_with_gdb(address);
         if (gdb_result.find("--") != 0) {
             printf(" %s", gdb_result.c_str());
-        } else if (g_symbols_initialized) {
-            // Fallback to Windows SymFromAddr API
+        } else if (symbols_initialized) {
+            char symbolBuffer[sizeof(SYMBOL_INFO) + MAX_SYM_NAME * sizeof(TCHAR)];
+            PSYMBOL_INFO pSymbol = (PSYMBOL_INFO)symbolBuffer;
+            pSymbol->SizeOfStruct = sizeof(SYMBOL_INFO);
+            pSymbol->MaxNameLen = MAX_SYM_NAME;
+
             DWORD64 displacement = 0;
             if (SymFromAddr(process, address, &displacement, pSymbol)) {
                 std::string demangled = demangle_symbol(pSymbol->Name);
                 printf(" %s+0x%llx (via Windows API)", demangled.c_str(), displacement);
-                
-                // Try to get line number
+
+                IMAGEHLP_LINE64 line;
+                line.SizeOfStruct = sizeof(IMAGEHLP_LINE64);
                 DWORD lineDisplacement = 0;
                 if (SymGetLineFromAddr64(process, address, &lineDisplacement, &line)) {
-                    // Extract just the filename from the full path
                     char* fileName = strrchr(line.FileName, '\\');
                     if (fileName) fileName++;
                     else fileName = line.FileName;
@@ -286,520 +316,391 @@ inline void print_stacktrace_windows() {
         } else {
             printf(" -- no symbol resolution available");
         }
-        printf("\n");
-    }
-    
-    printf("\nDebug Information:\n");
-    printf("- Symbol handler initialized: %s\n", g_symbols_initialized ? "Yes" : "No");
-    printf("- Process ID: %lu\n", GetCurrentProcessId());
-    printf("- Thread ID: %lu\n", GetCurrentThreadId());
-    
-    // Show loaded modules for debugging
-    printf("\nLoaded modules:\n");
-    HMODULE hModules[1024];
-    DWORD cbNeeded;
-    if (EnumProcessModules(process, hModules, sizeof(hModules), &cbNeeded)) {
-        for (unsigned int i = 0; i < (cbNeeded / sizeof(HMODULE)); i++) {
-            char moduleName[MAX_PATH];
-            if (GetModuleFileNameA(hModules[i], moduleName, MAX_PATH)) {
-                char* fileName = strrchr(moduleName, '\\');
-                if (fileName) fileName++;
-                else fileName = moduleName;
-                printf("  %s\n", fileName);
-            }
-        }
-    }
-    
-    printf("\n");
-}
-
-// Walk the stack starting from an exception context using StackWalk64.
-// This produces the actual crash stack (not the handler's frames).
-inline void print_stacktrace_from_context(CONTEXT* ctx) {
-    HANDLE process = GetCurrentProcess();
-    HANDLE thread = GetCurrentThread();
-
-    // Initialize symbol handler if not already done
-    if (!g_symbols_initialized) {
-        SymSetOptions(SYMOPT_LOAD_LINES |
-                     SYMOPT_DEFERRED_LOADS |
-                     SYMOPT_UNDNAME |
-                     SYMOPT_DEBUG |
-                     SYMOPT_LOAD_ANYTHING |
-                     SYMOPT_CASE_INSENSITIVE |
-                     SYMOPT_FAVOR_COMPRESSED |
-                     SYMOPT_INCLUDE_32BIT_MODULES |
-                     SYMOPT_AUTO_PUBLICS);
-
-        char currentPath[MAX_PATH];
-        GetCurrentDirectoryA(MAX_PATH, currentPath);
-        if (!SymInitialize(process, currentPath, TRUE)) {
-            printf("SymInitialize failed with error %lu\n", GetLastError());
-        } else {
-            g_symbols_initialized = true;
-        }
     }
 
-    // Make a copy of the context because StackWalk64 modifies it
-    CONTEXT ctxCopy = *ctx;
-
-    STACKFRAME64 frame;
-    memset(&frame, 0, sizeof(frame));
-#if defined(_M_X64) || defined(__x86_64__) || defined(__amd64__)
-    DWORD machineType = IMAGE_FILE_MACHINE_AMD64;
-    frame.AddrPC.Offset = ctxCopy.Rip;
-    frame.AddrPC.Mode = AddrModeFlat;
-    frame.AddrFrame.Offset = ctxCopy.Rbp;
-    frame.AddrFrame.Mode = AddrModeFlat;
-    frame.AddrStack.Offset = ctxCopy.Rsp;
-    frame.AddrStack.Mode = AddrModeFlat;
-#else
-    DWORD machineType = IMAGE_FILE_MACHINE_I386;
-    frame.AddrPC.Offset = ctxCopy.Eip;
-    frame.AddrPC.Mode = AddrModeFlat;
-    frame.AddrFrame.Offset = ctxCopy.Ebp;
-    frame.AddrFrame.Mode = AddrModeFlat;
-    frame.AddrStack.Offset = ctxCopy.Esp;
-    frame.AddrStack.Mode = AddrModeFlat;
-#endif
-
-    printf("Stack trace (from exception context via StackWalk64):\n\n");
-
-    // If RIP is 0 (null function pointer call), report it and recover the
-    // caller by reading the return address from the stack.
-#if defined(_M_X64) || defined(__x86_64__) || defined(__amd64__)
-    if (ctxCopy.Rip == 0 && ctxCopy.Rsp != 0) {
-        printf("#0  0x0000000000000000 [<null>] -- null function pointer call\n");
-        // The CALL instruction pushed the return address onto RSP before
-        // jumping to 0.  Read it to recover the real caller.
-        DWORD64 retAddr = 0;
-        SIZE_T bytesRead = 0;
-        if (ReadProcessMemory(process, (LPCVOID)ctxCopy.Rsp, &retAddr,
-                              sizeof(retAddr), &bytesRead) && bytesRead == sizeof(retAddr)) {
-            ctxCopy.Rip = retAddr;
-            ctxCopy.Rsp += sizeof(DWORD64);  // pop the return address
-            // Re-initialize the frame from the recovered context
-            memset(&frame, 0, sizeof(frame));
-            frame.AddrPC.Offset = ctxCopy.Rip;
-            frame.AddrPC.Mode = AddrModeFlat;
-            frame.AddrFrame.Offset = ctxCopy.Rbp;
-            frame.AddrFrame.Mode = AddrModeFlat;
-            frame.AddrStack.Offset = ctxCopy.Rsp;
-            frame.AddrStack.Mode = AddrModeFlat;
-        }
-    }
-#endif
-
-    char symbolBuffer[sizeof(SYMBOL_INFO) + MAX_SYM_NAME * sizeof(TCHAR)];
-    PSYMBOL_INFO pSymbol = (PSYMBOL_INFO)symbolBuffer;
-    pSymbol->SizeOfStruct = sizeof(SYMBOL_INFO);
-    pSymbol->MaxNameLen = MAX_SYM_NAME;
-
-    IMAGEHLP_LINE64 line;
-    line.SizeOfStruct = sizeof(IMAGEHLP_LINE64);
-
-    for (int i = 0; i < 100; i++) {
-        if (!StackWalk64(machineType, process, thread, &frame, &ctxCopy,
-                         nullptr, SymFunctionTableAccess64, SymGetModuleBase64, nullptr)) {
-            break;
-        }
-
-        if (frame.AddrPC.Offset == 0) {
-            break;
-        }
-
-        DWORD64 address = frame.AddrPC.Offset;
-        printf("#%-2d 0x%016llx", i + 1, address);
-
-        std::string moduleName = get_module_name(address);
-        printf(" [%s]", moduleName.c_str());
-
-        // Try GDB first for DWARF symbols
-        std::string gdb_result = get_symbol_with_gdb(address);
-        if (gdb_result.find("--") != 0) {
-            printf(" %s", gdb_result.c_str());
-        } else if (g_symbols_initialized) {
-            DWORD64 displacement = 0;
-            if (SymFromAddr(process, address, &displacement, pSymbol)) {
-                std::string demangled = demangle_symbol(pSymbol->Name);
-                printf(" %s + %llu", demangled.c_str(), displacement);
-
-                DWORD lineDisplacement = 0;
-                if (SymGetLineFromAddr64(process, address, &lineDisplacement, &line)) {
-                    char* fileName = strrchr(line.FileName, '\\');
+    void print_loaded_modules() {
+        HANDLE process = GetCurrentProcess();
+        printf("\nLoaded modules:\n");
+        HMODULE hModules[1024];
+        DWORD cbNeeded;
+        if (EnumProcessModules(process, hModules, sizeof(hModules), &cbNeeded)) {
+            for (unsigned int i = 0; i < (cbNeeded / sizeof(HMODULE)); i++) {
+                char moduleName[MAX_PATH];
+                if (GetModuleFileNameA(hModules[i], moduleName, MAX_PATH)) {
+                    char* fileName = strrchr(moduleName, '\\');
                     if (fileName) fileName++;
-                    else fileName = line.FileName;
-                    printf(" [%s:%lu]", fileName, line.LineNumber);
+                    else fileName = moduleName;
+                    printf("  %s\n", fileName);
                 }
-            } else {
-                printf(" -- no symbol info");
             }
         }
         printf("\n");
     }
 
-    // Show loaded modules
-    printf("\nLoaded modules:\n");
-    HMODULE hModules[1024];
-    DWORD cbNeeded;
-    if (EnumProcessModules(process, hModules, sizeof(hModules), &cbNeeded)) {
-        for (unsigned int i = 0; i < (cbNeeded / sizeof(HMODULE)); i++) {
-            char moduleName[MAX_PATH];
-            if (GetModuleFileNameA(hModules[i], moduleName, MAX_PATH)) {
-                char* fileName = strrchr(moduleName, '\\');
-                if (fileName) fileName++;
-                else fileName = moduleName;
-                printf("  %s\n", fileName);
+    void print_stacktrace_windows() {
+        HANDLE process = GetCurrentProcess();
+        init_symbols();
+
+        void* stack[100];
+        WORD numberOfFrames = CaptureStackBackTrace(0, 100, stack, nullptr);
+
+        printf("Stack trace (Windows):\n");
+        printf("Captured %d frames:\n\n", numberOfFrames);
+
+        for (WORD i = 0; i < numberOfFrames; i++) {
+            DWORD64 address = (DWORD64)(stack[i]);
+            printf("#%-2d 0x%016llx", i, address);
+            print_symbol_for_address(address);
+            printf("\n");
+        }
+
+        printf("\nDebug Information:\n");
+        printf("- Symbol handler initialized: %s\n", symbols_initialized ? "Yes" : "No");
+        printf("- Process ID: %lu\n", GetCurrentProcessId());
+        printf("- Thread ID: %lu\n", GetCurrentThreadId());
+
+        print_loaded_modules();
+    }
+
+    void print_stacktrace_from_context(CONTEXT* ctx) {
+        HANDLE process = GetCurrentProcess();
+        HANDLE thread = GetCurrentThread();
+        init_symbols();
+
+        CONTEXT ctxCopy = *ctx;
+
+        STACKFRAME64 frame;
+        memset(&frame, 0, sizeof(frame));
+#if defined(_M_X64) || defined(__x86_64__) || defined(__amd64__)
+        DWORD machineType = IMAGE_FILE_MACHINE_AMD64;
+        frame.AddrPC.Offset = ctxCopy.Rip;
+        frame.AddrPC.Mode = AddrModeFlat;
+        frame.AddrFrame.Offset = ctxCopy.Rbp;
+        frame.AddrFrame.Mode = AddrModeFlat;
+        frame.AddrStack.Offset = ctxCopy.Rsp;
+        frame.AddrStack.Mode = AddrModeFlat;
+#else
+        DWORD machineType = IMAGE_FILE_MACHINE_I386;
+        frame.AddrPC.Offset = ctxCopy.Eip;
+        frame.AddrPC.Mode = AddrModeFlat;
+        frame.AddrFrame.Offset = ctxCopy.Ebp;
+        frame.AddrFrame.Mode = AddrModeFlat;
+        frame.AddrStack.Offset = ctxCopy.Esp;
+        frame.AddrStack.Mode = AddrModeFlat;
+#endif
+
+        printf("Stack trace (from exception context via StackWalk64):\n\n");
+
+#if defined(_M_X64) || defined(__x86_64__) || defined(__amd64__)
+        if (ctxCopy.Rip == 0 && ctxCopy.Rsp != 0) {
+            printf("#0  0x0000000000000000 [<null>] -- null function pointer call\n");
+            DWORD64 retAddr = 0;
+            SIZE_T bytesRead = 0;
+            if (ReadProcessMemory(process, (LPCVOID)ctxCopy.Rsp, &retAddr,
+                                  sizeof(retAddr), &bytesRead) && bytesRead == sizeof(retAddr)) {
+                ctxCopy.Rip = retAddr;
+                ctxCopy.Rsp += sizeof(DWORD64);
+                memset(&frame, 0, sizeof(frame));
+                frame.AddrPC.Offset = ctxCopy.Rip;
+                frame.AddrPC.Mode = AddrModeFlat;
+                frame.AddrFrame.Offset = ctxCopy.Rbp;
+                frame.AddrFrame.Mode = AddrModeFlat;
+                frame.AddrStack.Offset = ctxCopy.Rsp;
+                frame.AddrStack.Mode = AddrModeFlat;
             }
         }
+#endif
+
+        for (int i = 0; i < 100; i++) {
+            if (!StackWalk64(machineType, process, thread, &frame, &ctxCopy,
+                             nullptr, SymFunctionTableAccess64, SymGetModuleBase64, nullptr)) {
+                break;
+            }
+
+            if (frame.AddrPC.Offset == 0) {
+                break;
+            }
+
+            DWORD64 address = frame.AddrPC.Offset;
+            printf("#%-2d 0x%016llx", i + 1, address);
+            print_symbol_for_address(address);
+            printf("\n");
+        }
+
+        print_loaded_modules();
     }
-    printf("\n");
-}
 
-// Helper: returns true for exception codes that are fatal/actionable
-inline bool is_fatal_exception(DWORD code) {
-    switch (code) {
-        case EXCEPTION_ACCESS_VIOLATION:
-        case EXCEPTION_STACK_OVERFLOW:
-        case EXCEPTION_ILLEGAL_INSTRUCTION:
-        case EXCEPTION_PRIV_INSTRUCTION:
-        case EXCEPTION_NONCONTINUABLE_EXCEPTION:
-        case EXCEPTION_ARRAY_BOUNDS_EXCEEDED:
-        case EXCEPTION_FLT_DIVIDE_BY_ZERO:
-        case EXCEPTION_FLT_INVALID_OPERATION:
-        case EXCEPTION_FLT_OVERFLOW:
-        case EXCEPTION_FLT_STACK_CHECK:
-        case EXCEPTION_FLT_UNDERFLOW:
-        case EXCEPTION_INT_DIVIDE_BY_ZERO:
-        case EXCEPTION_INT_OVERFLOW:
-        case 0xC0000374: // STATUS_HEAP_CORRUPTION
-            return true;
-        default:
-            return false;
+    void print_stacktrace_for_thread(HANDLE thread_handle) {
+        HANDLE process = GetCurrentProcess();
+        init_symbols();
+
+        CONTEXT ctx;
+        memset(&ctx, 0, sizeof(ctx));
+        ctx.ContextFlags = CONTEXT_FULL;
+        if (!GetThreadContext(thread_handle, &ctx)) {
+            printf("GetThreadContext failed with error %lu\n", GetLastError());
+            print_stacktrace_windows();
+            return;
+        }
+
+        STACKFRAME64 frame;
+        memset(&frame, 0, sizeof(frame));
+#ifdef _M_X64
+        DWORD machineType = IMAGE_FILE_MACHINE_AMD64;
+        frame.AddrPC.Offset = ctx.Rip;
+        frame.AddrPC.Mode = AddrModeFlat;
+        frame.AddrFrame.Offset = ctx.Rbp;
+        frame.AddrFrame.Mode = AddrModeFlat;
+        frame.AddrStack.Offset = ctx.Rsp;
+        frame.AddrStack.Mode = AddrModeFlat;
+#elif defined(__x86_64__) || defined(__amd64__)
+        DWORD machineType = IMAGE_FILE_MACHINE_AMD64;
+        frame.AddrPC.Offset = ctx.Rip;
+        frame.AddrPC.Mode = AddrModeFlat;
+        frame.AddrFrame.Offset = ctx.Rbp;
+        frame.AddrFrame.Mode = AddrModeFlat;
+        frame.AddrStack.Offset = ctx.Rsp;
+        frame.AddrStack.Mode = AddrModeFlat;
+#else
+        DWORD machineType = IMAGE_FILE_MACHINE_I386;
+        frame.AddrPC.Offset = ctx.Eip;
+        frame.AddrPC.Mode = AddrModeFlat;
+        frame.AddrFrame.Offset = ctx.Ebp;
+        frame.AddrFrame.Mode = AddrModeFlat;
+        frame.AddrStack.Offset = ctx.Esp;
+        frame.AddrStack.Mode = AddrModeFlat;
+#endif
+
+        printf("Stack trace (main thread, via StackWalk64):\n\n");
+
+        for (int i = 0; i < 100; i++) {
+            if (!StackWalk64(machineType, process, thread_handle, &frame, &ctx,
+                             nullptr, SymFunctionTableAccess64, SymGetModuleBase64, nullptr)) {
+                break;
+            }
+
+            if (frame.AddrPC.Offset == 0) {
+                break;
+            }
+
+            DWORD64 address = frame.AddrPC.Offset;
+            printf("#%-2d 0x%016llx", i, address);
+            print_symbol_for_address(address);
+            printf("\n");
+        }
+        printf("\n");
     }
-}
 
-inline LONG WINAPI windows_exception_handler(EXCEPTION_POINTERS* ExceptionInfo) {
-    DWORD code = ExceptionInfo->ExceptionRecord->ExceptionCode;
+    // --- Exception / signal handling ---
 
-    // Skip non-fatal exceptions (e.g., debug breakpoints, C++ exceptions)
-    // This is important because AddVectoredExceptionHandler sees ALL exceptions
-    if (!is_fatal_exception(code)) {
+    static bool is_fatal_exception(DWORD code) {
+        switch (code) {
+            case EXCEPTION_ACCESS_VIOLATION:
+            case EXCEPTION_STACK_OVERFLOW:
+            case EXCEPTION_ILLEGAL_INSTRUCTION:
+            case EXCEPTION_PRIV_INSTRUCTION:
+            case EXCEPTION_NONCONTINUABLE_EXCEPTION:
+            case EXCEPTION_ARRAY_BOUNDS_EXCEEDED:
+            case EXCEPTION_FLT_DIVIDE_BY_ZERO:
+            case EXCEPTION_FLT_INVALID_OPERATION:
+            case EXCEPTION_FLT_OVERFLOW:
+            case EXCEPTION_FLT_STACK_CHECK:
+            case EXCEPTION_FLT_UNDERFLOW:
+            case EXCEPTION_INT_DIVIDE_BY_ZERO:
+            case EXCEPTION_INT_OVERFLOW:
+            case 0xC0000374: // STATUS_HEAP_CORRUPTION
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    static void print_exception_type(DWORD code, EXCEPTION_RECORD* record) {
+        switch (code) {
+            case EXCEPTION_ACCESS_VIOLATION:
+                printf("Exception type: Access Violation\n");
+                printf("Attempted to %s at address 0x%p\n",
+                       record->ExceptionInformation[0] ? "write" : "read",
+                       (void*)record->ExceptionInformation[1]);
+                break;
+            case EXCEPTION_STACK_OVERFLOW:
+                printf("Exception type: Stack Overflow\n");
+                break;
+            case EXCEPTION_ILLEGAL_INSTRUCTION:
+                printf("Exception type: Illegal Instruction\n");
+                break;
+            case EXCEPTION_PRIV_INSTRUCTION:
+                printf("Exception type: Privileged Instruction\n");
+                break;
+            case EXCEPTION_NONCONTINUABLE_EXCEPTION:
+                printf("Exception type: Non-continuable Exception\n");
+                break;
+            case EXCEPTION_ARRAY_BOUNDS_EXCEEDED:
+                printf("Exception type: Array Bounds Exceeded\n");
+                break;
+            case EXCEPTION_FLT_DENORMAL_OPERAND:
+                printf("Exception type: Floating Point Denormal Operand\n");
+                break;
+            case EXCEPTION_FLT_DIVIDE_BY_ZERO:
+                printf("Exception type: Floating Point Divide by Zero\n");
+                break;
+            case EXCEPTION_FLT_INEXACT_RESULT:
+                printf("Exception type: Floating Point Inexact Result\n");
+                break;
+            case EXCEPTION_FLT_INVALID_OPERATION:
+                printf("Exception type: Floating Point Invalid Operation\n");
+                break;
+            case EXCEPTION_FLT_OVERFLOW:
+                printf("Exception type: Floating Point Overflow\n");
+                break;
+            case EXCEPTION_FLT_STACK_CHECK:
+                printf("Exception type: Floating Point Stack Check\n");
+                break;
+            case EXCEPTION_FLT_UNDERFLOW:
+                printf("Exception type: Floating Point Underflow\n");
+                break;
+            case EXCEPTION_INT_DIVIDE_BY_ZERO:
+                printf("Exception type: Integer Divide by Zero\n");
+                break;
+            case EXCEPTION_INT_OVERFLOW:
+                printf("Exception type: Integer Overflow\n");
+                break;
+            case 0xC0000374: // STATUS_HEAP_CORRUPTION
+                printf("Exception type: Heap Corruption\n");
+                printf("This typically indicates a buffer overflow, use-after-free, or double-free.\n");
+                printf("Run with --debug (ASAN) to get detailed allocation/deallocation traces.\n");
+                break;
+            default:
+                printf("Exception type: Unknown (0x%08lx)\n", code);
+                break;
+        }
+    }
+
+    // --- Static callbacks (Windows API requires function pointers) ---
+
+    static LONG WINAPI exception_handler_callback(EXCEPTION_POINTERS* ExceptionInfo) {
+        DWORD code = ExceptionInfo->ExceptionRecord->ExceptionCode;
+
+        if (!is_fatal_exception(code)) {
+            return EXCEPTION_CONTINUE_SEARCH;
+        }
+
+        // Prevent recursion if handler crashes
+        static volatile LONG already_dumping = 0;
+        if (InterlockedExchange(&already_dumping, 1) != 0) {
+            return EXCEPTION_CONTINUE_SEARCH;
+        }
+
+        auto& self = instance();
+        self.begin_crash_dump();
+
+        printf("\n=== INTERNAL EXCEPTION HANDLER (WINDOWS) ===\n");
+        printf("Exception caught: 0x%08lx at address 0x%p\n",
+               code, ExceptionInfo->ExceptionRecord->ExceptionAddress);
+
+        print_exception_type(code, ExceptionInfo->ExceptionRecord);
+
+        self.print_stacktrace_from_context(ExceptionInfo->ContextRecord);
+
+        printf("=== END INTERNAL HANDLER ===\n\n");
+
+        self.end_crash_dump();
+
+        printf("Uninstalling exception handler, passing exception to external debugger...\n");
+        fflush(stdout);
+
+        SetUnhandledExceptionFilter(NULL);
+
         return EXCEPTION_CONTINUE_SEARCH;
     }
 
-    // Prevent recursion if handler crashes
-    static volatile LONG already_dumping = 0;
-    if (InterlockedExchange(&already_dumping, 1) != 0) {
-        // Recursive exception - bail out
-        return EXCEPTION_CONTINUE_SEARCH;
-    }
+    static void signal_handler_callback(int sig) {
+        // Prevent recursion if handler crashes
+        static volatile sig_atomic_t already_dumping = 0;
+        if (already_dumping) {
+            signal(sig, SIG_DFL);
+            raise(sig);
+            return;
+        }
+        already_dumping = 1;
 
-    printf("\n=== INTERNAL EXCEPTION HANDLER (WINDOWS) ===\n");
-    printf("Exception caught: 0x%08lx at address 0x%p\n",
-           ExceptionInfo->ExceptionRecord->ExceptionCode,
-           ExceptionInfo->ExceptionRecord->ExceptionAddress);
+        auto& self = instance();
+        self.begin_crash_dump();
 
-    // Print exception details
-    switch (ExceptionInfo->ExceptionRecord->ExceptionCode) {
-        case EXCEPTION_ACCESS_VIOLATION:
-            printf("Exception type: Access Violation\n");
-            printf("Attempted to %s at address 0x%p\n",
-                   ExceptionInfo->ExceptionRecord->ExceptionInformation[0] ? "write" : "read",
-                   (void*)ExceptionInfo->ExceptionRecord->ExceptionInformation[1]);
-            break;
-        case EXCEPTION_STACK_OVERFLOW:
-            printf("Exception type: Stack Overflow\n");
-            break;
-        case EXCEPTION_ILLEGAL_INSTRUCTION:
-            printf("Exception type: Illegal Instruction\n");
-            break;
-        case EXCEPTION_PRIV_INSTRUCTION:
-            printf("Exception type: Privileged Instruction\n");
-            break;
-        case EXCEPTION_NONCONTINUABLE_EXCEPTION:
-            printf("Exception type: Non-continuable Exception\n");
-            break;
-        case EXCEPTION_ARRAY_BOUNDS_EXCEEDED:
-            printf("Exception type: Array Bounds Exceeded\n");
-            break;
-        case EXCEPTION_FLT_DENORMAL_OPERAND:
-            printf("Exception type: Floating Point Denormal Operand\n");
-            break;
-        case EXCEPTION_FLT_DIVIDE_BY_ZERO:
-            printf("Exception type: Floating Point Divide by Zero\n");
-            break;
-        case EXCEPTION_FLT_INEXACT_RESULT:
-            printf("Exception type: Floating Point Inexact Result\n");
-            break;
-        case EXCEPTION_FLT_INVALID_OPERATION:
-            printf("Exception type: Floating Point Invalid Operation\n");
-            break;
-        case EXCEPTION_FLT_OVERFLOW:
-            printf("Exception type: Floating Point Overflow\n");
-            break;
-        case EXCEPTION_FLT_STACK_CHECK:
-            printf("Exception type: Floating Point Stack Check\n");
-            break;
-        case EXCEPTION_FLT_UNDERFLOW:
-            printf("Exception type: Floating Point Underflow\n");
-            break;
-        case EXCEPTION_INT_DIVIDE_BY_ZERO:
-            printf("Exception type: Integer Divide by Zero\n");
-            break;
-        case EXCEPTION_INT_OVERFLOW:
-            printf("Exception type: Integer Overflow\n");
-            break;
-        case 0xC0000374: // STATUS_HEAP_CORRUPTION
-            printf("Exception type: Heap Corruption\n");
-            printf("This typically indicates a buffer overflow, use-after-free, or double-free.\n");
-            printf("Run with --debug (ASAN) to get detailed allocation/deallocation traces.\n");
-            break;
-        default:
-            printf("Exception type: Unknown (0x%08lx)\n",
-                   ExceptionInfo->ExceptionRecord->ExceptionCode);
-            break;
-    }
+        printf("\n=== INTERNAL CRASH HANDLER (SIGNAL) ===\n");
+        fprintf(stderr, "Error: signal %d:\n", sig);
 
-    // Walk the actual crash stack using the exception context.
-    // This shows the frames that caused the crash, not the handler's frames.
-    print_stacktrace_from_context(ExceptionInfo->ContextRecord);
+        switch (sig) {
+            case SIGABRT: printf("Signal: SIGABRT (Abort)\n"); break;
+            case SIGFPE:  printf("Signal: SIGFPE (Floating Point Exception)\n"); break;
+            case SIGILL:  printf("Signal: SIGILL (Illegal Instruction)\n"); break;
+            case SIGINT:  printf("Signal: SIGINT (Interrupt)\n"); break;
+            case SIGSEGV: printf("Signal: SIGSEGV (Segmentation Fault)\n"); break;
+            case SIGTERM: printf("Signal: SIGTERM (Termination)\n"); break;
+            default:      printf("Signal: Unknown (%d)\n", sig); break;
+        }
 
-    printf("=== END INTERNAL HANDLER ===\n\n");
-    fflush(stdout);
-    fflush(stderr);
+        self.print_stacktrace_windows();
+        printf("=== END INTERNAL HANDLER ===\n\n");
 
-    // CHAINING: Remove our handler and continue search
-    // This allows external debuggers (like WinDbg, lldb) to catch the exception
-    printf("Uninstalling exception handler, passing exception to external debugger...\n");
-    fflush(stdout);
+        self.end_crash_dump();
 
-    SetUnhandledExceptionFilter(NULL);  // Remove our filter
+        printf("Uninstalling crash handler and re-raising signal %d for external debugger...\n", sig);
+        fflush(stdout);
 
-    // Return EXCEPTION_CONTINUE_SEARCH to pass to next handler (debugger or OS)
-    return EXCEPTION_CONTINUE_SEARCH;
-}
-
-inline void crash_handler(int sig) {
-    // Prevent recursion if handler crashes
-    static volatile sig_atomic_t already_dumping = 0;
-    if (already_dumping) {
-        // Recursive crash - bail out immediately
         signal(sig, SIG_DFL);
         raise(sig);
-        return;
-    }
-    already_dumping = 1;
-
-    printf("\n=== INTERNAL CRASH HANDLER (SIGNAL) ===\n");
-    fprintf(stderr, "Error: signal %d:\n", sig);
-
-    // Print signal details
-    switch (sig) {
-        case SIGABRT:
-            printf("Signal: SIGABRT (Abort)\n");
-            break;
-        case SIGFPE:
-            printf("Signal: SIGFPE (Floating Point Exception)\n");
-            break;
-        case SIGILL:
-            printf("Signal: SIGILL (Illegal Instruction)\n");
-            break;
-        case SIGINT:
-            printf("Signal: SIGINT (Interrupt)\n");
-            break;
-        case SIGSEGV:
-            printf("Signal: SIGSEGV (Segmentation Fault)\n");
-            break;
-        case SIGTERM:
-            printf("Signal: SIGTERM (Termination)\n");
-            break;
-        default:
-            printf("Signal: Unknown (%d)\n", sig);
-            break;
+        exit(1);
     }
 
-    // Internal stack trace dump
-    print_stacktrace_windows();
-    printf("=== END INTERNAL HANDLER ===\n\n");
-    fflush(stdout);
-    fflush(stderr);
+    // --- Setup ---
 
-    // CHAINING: Uninstall our handler and re-raise signal
-    // This allows external debuggers to catch the signal
-    printf("Uninstalling crash handler and re-raising signal %d for external debugger...\n", sig);
-    fflush(stdout);
+    void setup() {
+        const char* disable_handler = getenv("FASTLED_DISABLE_CRASH_HANDLER");
+        if (disable_handler && (strcmp(disable_handler, "1") == 0 || strcmp(disable_handler, "true") == 0)) {
+            printf("Crash handler disabled (FASTLED_DISABLE_CRASH_HANDLER set)\n");
+            printf("This allows external debuggers to attach for deadlock detection.\n");
+            return;
+        }
 
-    // Restore default handler
-    signal(sig, SIG_DFL);
+        if (GetModuleHandleA("clang_rt.asan_dynamic-x86_64.dll") != NULL ||
+            GetModuleHandleA("libclang_rt.asan_dynamic-x86_64.dll") != NULL) {
+            printf("Crash handler disabled (AddressSanitizer detected)\n");
+            return;
+        }
 
-    // Re-raise the signal - will now go to default handler or external debugger
-    raise(sig);
+        printf("Setting up Windows crash handler...\n");
 
-    // If we get here, signal didn't terminate us - exit manually
-    exit(1);
-}
+        AddVectoredExceptionHandler(1, exception_handler_callback);
+        SetUnhandledExceptionFilter(exception_handler_callback);
 
-inline void setup_crash_handler() {
-    // Check if crash handler should be disabled (for debugger attachment)
-    const char* disable_handler = getenv("FASTLED_DISABLE_CRASH_HANDLER");
-    if (disable_handler && (strcmp(disable_handler, "1") == 0 || strcmp(disable_handler, "true") == 0)) {
-        printf("Crash handler disabled (FASTLED_DISABLE_CRASH_HANDLER set)\n");
-        printf("This allows external debuggers to attach for deadlock detection.\n");
-        return;
+        signal(SIGABRT, signal_handler_callback);
+        signal(SIGFPE, signal_handler_callback);
+        signal(SIGILL, signal_handler_callback);
+        signal(SIGINT, signal_handler_callback);
+        signal(SIGSEGV, signal_handler_callback);
+        signal(SIGTERM, signal_handler_callback);
+
+        printf("Windows crash handler setup complete.\n");
     }
+};
 
-    // Skip crash handler when ASAN is active - ASAN uses EXCEPTION_ACCESS_VIOLATION
-    // internally for shadow memory, which our vectored handler treats as fatal.
-    // ASAN provides its own superior crash reporting.
-    if (GetModuleHandleA("clang_rt.asan_dynamic-x86_64.dll") != NULL ||
-        GetModuleHandleA("libclang_rt.asan_dynamic-x86_64.dll") != NULL) {
-        printf("Crash handler disabled (AddressSanitizer detected)\n");
-        return;
-    }
+// --- Free-function API (delegates to singleton) ---
 
-    printf("Setting up Windows crash handler...\n");
-
-    // Add vectored exception handler (first chance) to catch heap corruption
-    // and other fatal exceptions before Windows terminates the process.
-    // The '1' parameter makes this handler run FIRST, before other handlers.
-    AddVectoredExceptionHandler(1, windows_exception_handler);
-
-    // Set up Windows structured exception handling (second chance)
-    SetUnhandledExceptionFilter(windows_exception_handler);
-
-    // Also handle standard C signals on Windows
-    signal(SIGABRT, crash_handler);
-    signal(SIGFPE, crash_handler);
-    signal(SIGILL, crash_handler);
-    signal(SIGINT, crash_handler);
-    signal(SIGSEGV, crash_handler);
-    signal(SIGTERM, crash_handler);
-
-    printf("Windows crash handler setup complete.\n");
+inline void crash_handler(int sig) {
+    CrashHandlerState::signal_handler_callback(sig);
 }
 
 inline void print_stacktrace() {
-    print_stacktrace_windows();
+    CrashHandlerState::instance().print_stacktrace_windows();
 }
 
-// Walk the stack of a suspended thread using StackWalk64.
-// The target thread MUST be suspended before calling this.
+inline void setup_crash_handler() {
+    CrashHandlerState::instance().setup();
+}
+
 inline void print_stacktrace_for_thread(HANDLE thread_handle) {
-    HANDLE process = GetCurrentProcess();
-
-    // Initialize symbol handler if not already done
-    if (!g_symbols_initialized) {
-        SymSetOptions(SYMOPT_LOAD_LINES |
-                     SYMOPT_DEFERRED_LOADS |
-                     SYMOPT_UNDNAME |
-                     SYMOPT_DEBUG |
-                     SYMOPT_LOAD_ANYTHING |
-                     SYMOPT_CASE_INSENSITIVE |
-                     SYMOPT_FAVOR_COMPRESSED |
-                     SYMOPT_INCLUDE_32BIT_MODULES |
-                     SYMOPT_AUTO_PUBLICS);
-
-        char currentPath[MAX_PATH];
-        GetCurrentDirectoryA(MAX_PATH, currentPath);
-        if (!SymInitialize(process, currentPath, TRUE)) {
-            printf("SymInitialize failed with error %lu\n", GetLastError());
-        } else {
-            g_symbols_initialized = true;
-            printf("Symbol handler initialized successfully.\n");
-        }
-    }
-
-    // Get thread context (thread must be suspended)
-    CONTEXT ctx;
-    memset(&ctx, 0, sizeof(ctx));
-    ctx.ContextFlags = CONTEXT_FULL;
-    if (!GetThreadContext(thread_handle, &ctx)) {
-        printf("GetThreadContext failed with error %lu\n", GetLastError());
-        // Fallback to current thread stack trace
-        print_stacktrace_windows();
-        return;
-    }
-
-    // Set up STACKFRAME64 from the context
-    STACKFRAME64 frame;
-    memset(&frame, 0, sizeof(frame));
-#ifdef _M_X64
-    DWORD machineType = IMAGE_FILE_MACHINE_AMD64;
-    frame.AddrPC.Offset = ctx.Rip;
-    frame.AddrPC.Mode = AddrModeFlat;
-    frame.AddrFrame.Offset = ctx.Rbp;
-    frame.AddrFrame.Mode = AddrModeFlat;
-    frame.AddrStack.Offset = ctx.Rsp;
-    frame.AddrStack.Mode = AddrModeFlat;
-#elif defined(__x86_64__) || defined(__amd64__)
-    // Clang/MinGW x86_64 uses the same register names but in CONTEXT struct
-    DWORD machineType = IMAGE_FILE_MACHINE_AMD64;
-    frame.AddrPC.Offset = ctx.Rip;
-    frame.AddrPC.Mode = AddrModeFlat;
-    frame.AddrFrame.Offset = ctx.Rbp;
-    frame.AddrFrame.Mode = AddrModeFlat;
-    frame.AddrStack.Offset = ctx.Rsp;
-    frame.AddrStack.Mode = AddrModeFlat;
-#else
-    DWORD machineType = IMAGE_FILE_MACHINE_I386;
-    frame.AddrPC.Offset = ctx.Eip;
-    frame.AddrPC.Mode = AddrModeFlat;
-    frame.AddrFrame.Offset = ctx.Ebp;
-    frame.AddrFrame.Mode = AddrModeFlat;
-    frame.AddrStack.Offset = ctx.Esp;
-    frame.AddrStack.Mode = AddrModeFlat;
-#endif
-
-    printf("Stack trace (main thread, via StackWalk64):\n\n");
-
-    // Symbol buffer
-    char symbolBuffer[sizeof(SYMBOL_INFO) + MAX_SYM_NAME * sizeof(TCHAR)];
-    PSYMBOL_INFO pSymbol = (PSYMBOL_INFO)symbolBuffer;
-    pSymbol->SizeOfStruct = sizeof(SYMBOL_INFO);
-    pSymbol->MaxNameLen = MAX_SYM_NAME;
-
-    IMAGEHLP_LINE64 line;
-    line.SizeOfStruct = sizeof(IMAGEHLP_LINE64);
-
-    for (int i = 0; i < 100; i++) {
-        if (!StackWalk64(machineType, process, thread_handle, &frame, &ctx,
-                         nullptr, SymFunctionTableAccess64, SymGetModuleBase64, nullptr)) {
-            break;
-        }
-
-        if (frame.AddrPC.Offset == 0) {
-            break;
-        }
-
-        DWORD64 address = frame.AddrPC.Offset;
-        printf("#%-2d 0x%016llx", i, address);
-
-        std::string moduleName = get_module_name(address);
-        printf(" [%s]", moduleName.c_str());
-
-        // Try GDB first for DWARF symbols
-        std::string gdb_result = get_symbol_with_gdb(address);
-        if (gdb_result.find("--") != 0) {
-            printf(" %s", gdb_result.c_str());
-        } else if (g_symbols_initialized) {
-            DWORD64 displacement = 0;
-            if (SymFromAddr(process, address, &displacement, pSymbol)) {
-                std::string demangled = demangle_symbol(pSymbol->Name);
-                printf(" %s + %llu", demangled.c_str(), displacement);
-
-                DWORD lineDisplacement = 0;
-                if (SymGetLineFromAddr64(process, address, &lineDisplacement, &line)) {
-                    char* fileName = strrchr(line.FileName, '\\');
-                    if (fileName) fileName++;
-                    else fileName = line.FileName;
-                    printf(" [%s:%lu]", fileName, line.LineNumber);
-                }
-            }
-        }
-        printf("\n");
-    }
-    printf("\n");
+    CrashHandlerState::instance().print_stacktrace_for_thread(thread_handle);
 }
 
 } // namespace crash_handler_win

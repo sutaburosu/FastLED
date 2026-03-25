@@ -404,16 +404,32 @@ class FL_ALIGN FixedVector {
     }
 
     void swap(FixedVector<T, N> &other) {
-        if (this != &other) {
-            const fl::size max_size = fl::max(current_size, other.current_size);
-            for (fl::size i = 0; i < max_size; ++i) {
-                fl::swap(memory()[i], other.memory()[i]);
-            }
-            // swap the sizes
-            fl::size temp_size = current_size;
-            current_size = other.current_size;
-            other.current_size = temp_size;
+        if (this == &other) return;
+        fl::size min_sz = fl::min(current_size, other.current_size);
+        fl::size max_sz = fl::max(current_size, other.current_size);
+        // Swap elements that exist in both vectors
+        for (fl::size i = 0; i < min_sz; ++i) {
+            fl::swap(memory()[i], other.memory()[i]);
         }
+        // Move remaining elements from the larger to the smaller
+        if (current_size > other.current_size) {
+            for (fl::size i = min_sz; i < max_sz; ++i) {
+                T* src = memory() + i;
+                T* dst = other.memory() + i;
+                new (dst) T(fl::move(*src));
+                src->~T();
+            }
+        } else if (other.current_size > current_size) {
+            for (fl::size i = min_sz; i < max_sz; ++i) {
+                T* src = other.memory() + i;
+                T* dst = memory() + i;
+                new (dst) T(fl::move(*src));
+                src->~T();
+            }
+        }
+        fl::size temp_size = current_size;
+        current_size = other.current_size;
+        other.current_size = temp_size;
     }
 
   private:
