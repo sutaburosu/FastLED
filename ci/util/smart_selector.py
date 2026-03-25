@@ -242,6 +242,20 @@ def _score_match(query: str, match: TestMatch) -> tuple[float, int]:
             # Boost score slightly since this is likely what the user meant
             return (min(1.0, path_score + 0.05), path_len)
 
+    # Try matching against the Meson target name derived from the path
+    # e.g., "tests/fl/stl/string.cpp" -> "fl_stl_string"
+    # This allows queries like "fl_stl_string" to match even though
+    # match.name is just "string"
+    if match.path.startswith("tests/") and match.path.endswith(".cpp"):
+        target_name = (
+            match.path.removeprefix("tests/").removesuffix(".cpp").replace("/", "_")
+        )
+        target_score, target_len = _fuzzy_score(query, target_name)
+        name_score, name_len = _fuzzy_score(query, match.name)
+        if target_score > name_score:
+            return (target_score, target_len)
+        return (name_score, name_len)
+
     # Fall back to name-based matching
     return _fuzzy_score(query, match.name)
 
