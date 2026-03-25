@@ -17,6 +17,25 @@ import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 
+from ci.iwyu_cache import IWYUCache, compute_source_tree_hash
+
+
+# ---------------------------------------------------------------------------
+# Compiler args key (used for cache keying — change triggers full re-scan)
+# ---------------------------------------------------------------------------
+
+_COMPILER_ARGS_KEY = "|".join(
+    [
+        "-std=gnu++11",
+        "-DSTUB_PLATFORM",
+        "-DARDUINO=10808",
+        "-DFASTLED_USE_STUB_ARDUINO",
+        "-DFASTLED_STUB_IMPL",
+        "-DFASTLED_TESTING",
+        "-DFASTLED_UNIT_TEST=1",
+    ]
+)
+
 
 # ---------------------------------------------------------------------------
 # Phantom-violation filtering helpers
@@ -208,8 +227,15 @@ def scan_single_file(file_path: str) -> tuple[str, list[str]]:
     return ("", [])
 
 
-def scan_fl_headers(quiet: bool = False) -> dict[str, list[str]]:
-    """Scan all src/fl/ headers in parallel and return {file: [violations]}."""
+def scan_fl_headers(
+    quiet: bool = False, cache: IWYUCache | None = None
+) -> dict[str, list[str]]:
+    """Scan all src/fl/ headers in parallel and return {file: [violations]}.
+
+    Args:
+        quiet: Suppress progress output.
+        cache: Optional IWYUCache for per-file result caching.
+    """
     fl_dir = _PROJECT_ROOT / "src" / "fl"
     files: list[Path] = []
     for ext in ("*.h", "*.hpp"):
@@ -217,28 +243,71 @@ def scan_fl_headers(quiet: bool = False) -> dict[str, list[str]]:
     files = [f for f in files if not str(f).endswith(".cpp.hpp")]
     files = sorted(files)
 
+    results: dict[str, list[str]] = {}
+
+    # --- Phase 0: compute source tree hash for dependency-aware caching ---
+    if cache is not None:
+        tree_hash = compute_source_tree_hash(files)
+        cache.set_source_tree_hash(tree_hash)
+
+    # --- Phase 1: check cache for each file ---
+    uncached_files: list[Path] = []
+    if cache is not None:
+        for f in files:
+            cached = cache.get(f, _COMPILER_ARGS_KEY)
+            if cached is not None:
+                # Cache hit — use stored result
+                if cached:  # non-empty removals
+                    rel = str(f.relative_to(_PROJECT_ROOT)).replace("\\", "/")
+                    results[rel] = cached
+            else:
+                uncached_files.append(f)
+    else:
+        uncached_files = list(files)
+
     max_workers = os.cpu_count() or 4
     if not quiet:
-        print(f"Scanning {len(files)} headers with {max_workers} workers...")
+        cache_info = ""
+        if cache is not None:
+            cached_count = len(files) - len(uncached_files)
+            cache_info = f" ({cached_count} cached, {len(uncached_files)} to scan)"
+        print(
+            f"Scanning {len(files)} headers with {max_workers} workers...{cache_info}"
+        )
     start = time.time()
 
-    results: dict[str, list[str]] = {}
+    # --- Phase 2: run IWYU on cache misses only ---
     done = 0
-    with ProcessPoolExecutor(max_workers=max_workers) as pool:
-        futures = {pool.submit(_scan_one_header, str(f)): f for f in files}
-        for future in as_completed(futures):
-            done += 1
-            if not quiet and done % 50 == 0:
-                elapsed = time.time() - start
-                print(f"  [{done}/{len(files)}] ({elapsed:.1f}s)...")
-            rel, removals = future.result()
-            if rel and removals:
-                results[rel] = removals
+    if uncached_files:
+        with ProcessPoolExecutor(max_workers=max_workers) as pool:
+            futures = {pool.submit(_scan_one_header, str(f)): f for f in uncached_files}
+            for future in as_completed(futures):
+                done += 1
+                if not quiet and done % 50 == 0:
+                    elapsed = time.time() - start
+                    print(f"  [{done}/{len(uncached_files)}] ({elapsed:.1f}s)...")
+                source_file = futures[future]
+                rel, removals = future.result()
+
+                # Store result in cache (even clean files, to avoid re-scanning)
+                if cache is not None:
+                    cache.put(source_file, _COMPILER_ARGS_KEY, removals)
+
+                if rel and removals:
+                    results[rel] = removals
+
+    # Flush cache to disk
+    if cache is not None:
+        cache.save()
 
     elapsed = time.time() - start
     if not quiet:
+        stats = ""
+        if cache is not None:
+            stats = f" | {cache.stats_summary()}"
         print(
-            f"Done: {len(files)} files in {elapsed:.1f}s ({len(results)} with violations)"
+            f"Done: {len(files)} files in {elapsed:.1f}s"
+            f" ({len(results)} with violations){stats}"
         )
     return results
 
@@ -283,6 +352,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--file",
         help="Check a single file instead of scanning all headers",
+    )
+    parser.add_argument(
+        "--no-cache",
+        action="store_true",
+        help="Bypass per-file result cache (force full re-scan)",
     )
     return parser.parse_args()
 
@@ -548,11 +622,16 @@ def main() -> int:
 
     # --- No board: parallel header scan (fast, ~2 min) ---
     if not args.board:
-        violations = scan_fl_headers(quiet=args.quiet)
+        no_cache: bool = getattr(args, "no_cache", False)
+        cache = IWYUCache(enabled=not no_cache)
+
+        violations = scan_fl_headers(quiet=args.quiet, cache=cache)
         if args.json:
             print(json.dumps(violations, indent=2))
         if violations:
             if args.fix:
+                # Clear cache before fix passes — files are about to change
+                cache.clear()
                 max_passes = 5
                 for pass_num in range(1, max_passes + 1):
                     print(
@@ -561,7 +640,7 @@ def main() -> int:
                     fix_result = fix_iwyu_violations(violations)
                     if fix_result != 0:
                         return fix_result
-                    # Re-scan to check for remaining violations
+                    # Re-scan to check for remaining violations (no cache during fix)
                     print(f"\n🔍 Re-scanning after pass {pass_num}...")
                     violations = scan_fl_headers(quiet=args.quiet)
                     if not violations:
@@ -585,7 +664,10 @@ def main() -> int:
                         print(f"    - {r}")
             return 1
         if not args.quiet:
-            print("✅ All src/fl/ headers pass IWYU")
+            if args.fix:
+                print("✅ No violations found — nothing to fix")
+            else:
+                print("✅ All src/fl/ headers pass IWYU")
         return 0
 
     # --- Board mode: PlatformIO ---
