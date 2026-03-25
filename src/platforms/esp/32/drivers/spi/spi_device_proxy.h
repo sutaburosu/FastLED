@@ -24,6 +24,7 @@
 #include "fl/stl/stdint.h"
 #include "fl/stl/stddef.h"
 #include "fl/system/log.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 
@@ -73,7 +74,7 @@ public:
 
     /// Initialize SPI device and register with bus manager
     /// Called by LED controller's init() method
-    void init() {
+    void init() FL_NOEXCEPT {
         if (mInitialized) {
             return;  // Already initialized
         }
@@ -104,7 +105,7 @@ public:
 
     /// Initialize bus manager (lazy initialization)
     /// Called on first transmit to allow all devices to register
-    void ensureBusInitialized() {
+    void ensureBusInitialized() FL_NOEXCEPT {
         if (mBusInitialized || !mBusManager || !mHandle.is_valid) {
             return;
         }
@@ -125,7 +126,7 @@ public:
 
     /// Begin SPI transaction
     /// Mirrors ESP32SPIOutput::select()
-    void select() {
+    void select() FL_NOEXCEPT {
         if (!mInitialized) {
             return;
         }
@@ -142,7 +143,7 @@ public:
 
     /// End SPI transaction
     /// Mirrors ESP32SPIOutput::release()
-    void release() {
+    void release() FL_NOEXCEPT {
         if (!mInitialized || !mInTransaction) {
             return;
         }
@@ -158,13 +159,13 @@ public:
 
     /// End SPI transaction (alias for release)
     /// Added to match the new endTransaction() API used by chipset controllers
-    void endTransaction() {
+    void endTransaction() FL_NOEXCEPT {
         release();
     }
 
     /// Write single byte
     /// Mirrors ESP32SPIOutput::writeByte()
-    void writeByte(u8 b) {
+    void writeByte(u8 b) FL_NOEXCEPT {
         if (!mInitialized || !mInTransaction) {
             return;
         }
@@ -184,14 +185,14 @@ public:
 
     /// Write 16-bit word (big-endian)
     /// Mirrors ESP32SPIOutput::writeWord()
-    void writeWord(u16 w) {
+    void writeWord(u16 w) FL_NOEXCEPT {
         writeByte(static_cast<u8>(w >> 8));
         writeByte(static_cast<u8>(w & 0xFF));
     }
 
     /// Write the same byte value repeatedly
     /// Mirrors ESP32SPIOutput::writeBytesValueRaw()
-    void writeBytesValueRaw(u8 value, int len) {
+    void writeBytesValueRaw(u8 value, int len) FL_NOEXCEPT {
         for (int i = 0; i < len; i++) {
             writeByte(value);
         }
@@ -199,19 +200,19 @@ public:
 
     /// Write the same byte value repeatedly with select/release
     /// Mirrors ESP32SPIOutput::writeBytesValue()
-    void writeBytesValue(u8 value, int len) {
+    void writeBytesValue(u8 value, int len) FL_NOEXCEPT {
         select();
         writeBytesValueRaw(value, len);
         release();
     }
 
     /// Write byte without wait (same as writeByte for proxy)
-    void writeByteNoWait(u8 b) {
+    void writeByteNoWait(u8 b) FL_NOEXCEPT {
         writeByte(b);
     }
 
     /// Write byte with post-wait (same as writeByte for proxy)
-    void writeBytePostWait(u8 b) {
+    void writeBytePostWait(u8 b) FL_NOEXCEPT {
         writeByte(b);
     }
 
@@ -222,21 +223,21 @@ public:
     /// @tparam BIT the bit index in the byte to test
     /// @param b the byte to test
     template <u8 BIT = 0>
-    void writeBit(u8 b) {
+    void writeBit(u8 b) FL_NOEXCEPT {
         // Test bit BIT in value b, send 0xFF if set, 0x00 if clear
         // This matches the behavior of other platforms (AVR, ARM, etc.)
         writeByte((b & (1 << BIT)) ? 0xFF : 0x00);
     }
 
     /// Wait for SPI to be ready (NOP for buffered writes)
-    static void wait() {}
-    static void waitFully() {}
-    static void stop() {}
+    static void wait() FL_NOEXCEPT {}
+    static void waitFully() FL_NOEXCEPT {}
+    static void stop() FL_NOEXCEPT {}
 
     /// Finalize transmission - flush buffered Quad-SPI writes
     /// Must be called after all pixel data is written
     /// Called by chipset controller at end of showPixels()
-    void finalizeTransmission() {
+    void finalizeTransmission() FL_NOEXCEPT {
         if (!mInitialized) {
             return;
         }
@@ -254,7 +255,7 @@ public:
     }
 
     /// Check if device is enabled (not disabled due to conflicts)
-    bool isEnabled() const {
+    bool isEnabled() const FL_NOEXCEPT {
         if (!mBusManager || !mHandle.is_valid) {
             return false;
         }
@@ -262,7 +263,7 @@ public:
     }
 
     /// Get bus type for debugging/testing
-    SPIBusType getBusType() const {
+    SPIBusType getBusType() const FL_NOEXCEPT {
         if (!mBusManager || !mHandle.is_valid) {
             return SPIBusType::SOFT_SPI;
         }

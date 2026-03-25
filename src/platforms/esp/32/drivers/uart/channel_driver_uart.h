@@ -38,6 +38,7 @@
 #include "fl/stl/vector.h"
 #include "platforms/esp/32/drivers/uart/iuart_peripheral.h"
 #include "platforms/esp/32/drivers/uart/wave8_encoder_uart.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 
@@ -50,28 +51,28 @@ public:
     explicit ChannelEngineUART(fl::shared_ptr<IUartPeripheral> peripheral);
     ~ChannelEngineUART() override;
 
-    bool canHandle(const ChannelDataPtr& data) const override;
+    bool canHandle(const ChannelDataPtr& data) const FL_NOEXCEPT override;
 
-    void enqueue(ChannelDataPtr channelData) override;
-    void show() override;
-    DriverState poll() override;
+    void enqueue(ChannelDataPtr channelData) FL_NOEXCEPT override;
+    void show() FL_NOEXCEPT override;
+    DriverState poll() FL_NOEXCEPT override;
 
-    fl::string getName() const override { return fl::string::from_literal("UART"); }
+    fl::string getName() const FL_NOEXCEPT override { return fl::string::from_literal("UART"); }
 
-    Capabilities getCapabilities() const override {
+    Capabilities getCapabilities() const FL_NOEXCEPT override {
         return Capabilities(true, false);  // Clockless only
     }
 
 private:
-    void beginTransmission(fl::span<const ChannelDataPtr> channelData);
+    void beginTransmission(fl::span<const ChannelDataPtr> channelData) FL_NOEXCEPT;
 
     void prepareScratchBuffer(fl::span<const ChannelDataPtr> channelData,
-                              size_t maxChannelSize);
+                              size_t maxChannelSize) FL_NOEXCEPT;
 
     /// @brief Get or create a Wave10Lut for the given timing
     /// @param timing Chipset timing configuration
     /// @return Reference to cached Wave10Lut
-    const Wave10Lut& getOrBuildLut(const ChipsetTimingConfig& timing);
+    const Wave10Lut& getOrBuildLut(const ChipsetTimingConfig& timing) FL_NOEXCEPT;
 
 private:
     struct ChipsetGroup {
@@ -106,6 +107,6 @@ private:
 /// @brief Factory function to create UART driver with real hardware peripheral
 fl::shared_ptr<IChannelDriver> createUartEngine(int uart_num,
                                                 int tx_pin,
-                                                u32 baud_rate = 4000000);
+                                                u32 baud_rate = 4000000) FL_NOEXCEPT;
 
 } // namespace fl

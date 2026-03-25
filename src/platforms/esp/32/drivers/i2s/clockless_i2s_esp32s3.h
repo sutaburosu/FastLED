@@ -17,6 +17,7 @@
 #include "eorder.h"
 #include "fl/system/log.h"
 #include "fl/stl/vector.h"
+#include "fl/stl/noexcept.h"
 #include "pixel_iterator.h"
 
 #ifndef FASTLED_INTERNAL
@@ -54,7 +55,7 @@ namespace fl {
 /// @brief Internal driver interface for I2S_Esp32. Use this
 class InternalI2SDriver {
   public:
-    static InternalI2SDriver *create();
+    static InternalI2SDriver *create() FL_NOEXCEPT;
     virtual ~InternalI2SDriver() {};
     virtual void
     initled(u8 *led_block,
@@ -68,9 +69,9 @@ class InternalI2SDriver {
 
 class I2S_Esp32 {
   public:
-    void beginShowLeds(int data_pin, int nleds, bool is_rgbw);
-    void showPixels(u8 data_pin, PixelIterator &pixel_iterator);
-    void endShowLeds();
+    void beginShowLeds(int data_pin, int nleds, bool is_rgbw) FL_NOEXCEPT;
+    void showPixels(u8 data_pin, PixelIterator &pixel_iterator) FL_NOEXCEPT;
+    void endShowLeds() FL_NOEXCEPT;
 };
 
 // Base version of this class allows dynamic pins.
@@ -84,25 +85,25 @@ class ClocklessController_I2S_Esp32_WS2812Base
 
   public:
     ClocklessController_I2S_Esp32_WS2812Base(int pin) : mPin(pin) {}
-    void init() override {}
-    virtual u16 getMaxRefreshRate() const { return 800; }
+    void init() FL_NOEXCEPT override {}
+    virtual u16 getMaxRefreshRate() const FL_NOEXCEPT { return 800; }
 
   protected:
     // Wait until the last draw is complete, if necessary.
-    virtual void *beginShowLeds(int nleds) override {
+    virtual void *beginShowLeds(int nleds) FL_NOEXCEPT override {
         void *data = Base::beginShowLeds(nleds);
         mI2S_Esp32.beginShowLeds(mPin, nleds, this->getRgbw().active());
         return data;
     }
 
     // Prepares data for the draw.
-    virtual void showPixels(PixelController<RGB_ORDER> &pixels) override {
+    virtual void showPixels(PixelController<RGB_ORDER> &pixels) FL_NOEXCEPT override {
         auto pixel_iterator = pixels.as_iterator(this->getRgbw());
         mI2S_Esp32.showPixels(mPin, pixel_iterator);
     }
 
     // Send the data to the strip
-    virtual void endShowLeds(void *data) override {
+    virtual void endShowLeds(void *data) FL_NOEXCEPT override {
         Base::endShowLeds(data);
         mI2S_Esp32.endShowLeds();
     }
@@ -126,8 +127,8 @@ class ClocklessController_I2S_Esp32_WS2812
 
   public:
     ClocklessController_I2S_Esp32_WS2812() : Base(DATA_PIN) {};
-    void init() override {}
-    virtual u16 getMaxRefreshRate() const { return 800; }
+    void init() FL_NOEXCEPT override {}
+    virtual u16 getMaxRefreshRate() const FL_NOEXCEPT { return 800; }
 };
 
 } // namespace fl

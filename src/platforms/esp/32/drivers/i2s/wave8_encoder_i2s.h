@@ -25,6 +25,7 @@
 #include "fl/chipsets/led_timing.h"
 #include "fl/stl/stdint.h"
 #include "fl/stl/span.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 
@@ -40,7 +41,7 @@ namespace fl {
 size_t wave8EncodeI2sSingleLane(
     fl::span<const u8> input,
     fl::span<u16> output,
-    const Wave8BitExpansionLut& lut);
+    const Wave8BitExpansionLut& lut) FL_NOEXCEPT;
 
 /// @brief Encode multi-lane LED data for I2S LCD_CAM using wave8 expansion
 ///
@@ -60,7 +61,7 @@ size_t wave8EncodeI2sMultiLane(
     fl::span<const u8>* lanes,
     int num_lanes,
     fl::span<u16> output,
-    const Wave8BitExpansionLut& lut);
+    const Wave8BitExpansionLut& lut) FL_NOEXCEPT;
 
 /// Wave8 I2S expansion factor: each input byte produces this many uint16_t words.
 ///
@@ -96,6 +97,6 @@ constexpr size_t wave8CalculateI2sOutputSize(size_t input_bytes) {
 ///
 /// @param timing ChipsetTiming configuration
 /// @return Recommended I2S PCLK frequency in Hz
-u32 calculateI2sClockHz(const ChipsetTiming& timing);
+u32 calculateI2sClockHz(const ChipsetTiming& timing) FL_NOEXCEPT;
 
 } // namespace fl

@@ -14,6 +14,7 @@
 #include "fl/stl/cstring.h"
 #include "fl/stl/singleton.h"
 #include "fl/stl/atomic.h"
+#include "fl/stl/noexcept.h"
 
 // IWYU pragma: begin_keep
 #include "fl/stl/thread.h"  // ok include
@@ -131,7 +132,7 @@ private:
 // Singleton Instance
 //=============================================================================
 
-LcdRgbPeripheralMock& LcdRgbPeripheralMock::instance() {
+LcdRgbPeripheralMock& LcdRgbPeripheralMock::instance() FL_NOEXCEPT {
     return Singleton<LcdRgbPeripheralMockImpl>::instance();
 }
 
@@ -175,7 +176,7 @@ LcdRgbPeripheralMockImpl::~LcdRgbPeripheralMockImpl() {
 // Lifecycle Methods
 //=============================================================================
 
-bool LcdRgbPeripheralMockImpl::initialize(const LcdRgbPeripheralConfig& config) {
+bool LcdRgbPeripheralMockImpl::initialize(const LcdRgbPeripheralConfig& config) FL_NOEXCEPT {
     // Validate config
     if (config.num_lanes == 0 || config.num_lanes > 16) {
         FL_WARN("LcdRgbPeripheralMock: Invalid num_lanes: " << config.num_lanes);
@@ -188,7 +189,7 @@ bool LcdRgbPeripheralMockImpl::initialize(const LcdRgbPeripheralConfig& config) 
     return true;
 }
 
-void LcdRgbPeripheralMockImpl::deinitialize() {
+void LcdRgbPeripheralMockImpl::deinitialize() FL_NOEXCEPT {
     fl::lock_guard<fl::mutex> lock(mMutex);
     mInitialized = false;
     mEnabled = false;
@@ -197,7 +198,7 @@ void LcdRgbPeripheralMockImpl::deinitialize() {
     mPendingQueue.clear();
 }
 
-bool LcdRgbPeripheralMockImpl::isInitialized() const {
+bool LcdRgbPeripheralMockImpl::isInitialized() const FL_NOEXCEPT {
     return mInitialized;
 }
 
@@ -205,7 +206,7 @@ bool LcdRgbPeripheralMockImpl::isInitialized() const {
 // Buffer Management
 //=============================================================================
 
-u16* LcdRgbPeripheralMockImpl::allocateFrameBuffer(size_t size_bytes) {
+u16* LcdRgbPeripheralMockImpl::allocateFrameBuffer(size_t size_bytes) FL_NOEXCEPT {
     // Round up to 64-byte alignment
     size_t aligned_size = ((size_bytes + 63) / 64) * 64;
 
@@ -223,7 +224,7 @@ u16* LcdRgbPeripheralMockImpl::allocateFrameBuffer(size_t size_bytes) {
     return static_cast<u16*>(buffer);
 }
 
-void LcdRgbPeripheralMockImpl::freeFrameBuffer(u16* buffer) {
+void LcdRgbPeripheralMockImpl::freeFrameBuffer(u16* buffer) FL_NOEXCEPT {
     if (buffer != nullptr) {
 #ifdef FL_IS_WIN
         _aligned_free(buffer);
@@ -237,7 +238,7 @@ void LcdRgbPeripheralMockImpl::freeFrameBuffer(u16* buffer) {
 // Transmission Methods
 //=============================================================================
 
-bool LcdRgbPeripheralMockImpl::drawFrame(const u16* buffer, size_t size_bytes) {
+bool LcdRgbPeripheralMockImpl::drawFrame(const u16* buffer, size_t size_bytes) FL_NOEXCEPT {
     if (!mInitialized) {
         FL_WARN("LcdRgbPeripheralMock: Cannot draw - not initialized");
         return false;
@@ -292,7 +293,7 @@ bool LcdRgbPeripheralMockImpl::drawFrame(const u16* buffer, size_t size_bytes) {
     return true;
 }
 
-bool LcdRgbPeripheralMockImpl::waitFrameDone(u32 timeout_ms) {
+bool LcdRgbPeripheralMockImpl::waitFrameDone(u32 timeout_ms) FL_NOEXCEPT {
     if (!mInitialized) {
         return false;
     }
@@ -331,7 +332,7 @@ bool LcdRgbPeripheralMockImpl::waitFrameDone(u32 timeout_ms) {
     }
 }
 
-bool LcdRgbPeripheralMockImpl::isBusy() const {
+bool LcdRgbPeripheralMockImpl::isBusy() const FL_NOEXCEPT {
     return mBusy;
 }
 
@@ -339,7 +340,7 @@ bool LcdRgbPeripheralMockImpl::isBusy() const {
 // Callback Registration
 //=============================================================================
 
-bool LcdRgbPeripheralMockImpl::registerDrawCallback(void* callback, void* user_ctx) {
+bool LcdRgbPeripheralMockImpl::registerDrawCallback(void* callback, void* user_ctx) FL_NOEXCEPT {
     if (!mInitialized) {
         return false;
     }
@@ -354,15 +355,15 @@ bool LcdRgbPeripheralMockImpl::registerDrawCallback(void* callback, void* user_c
 // State Inspection
 //=============================================================================
 
-const LcdRgbPeripheralConfig& LcdRgbPeripheralMockImpl::getConfig() const {
+const LcdRgbPeripheralConfig& LcdRgbPeripheralMockImpl::getConfig() const FL_NOEXCEPT {
     return mConfig;
 }
 
-u64 LcdRgbPeripheralMockImpl::getMicroseconds() {
+u64 LcdRgbPeripheralMockImpl::getMicroseconds() FL_NOEXCEPT {
     return fl::micros();
 }
 
-void LcdRgbPeripheralMockImpl::delay(u32 ms) {
+void LcdRgbPeripheralMockImpl::delay(u32 ms) FL_NOEXCEPT {
     fl::delay(ms);
 }
 
@@ -370,7 +371,7 @@ void LcdRgbPeripheralMockImpl::delay(u32 ms) {
 // Mock-Specific API
 //=============================================================================
 
-void LcdRgbPeripheralMockImpl::simulateDrawComplete() {
+void LcdRgbPeripheralMockImpl::simulateDrawComplete() FL_NOEXCEPT {
     if (mPendingDraws == 0) {
         return;
     }
@@ -389,42 +390,42 @@ void LcdRgbPeripheralMockImpl::simulateDrawComplete() {
     }
 }
 
-void LcdRgbPeripheralMockImpl::setDrawFailure(bool should_fail) {
+void LcdRgbPeripheralMockImpl::setDrawFailure(bool should_fail) FL_NOEXCEPT {
     mShouldFailDraw = should_fail;
 }
 
-void LcdRgbPeripheralMockImpl::setDrawDelay(u32 microseconds) {
+void LcdRgbPeripheralMockImpl::setDrawDelay(u32 microseconds) FL_NOEXCEPT {
     mDrawDelayUs = microseconds;
     mDrawDelayForced = true;  // Mark as explicitly set - don't recalculate in drawFrame()
 }
 
-const fl::vector<LcdRgbPeripheralMock::FrameRecord>& LcdRgbPeripheralMockImpl::getFrameHistory() const {
+const fl::vector<LcdRgbPeripheralMock::FrameRecord>& LcdRgbPeripheralMockImpl::getFrameHistory() const FL_NOEXCEPT {
     return mHistory;
 }
 
-void LcdRgbPeripheralMockImpl::clearFrameHistory() {
+void LcdRgbPeripheralMockImpl::clearFrameHistory() FL_NOEXCEPT {
     fl::lock_guard<fl::mutex> lock(mMutex);
     mHistory.clear();
     mPendingDraws = 0;
     mBusy = false;
 }
 
-fl::span<const u16> LcdRgbPeripheralMockImpl::getLastFrameData() const {
+fl::span<const u16> LcdRgbPeripheralMockImpl::getLastFrameData() const FL_NOEXCEPT {
     if (mHistory.empty()) {
         return fl::span<const u16>();
     }
     return fl::span<const u16>(mHistory.back().buffer_copy);
 }
 
-bool LcdRgbPeripheralMockImpl::isEnabled() const {
+bool LcdRgbPeripheralMockImpl::isEnabled() const FL_NOEXCEPT {
     return mEnabled;
 }
 
-size_t LcdRgbPeripheralMockImpl::getDrawCount() const {
+size_t LcdRgbPeripheralMockImpl::getDrawCount() const FL_NOEXCEPT {
     return mDrawCount;
 }
 
-void LcdRgbPeripheralMockImpl::reset() {
+void LcdRgbPeripheralMockImpl::reset() FL_NOEXCEPT {
     // Clear queue first
     {
         fl::lock_guard<fl::mutex> lock(mMutex);
@@ -464,7 +465,7 @@ void LcdRgbPeripheralMockImpl::reset() {
 // Simulation Thread
 //=============================================================================
 
-void LcdRgbPeripheralMockImpl::simulationThreadFunc() {
+void LcdRgbPeripheralMockImpl::simulationThreadFunc() FL_NOEXCEPT {
     while (!mSimulationThreadShouldStop) {
         fl::unique_lock<fl::mutex> lock(mMutex);
 

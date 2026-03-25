@@ -15,8 +15,7 @@
 
 #include "platforms/esp/32/drivers/spi/spi_peripheral_esp.h"
 #include "fl/system/log.h"
-#include "fl/system/log.h"
-#include "fl/system/log.h"
+#include "fl/stl/noexcept.h"
 
 // Include ESP-IDF headers ONLY in .cpp file
 FL_EXTERN_C_BEGIN
@@ -51,22 +50,22 @@ namespace detail {
 /// This class contains all ESP-IDF-specific implementation details.
 class SpiPeripheralESPImpl : public SpiPeripheralESP {
 public:
-    SpiPeripheralESPImpl();
+    SpiPeripheralESPImpl() FL_NOEXCEPT;
     ~SpiPeripheralESPImpl() override;
 
     // ISpiPeripheral Interface Implementation
-    bool initializeBus(const SpiBusConfig& config) override;
-    bool addDevice(const SpiDeviceConfig& config) override;
-    bool removeDevice() override;
-    bool freeBus() override;
-    bool isInitialized() const override;
-    bool queueTransaction(const SpiTransaction& trans) override;
-    bool pollTransaction(u32 timeout_ms) override;
-    bool registerCallback(void* callback, void* user_ctx) override;
-    u8* allocateDma(size_t size) override;
-    void freeDma(u8* buffer) override;
-    void delay(u32 ms) override;
-    u64 getMicroseconds() override;
+    bool initializeBus(const SpiBusConfig& config) FL_NOEXCEPT override;
+    bool addDevice(const SpiDeviceConfig& config) FL_NOEXCEPT override;
+    bool removeDevice() FL_NOEXCEPT override;
+    bool freeBus() FL_NOEXCEPT override;
+    bool isInitialized() const FL_NOEXCEPT override;
+    bool queueTransaction(const SpiTransaction& trans) FL_NOEXCEPT override;
+    bool pollTransaction(u32 timeout_ms) FL_NOEXCEPT override;
+    bool registerCallback(void* callback, void* user_ctx) FL_NOEXCEPT override;
+    u8* allocateDma(size_t size) FL_NOEXCEPT override;
+    void freeDma(u8* buffer) FL_NOEXCEPT override;
+    void delay(u32 ms) FL_NOEXCEPT override;
+    u64 getMicroseconds() FL_NOEXCEPT override;
 
 private:
     ::spi_host_device_t mHost;           ///< SPI host (SPI2_HOST or SPI3_HOST)
@@ -81,7 +80,7 @@ private:
 // Singleton Instance
 //=============================================================================
 
-SpiPeripheralESP& SpiPeripheralESP::instance() {
+SpiPeripheralESP& SpiPeripheralESP::instance() FL_NOEXCEPT {
     return Singleton<SpiPeripheralESPImpl>::instance();
 }
 
@@ -97,7 +96,7 @@ SpiPeripheralESP::~SpiPeripheralESP() {
 // Constructor / Destructor (implementation)
 //=============================================================================
 
-SpiPeripheralESPImpl::SpiPeripheralESPImpl()
+SpiPeripheralESPImpl::SpiPeripheralESPImpl() FL_NOEXCEPT
     : mHost(SPI2_HOST)
     , mDeviceHandle(nullptr)
     , mBusInitialized(false)
@@ -122,7 +121,7 @@ SpiPeripheralESPImpl::~SpiPeripheralESPImpl() {
 // Bus Lifecycle Methods
 //=============================================================================
 
-bool SpiPeripheralESPImpl::initializeBus(const SpiBusConfig& config) {
+bool SpiPeripheralESPImpl::initializeBus(const SpiBusConfig& config) FL_NOEXCEPT {
     // Validate not already initialized
     if (mBusInitialized) {
         FL_WARN("SpiPeripheralESP: Bus already initialized");
@@ -157,7 +156,7 @@ bool SpiPeripheralESPImpl::initializeBus(const SpiBusConfig& config) {
     return true;
 }
 
-bool SpiPeripheralESPImpl::addDevice(const SpiDeviceConfig& config) {
+bool SpiPeripheralESPImpl::addDevice(const SpiDeviceConfig& config) FL_NOEXCEPT {
     if (!mBusInitialized) {
         FL_WARN("SpiPeripheralESP: Cannot add device - bus not initialized");
         return false;
@@ -195,7 +194,7 @@ bool SpiPeripheralESPImpl::addDevice(const SpiDeviceConfig& config) {
     return true;
 }
 
-bool SpiPeripheralESPImpl::removeDevice() {
+bool SpiPeripheralESPImpl::removeDevice() FL_NOEXCEPT {
     if (!mDeviceAdded) {
         FL_WARN("SpiPeripheralESP: No device to remove");
         return false;
@@ -225,7 +224,7 @@ bool SpiPeripheralESPImpl::removeDevice() {
     return true;
 }
 
-bool SpiPeripheralESPImpl::freeBus() {
+bool SpiPeripheralESPImpl::freeBus() FL_NOEXCEPT {
     if (!mBusInitialized) {
         FL_WARN("SpiPeripheralESP: Bus not initialized");
         return false;
@@ -249,7 +248,7 @@ bool SpiPeripheralESPImpl::freeBus() {
     return true;
 }
 
-bool SpiPeripheralESPImpl::isInitialized() const {
+bool SpiPeripheralESPImpl::isInitialized() const FL_NOEXCEPT {
     return mBusInitialized && mDeviceAdded;
 }
 
@@ -257,7 +256,7 @@ bool SpiPeripheralESPImpl::isInitialized() const {
 // Transaction Methods
 //=============================================================================
 
-bool SpiPeripheralESPImpl::queueTransaction(const SpiTransaction& trans) {
+bool SpiPeripheralESPImpl::queueTransaction(const SpiTransaction& trans) FL_NOEXCEPT {
     if (!mDeviceAdded) {
         FL_WARN("SpiPeripheralESP: Cannot queue transaction - device not added");
         return false;
@@ -281,7 +280,7 @@ bool SpiPeripheralESPImpl::queueTransaction(const SpiTransaction& trans) {
     return true;
 }
 
-bool SpiPeripheralESPImpl::pollTransaction(u32 timeout_ms) {
+bool SpiPeripheralESPImpl::pollTransaction(u32 timeout_ms) FL_NOEXCEPT {
     if (!mDeviceAdded) {
         FL_WARN("SpiPeripheralESP: Cannot poll transaction - device not added");
         return false;
@@ -305,7 +304,7 @@ bool SpiPeripheralESPImpl::pollTransaction(u32 timeout_ms) {
     return true;
 }
 
-bool SpiPeripheralESPImpl::registerCallback(void* callback, void* user_ctx) {
+bool SpiPeripheralESPImpl::registerCallback(void* callback, void* user_ctx) FL_NOEXCEPT {
     // Store callback and user context
     mCallback = callback;
     mUserContext = user_ctx;
@@ -321,7 +320,7 @@ bool SpiPeripheralESPImpl::registerCallback(void* callback, void* user_ctx) {
 // DMA Memory Management
 //=============================================================================
 
-u8* SpiPeripheralESPImpl::allocateDma(size_t size) {
+u8* SpiPeripheralESPImpl::allocateDma(size_t size) FL_NOEXCEPT {
     // Round up to 4-byte multiple (ESP32 DMA alignment requirement)
     size_t aligned_size = (size + 3) & ~3;
 
@@ -337,7 +336,7 @@ u8* SpiPeripheralESPImpl::allocateDma(size_t size) {
     return buffer;
 }
 
-void SpiPeripheralESPImpl::freeDma(u8* buffer) {
+void SpiPeripheralESPImpl::freeDma(u8* buffer) FL_NOEXCEPT {
     if (buffer != nullptr) {
         ::heap_caps_free(buffer);
     }
@@ -347,11 +346,11 @@ void SpiPeripheralESPImpl::freeDma(u8* buffer) {
 // Platform Utilities
 //=============================================================================
 
-void SpiPeripheralESPImpl::delay(u32 ms) {
+void SpiPeripheralESPImpl::delay(u32 ms) FL_NOEXCEPT {
     ::vTaskDelay(pdMS_TO_TICKS(ms));
 }
 
-u64 SpiPeripheralESPImpl::getMicroseconds() {
+u64 SpiPeripheralESPImpl::getMicroseconds() FL_NOEXCEPT {
     return ::esp_timer_get_time();
 }
 

@@ -14,6 +14,7 @@
 
 #include "fl/stl/shared_ptr.h"  // IWYU pragma: keep
 #include "fl/rx_device.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 
@@ -30,6 +31,6 @@ class GpioIsrRx;
  * - Fast assembly ISR for edge capture (<130 ns latency)
  * - Slow management ISR for filtering and timeout detection
  */
-fl::shared_ptr<GpioIsrRx> GpioIsrRxMcpwm_create(int pin);
+fl::shared_ptr<GpioIsrRx> GpioIsrRxMcpwm_create(int pin) FL_NOEXCEPT;
 
 } // namespace fl

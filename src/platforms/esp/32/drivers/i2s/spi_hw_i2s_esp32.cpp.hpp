@@ -9,6 +9,7 @@
 #include "platforms/esp/32/drivers/i2s/spi_hw_i2s_esp32.h"
 #include "fl/system/log.h"
 #include "fl/stl/limits.h"
+#include "fl/stl/noexcept.h"
 #include "platforms/esp/is_esp.h"
 
 // The I2S parallel mode driver only works on ESP32 and ESP32-S2
@@ -20,7 +21,7 @@
 
 // Compatibility for ESP-IDF 3.3: heap_caps_aligned_alloc was added in IDF 4.1
 #if defined(ESP_IDF_VERSION_MAJOR) && ESP_IDF_VERSION_MAJOR <= 3
-static inline void* heap_caps_aligned_alloc(size_t alignment, size_t size, fl::u32 caps) {
+static inline void* heap_caps_aligned_alloc(size_t alignment, size_t size, fl::u32 caps) FL_NOEXCEPT {
     (void)alignment;  // IDF 3.3 heap_caps_malloc doesn't support alignment
     return heap_caps_malloc(size, caps);
 }
@@ -32,7 +33,7 @@ namespace fl {
 // Constructor / Destructor
 // ============================================================================
 
-SpiHwI2SESP32::SpiHwI2SESP32(int bus_id)
+SpiHwI2SESP32::SpiHwI2SESP32(int bus_id) FL_NOEXCEPT
     : mInterleavedBuffer(nullptr),
       mBufferSize(0),
       mClockPin(-1),
@@ -52,7 +53,7 @@ SpiHwI2SESP32::~SpiHwI2SESP32() {
 // SpiHw16 Interface Implementation
 // ============================================================================
 
-bool SpiHwI2SESP32::begin(const Config& config) {
+bool SpiHwI2SESP32::begin(const Config& config) FL_NOEXCEPT {
     // Step 1: Extract data pins from config
     mDataPins = extract_data_pins(config);
     mNumStrips = static_cast<int>(mDataPins.size());
@@ -106,7 +107,7 @@ bool SpiHwI2SESP32::begin(const Config& config) {
     return true;
 }
 
-void SpiHwI2SESP32::end() {
+void SpiHwI2SESP32::end() FL_NOEXCEPT {
     // Wait for any pending transmission to complete
     if (mIsInitialized) {
         waitComplete(5000);  // 5 second timeout
@@ -123,7 +124,7 @@ void SpiHwI2SESP32::end() {
     // Note: Yves driver destructor will clean up its own resources
 }
 
-DMABuffer SpiHwI2SESP32::acquireDMABuffer(size_t bytes_per_lane) {
+DMABuffer SpiHwI2SESP32::acquireDMABuffer(size_t bytes_per_lane) FL_NOEXCEPT {
     if (!mIsInitialized) {
         return DMABuffer(SPIError::NOT_INITIALIZED);
     }
@@ -173,7 +174,7 @@ DMABuffer SpiHwI2SESP32::acquireDMABuffer(size_t bytes_per_lane) {
     return mCurrentBuffer;
 }
 
-bool SpiHwI2SESP32::transmit(TransmitMode mode) {
+bool SpiHwI2SESP32::transmit(TransmitMode mode) FL_NOEXCEPT {
     (void)mode;  // Async mode only for now
 
     if (!mIsInitialized) {
@@ -202,7 +203,7 @@ bool SpiHwI2SESP32::transmit(TransmitMode mode) {
     return true;
 }
 
-bool SpiHwI2SESP32::waitComplete(u32 timeout_ms) {
+bool SpiHwI2SESP32::waitComplete(u32 timeout_ms) FL_NOEXCEPT {
     if (!mIsInitialized) {
         return false;
     }
@@ -234,19 +235,19 @@ bool SpiHwI2SESP32::waitComplete(u32 timeout_ms) {
     return true;
 }
 
-bool SpiHwI2SESP32::isBusy() const {
+bool SpiHwI2SESP32::isBusy() const FL_NOEXCEPT {
     return mIsInitialized && mDriver.isDisplaying;
 }
 
-bool SpiHwI2SESP32::isInitialized() const {
+bool SpiHwI2SESP32::isInitialized() const FL_NOEXCEPT {
     return mIsInitialized;
 }
 
-int SpiHwI2SESP32::getBusId() const {
+int SpiHwI2SESP32::getBusId() const FL_NOEXCEPT {
     return mBusId;
 }
 
-const char* SpiHwI2SESP32::getName() const {
+const char* SpiHwI2SESP32::getName() const FL_NOEXCEPT {
     return "I2S0";
 }
 
@@ -254,7 +255,7 @@ const char* SpiHwI2SESP32::getName() const {
 // Private Helper Functions
 // ============================================================================
 
-bool SpiHwI2SESP32::validate_pins(int clock_pin, const fl::vector<int>& data_pins) {
+bool SpiHwI2SESP32::validate_pins(int clock_pin, const fl::vector<int>& data_pins) FL_NOEXCEPT {
     // Check pin count (1-16)
     if (data_pins.size() < 1 || data_pins.size() > 16) {
         FL_WARN("SpiHwI2SESP32: Invalid pin count " << data_pins.size() << " (must be 1-16)");
@@ -301,7 +302,7 @@ bool SpiHwI2SESP32::validate_pins(int clock_pin, const fl::vector<int>& data_pin
     return true;
 }
 
-u8* SpiHwI2SESP32::allocate_dma_buffer(size_t size) {
+u8* SpiHwI2SESP32::allocate_dma_buffer(size_t size) FL_NOEXCEPT {
     u8* buffer = nullptr;
 
 #if defined(FL_IS_ESP_32S3)
@@ -333,7 +334,7 @@ u8* SpiHwI2SESP32::allocate_dma_buffer(size_t size) {
     return buffer;
 }
 
-int SpiHwI2SESP32::calculate_clock_mhz(u32 target_hz) {
+int SpiHwI2SESP32::calculate_clock_mhz(u32 target_hz) FL_NOEXCEPT {
     // Convert Hz to MHz, rounding to nearest integer
     int mhz = static_cast<int>((target_hz + 500000) / 1000000);
 
@@ -344,7 +345,7 @@ int SpiHwI2SESP32::calculate_clock_mhz(u32 target_hz) {
     return mhz;
 }
 
-int SpiHwI2SESP32::count_active_lanes(const Config& config) {
+int SpiHwI2SESP32::count_active_lanes(const Config& config) FL_NOEXCEPT {
     int count = 0;
     if (config.data0_pin >= 0) ++count;
     if (config.data1_pin >= 0) ++count;
@@ -365,7 +366,7 @@ int SpiHwI2SESP32::count_active_lanes(const Config& config) {
     return count;
 }
 
-fl::vector<int> SpiHwI2SESP32::extract_data_pins(const Config& config) {
+fl::vector<int> SpiHwI2SESP32::extract_data_pins(const Config& config) FL_NOEXCEPT {
     fl::vector<int> pins;
     pins.reserve(16);
 

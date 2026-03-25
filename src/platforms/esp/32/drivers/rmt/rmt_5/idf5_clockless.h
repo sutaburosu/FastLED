@@ -13,6 +13,7 @@
 #include "fl/channels/channel.h"
 #include "fl/channels/config.h"
 #include "fl/chipsets/timing_traits.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 template <int DATA_PIN, typename TIMING, EOrder RGB_ORDER = RGB, int XTRA0 = 0, bool FLIP = false, int WAIT_TIME = 280>
@@ -21,20 +22,20 @@ class ClocklessIdf5 : public Channel
     // -- Verify that the pin is valid
     static_assert(FastPin<DATA_PIN>::validpin(), "This pin has been marked as an invalid pin, common reasons includes it being a ground pin, read only, or too noisy (e.g. hooked up to the uart).");
 
-    static ChipsetVariant makeChipset() {
+    static ChipsetVariant makeChipset() FL_NOEXCEPT {
         return ClocklessChipset(DATA_PIN, makeTimingConfig<TIMING>());
     }
 
 public:
-    ClocklessIdf5()
+    ClocklessIdf5() FL_NOEXCEPT
         : Channel(makeChipset(), RGB_ORDER, RegistrationMode::DeferRegister)
     {
         // Auto-register in the controller draw list (template API expects this)
         addToList();
     }
 
-    void init() override { }
-    virtual u16 getMaxRefreshRate() const { return 800; }
+    void init() FL_NOEXCEPT override { }
+    virtual u16 getMaxRefreshRate() const FL_NOEXCEPT { return 800; }
 };
 
 // Backward compatibility alias

@@ -15,6 +15,7 @@
 #include "fl/chipsets/led_timing.h"
 #include "fl/channels/data.h"
 #include "fl/channels/driver.h"
+#include "fl/stl/noexcept.h"
 
 FL_EXTERN_C_BEGIN
 
@@ -49,13 +50,13 @@ public:
     RmtController5LowLevel(
         int data_pin,
         const ChipsetTiming& timing
-    );
+    ) FL_NOEXCEPT;
 
     ~RmtController5LowLevel();
 
     // FastLED interface
-    void loadPixelData(PixelIterator& pixels);
-    void showPixels();
+    void loadPixelData(PixelIterator& pixels) FL_NOEXCEPT;
+    void showPixels() FL_NOEXCEPT;
 
 private:
     // Channel data for transmission

@@ -7,6 +7,7 @@
 
 #include "fl/stl/singleton.h"
 #include "fl/stl/vector.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 
@@ -15,7 +16,7 @@ namespace fl {
 ///          The buffer is automatically managed by the caller and remains allocated
 ///          to avoid reallocation overhead on subsequent frames.
 /// @return Reference to thread-local uint8_t vector for RGBW-to-RGB conversion
-fl::vector<u8>& get_rgbw_scratchpad() {
+fl::vector<u8>& get_rgbw_scratchpad() FL_NOEXCEPT {
     return SingletonThreadLocal<fl::vector<u8>>::instance();
 }
 

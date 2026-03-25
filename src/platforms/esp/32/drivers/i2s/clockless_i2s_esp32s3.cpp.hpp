@@ -38,6 +38,7 @@
 #include "pixel_iterator.h"
 
 #include "platforms/esp/32/drivers/i2s/clockless_i2s_esp32s3.h"
+#include "fl/stl/noexcept.h"
 
 namespace { // anonymous namespace
 
@@ -53,25 +54,25 @@ class I2SEsp32S3_Group {
     fl::RectangularDrawBuffer mRectDrawBuffer;
     bool mDrawn = false;
 
-    static I2SEsp32S3_Group &getInstance() {
+    static I2SEsp32S3_Group &getInstance() FL_NOEXCEPT {
         return fl::Singleton<I2SEsp32S3_Group>::instance();
     }
 
     I2SEsp32S3_Group() = default;
     ~I2SEsp32S3_Group() { mDriver.reset(); }
 
-    void onQueuingStart() {
+    void onQueuingStart() FL_NOEXCEPT {
         mRectDrawBuffer.onQueuingStart();
         mDrawn = false;
     }
 
-    void onQueuingDone() { mRectDrawBuffer.onQueuingDone(); }
+    void onQueuingDone() FL_NOEXCEPT { mRectDrawBuffer.onQueuingDone(); }
 
-    void addObject(I2SPin pin, fl::u16 numLeds, bool is_rgbw) {
+    void addObject(I2SPin pin, fl::u16 numLeds, bool is_rgbw) FL_NOEXCEPT {
         mRectDrawBuffer.queue(fl::DrawItem(pin, numLeds, is_rgbw));
     }
 
-    void showPixelsOnceThisFrame() {
+    void showPixelsOnceThisFrame() FL_NOEXCEPT {
         if (mDrawn) {
             return;
         }
@@ -116,13 +117,13 @@ class I2SEsp32S3_Group {
 
 namespace fl {
 
-void I2S_Esp32::beginShowLeds(int datapin, int nleds, bool is_rgbw) {
+void I2S_Esp32::beginShowLeds(int datapin, int nleds, bool is_rgbw) FL_NOEXCEPT {
     I2SEsp32S3_Group &group = I2SEsp32S3_Group::getInstance();
     group.onQueuingStart();
     group.addObject(datapin, nleds, is_rgbw);
 }
 
-void I2S_Esp32::showPixels(u8 data_pin, PixelIterator &pixel_iterator) {
+void I2S_Esp32::showPixels(u8 data_pin, PixelIterator &pixel_iterator) FL_NOEXCEPT {
     I2SEsp32S3_Group &group = I2SEsp32S3_Group::getInstance();
     group.onQueuingDone();
     const Rgbw rgbw = pixel_iterator.get_rgbw();
@@ -160,7 +161,7 @@ void I2S_Esp32::showPixels(u8 data_pin, PixelIterator &pixel_iterator) {
     }
 }
 
-void I2S_Esp32::endShowLeds() {
+void I2S_Esp32::endShowLeds() FL_NOEXCEPT {
     // First one to call this draws everything, every other call this frame
     // is ignored.
     I2SEsp32S3_Group::getInstance().showPixelsOnceThisFrame();
@@ -171,12 +172,12 @@ class Driver : public InternalI2SDriver {
     Driver() = default;
     ~Driver() override = default;
     void initled(u8 *leds, const int *pins, int numstrip,
-                 int NUM_LED_PER_STRIP) override {
+                 int NUM_LED_PER_STRIP) FL_NOEXCEPT override {
         mDriver.initled(leds, pins, numstrip, NUM_LED_PER_STRIP);
     }
-    void show() override { mDriver.show(); }
+    void show() FL_NOEXCEPT override { mDriver.show(); }
 
-    void setBrightness(u8 brightness) override {
+    void setBrightness(u8 brightness) FL_NOEXCEPT override {
         mDriver.setBrightness(brightness);
     }
 
@@ -184,7 +185,7 @@ class Driver : public InternalI2SDriver {
     I2SClocklessLedDriveresp32S3 mDriver;
 };
 
-InternalI2SDriver *InternalI2SDriver::create() {
+InternalI2SDriver *InternalI2SDriver::create() FL_NOEXCEPT {
     if (!gPsramInited) {
         gPsramInited = true;
         bool ok = psramInit();

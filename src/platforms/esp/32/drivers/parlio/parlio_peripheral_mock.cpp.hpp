@@ -17,6 +17,7 @@
 #include "fl/stl/cstring.h"
 #include "fl/stl/singleton.h"
 #include "fl/stl/map.h"
+#include "fl/stl/noexcept.h"
 
 // IWYU pragma: begin_keep
 #include "fl/stl/cstdlib.h" // ok include for aligned_alloc on POSIX
@@ -29,7 +30,7 @@ fl::vector<fl::vector<fl::u8>> untransposeParlioBitstreamInternal(
     const fl::u8* transposed_data,
     size_t bit_count,
     size_t num_pins,
-    fl::detail::ParlioBitPackOrder packing) {
+    fl::detail::ParlioBitPackOrder packing) FL_NOEXCEPT {
 
     fl::vector<fl::vector<fl::u8>> per_pin_data(num_pins);
 
@@ -151,7 +152,7 @@ private:
 // Singleton Instance
 //=============================================================================
 
-ParlioPeripheralMock& ParlioPeripheralMock::instance() {
+ParlioPeripheralMock& ParlioPeripheralMock::instance() FL_NOEXCEPT {
     return Singleton<ParlioPeripheralMockImpl>::instance();
 }
 
@@ -184,7 +185,7 @@ ParlioPeripheralMockImpl::~ParlioPeripheralMockImpl() {
 // Lifecycle Methods
 //=============================================================================
 
-bool ParlioPeripheralMockImpl::initialize(const ParlioPeripheralConfig& config) {
+bool ParlioPeripheralMockImpl::initialize(const ParlioPeripheralConfig& config) FL_NOEXCEPT {
     if (config.data_width == 0 || config.data_width > 16) {
         FL_WARN("ParlioPeripheralMock: Invalid data width: " << config.data_width);
         return false;
@@ -194,13 +195,13 @@ bool ParlioPeripheralMockImpl::initialize(const ParlioPeripheralConfig& config) 
     return true;
 }
 
-bool ParlioPeripheralMockImpl::deinitialize() {
+bool ParlioPeripheralMockImpl::deinitialize() FL_NOEXCEPT {
     mInitialized = false;
     mEnabled = false;
     return true;
 }
 
-bool ParlioPeripheralMockImpl::enable() {
+bool ParlioPeripheralMockImpl::enable() FL_NOEXCEPT {
     if (!mInitialized) {
         FL_WARN("ParlioPeripheralMock: Cannot enable - not initialized");
         return false;
@@ -209,7 +210,7 @@ bool ParlioPeripheralMockImpl::enable() {
     return true;
 }
 
-bool ParlioPeripheralMockImpl::disable() {
+bool ParlioPeripheralMockImpl::disable() FL_NOEXCEPT {
     if (!mInitialized) {
         FL_WARN("ParlioPeripheralMock: Cannot disable - not initialized");
         return false;
@@ -222,7 +223,7 @@ bool ParlioPeripheralMockImpl::disable() {
 // Transmission Methods
 //=============================================================================
 
-bool ParlioPeripheralMockImpl::transmit(const u8* buffer, size_t bit_count, u16 idle_value) {
+bool ParlioPeripheralMockImpl::transmit(const u8* buffer, size_t bit_count, u16 idle_value) FL_NOEXCEPT {
     if (!mInitialized) {
         FL_WARN("ParlioPeripheralMock: Cannot transmit - not initialized");
         return false;
@@ -271,7 +272,7 @@ bool ParlioPeripheralMockImpl::transmit(const u8* buffer, size_t bit_count, u16 
     return true;
 }
 
-bool ParlioPeripheralMockImpl::waitAllDone(u32 timeout_ms) {
+bool ParlioPeripheralMockImpl::waitAllDone(u32 timeout_ms) FL_NOEXCEPT {
     (void)timeout_ms;
     if (!mInitialized) {
         FL_WARN("ParlioPeripheralMock: Cannot wait - not initialized");
@@ -286,7 +287,7 @@ bool ParlioPeripheralMockImpl::waitAllDone(u32 timeout_ms) {
 // ISR Callback
 //=============================================================================
 
-bool ParlioPeripheralMockImpl::registerTxDoneCallback(void* callback, void* user_ctx) {
+bool ParlioPeripheralMockImpl::registerTxDoneCallback(void* callback, void* user_ctx) FL_NOEXCEPT {
     if (!mInitialized) {
         FL_WARN("ParlioPeripheralMock: Cannot register callback - not initialized");
         return false;
@@ -296,7 +297,7 @@ bool ParlioPeripheralMockImpl::registerTxDoneCallback(void* callback, void* user
     return true;
 }
 
-void ParlioPeripheralMockImpl::fireCallback() {
+void ParlioPeripheralMockImpl::fireCallback() FL_NOEXCEPT {
     if (mPendingTransmissions > 0) {
         mPendingTransmissions--;
     }
@@ -311,7 +312,7 @@ void ParlioPeripheralMockImpl::fireCallback() {
     }
 }
 
-void ParlioPeripheralMockImpl::pumpDeferredCallbacks() {
+void ParlioPeripheralMockImpl::pumpDeferredCallbacks() FL_NOEXCEPT {
     // Re-entrancy guard: if we're already firing callbacks (from within
     // a callback that called transmit()), just let the outer loop handle it.
     if (mFiringCallbacks) {
@@ -333,7 +334,7 @@ void ParlioPeripheralMockImpl::pumpDeferredCallbacks() {
 // DMA Memory Management
 //=============================================================================
 
-u8* ParlioPeripheralMockImpl::allocateDmaBuffer(size_t size) {
+u8* ParlioPeripheralMockImpl::allocateDmaBuffer(size_t size) FL_NOEXCEPT {
     size_t aligned_size = ((size + 63) / 64) * 64;
     void* buffer = nullptr;
 
@@ -349,7 +350,7 @@ u8* ParlioPeripheralMockImpl::allocateDmaBuffer(size_t size) {
     return static_cast<u8*>(buffer);
 }
 
-void ParlioPeripheralMockImpl::freeDmaBuffer(u8* buffer) {
+void ParlioPeripheralMockImpl::freeDmaBuffer(u8* buffer) FL_NOEXCEPT {
     if (buffer != nullptr) {
 #ifdef FL_IS_WIN
         _aligned_free(buffer);
@@ -363,23 +364,23 @@ void ParlioPeripheralMockImpl::freeDmaBuffer(u8* buffer) {
 // Time and Delay — Simulated (instant, no real sleeping)
 //=============================================================================
 
-void ParlioPeripheralMockImpl::delay(u32 ms) {
+void ParlioPeripheralMockImpl::delay(u32 ms) FL_NOEXCEPT {
     mSimulatedTimeUs += static_cast<u64>(ms) * 1000;
 }
 
-void ParlioPeripheralMockImpl::delayMicroseconds(u32 us) {
+void ParlioPeripheralMockImpl::delayMicroseconds(u32 us) FL_NOEXCEPT {
     mSimulatedTimeUs += us;
 }
 
-u32 ParlioPeripheralMockImpl::millis() {
+u32 ParlioPeripheralMockImpl::millis() FL_NOEXCEPT {
     return static_cast<u32>(mSimulatedTimeUs / 1000);
 }
 
-u64 ParlioPeripheralMockImpl::getMicroseconds() {
+u64 ParlioPeripheralMockImpl::getMicroseconds() FL_NOEXCEPT {
     return mSimulatedTimeUs;
 }
 
-void ParlioPeripheralMockImpl::freeDmaBuffer(void* ptr) {
+void ParlioPeripheralMockImpl::freeDmaBuffer(void* ptr) FL_NOEXCEPT {
     if (ptr) {
         fl::free(ptr);
     }
@@ -389,51 +390,51 @@ void ParlioPeripheralMockImpl::freeDmaBuffer(void* ptr) {
 // Mock-Specific API
 //=============================================================================
 
-void ParlioPeripheralMockImpl::setTransmitDelay(u32 microseconds) {
+void ParlioPeripheralMockImpl::setTransmitDelay(u32 microseconds) FL_NOEXCEPT {
     mTransmitDelayUs = microseconds;
 }
 
-void ParlioPeripheralMockImpl::simulateTransmitComplete() {
+void ParlioPeripheralMockImpl::simulateTransmitComplete() FL_NOEXCEPT {
     fireCallback();
 }
 
-void ParlioPeripheralMockImpl::setTransmitFailure(bool should_fail) {
+void ParlioPeripheralMockImpl::setTransmitFailure(bool should_fail) FL_NOEXCEPT {
     mShouldFailTransmit = should_fail;
 }
 
 const fl::vector<ParlioPeripheralMock::TransmissionRecord>&
-ParlioPeripheralMockImpl::getTransmissionHistory() const {
+ParlioPeripheralMockImpl::getTransmissionHistory() const FL_NOEXCEPT {
     return mHistory;
 }
 
-bool ParlioPeripheralMockImpl::isInitialized() const {
+bool ParlioPeripheralMockImpl::isInitialized() const FL_NOEXCEPT {
     return mInitialized;
 }
 
-bool ParlioPeripheralMockImpl::isEnabled() const {
+bool ParlioPeripheralMockImpl::isEnabled() const FL_NOEXCEPT {
     return mEnabled;
 }
 
-bool ParlioPeripheralMockImpl::isTransmitting() const {
+bool ParlioPeripheralMockImpl::isTransmitting() const FL_NOEXCEPT {
     return mTransmitting;
 }
 
-size_t ParlioPeripheralMockImpl::getTransmitCount() const {
+size_t ParlioPeripheralMockImpl::getTransmitCount() const FL_NOEXCEPT {
     return mTransmitCount;
 }
 
-const ParlioPeripheralConfig& ParlioPeripheralMockImpl::getConfig() const {
+const ParlioPeripheralConfig& ParlioPeripheralMockImpl::getConfig() const FL_NOEXCEPT {
     return mConfig;
 }
 
-void ParlioPeripheralMockImpl::clearTransmissionHistory() {
+void ParlioPeripheralMockImpl::clearTransmissionHistory() FL_NOEXCEPT {
     mHistory.clear();
     mPerPinData.clear();
     mPendingTransmissions = 0;
     mTransmitting = false;
 }
 
-fl::span<const u8> ParlioPeripheralMockImpl::getTransmissionDataForPin(int gpio_pin) const {
+fl::span<const u8> ParlioPeripheralMockImpl::getTransmissionDataForPin(int gpio_pin) const FL_NOEXCEPT {
     if (mPerPinData.empty()) {
         return fl::span<const u8>();
     }
@@ -445,7 +446,7 @@ fl::span<const u8> ParlioPeripheralMockImpl::getTransmissionDataForPin(int gpio_
     return fl::span<const u8>(it->second);
 }
 
-void ParlioPeripheralMockImpl::reset() {
+void ParlioPeripheralMockImpl::reset() FL_NOEXCEPT {
     mInitialized = false;
     mEnabled = false;
     mTransmitting = false;
@@ -473,7 +474,7 @@ void ParlioPeripheralMockImpl::reset() {
 fl::vector<fl::pair<int, fl::vector<u8>>> ParlioPeripheralMock::untransposeParlioBitstream(
     fl::span<const u8> transposed_data,
     fl::span<const int> pins,
-    ParlioBitPackOrder packing) {
+    ParlioBitPackOrder packing) FL_NOEXCEPT {
 
     fl::vector<fl::pair<int, fl::vector<u8>>> result;
 
@@ -502,7 +503,7 @@ fl::vector<fl::pair<int, fl::vector<u8>>> ParlioPeripheralMock::untransposeParli
 // Global Cleanup Function
 //=============================================================================
 
-void cleanup_parlio_mock() {
+void cleanup_parlio_mock() FL_NOEXCEPT {
     ParlioEngine::getInstance().cleanup();
     auto& mock = ParlioPeripheralMock::instance();
     mock.clearTransmissionHistory();

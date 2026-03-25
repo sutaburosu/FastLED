@@ -81,6 +81,7 @@
 
 // Include peripheral interface
 #include "platforms/esp/32/drivers/parlio/iparlio_peripheral.h"
+#include "fl/stl/noexcept.h"
 
 
 namespace fl {
@@ -144,7 +145,7 @@ enum class ParlioEngineState {
 class ParlioEngine {
 public:
     /// @brief Get singleton instance
-    static ParlioEngine& getInstance();
+    static ParlioEngine& getInstance() FL_NOEXCEPT;
 
     /// @brief Encoding mode for the PARLIO engine
     enum class EncodingMode { CLOCKLESS, SPI };
@@ -158,7 +159,7 @@ public:
     bool initialize(size_t dataWidth,
                    const fl::vector<int>& pins,
                    const ChipsetTimingConfig& timing,
-                   size_t maxLedsPerChannel);
+                   size_t maxLedsPerChannel) FL_NOEXCEPT;
 
     /// @brief Initialize for SPI-over-PARLIO mode (2-bit: clock + data)
     /// @param pins GPIO pins: {clockPin, dataPin} (must have exactly 2 entries)
@@ -167,12 +168,12 @@ public:
     /// @return true on success, false on error
     bool initializeSpi(const fl::vector<int>& pins,
                       u32 spiClockHz,
-                      size_t maxBytesPerChannel);
+                      size_t maxBytesPerChannel) FL_NOEXCEPT;
 
     /// @brief Encode a single SPI byte into 4 DMA bytes (static utility for testing)
     /// @param dataByte The SPI data byte to encode
     /// @param output 4-byte output buffer
-    static void encodeSpiByteForTest(u8 dataByte, u8 output[4]);
+    static void encodeSpiByteForTest(u8 dataByte, u8 output[4]) FL_NOEXCEPT;
 
     /// @brief Begin LED data transmission (blocking until complete)
     /// @param scratchBuffer Per-lane scratch buffer (caller-owned)
@@ -186,30 +187,30 @@ public:
     bool beginTransmission(const u8* scratchBuffer,
                           size_t totalBytes,
                           size_t numLanes,
-                          size_t laneStride);
+                          size_t laneStride) FL_NOEXCEPT;
 
     /// @brief Poll engine state and continue buffer population
     /// @return Current engine state (READY, BUSY, or ERROR)
-    ParlioEngineState poll();
+    ParlioEngineState poll() FL_NOEXCEPT;
 
     /// @brief Check if transmission is in progress
-    bool isTransmitting() const;
+    bool isTransmitting() const FL_NOEXCEPT;
 
     /// @brief Get debug metrics for transmission analysis
-    ParlioDebugMetrics getDebugMetrics() const;
+    ParlioDebugMetrics getDebugMetrics() const FL_NOEXCEPT;
 
     /// @brief Clean up debug task before DLL unload (TEST_DLL_MODE only)
     ///
     /// Call this function before DLL unload to properly join the debug task thread.
     /// The singleton is NOT destroyed - only the debug task is cleaned up.
     /// This prevents memory leaks detected by LeakSanitizer in test mode.
-    void cleanup();
+    void cleanup() FL_NOEXCEPT;
 
     /// @brief Destructor - cleans up PARLIO hardware
     ~ParlioEngine();
 
     /// @brief Access the underlying peripheral (for time/delay delegation)
-    IParlioPeripheral* peripheral() { return mPeripheral; }
+    IParlioPeripheral* peripheral() FL_NOEXCEPT { return mPeripheral; }
 
 private:
     // Singleton pattern - allow Singleton<T> to construct instance
@@ -227,7 +228,7 @@ private:
     /// @param user_ctx User context (ParlioEngine* instance)
     static bool txDoneCallback(void* tx_unit,
                               const void* edata,
-                              void* user_ctx);
+                              void* user_ctx) FL_NOEXCEPT;
 
     /// @brief Worker function for DMA buffer population (called from txDoneCallback)
     /// ⚠️  CRITICAL ISR SAFETY RULES:
@@ -236,13 +237,13 @@ private:
     /// ⚠️  3. MINIMIZE execution time (<10µs ideal)
     /// ⚠️  4. ONLY ISR-safe operations
     /// @param user_data ParlioEngine instance pointer
-    static void FL_IRAM workerIsrCallback(void* user_data);
+    static void FL_IRAM workerIsrCallback(void* user_data) FL_NOEXCEPT;
 
 #ifdef FL_DEBUG
     /// @brief Debug task function for periodic ISR state logging
     /// @param arg ParlioEngine instance pointer
     /// @note Runs at low priority (1), logs ISR state every 500ms during transmission
-    static void debugTaskFunction(void* arg);
+    static void debugTaskFunction(void* arg) FL_NOEXCEPT;
 #endif
 
     /// @brief Populate a DMA buffer with waveform data (clockless or SPI)
@@ -251,26 +252,26 @@ private:
                           size_t outputBufferCapacity,
                           size_t startByte,
                           size_t byteCount,
-                          size_t& outputBytesWritten);
+                          size_t& outputBytesWritten) FL_NOEXCEPT;
 
     /// @brief Populate a DMA buffer with SPI clock+data encoding
     /// ⚠️  CRITICAL HOT PATH - NO LOGGING IN IMPLEMENTATION
     FL_OPTIMIZE_FUNCTION bool FL_IRAM populateDmaBufferSpi(
         u8* outputBuffer, size_t outputCapacity,
         size_t startByte, size_t byteCount,
-        size_t& outputBytesWritten);
+        size_t& outputBytesWritten) FL_NOEXCEPT;
 
     /// @brief Populate next available DMA buffer (incremental)
     /// ⚠️  CRITICAL HOT PATH - NO LOGGING IN IMPLEMENTATION
     /// ⚠️  Called 20+ times per transmission in tight timing loop
     /// ⚠️  Logging causes 98× performance degradation
-    bool populateNextDMABuffer();
+    bool populateNextDMABuffer() FL_NOEXCEPT;
 
     /// @brief Check if ring has space for more buffers
-    bool hasRingSpace() const;
+    bool hasRingSpace() const FL_NOEXCEPT;
 
     /// @brief Allocate and initialize all ring buffers (one-time)
-    bool allocateRingBuffers();
+    bool allocateRingBuffers() FL_NOEXCEPT;
 
 private:
     // Initialization state

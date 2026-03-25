@@ -17,6 +17,7 @@
 #if FASTLED_RMT5
 
 #include "fl/stl/singleton.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 
@@ -39,7 +40,7 @@ class NetworkStateTracker {
 public:
     /// @brief Get singleton instance (uses fl::Singleton for no-destructor semantics)
     /// @return Reference to the global network state tracker
-    static NetworkStateTracker& instance() {
+    static NetworkStateTracker& instance() FL_NOEXCEPT {
         return Singleton<NetworkStateTracker>::instance();
     }
 
@@ -48,18 +49,18 @@ public:
     ///
     /// **Side Effect:** Updates internal last-known state to current state.
     /// Subsequent calls will return false until state changes again.
-    bool hasChanged();
+    bool hasChanged() FL_NOEXCEPT;
 
     /// @brief Get current network state (without affecting change tracking)
     /// @return true if any network (WiFi, Ethernet, or Bluetooth) is active
-    bool isActive() const;
+    bool isActive() const FL_NOEXCEPT;
 
     /// @brief Get last known network state (cached value)
     /// @return Last network state returned by hasChanged()
-    bool lastKnownState() const { return mLastKnownState; }
+    bool lastKnownState() const FL_NOEXCEPT { return mLastKnownState; }
 
     /// @brief Reset tracker state (for testing)
-    void reset() { mLastKnownState = false; }
+    void reset() FL_NOEXCEPT { mLastKnownState = false; }
 
 private:
     friend class Singleton<NetworkStateTracker>;

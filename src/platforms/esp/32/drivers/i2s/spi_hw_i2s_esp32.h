@@ -71,6 +71,7 @@
 #include "fl/stl/span.h"
 #include "fl/stl/vector.h"
 #include "fl/stl/limits.h"
+#include "fl/stl/noexcept.h"
 #include "platforms/shared/spi_hw_16.h"
 #include "platforms/shared/spi_types.h"
 
@@ -119,7 +120,7 @@ public:
     /// @brief Construct ESP32 I2S SPI hardware controller
     /// @param bus_id Bus identifier (0 for I2S0, only one I2S bus supported on ESP32)
     /// @note Call begin() to initialize with pin configuration
-    SpiHwI2SESP32(int bus_id = 0);
+    SpiHwI2SESP32(int bus_id = 0) FL_NOEXCEPT;
 
     /// @brief Destructor - releases buffers and I2S resources
     ~SpiHwI2SESP32() override;
@@ -129,11 +130,11 @@ public:
     /// @returns true if initialized successfully, false on error
     /// @note Counts active lanes from data0_pin through data15_pin (non-negative pins)
     /// @note Validates pin constraints, allocates buffers, initializes I2S peripheral
-    bool begin(const Config& config) override;
+    bool begin(const Config& config) FL_NOEXCEPT override;
 
     /// @brief Shutdown I2S peripheral and release resources
     /// @note Waits for any pending transmission to complete
-    void end() override;
+    void end() FL_NOEXCEPT override;
 
     /// @brief Acquire writable DMA buffer for zero-copy transmission
     /// @param bytes_per_lane Number of bytes needed per lane
@@ -141,36 +142,36 @@ public:
     /// @note Automatically waits if previous transmission active
     /// @note SPIBusManager will call SPITransposer::transpose16() to fill this buffer
     /// @note Buffer format: interleaved [strip0_byte0, strip1_byte0, ..., strip0_byte1, ...]
-    DMABuffer acquireDMABuffer(size_t bytes_per_lane) override;
+    DMABuffer acquireDMABuffer(size_t bytes_per_lane) FL_NOEXCEPT override;
 
     /// @brief Transmit data from previously acquired DMA buffer
     /// @param mode Transmission mode (SYNC or ASYNC, currently async only)
     /// @returns true if transmitted successfully, false on error
     /// @note Must call acquireDMABuffer() before this
     /// @note Triggers I2S DMA transmission (returns immediately, DMA continues in background)
-    bool transmit(TransmitMode mode = TransmitMode::ASYNC) override;
+    bool transmit(TransmitMode mode = TransmitMode::ASYNC) FL_NOEXCEPT override;
 
     /// @brief Wait for async transmission to complete
     /// @param timeout_ms Maximum time to wait in milliseconds (fl::numeric_limits<uint32_t>::max() = infinite)
     /// @returns true if completed successfully, false on timeout
     /// @note Uses FreeRTOS semaphore for efficient blocking
-    bool waitComplete(u32 timeout_ms = fl::numeric_limits<u32>::max()) override;
+    bool waitComplete(u32 timeout_ms = fl::numeric_limits<u32>::max()) FL_NOEXCEPT override;
 
     /// @brief Check if a transmission is currently in progress
     /// @returns true if busy, false if idle
-    bool isBusy() const override;
+    bool isBusy() const FL_NOEXCEPT override;
 
     /// @brief Get initialization status
     /// @returns true if initialized, false otherwise
-    bool isInitialized() const override;
+    bool isInitialized() const FL_NOEXCEPT override;
 
     /// @brief Get the SPI bus number/ID for this controller
     /// @returns 0 (I2S0 is the only bus on ESP32)
-    int getBusId() const override;
+    int getBusId() const FL_NOEXCEPT override;
 
     /// @brief Get the platform-specific peripheral name for this controller
     /// @returns "I2S0"
-    const char* getName() const override;
+    const char* getName() const FL_NOEXCEPT override;
 
 private:
     // ========================================================================
@@ -182,29 +183,29 @@ private:
     /// @param data_pins Data pins to validate (only non-negative pins checked)
     /// @returns true if all pins valid, false otherwise
     /// @note Checks: valid range, no flash pins (6-11), no duplicates
-    bool validate_pins(int clock_pin, const fl::vector<int>& data_pins);
+    bool validate_pins(int clock_pin, const fl::vector<int>& data_pins) FL_NOEXCEPT;
 
     /// @brief Allocate DMA-capable buffer (PSRAM or internal RAM)
     /// @param size Buffer size in bytes
     /// @returns Pointer to buffer, or nullptr on failure
     /// @note Tries PSRAM+DMA first (ESP32-S3 EDMA), falls back to internal DMA RAM
-    u8* allocate_dma_buffer(size_t size);
+    u8* allocate_dma_buffer(size_t size) FL_NOEXCEPT;
 
     /// @brief Calculate clock dividers for target frequency
     /// @param target_hz Target clock frequency in Hz
     /// @returns Clock frequency in MHz (for Yves driver API)
     /// @note ESP32 I2S base clock is 80 MHz (PLL_D2_CLK)
-    int calculate_clock_mhz(u32 target_hz);
+    int calculate_clock_mhz(u32 target_hz) FL_NOEXCEPT;
 
     /// @brief Count active lanes from Config struct
     /// @param config Configuration with data0_pin through data15_pin
     /// @returns Number of active lanes (non-negative pins)
-    int count_active_lanes(const Config& config);
+    int count_active_lanes(const Config& config) FL_NOEXCEPT;
 
     /// @brief Extract active data pins from Config struct
     /// @param config Configuration with data0_pin through data15_pin
     /// @returns Vector of active pin numbers
-    fl::vector<int> extract_data_pins(const Config& config);
+    fl::vector<int> extract_data_pins(const Config& config) FL_NOEXCEPT;
 
     // ========================================================================
     // Member Variables

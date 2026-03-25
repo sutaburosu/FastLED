@@ -16,6 +16,7 @@
 
 #include "platforms/esp/32/drivers/lcd_cam/ilcd_rgb_peripheral.h"
 #include "esp_lcd_panel_ops.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 
@@ -37,7 +38,7 @@ public:
     /// @return Reference to singleton
     ///
     /// ESP32-P4 has only one RGB LCD peripheral, so we use singleton pattern.
-    static LcdRgbPeripheralEsp& instance();
+    static LcdRgbPeripheralEsp& instance() FL_NOEXCEPT;
 
     ~LcdRgbPeripheralEsp() override;
 
@@ -45,25 +46,25 @@ public:
     // ILcdRgbPeripheral Implementation
     //=========================================================================
 
-    bool initialize(const LcdRgbPeripheralConfig& config) override;
-    void deinitialize() override;
-    bool isInitialized() const override;
+    bool initialize(const LcdRgbPeripheralConfig& config) FL_NOEXCEPT override;
+    void deinitialize() FL_NOEXCEPT override;
+    bool isInitialized() const FL_NOEXCEPT override;
 
-    u16* allocateFrameBuffer(size_t size_bytes) override;
-    void freeFrameBuffer(u16* buffer) override;
+    u16* allocateFrameBuffer(size_t size_bytes) FL_NOEXCEPT override;
+    void freeFrameBuffer(u16* buffer) FL_NOEXCEPT override;
 
-    bool drawFrame(const u16* buffer, size_t size_bytes) override;
-    bool waitFrameDone(u32 timeout_ms) override;
-    bool isBusy() const override;
+    bool drawFrame(const u16* buffer, size_t size_bytes) FL_NOEXCEPT override;
+    bool waitFrameDone(u32 timeout_ms) FL_NOEXCEPT override;
+    bool isBusy() const FL_NOEXCEPT override;
 
-    bool registerDrawCallback(void* callback, void* user_ctx) override;
-    const LcdRgbPeripheralConfig& getConfig() const override;
+    bool registerDrawCallback(void* callback, void* user_ctx) FL_NOEXCEPT override;
+    const LcdRgbPeripheralConfig& getConfig() const FL_NOEXCEPT override;
 
-    u64 getMicroseconds() override;
-    void delay(u32 ms) override;
+    u64 getMicroseconds() FL_NOEXCEPT override;
+    void delay(u32 ms) FL_NOEXCEPT override;
 
     /// @brief Clear the busy flag (called from VSYNC ISR)
-    void clearBusy() { mBusy = false; }
+    void clearBusy() FL_NOEXCEPT { mBusy = false; }
 
 private:
     friend class fl::Singleton<LcdRgbPeripheralEsp>;

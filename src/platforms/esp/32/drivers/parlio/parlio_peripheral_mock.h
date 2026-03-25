@@ -67,6 +67,7 @@
 #include "fl/stl/stdint.h"
 #include "fl/stl/span.h"
 #include "fl/stl/map.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 namespace detail {
@@ -92,7 +93,7 @@ public:
     ///
     /// This mirrors the hardware constraint that there is only one PARLIO peripheral.
     /// The instance is created on first access and persists for the program lifetime.
-    static ParlioPeripheralMock& instance();
+    static ParlioPeripheralMock& instance() FL_NOEXCEPT;
 
     //=========================================================================
     // Lifecycle
@@ -213,7 +214,7 @@ public:
     static fl::vector<fl::pair<int, fl::vector<u8>>> untransposeParlioBitstream(
         fl::span<const u8> transposed_data,
         fl::span<const int> pins,  // Pin order that will be return in the result.
-        ParlioBitPackOrder packing = ParlioBitPackOrder::FL_PARLIO_MSB);
+        ParlioBitPackOrder packing = ParlioBitPackOrder::FL_PARLIO_MSB) FL_NOEXCEPT;
 
     //-------------------------------------------------------------------------
     // State Inspection
@@ -252,7 +253,7 @@ public:
 /// 2. Clear all allocated memory to prevent LSAN leaks
 ///
 /// Call this from run_tests() before returning, similar to cleanup_coroutine_threads().
-void cleanup_parlio_mock();
+void cleanup_parlio_mock() FL_NOEXCEPT;
 
 } // namespace detail
 } // namespace fl

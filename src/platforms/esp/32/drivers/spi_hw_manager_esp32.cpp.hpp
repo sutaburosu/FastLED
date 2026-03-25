@@ -20,6 +20,7 @@
 #include "platforms/esp/32/feature_flags/enabled.h"
 #include "platforms/shared/spi_hw_1.h"
 #include "fl/stl/shared_ptr.h"
+#include "fl/stl/noexcept.h"
 
 // Include SpiHw16 only on platforms that support I2S parallel mode
 // ESP32-S3 and newer use LCD_CAM peripheral instead of I2S parallel mode
@@ -35,9 +36,9 @@ namespace fl {
 
 // Forward declare singleton getters from spi_hw_1_esp32.cpp.hpp
 // These are defined in spi_hw_1_esp32.cpp.hpp, included via platforms/esp/32/drivers/spi/_build.hpp
-extern fl::shared_ptr<SpiHw1>& getController2();
+extern fl::shared_ptr<SpiHw1>& getController2() FL_NOEXCEPT;
 #if SOC_SPI_PERIPH_NUM > 2
-extern fl::shared_ptr<SpiHw1>& getController3();
+extern fl::shared_ptr<SpiHw1>& getController3() FL_NOEXCEPT;
 #endif
 
 namespace detail {
@@ -48,7 +49,7 @@ constexpr int PRIORITY_HW_16 = 9;   ///< Highest (16-lane I2S parallel mode)
 constexpr int PRIORITY_HW_1 = 5;    ///< Standard single-lane SPI
 
 /// @brief Add SpiHw1 (single-lane SPI) if supported
-static void addSpiHw1IfPossible() {
+static void addSpiHw1IfPossible() FL_NOEXCEPT {
 #ifdef FL_IS_ESP32
     FL_DBG("ESP32: Registering SpiHw1 controllers");
 
@@ -73,7 +74,7 @@ static void addSpiHw1IfPossible() {
 }
 
 /// @brief Add SpiHw16 (16-lane I2S parallel mode) if supported
-static void addSpiHw16IfPossible() {
+static void addSpiHw16IfPossible() FL_NOEXCEPT {
 #if FASTLED_ESP32_HAS_SPI_HW_16
     FL_DBG("ESP32: Registering SpiHw16 (I2S parallel mode)");
 
@@ -96,7 +97,7 @@ namespace platforms {
 ///
 /// Uses a static initialization flag to ensure initialization happens only once,
 /// even if called from multiple SpiHw* classes.
-void initSpiHardware() {
+void initSpiHardware() FL_NOEXCEPT {
     // C++11 guarantees thread-safe static initialization
     static bool sInitialized = false;
     if (sInitialized) {

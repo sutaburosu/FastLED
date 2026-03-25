@@ -72,6 +72,7 @@
 #include "fl/stl/unique_ptr.h"
 #include "platforms/esp/32/drivers/lcd_cam/ilcd_rgb_peripheral.h"
 #include "crgb.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 
@@ -124,19 +125,19 @@ public:
     /// @brief Check if driver can handle channel data (clockless only)
     /// @param data Channel data to check
     /// @return true if clockless channel (rejects SPI), false otherwise
-    bool canHandle(const ChannelDataPtr& data) const override;
+    bool canHandle(const ChannelDataPtr& data) const FL_NOEXCEPT override;
 
     /// @brief Enqueue channel data for transmission
     /// @param channelData Channel data to transmit
     ///
     /// Adds channel to internal queue. Transmission happens when show() is called.
-    void enqueue(ChannelDataPtr channelData) override;
+    void enqueue(ChannelDataPtr channelData) FL_NOEXCEPT override;
 
     /// @brief Trigger transmission of enqueued data
     ///
     /// Groups channels by timing configuration and begins transmission of
     /// first group. Subsequent groups transmit sequentially via poll().
-    void show() override;
+    void show() FL_NOEXCEPT override;
 
     /// @brief Query driver state and perform maintenance
     /// @return Current driver state (READY, BUSY, DRAINING, or ERROR)
@@ -145,15 +146,15 @@ public:
     /// - Check transmission completion status
     /// - Trigger sequential chipset group transmissions
     /// - Clean up completed transmissions
-    DriverState poll() override;
+    DriverState poll() FL_NOEXCEPT override;
 
     /// @brief Get the driver name for affinity binding
     /// @return "LCD_RGB"
-    fl::string getName() const override { return fl::string::from_literal("LCD_RGB"); }
+    fl::string getName() const FL_NOEXCEPT override { return fl::string::from_literal("LCD_RGB"); }
 
     /// @brief Get driver capabilities (CLOCKLESS protocols only)
     /// @return Capabilities with supportsClockless=true, supportsSpi=false
-    Capabilities getCapabilities() const override {
+    Capabilities getCapabilities() const FL_NOEXCEPT override {
         return Capabilities(true, false);  // Clockless only
     }
 
@@ -168,7 +169,7 @@ private:
     /// 3. Prepares scratch buffer with LED data
     /// 4. Encodes LED data to LCD RGB waveforms
     /// 5. Submits encoded data to LCD RGB peripheral
-    bool beginTransmission(fl::span<const ChannelDataPtr> channelData);
+    bool beginTransmission(fl::span<const ChannelDataPtr> channelData) FL_NOEXCEPT;
 
     /// @brief Prepare scratch buffer with per-lane data layout
     /// @param channelData Span of channel data to copy
@@ -176,12 +177,12 @@ private:
     ///
     /// Copies LED RGB data from all channels into per-lane scratch buffer.
     void prepareScratchBuffer(fl::span<const ChannelDataPtr> channelData,
-                              size_t maxChannelSize);
+                              size_t maxChannelSize) FL_NOEXCEPT;
 
     /// @brief Encode frame data into DMA buffer
     ///
     /// Encodes LED RGB data from scratch buffer into 4-pixel waveform format.
-    void encodeFrame();
+    void encodeFrame() FL_NOEXCEPT;
 
 private:
     /// @brief Group of channels sharing the same chipset timing
@@ -235,6 +236,6 @@ private:
 ///
 /// Creates ChannelEngineLcdRgb with LcdRgbPeripheralEsp (real hardware).
 /// Only available on ESP32-P4 with RGB LCD support.
-fl::shared_ptr<IChannelDriver> createLcdRgbEngine();
+fl::shared_ptr<IChannelDriver> createLcdRgbEngine() FL_NOEXCEPT;
 
 } // namespace fl

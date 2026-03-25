@@ -15,6 +15,7 @@
 #if defined(FL_IS_ESP_32S3) && FL_HAS_INCLUDE("esp_lcd_panel_io.h")
 
 #include "platforms/esp/32/drivers/i2s/ii2s_lcd_cam_peripheral.h"
+#include "fl/stl/noexcept.h"
 #include "esp_lcd_panel_io.h"
 
 namespace fl {
@@ -36,7 +37,7 @@ public:
     /// @return Reference to singleton
     ///
     /// ESP32-S3 has only one LCD_CAM peripheral, so we use singleton pattern.
-    static I2sLcdCamPeripheralEsp& instance();
+    static I2sLcdCamPeripheralEsp& instance() FL_NOEXCEPT;
 
     ~I2sLcdCamPeripheralEsp() override;
 
@@ -44,22 +45,22 @@ public:
     // II2sLcdCamPeripheral Implementation
     //=========================================================================
 
-    bool initialize(const I2sLcdCamConfig& config) override;
-    void deinitialize() override;
-    bool isInitialized() const override;
+    bool initialize(const I2sLcdCamConfig& config) FL_NOEXCEPT override;
+    void deinitialize() FL_NOEXCEPT override;
+    bool isInitialized() const FL_NOEXCEPT override;
 
-    u16* allocateBuffer(size_t size_bytes) override;
-    void freeBuffer(u16* buffer) override;
+    u16* allocateBuffer(size_t size_bytes) FL_NOEXCEPT override;
+    void freeBuffer(u16* buffer) FL_NOEXCEPT override;
 
-    bool transmit(const u16* buffer, size_t size_bytes) override;
-    bool waitTransmitDone(u32 timeout_ms) override;
-    bool isBusy() const override;
+    bool transmit(const u16* buffer, size_t size_bytes) FL_NOEXCEPT override;
+    bool waitTransmitDone(u32 timeout_ms) FL_NOEXCEPT override;
+    bool isBusy() const FL_NOEXCEPT override;
 
-    bool registerTransmitCallback(void* callback, void* user_ctx) override;
-    const I2sLcdCamConfig& getConfig() const override;
+    bool registerTransmitCallback(void* callback, void* user_ctx) FL_NOEXCEPT override;
+    const I2sLcdCamConfig& getConfig() const FL_NOEXCEPT override;
 
-    u64 getMicroseconds() override;
-    void delay(u32 ms) override;
+    u64 getMicroseconds() FL_NOEXCEPT override;
+    void delay(u32 ms) FL_NOEXCEPT override;
 
 private:
     // Allow Singleton to call private constructor
@@ -72,7 +73,7 @@ private:
         esp_lcd_panel_io_event_data_t* edata,
         void* user_ctx);
 
-    I2sLcdCamPeripheralEsp();
+    I2sLcdCamPeripheralEsp() FL_NOEXCEPT;
 
     // Non-copyable
     I2sLcdCamPeripheralEsp(const I2sLcdCamPeripheralEsp&) = delete;

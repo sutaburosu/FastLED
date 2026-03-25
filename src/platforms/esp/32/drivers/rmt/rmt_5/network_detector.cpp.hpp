@@ -10,6 +10,7 @@
 
 #include "fl/stl/compiler_control.h"
 #include "fl/stl/cstring.h"
+#include "fl/stl/noexcept.h"
 
 // Use ESP-IDF SoC capability macros to detect hardware features
 // These are defined in soc/soc_caps.h for each chip variant
@@ -85,7 +86,7 @@ FL_LINK_WEAK esp_err_t esp_wifi_sta_get_ap_info(wifi_ap_record_t *ap_info);
 
 FL_EXTERN_C_END
 
-bool NetworkDetector::isWiFiActive() {
+bool NetworkDetector::isWiFiActive() FL_NOEXCEPT {
     // Check if WiFi function is linked (weak symbol resolution)
     if (esp_wifi_get_mode == nullptr) {
         return false;  // WiFi component not linked
@@ -102,7 +103,7 @@ bool NetworkDetector::isWiFiActive() {
     return (mode != WIFI_MODE_NULL);
 }
 
-bool NetworkDetector::isWiFiConnected() {
+bool NetworkDetector::isWiFiConnected() FL_NOEXCEPT {
     // Check if WiFi function is linked (weak symbol resolution)
     if (esp_wifi_sta_get_ap_info == nullptr) {
         return false;  // WiFi component not linked
@@ -118,11 +119,11 @@ bool NetworkDetector::isWiFiConnected() {
 #else  // !FASTLED_RMT_WIFI_CAPABLE_PLATFORM
 
 // Non-WiFi platforms (ESP32-C2, etc.) - stub implementations
-bool NetworkDetector::isWiFiActive() {
+bool NetworkDetector::isWiFiActive() FL_NOEXCEPT {
     return false;  // No WiFi hardware
 }
 
-bool NetworkDetector::isWiFiConnected() {
+bool NetworkDetector::isWiFiConnected() FL_NOEXCEPT {
     return false;  // No WiFi hardware
 }
 
@@ -147,7 +148,7 @@ FL_EXTERN_C_END
 namespace {
     /// @brief Helper function to find Ethernet interface
     /// @return Pointer to Ethernet netif, or nullptr if not found
-    esp_netif_t* findEthernetInterface() {
+    esp_netif_t* findEthernetInterface() FL_NOEXCEPT {
         if (esp_netif_next == nullptr || esp_netif_get_desc == nullptr) {
             return nullptr;  // esp_netif component not linked
         }
@@ -171,7 +172,7 @@ namespace {
     }
 }
 
-bool NetworkDetector::isEthernetActive() {
+bool NetworkDetector::isEthernetActive() FL_NOEXCEPT {
     esp_netif_t* eth_netif = findEthernetInterface();
     if (eth_netif == nullptr) {
         return false;  // No Ethernet interface
@@ -185,7 +186,7 @@ bool NetworkDetector::isEthernetActive() {
     return esp_netif_is_netif_up(eth_netif);
 }
 
-bool NetworkDetector::isEthernetConnected() {
+bool NetworkDetector::isEthernetConnected() FL_NOEXCEPT {
     esp_netif_t* eth_netif = findEthernetInterface();
     if (eth_netif == nullptr) {
         return false;  // No Ethernet interface
@@ -211,11 +212,11 @@ bool NetworkDetector::isEthernetConnected() {
 #else  // !FASTLED_RMT_ETHERNET_CAPABLE_PLATFORM
 
 // Non-Ethernet platforms - stub implementations
-bool NetworkDetector::isEthernetActive() {
+bool NetworkDetector::isEthernetActive() FL_NOEXCEPT {
     return false;  // No Ethernet hardware
 }
 
-bool NetworkDetector::isEthernetConnected() {
+bool NetworkDetector::isEthernetConnected() FL_NOEXCEPT {
     return false;  // No Ethernet hardware
 }
 
@@ -234,7 +235,7 @@ FL_LINK_WEAK esp_bt_controller_status_t esp_bt_controller_get_status(void);
 
 FL_EXTERN_C_END
 
-bool NetworkDetector::isBluetoothActive() {
+bool NetworkDetector::isBluetoothActive() FL_NOEXCEPT {
     // Check if Bluetooth function is linked (weak symbol resolution)
     if (esp_bt_controller_get_status == nullptr) {
         return false;  // Bluetooth component not linked
@@ -249,7 +250,7 @@ bool NetworkDetector::isBluetoothActive() {
 #else  // !FL_ESP_32_BLUETOOTH_ENABLED
 
 // Non-Bluetooth platforms (ESP32-S2) or Bluetooth disabled in build config - stub implementation
-bool NetworkDetector::isBluetoothActive() {
+bool NetworkDetector::isBluetoothActive() FL_NOEXCEPT {
     return false;  // No Bluetooth hardware or Bluetooth disabled in project configuration
 }
 
@@ -259,11 +260,11 @@ bool NetworkDetector::isBluetoothActive() {
 // Convenience Methods (All Platforms)
 //=============================================================================
 
-bool NetworkDetector::isAnyNetworkActive() {
+bool NetworkDetector::isAnyNetworkActive() FL_NOEXCEPT {
     return isWiFiActive() || isEthernetActive() || isBluetoothActive();
 }
 
-bool NetworkDetector::isAnyNetworkConnected() {
+bool NetworkDetector::isAnyNetworkConnected() FL_NOEXCEPT {
     return isWiFiConnected() || isEthernetConnected();
 }
 

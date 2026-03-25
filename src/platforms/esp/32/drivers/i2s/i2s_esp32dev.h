@@ -4,6 +4,7 @@
 #include "fl/stl/compiler_control.h"
 #include "fl/stl/stdint.h"
 #include "fl/chipsets/led_timing.h"
+#include "fl/stl/noexcept.h"
 #include "fl/system/log.h"
 
 // FastLED headers - must be outside extern C (contain C++ code/macros)
@@ -95,9 +96,9 @@ extern I2SDMABuffer *dmaBuffers[NUM_DMA_BUFFERS];
 
 // typedef for a void function pointer
 typedef void (*void_func_t)(void);
-void i2s_set_fill_buffer_callback(void_func_t callback);
+void i2s_set_fill_buffer_callback(void_func_t callback) FL_NOEXCEPT;
 
-int pgcd(int smallest, int precision, int a, int b, int c);
+int pgcd(int smallest, int precision, int a, int b, int c) FL_NOEXCEPT;
 
 /** Compute pules/bit patterns
  *
@@ -109,17 +110,17 @@ int pgcd(int smallest, int precision, int a, int b, int c);
  *  a "0" bit is encoded by setting the pin HIGH to T1 ns, then LOW for T2+T3 ns
  *
  */
-void i2s_define_bit_patterns(const ChipsetTiming& TIMING);
-bool i2s_is_initialized();
-void i2s_init(int i2s_device);
-void i2s_clear_dma_buffer(u32 *buf);  // warning, this function assumes length.
-void i2s_start();
-void i2s_reset();
-void i2s_reset_dma();
-void i2s_reset_fifo();
-void i2s_stop();
-void i2s_begin();
-void i2s_wait();
-void i2s_setup_pin(int pin, int offset);
-void i2s_transpose_and_encode(int channel, u32 has_data_mask, volatile u32 *buf);
+void i2s_define_bit_patterns(const ChipsetTiming& TIMING) FL_NOEXCEPT;
+bool i2s_is_initialized() FL_NOEXCEPT;
+void i2s_init(int i2s_device) FL_NOEXCEPT;
+void i2s_clear_dma_buffer(u32 *buf) FL_NOEXCEPT;  // warning, this function assumes length.
+void i2s_start() FL_NOEXCEPT;
+void i2s_reset() FL_NOEXCEPT;
+void i2s_reset_dma() FL_NOEXCEPT;
+void i2s_reset_fifo() FL_NOEXCEPT;
+void i2s_stop() FL_NOEXCEPT;
+void i2s_begin() FL_NOEXCEPT;
+void i2s_wait() FL_NOEXCEPT;
+void i2s_setup_pin(int pin, int offset) FL_NOEXCEPT;
+void i2s_transpose_and_encode(int channel, u32 has_data_mask, volatile u32 *buf) FL_NOEXCEPT;
 }  // namespace fl

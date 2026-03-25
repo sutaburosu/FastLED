@@ -25,6 +25,7 @@
 #include "fl/stl/shared_ptr.h"
 #include "platforms/shared/spi_hw_1.h"
 #include "fl/channels/adapters/spi_channel_adapter.h"
+#include "fl/stl/noexcept.h"
 
 // Include SpiHw16 only on platforms that support it (ESP32, ESP32-S2)
 // ESP32-S3 and newer use LCD_CAM peripheral instead of I2S parallel mode
@@ -93,7 +94,7 @@ constexpr int PRIORITY_SPI = 0;      ///< Lower priority (SPI driver - depriorit
 constexpr int PRIORITY_UART = -1;    ///< Lowest priority (UART driver - broken, not recommended)
 
 /// @brief Add HW SPI drivers if supported by platform (UNIFIED VERSION)
-static void addSpiHardwareIfPossible(ChannelManager& manager) {
+static void addSpiHardwareIfPossible(ChannelManager& manager) FL_NOEXCEPT {
     FL_DBG("ESP32: Registering unified HW SPI channel driver");
 
     fl::vector<fl::shared_ptr<SpiHwBase>> controllers;
@@ -164,7 +165,7 @@ static void addSpiHardwareIfPossible(ChannelManager& manager) {
 }
 
 /// @brief Add PARLIO driver if supported by platform
-static void addParlioIfPossible(ChannelManager& manager) {
+static void addParlioIfPossible(ChannelManager& manager) FL_NOEXCEPT {
 #if FASTLED_ESP32_HAS_PARLIO
     // ESP32-C6: Fixed by explicitly setting clk_in_gpio_num = -1 (Iteration 2)
     // This tells the driver to use internal clock source instead of external GPIO 0
@@ -176,7 +177,7 @@ static void addParlioIfPossible(ChannelManager& manager) {
 }
 
 /// @brief Add LCD RGB driver if supported by platform
-static void addLcdRgbIfPossible(ChannelManager& manager) {
+static void addLcdRgbIfPossible(ChannelManager& manager) FL_NOEXCEPT {
 #if FASTLED_ESP32_HAS_LCD_RGB
     auto driver = createLcdRgbEngine();
     if (driver) {
@@ -191,7 +192,7 @@ static void addLcdRgbIfPossible(ChannelManager& manager) {
 }
 
 /// @brief Add SPI driver if supported by platform
-static void addSpiIfPossible(ChannelManager& manager) {
+static void addSpiIfPossible(ChannelManager& manager) FL_NOEXCEPT {
 #if FASTLED_ESP32_HAS_CLOCKLESS_SPI
     manager.addDriver(PRIORITY_SPI, fl::make_shared<ChannelEngineSpi>());
     FL_DBG("ESP32: Added SPI driver (priority " << PRIORITY_SPI << ")");
@@ -201,7 +202,7 @@ static void addSpiIfPossible(ChannelManager& manager) {
 }
 
 /// @brief Add UART driver if supported by platform
-static void addUartIfPossible(ChannelManager& manager) {
+static void addUartIfPossible(ChannelManager& manager) FL_NOEXCEPT {
 #if FASTLED_ESP32_HAS_UART
     // UART driver uses wave8 encoding adapted for UART framing
     // Available on all ESP32 variants (C3, S3, C6, H2, P4) with ESP-IDF 4.0+
@@ -216,7 +217,7 @@ static void addUartIfPossible(ChannelManager& manager) {
 }
 
 /// @brief Add RMT driver if supported by platform
-static void addRmtIfPossible(ChannelManager& manager) {
+static void addRmtIfPossible(ChannelManager& manager) FL_NOEXCEPT {
 #if FASTLED_ESP32_HAS_RMT
     // Create RMT driver using the appropriate driver (RMT4 or RMT5)
     #if FASTLED_ESP32_RMT5_ONLY_PLATFORM || FASTLED_RMT5
@@ -235,7 +236,7 @@ static void addRmtIfPossible(ChannelManager& manager) {
 }
 
 /// @brief Add I2S LCD_CAM driver if supported by platform
-static void addI2sIfPossible(ChannelManager& manager) {
+static void addI2sIfPossible(ChannelManager& manager) FL_NOEXCEPT {
 #if FASTLED_ESP32_HAS_I2S_LCD_CAM
     // I2S LCD_CAM driver uses LCD_CAM peripheral via I80 bus (ESP32-S3 only)
     // Experimental driver - uses transpose encoding for parallel LED output
@@ -259,7 +260,7 @@ namespace platforms {
 ///
 /// Called lazily on first access to ChannelManager::instance().
 /// Registers platform-specific drivers (PARLIO, SPI, UART, RMT) with the bus manager.
-void initChannelDrivers() {
+void initChannelDrivers() FL_NOEXCEPT {
     FL_DBG("ESP32: Lazy initialization of channel drivers");
 
     auto& manager = channelManager();

@@ -17,6 +17,7 @@
 #include "fl/stl/charconv.h"
 #include "fl/trace.h"
 #include "fl/system/log.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 
@@ -55,7 +56,7 @@ ChannelEngineUART::~ChannelEngineUART() {
     mCurrentGroupIndex = 0;
 }
 
-bool ChannelEngineUART::canHandle(const ChannelDataPtr& data) const {
+bool ChannelEngineUART::canHandle(const ChannelDataPtr& data) const FL_NOEXCEPT {
     if (!data) {
         return false;
     }
@@ -72,13 +73,13 @@ bool ChannelEngineUART::canHandle(const ChannelDataPtr& data) const {
 // Public Interface - IChannelDriver Implementation
 //=============================================================================
 
-void ChannelEngineUART::enqueue(ChannelDataPtr channelData) {
+void ChannelEngineUART::enqueue(ChannelDataPtr channelData) FL_NOEXCEPT {
     if (channelData) {
         mEnqueuedChannels.push_back(channelData);
     }
 }
 
-void ChannelEngineUART::show() {
+void ChannelEngineUART::show() FL_NOEXCEPT {
     FL_SCOPED_TRACE;
 
     if (!mEnqueuedChannels.empty()) {
@@ -166,7 +167,7 @@ void ChannelEngineUART::show() {
     }
 }
 
-IChannelDriver::DriverState ChannelEngineUART::poll() {
+IChannelDriver::DriverState ChannelEngineUART::poll() FL_NOEXCEPT {
     // If not initialized, we're ready (no hardware to poll)
     if (!mInitialized) {
         return DriverState::READY;
@@ -207,7 +208,7 @@ IChannelDriver::DriverState ChannelEngineUART::poll() {
 // Private Methods - LUT Cache
 //=============================================================================
 
-const Wave10Lut& ChannelEngineUART::getOrBuildLut(const ChipsetTimingConfig& timing) {
+const Wave10Lut& ChannelEngineUART::getOrBuildLut(const ChipsetTimingConfig& timing) FL_NOEXCEPT {
     // Search cache
     for (const auto& entry : mLutCache) {
         if (entry.mTiming == timing) {
@@ -229,7 +230,7 @@ const Wave10Lut& ChannelEngineUART::getOrBuildLut(const ChipsetTimingConfig& tim
 //=============================================================================
 
 void ChannelEngineUART::beginTransmission(
-    fl::span<const ChannelDataPtr> channelData) {
+    fl::span<const ChannelDataPtr> channelData) FL_NOEXCEPT {
 
     FL_DBG("UART: beginTransmission() called with " << channelData.size() << " channel(s)");
 
@@ -326,7 +327,7 @@ void ChannelEngineUART::beginTransmission(
 
 void ChannelEngineUART::prepareScratchBuffer(
     fl::span<const ChannelDataPtr> channelData,
-    size_t maxChannelSize) {
+    size_t maxChannelSize) FL_NOEXCEPT {
 
     mScratchBuffer.resize(maxChannelSize);
 
@@ -340,7 +341,7 @@ void ChannelEngineUART::prepareScratchBuffer(
 
 fl::shared_ptr<IChannelDriver> createUartEngine(int uart_num,
                                                 int tx_pin,
-                                                u32 baud_rate) {
+                                                u32 baud_rate) FL_NOEXCEPT {
     (void)uart_num;
     (void)tx_pin;
     (void)baud_rate;

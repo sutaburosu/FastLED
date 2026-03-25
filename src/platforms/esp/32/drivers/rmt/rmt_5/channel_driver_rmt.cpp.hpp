@@ -43,6 +43,7 @@
 #include "fl/stl/unique_ptr.h"
 #include "fl/trace.h"
 #include "platforms/memory_barrier.h" // For FL_MEMORY_BARRIER
+#include "fl/stl/noexcept.h"
 
 // Peripheral interface includes
 #include "platforms/esp/32/drivers/rmt/rmt_5/irmt5_peripheral.h"
@@ -96,7 +97,7 @@ using detail::RMTBufferPool;
 /// This factory function hides the platform selection logic behind a single
 /// function call. The #ifdef is isolated here rather than scattered throughout
 /// the codebase.
-static IRMT5Peripheral& getDefaultPeripheral() {
+static IRMT5Peripheral& getDefaultPeripheral() FL_NOEXCEPT {
 #ifdef FASTLED_STUB_IMPL
     return detail::Rmt5PeripheralMock::instance();
 #else
@@ -122,12 +123,12 @@ static IRMT5Peripheral& getDefaultPeripheral() {
 class ChannelEngineRMTImpl : public ChannelEngineRMT {
   public:
     // Production constructor: Use default platform peripheral
-    ChannelEngineRMTImpl()
+    ChannelEngineRMTImpl() FL_NOEXCEPT
         : ChannelEngineRMTImpl(getDefaultPeripheral()) {
     }
 
     // Testing constructor: Inject peripheral
-    explicit ChannelEngineRMTImpl(IRMT5Peripheral& peripheral)
+    explicit ChannelEngineRMTImpl(IRMT5Peripheral& peripheral) FL_NOEXCEPT
         : mPeripheral(peripheral),
           mDMAChannelsInUse(0), mAllocationFailed(false),
           mMemoryReductionOffset(0),
@@ -189,7 +190,7 @@ class ChannelEngineRMTImpl : public ChannelEngineRMT {
     }
 
     // IChannelDriver interface implementation
-    bool canHandle(const ChannelDataPtr& data) const override {
+    bool canHandle(const ChannelDataPtr& data) const FL_NOEXCEPT override {
         if (!data) {
             return false;
         }
@@ -197,11 +198,11 @@ class ChannelEngineRMTImpl : public ChannelEngineRMT {
         return !data->isSpi();
     }
 
-    void enqueue(ChannelDataPtr channelData) override {
+    void enqueue(ChannelDataPtr channelData) FL_NOEXCEPT override {
         mEnqueuedChannels.push_back(channelData);
     }
 
-    void show() override {
+    void show() FL_NOEXCEPT override {
         FL_SCOPED_TRACE;
         if (mEnqueuedChannels.empty()) {
             return;
@@ -226,7 +227,7 @@ class ChannelEngineRMTImpl : public ChannelEngineRMT {
         mTransmittingChannels = fl::move(mEnqueuedChannels);
     }
 
-    DriverState poll() override {
+    DriverState poll() FL_NOEXCEPT override {
         // Check hardware status
         bool anyActive = false;
         int activeCount = 0;
@@ -326,7 +327,7 @@ class ChannelEngineRMTImpl : public ChannelEngineRMT {
 
     /// @brief Begin LED data transmission for all channels (internal)
     /// @param channelData Span of channel data to transmit
-    void beginTransmission(fl::span<const ChannelDataPtr> channelData) {
+    void beginTransmission(fl::span<const ChannelDataPtr> channelData) FL_NOEXCEPT {
         if (channelData.size() == 0) {
             FL_LOG_RMT("beginTransmission: No channels to transmit");
             return;
@@ -375,16 +376,16 @@ class ChannelEngineRMTImpl : public ChannelEngineRMT {
     /// @param dataSize Size of LED data in bytes (0 = use default buffer size)
     /// @return Pointer to channel state, or nullptr if no HW available
     ChannelState *acquireChannel(int pin, const ChipsetTiming &timing,
-                                 fl::size dataSize = 0);
+                                 fl::size dataSize = 0) FL_NOEXCEPT;
 
     /// @brief Release a channel (marks as available for reuse)
-    void releaseChannel(ChannelState *channel);
+    void releaseChannel(ChannelState *channel) FL_NOEXCEPT;
 
     /// @brief Create new RMT channel with given configuration
     /// @param dataSize Size of LED data in bytes (0 = use default buffer size)
     /// @return true if channel created successfully
     bool createChannel(ChannelState *state, int pin,
-                       const ChipsetTiming &timing, fl::size dataSize = 0) {
+                       const ChipsetTiming &timing, fl::size dataSize = 0) FL_NOEXCEPT {
         // ============================================================================
         // RMT5 MEMORY MANAGEMENT - Now using centralized RmtMemoryManager
         // ============================================================================
@@ -768,12 +769,12 @@ class ChannelEngineRMTImpl : public ChannelEngineRMT {
     /// @brief Register ISR callback for channel (must be called AFTER
     /// ChannelState is in final location)
     /// @return true if callback registered successfully
-    bool registerChannelCallback(ChannelState *state);
+    bool registerChannelCallback(ChannelState *state) FL_NOEXCEPT;
 
     /// @brief Configure existing channel (handle pin/timing changes)
     /// @param dataSize Size of LED data in bytes (0 = use default buffer size)
     void configureChannel(ChannelState *state, int pin,
-                          const ChipsetTiming &timing, fl::size dataSize = 0) {
+                          const ChipsetTiming &timing, fl::size dataSize = 0) FL_NOEXCEPT {
         // Check if timing changed - if so, encoder must be recreated
         bool timingChanged =
             state->channel &&
@@ -898,7 +899,7 @@ class ChannelEngineRMTImpl : public ChannelEngineRMT {
     }
 
     /// @brief Process pending channels that couldn't be started earlier
-    void processPendingChannels() {
+    void processPendingChannels() FL_NOEXCEPT {
         if (mPendingChannels.empty()) {
             return;
         }
@@ -1024,19 +1025,19 @@ class ChannelEngineRMTImpl : public ChannelEngineRMT {
 
     /// @brief Destroy a single channel and free resources
     /// @param state Channel state to destroy (must not be in use)
-    void destroyChannel(ChannelState *state);
+    void destroyChannel(ChannelState *state) FL_NOEXCEPT;
 
     /// @brief Destroy least-used channels to free resources
     /// @param count Number of channels to destroy (from end of mChannels
     /// vector)
-    void destroyLeastUsedChannels(size_t count);
+    void destroyLeastUsedChannels(size_t count) FL_NOEXCEPT;
 
     /// @brief Calculate target channel count based on network state and
     /// platform
     /// @param networkActive Whether any network (WiFi, Ethernet, or Bluetooth)
     /// is currently active
     /// @return Target number of channels for current state
-    size_t calculateTargetChannelCount(bool networkActive) {
+    size_t calculateTargetChannelCount(bool networkActive) FL_NOEXCEPT {
         if (!networkActive) {
             // No network: Use maximum channels for platform (2× memory blocks)
             #if defined(FL_IS_ESP_32DEV)
@@ -1070,7 +1071,7 @@ class ChannelEngineRMTImpl : public ChannelEngineRMT {
 
     /// @brief Reconfigure channels for network state change (destroy/recreate
     /// as needed)
-    void reconfigureForNetwork() {
+    void reconfigureForNetwork() FL_NOEXCEPT {
         // Check if Network state changed using singleton tracker
         auto& networkTracker = NetworkStateTracker::instance();
         if (!networkTracker.hasChanged()) {
@@ -1183,7 +1184,7 @@ class ChannelEngineRMTImpl : public ChannelEngineRMT {
     /// @brief ISR callback for transmission completion
     static bool IRAM_ATTR transmitDoneCallback(
         void* channel, const void* edata,
-        void* user_data);
+        void* user_data) FL_NOEXCEPT;
 
     /// @brief Peripheral interface (real or mock)
     IRMT5Peripheral& mPeripheral;
@@ -1238,7 +1239,7 @@ class ChannelEngineRMTImpl : public ChannelEngineRMT {
 //=============================================================================
 
 ChannelEngineRMTImpl::ChannelState *ChannelEngineRMTImpl::acquireChannel(
-    int pin, const ChipsetTiming &timing, fl::size dataSize) {
+    int pin, const ChipsetTiming &timing, fl::size dataSize) FL_NOEXCEPT {
     // Strategy 1: Find channel with matching pin (zero-cost reuse)
     // This applies to both DMA and non-DMA channels
     FL_LOG_RMT("acquireChannel: Finding channel with matching pin "
@@ -1309,7 +1310,7 @@ ChannelEngineRMTImpl::ChannelState *ChannelEngineRMTImpl::acquireChannel(
     return nullptr;
 }
 
-void ChannelEngineRMTImpl::releaseChannel(ChannelState *channel) {
+void ChannelEngineRMTImpl::releaseChannel(ChannelState *channel) FL_NOEXCEPT {
     FL_ASSERT(channel != nullptr, "releaseChannel called with nullptr");
 
     // CRITICAL: Wait for RMT hardware to fully complete transmission
@@ -1343,7 +1344,7 @@ void ChannelEngineRMTImpl::releaseChannel(ChannelState *channel) {
     // NOTE: Keep channel and encoder alive for reuse
 }
 
-bool ChannelEngineRMTImpl::registerChannelCallback(ChannelState *state) {
+bool ChannelEngineRMTImpl::registerChannelCallback(ChannelState *state) FL_NOEXCEPT {
     FL_ASSERT(state != nullptr, "registerChannelCallback called with nullptr");
     FL_ASSERT(state->channel != nullptr,
               "registerChannelCallback called with null channel");
@@ -1369,7 +1370,7 @@ bool ChannelEngineRMTImpl::registerChannelCallback(ChannelState *state) {
 // Network-Aware Channel Destruction Helpers
 //=============================================================================
 
-void ChannelEngineRMTImpl::destroyChannel(ChannelState *state) {
+void ChannelEngineRMTImpl::destroyChannel(ChannelState *state) FL_NOEXCEPT {
     FL_ASSERT(state != nullptr, "destroyChannel called with nullptr");
 
     if (!state->channel) {
@@ -1411,7 +1412,7 @@ void ChannelEngineRMTImpl::destroyChannel(ChannelState *state) {
                << static_cast<int>(state->memoryChannelId) << ")");
 }
 
-void ChannelEngineRMTImpl::destroyLeastUsedChannels(size_t count) {
+void ChannelEngineRMTImpl::destroyLeastUsedChannels(size_t count) FL_NOEXCEPT {
     if (count == 0) {
         return;
     }
@@ -1487,7 +1488,7 @@ void ChannelEngineRMTImpl::destroyLeastUsedChannels(size_t count) {
 /// fail-fast debugging (assertions catch any timing bugs).
 bool IRAM_ATTR ChannelEngineRMTImpl::transmitDoneCallback(
     void* channel, const void* edata,
-    void* user_data) {
+    void* user_data) FL_NOEXCEPT {
     // Note: edata is rmt_tx_done_event_data_t* on ESP32, but we don't use it
     ChannelState *state = static_cast<ChannelState *>(user_data);
     if (!state) {
@@ -1507,7 +1508,7 @@ bool IRAM_ATTR ChannelEngineRMTImpl::transmitDoneCallback(
 // Factory Method Implementation
 //=============================================================================
 
-fl::shared_ptr<ChannelEngineRMT> ChannelEngineRMT::create() {
+fl::shared_ptr<ChannelEngineRMT> ChannelEngineRMT::create() FL_NOEXCEPT {
     return fl::make_shared<ChannelEngineRMTImpl>();
 }
 

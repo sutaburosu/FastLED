@@ -7,6 +7,7 @@
 
 #include "fl/stl/stdint.h"
 #include "fl/stl/cstddef.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 
@@ -140,27 +141,27 @@ struct UartPinConfig {
     UartPinConfig() = default;
 
     // Constructor with all parameters
-    UartPinConfig(int tx, int rx, int rts, int cts)
+    UartPinConfig(int tx, int rx, int rts, int cts) FL_NOEXCEPT
         : txPin(tx), rxPin(rx), rtsPin(rts), ctsPin(cts) {}
 
     /**
      * @brief No pin configuration (use bootloader defaults)
      */
-    static UartPinConfig useDefaults() {
+    static UartPinConfig useDefaults() FL_NOEXCEPT {
         return UartPinConfig{};
     }
 
     /**
      * @brief TX/RX only (typical for simple UART)
      */
-    static UartPinConfig basic(int tx, int rx) {
+    static UartPinConfig basic(int tx, int rx) FL_NOEXCEPT {
         return UartPinConfig{tx, rx, -1, -1};
     }
 
     /**
      * @brief Full configuration with hardware flow control
      */
-    static UartPinConfig withFlowControl(int tx, int rx, int rts, int cts) {
+    static UartPinConfig withFlowControl(int tx, int rx, int rts, int cts) FL_NOEXCEPT {
         return UartPinConfig{tx, rx, rts, cts};
     }
 };
@@ -212,7 +213,7 @@ struct UartConfig {
      * Uses lowest priority, ISR in flash (fragile but minimal overhead).
      * Suitable for non-critical data streams.
      */
-    static UartConfig minimal(UartPort port = UartPort::UART0) {
+    static UartConfig minimal(UartPort port = UartPort::UART0) FL_NOEXCEPT {
         UartConfig config;
         config.port = port;
         return config;
@@ -228,7 +229,7 @@ struct UartConfig {
      *
      * Recommended for: Debug UART, console I/O, critical data streams
      */
-    static UartConfig reliable(UartPort port = UartPort::UART0) {
+    static UartConfig reliable(UartPort port = UartPort::UART0) FL_NOEXCEPT {
         UartConfig config;
         config.port = port;
         config.intrPriority = UartIntrPriority::LEVEL3;  // High priority
@@ -242,7 +243,7 @@ struct UartConfig {
      * Large buffers + high priority + hardware flow control.
      * Suitable for: GPS, sensors, binary protocols
      */
-    static UartConfig highSpeed(UartPort port, u32 baudRate) {
+    static UartConfig highSpeed(UartPort port, u32 baudRate) FL_NOEXCEPT {
         UartConfig config;
         config.port = port;
         config.baudRate = baudRate;
@@ -264,7 +265,7 @@ struct UartConfig {
      *
      * Suitable for: Modems, AT command parsers
      */
-    static UartConfig eventDriven(UartPort port, size_t queueSize = 10) {
+    static UartConfig eventDriven(UartPort port, size_t queueSize = 10) FL_NOEXCEPT {
         UartConfig config;
         config.port = port;
         config.intrPriority = UartIntrPriority::LEVEL3;
@@ -279,7 +280,7 @@ struct UartConfig {
      * Automatic direction control via RTS pin.
      * Suitable for: RS485 networks, Modbus RTU
      */
-    static UartConfig rs485(UartPort port, int txPin, int rxPin, int dirPin) {
+    static UartConfig rs485(UartPort port, int txPin, int rxPin, int dirPin) FL_NOEXCEPT {
         UartConfig config;
         config.port = port;
         config.intrPriority = UartIntrPriority::LEVEL3;
@@ -297,7 +298,7 @@ struct UartConfig {
      *
      * Override default pins (useful when default pins conflict with other peripherals).
      */
-    static UartConfig withPins(UartPort port, int txPin, int rxPin) {
+    static UartConfig withPins(UartPort port, int txPin, int rxPin) FL_NOEXCEPT {
         UartConfig config;
         config.port = port;
         config.pins = UartPinConfig::basic(txPin, rxPin);
@@ -371,7 +372,7 @@ public:
      * Buffered mode: Copies to TX ring buffer (non-blocking)
      * Fallback mode: Writes directly to FIFO (may block if full)
      */
-    void write(const char* str);
+    void write(const char* str) FL_NOEXCEPT;
 
     /**
      * @brief Write raw bytes to UART (binary data)
@@ -382,13 +383,13 @@ public:
      * Buffered mode: Copies to TX ring buffer (non-blocking)
      * Fallback mode: Writes directly to FIFO (may block if full)
      */
-    size_t write(const u8* buffer, size_t size);
+    size_t write(const u8* buffer, size_t size) FL_NOEXCEPT;
 
     /**
      * @brief Write string with newline to UART
      * @param str Null-terminated string to write
      */
-    void writeln(const char* str);
+    void writeln(const char* str) FL_NOEXCEPT;
 
     /**
      * @brief Check how many bytes are available to read
@@ -396,7 +397,7 @@ public:
      *
      * Only works in buffered mode. Returns 0 in fallback mode.
      */
-    int available();
+    int available() FL_NOEXCEPT;
 
     /**
      * @brief Read single byte from UART
@@ -405,7 +406,7 @@ public:
      * Non-blocking read (timeout=0).
      * Only works in buffered mode. Returns -1 in fallback mode.
      */
-    int read();
+    int read() FL_NOEXCEPT;
 
     /**
      * @brief Flush TX buffer and wait for transmission to complete
@@ -415,7 +416,7 @@ public:
      * Blocks until all buffered data is transmitted.
      * Only works in buffered mode.
      */
-    bool flush(u32 timeoutMs = 1000);
+    bool flush(u32 timeoutMs = 1000) FL_NOEXCEPT;
 
     /**
      * @brief Get event queue handle (if configured)
@@ -424,25 +425,25 @@ public:
      * Use this to receive UART events (data arrival, errors, etc.).
      * Only available if eventQueueSize > 0 in config.
      */
-    void* getEventQueue() const { return mEventQueue; }
+    void* getEventQueue() const FL_NOEXCEPT { return mEventQueue; }
 
     /**
      * @brief Check if driver is in buffered mode
      * @return true if UART driver successfully installed, false if using ROM fallback
      */
-    bool isBuffered() const { return mBuffered; }
+    bool isBuffered() const FL_NOEXCEPT { return mBuffered; }
 
     /**
      * @brief Get UART port configuration
      * @return UART port (UART0, UART1, UART2)
      */
-    UartPort getPort() const { return mConfig.port; }
+    UartPort getPort() const FL_NOEXCEPT { return mConfig.port; }
 
     /**
      * @brief Get current baud rate
      * @return Baud rate in bits per second
      */
-    u32 getBaudRate() const { return mConfig.baudRate; }
+    u32 getBaudRate() const FL_NOEXCEPT { return mConfig.baudRate; }
 
 private:
     UartConfig mConfig;     // Configuration parameters
@@ -451,7 +452,7 @@ private:
     void* mEventQueue;      // FreeRTOS queue handle (if event queue configured)
 
     // Helper: Initialize UART driver (called by constructor)
-    bool initDriver();
+    bool initDriver() FL_NOEXCEPT;
 };
 
 } // namespace fl

@@ -12,6 +12,7 @@
 // allow-include-after-namespace
 
 #include "platforms/esp/is_esp.h"
+#include "fl/stl/noexcept.h"
 
 #ifdef FL_IS_ESP32
 
@@ -23,7 +24,7 @@ namespace platforms {
 ///
 /// Registers platform-specific SPI hardware instances with the appropriate registries.
 /// Implementation is in platforms/esp/32/drivers/spi_hw_manager_esp32.cpp.hpp
-void initSpiHardware();
+void initSpiHardware() FL_NOEXCEPT;
 
 }  // namespace platforms
 }  // namespace fl

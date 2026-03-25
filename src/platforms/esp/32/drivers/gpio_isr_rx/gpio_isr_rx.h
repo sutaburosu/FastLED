@@ -15,6 +15,7 @@
 #include "fl/stl/span.h"
 #include "fl/stl/result.h"
 #include "fl/rx_device.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 
@@ -100,7 +101,7 @@ public:
      * rx->begin(config);
      * @endcode
      */
-    static fl::shared_ptr<GpioIsrRx> create(int pin);
+    static fl::shared_ptr<GpioIsrRx> create(int pin) FL_NOEXCEPT;
 
     /**
      * @brief Virtual destructor

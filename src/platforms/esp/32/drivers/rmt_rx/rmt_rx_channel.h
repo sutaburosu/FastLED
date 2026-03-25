@@ -15,6 +15,7 @@
 #include "fl/stl/iterator.h"
 #include "fl/stl/result.h"
 #include "fl/rx_device.h"
+#include "fl/stl/noexcept.h"
 
 // RMT symbol is a 32-bit value (union with duration0/level0/duration1/level1 bitfields)
 // We expose uint32_t in the interface to avoid ESP-IDF header dependencies
@@ -77,7 +78,7 @@ public:
      * rx->begin(config);
      * @endcode
      */
-    static fl::shared_ptr<RmtRxChannel> create(int pin);
+    static fl::shared_ptr<RmtRxChannel> create(int pin) FL_NOEXCEPT;
 
     /**
      * @brief Virtual destructor

@@ -42,6 +42,7 @@
 
 #include "platforms/esp/32/drivers/rmt/rmt_5/irmt5_peripheral.h"
 #include "fl/stl/singleton.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 namespace detail {
@@ -66,7 +67,7 @@ public:
     ///
     /// Mirrors the hardware constraint that there is only one RMT peripheral
     /// (though multiple channels can be created).
-    static Rmt5PeripheralESP& instance();
+    static Rmt5PeripheralESP& instance() FL_NOEXCEPT;
 
     /// @brief Destructor - cleanup is handled by implementation
     ~Rmt5PeripheralESP() override;

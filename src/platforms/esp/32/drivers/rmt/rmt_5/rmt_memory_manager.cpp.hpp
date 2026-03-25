@@ -9,6 +9,7 @@
 #if defined(FL_IS_ESP32) && FASTLED_RMT5
 
 #include "fl/system/log.h"
+#include "fl/stl/noexcept.h"
 #include "platforms/esp/32/drivers/rmt/rmt_5/common.h"
 
 FL_EXTERN_C_BEGIN
@@ -28,7 +29,7 @@ namespace fl {
 /// Memory architecture varies by platform:
 /// - ESP32/S2: Global pool (single shared memory for TX and RX)
 /// - ESP32-S3/C3/C6/H2: Dedicated pools (separate TX and RX memory)
-void RmtMemoryManager::initPlatformLimits(size_t& total_tx, size_t& total_rx) {
+void RmtMemoryManager::initPlatformLimits(size_t& total_tx, size_t& total_rx) FL_NOEXCEPT {
 #if defined(FL_IS_ESP_32DEV)
     // ESP32: 8 flexible channels × 64 words = 512 words SHARED global pool
     total_tx = 8 * SOC_RMT_MEM_WORDS_PER_CHANNEL;  // 512 words (global pool)
@@ -66,7 +67,7 @@ void RmtMemoryManager::initPlatformLimits(size_t& total_tx, size_t& total_rx) {
 // MemoryLedger Implementation
 // ============================================================================
 
-RmtMemoryManager::MemoryLedger::MemoryLedger()
+RmtMemoryManager::MemoryLedger::MemoryLedger() FL_NOEXCEPT
     : is_global_pool(false)
     , total_words(0)
     , allocated_words(0)
@@ -99,7 +100,7 @@ RmtMemoryManager::MemoryLedger::MemoryLedger()
 // RmtMemoryManager Implementation
 // ============================================================================
 
-RmtMemoryManager::RmtMemoryManager()
+RmtMemoryManager::RmtMemoryManager() FL_NOEXCEPT
     : mLedger()
     , mDMAAllocation{0, false, false}
     , mIdleBlocks(FASTLED_RMT_MEM_BLOCKS)
@@ -107,7 +108,7 @@ RmtMemoryManager::RmtMemoryManager()
 }
 
 // Test-only constructor
-RmtMemoryManager::RmtMemoryManager(size_t total_tx, size_t total_rx, bool is_global)
+RmtMemoryManager::RmtMemoryManager(size_t total_tx, size_t total_rx, bool is_global) FL_NOEXCEPT
     : mLedger()
     , mDMAAllocation{0, false, false}
     , mIdleBlocks(2)
@@ -133,24 +134,24 @@ RmtMemoryManager::RmtMemoryManager(size_t total_tx, size_t total_rx, bool is_glo
     }
 }
 
-RmtMemoryManager& RmtMemoryManager::instance() {
+RmtMemoryManager& RmtMemoryManager::instance() FL_NOEXCEPT {
     static RmtMemoryManager instance;
     return instance;
 }
 
-size_t RmtMemoryManager::getPlatformTxWords() {
+size_t RmtMemoryManager::getPlatformTxWords() FL_NOEXCEPT {
     size_t tx_limit = 0, rx_limit = 0;
     initPlatformLimits(tx_limit, rx_limit);
     return tx_limit;
 }
 
-size_t RmtMemoryManager::getPlatformRxWords() {
+size_t RmtMemoryManager::getPlatformRxWords() FL_NOEXCEPT {
     size_t tx_limit = 0, rx_limit = 0;
     initPlatformLimits(tx_limit, rx_limit);
     return rx_limit;
 }
 
-bool RmtMemoryManager::isPlatformGlobalPool() {
+bool RmtMemoryManager::isPlatformGlobalPool() FL_NOEXCEPT {
 #if defined(FL_IS_ESP_32DEV) || defined(FL_IS_ESP_32S2)
     return true;  // Global pool platforms
 #else
@@ -158,7 +159,7 @@ bool RmtMemoryManager::isPlatformGlobalPool() {
 #endif
 }
 
-size_t RmtMemoryManager::calculateMemoryBlocks(bool networkActive) {
+size_t RmtMemoryManager::calculateMemoryBlocks(bool networkActive) FL_NOEXCEPT {
     // Read memory block strategy from singleton instance
     auto& mgr = instance();
     size_t idleBlocks = mgr.mIdleBlocks;
@@ -265,7 +266,7 @@ size_t RmtMemoryManager::calculateMemoryBlocks(bool networkActive) {
     return requested_blocks;
 }
 
-void RmtMemoryManager::setMemoryBlockStrategy(size_t idleBlocks, size_t networkBlocks) {
+void RmtMemoryManager::setMemoryBlockStrategy(size_t idleBlocks, size_t networkBlocks) FL_NOEXCEPT {
     // Calculate platform maximum blocks based on available TX memory
     // max_blocks = total_TX_words / words_per_channel
     size_t max_blocks = SOC_RMT_TX_CANDIDATES_PER_GROUP;
@@ -299,13 +300,13 @@ void RmtMemoryManager::setMemoryBlockStrategy(size_t idleBlocks, size_t networkB
     FL_DBG("RMT Memory Strategy updated: idle=" << idleBlocks << "×, network=" << networkBlocks << "×");
 }
 
-void RmtMemoryManager::getMemoryBlockStrategy(size_t& idleBlocks, size_t& networkBlocks) const {
+void RmtMemoryManager::getMemoryBlockStrategy(size_t& idleBlocks, size_t& networkBlocks) const FL_NOEXCEPT {
     // Read strategy configuration
     idleBlocks = mIdleBlocks;
     networkBlocks = mNetworkBlocks;
 }
 
-result<size_t, RmtMemoryError> RmtMemoryManager::allocateTx(u8 channel_id, bool use_dma, bool networkActive) {
+result<size_t, RmtMemoryError> RmtMemoryManager::allocateTx(u8 channel_id, bool use_dma, bool networkActive) FL_NOEXCEPT {
     // Check if channel already allocated
     if (findAllocation(channel_id, true) != nullptr) {
         FL_WARN("RMT TX channel " << static_cast<int>(channel_id) << " already allocated");
@@ -420,7 +421,7 @@ result<size_t, RmtMemoryError> RmtMemoryManager::allocateTx(u8 channel_id, bool 
     return result<size_t, RmtMemoryError>::success(words_needed);
 }
 
-result<size_t, RmtMemoryError> RmtMemoryManager::allocateRx(u8 channel_id, size_t symbols, bool use_dma) {
+result<size_t, RmtMemoryError> RmtMemoryManager::allocateRx(u8 channel_id, size_t symbols, bool use_dma) FL_NOEXCEPT {
     // Check if channel already allocated
     if (findAllocation(channel_id, false) != nullptr) {
         FL_WARN("RMT RX channel " << static_cast<int>(channel_id) << " already allocated");
@@ -473,7 +474,7 @@ result<size_t, RmtMemoryError> RmtMemoryManager::allocateRx(u8 channel_id, size_
     return result<size_t, RmtMemoryError>::success(words_needed);
 }
 
-void RmtMemoryManager::free(u8 channel_id, bool is_tx) {
+void RmtMemoryManager::free(u8 channel_id, bool is_tx) FL_NOEXCEPT {
     ChannelAllocation* alloc = findAllocation(channel_id, is_tx);
     if (!alloc) {
         FL_WARN("RMT " << (is_tx ? "TX" : "RX") << " channel "
@@ -497,7 +498,7 @@ void RmtMemoryManager::free(u8 channel_id, bool is_tx) {
     }
 }
 
-void RmtMemoryManager::recordRecoveryAllocation(u8 channel_id, size_t words, bool is_tx) {
+void RmtMemoryManager::recordRecoveryAllocation(u8 channel_id, size_t words, bool is_tx) FL_NOEXCEPT {
     // Check if already exists (shouldn't, but be safe)
     ChannelAllocation* existing = findAllocation(channel_id, is_tx);
     if (existing) {
@@ -526,15 +527,15 @@ void RmtMemoryManager::recordRecoveryAllocation(u8 channel_id, size_t words, boo
                << words << " words");
 }
 
-size_t RmtMemoryManager::availableTxWords() const {
+size_t RmtMemoryManager::availableTxWords() const FL_NOEXCEPT {
     return getAvailableWords(true);
 }
 
-size_t RmtMemoryManager::availableRxWords() const {
+size_t RmtMemoryManager::availableRxWords() const FL_NOEXCEPT {
     return getAvailableWords(false);
 }
 
-bool RmtMemoryManager::canAllocateTx(bool use_dma, bool networkActive) const {
+bool RmtMemoryManager::canAllocateTx(bool use_dma, bool networkActive) const FL_NOEXCEPT {
     if (use_dma) {
         return true;  // DMA always succeeds (bypasses on-chip memory)
     }
@@ -543,16 +544,16 @@ bool RmtMemoryManager::canAllocateTx(bool use_dma, bool networkActive) const {
     return words_needed <= getAvailableWords(true);
 }
 
-bool RmtMemoryManager::canAllocateRx(size_t symbols) const {
+bool RmtMemoryManager::canAllocateRx(size_t symbols) const FL_NOEXCEPT {
     return symbols <= getAvailableWords(false);
 }
 
-size_t RmtMemoryManager::getAllocatedWords(u8 channel_id, bool is_tx) const {
+size_t RmtMemoryManager::getAllocatedWords(u8 channel_id, bool is_tx) const FL_NOEXCEPT {
     const ChannelAllocation* alloc = findAllocation(channel_id, is_tx);
     return alloc ? alloc->words : 0;
 }
 
-void RmtMemoryManager::reset() {
+void RmtMemoryManager::reset() FL_NOEXCEPT {
     FL_LOG_RMT("RMT Memory Manager reset - clearing all allocations");
 
     // Reset appropriate fields based on pool architecture
@@ -573,7 +574,7 @@ void RmtMemoryManager::reset() {
 // State Inspection Methods
 // ============================================================================
 
-size_t RmtMemoryManager::getTotalTxWords() const {
+size_t RmtMemoryManager::getTotalTxWords() const FL_NOEXCEPT {
     if (mLedger.is_global_pool) {
         return mLedger.total_words;  // Global pool total
     } else {
@@ -581,7 +582,7 @@ size_t RmtMemoryManager::getTotalTxWords() const {
     }
 }
 
-size_t RmtMemoryManager::getTotalRxWords() const {
+size_t RmtMemoryManager::getTotalRxWords() const FL_NOEXCEPT {
     if (mLedger.is_global_pool) {
         return 0;  // Global pool doesn't have separate RX total
     } else {
@@ -589,7 +590,7 @@ size_t RmtMemoryManager::getTotalRxWords() const {
     }
 }
 
-size_t RmtMemoryManager::getAllocatedTxWords() const {
+size_t RmtMemoryManager::getAllocatedTxWords() const FL_NOEXCEPT {
     if (mLedger.is_global_pool) {
         // For global pool, calculate TX words from allocations
         size_t tx_words = 0;
@@ -604,7 +605,7 @@ size_t RmtMemoryManager::getAllocatedTxWords() const {
     }
 }
 
-size_t RmtMemoryManager::getAllocatedRxWords() const {
+size_t RmtMemoryManager::getAllocatedRxWords() const FL_NOEXCEPT {
     if (mLedger.is_global_pool) {
         // For global pool, calculate RX words from allocations
         size_t rx_words = 0;
@@ -619,7 +620,7 @@ size_t RmtMemoryManager::getAllocatedRxWords() const {
     }
 }
 
-bool RmtMemoryManager::hasActiveRxChannels() const {
+bool RmtMemoryManager::hasActiveRxChannels() const FL_NOEXCEPT {
     // Check if any RX allocations exist
     for (const auto& alloc : mLedger.allocations) {
         if (!alloc.is_tx) {
@@ -629,11 +630,11 @@ bool RmtMemoryManager::hasActiveRxChannels() const {
     return false;
 }
 
-size_t RmtMemoryManager::getAllocationCount() const {
+size_t RmtMemoryManager::getAllocationCount() const FL_NOEXCEPT {
     return mLedger.allocations.size();
 }
 
-bool RmtMemoryManager::isGlobalPool() const {
+bool RmtMemoryManager::isGlobalPool() const FL_NOEXCEPT {
     return mLedger.is_global_pool;
 }
 
@@ -641,7 +642,7 @@ bool RmtMemoryManager::isGlobalPool() const {
 // DMA Channel Management
 // ============================================================================
 
-bool RmtMemoryManager::isDMAAvailable() const {
+bool RmtMemoryManager::isDMAAvailable() const FL_NOEXCEPT {
 #if FASTLED_RMT5_DMA_SUPPORTED
     if (mDMAAllocation.allocated) {
         return false;  // DMA slot already in use
@@ -659,7 +660,7 @@ bool RmtMemoryManager::isDMAAvailable() const {
 #endif
 }
 
-bool RmtMemoryManager::allocateDMA(u8 channel_id, bool is_tx) {
+bool RmtMemoryManager::allocateDMA(u8 channel_id, bool is_tx) FL_NOEXCEPT {
 #if FASTLED_RMT5_DMA_SUPPORTED
     if (mDMAAllocation.allocated) {
         FL_WARN("DMA allocation failed: DMA already allocated to "
@@ -683,7 +684,7 @@ bool RmtMemoryManager::allocateDMA(u8 channel_id, bool is_tx) {
 #endif
 }
 
-void RmtMemoryManager::freeDMA(u8 channel_id, bool is_tx) {
+void RmtMemoryManager::freeDMA(u8 channel_id, bool is_tx) FL_NOEXCEPT {
 #if FASTLED_RMT5_DMA_SUPPORTED
     if (!mDMAAllocation.allocated) {
         FL_WARN("DMA free called but no DMA allocated");
@@ -712,7 +713,7 @@ void RmtMemoryManager::freeDMA(u8 channel_id, bool is_tx) {
 #endif
 }
 
-int RmtMemoryManager::getDMAChannelsInUse() const {
+int RmtMemoryManager::getDMAChannelsInUse() const FL_NOEXCEPT {
 #if FASTLED_RMT5_DMA_SUPPORTED
     return mDMAAllocation.allocated ? 1 : 0;
 #else
@@ -725,7 +726,7 @@ int RmtMemoryManager::getDMAChannelsInUse() const {
 // ============================================================================
 
 RmtMemoryManager::ChannelAllocation*
-RmtMemoryManager::findAllocation(u8 channel_id, bool is_tx) {
+RmtMemoryManager::findAllocation(u8 channel_id, bool is_tx) FL_NOEXCEPT {
     for (auto& alloc : mLedger.allocations) {
         if (alloc.channel_id == channel_id && alloc.is_tx == is_tx) {
             return &alloc;
@@ -735,7 +736,7 @@ RmtMemoryManager::findAllocation(u8 channel_id, bool is_tx) {
 }
 
 const RmtMemoryManager::ChannelAllocation*
-RmtMemoryManager::findAllocation(u8 channel_id, bool is_tx) const {
+RmtMemoryManager::findAllocation(u8 channel_id, bool is_tx) const FL_NOEXCEPT {
     for (const auto& alloc : mLedger.allocations) {
         if (alloc.channel_id == channel_id && alloc.is_tx == is_tx) {
             return &alloc;
@@ -748,7 +749,7 @@ RmtMemoryManager::findAllocation(u8 channel_id, bool is_tx) const {
 // External Memory Reservation API
 // ============================================================================
 
-void RmtMemoryManager::reserveExternalMemory(size_t tx_words, size_t rx_words) {
+void RmtMemoryManager::reserveExternalMemory(size_t tx_words, size_t rx_words) FL_NOEXCEPT {
     mLedger.reserved_tx_words = tx_words;
     mLedger.reserved_rx_words = rx_words;
 
@@ -770,7 +771,7 @@ void RmtMemoryManager::reserveExternalMemory(size_t tx_words, size_t rx_words) {
     }
 }
 
-void RmtMemoryManager::getReservedMemory(size_t& tx_words, size_t& rx_words) const {
+void RmtMemoryManager::getReservedMemory(size_t& tx_words, size_t& rx_words) const FL_NOEXCEPT {
     tx_words = mLedger.reserved_tx_words;
     rx_words = mLedger.reserved_rx_words;
 }
@@ -779,7 +780,7 @@ void RmtMemoryManager::getReservedMemory(size_t& tx_words, size_t& rx_words) con
 // Helper Methods
 // ============================================================================
 
-size_t RmtMemoryManager::getAvailableWords(bool is_tx) const {
+size_t RmtMemoryManager::getAvailableWords(bool is_tx) const FL_NOEXCEPT {
     if (mLedger.is_global_pool) {
         // Global pool: return total available (shared with TX/RX, minus reservations)
         size_t total_reserved = mLedger.reserved_tx_words + mLedger.reserved_rx_words;
@@ -799,7 +800,7 @@ size_t RmtMemoryManager::getAvailableWords(bool is_tx) const {
     }
 }
 
-bool RmtMemoryManager::tryAllocateWords(size_t words_needed, bool is_tx) {
+bool RmtMemoryManager::tryAllocateWords(size_t words_needed, bool is_tx) FL_NOEXCEPT {
     if (words_needed > getAvailableWords(is_tx)) {
         return false;
     }
@@ -817,7 +818,7 @@ bool RmtMemoryManager::tryAllocateWords(size_t words_needed, bool is_tx) {
     return true;
 }
 
-void RmtMemoryManager::freeWords(size_t words, bool is_tx) {
+void RmtMemoryManager::freeWords(size_t words, bool is_tx) FL_NOEXCEPT {
     if (mLedger.is_global_pool) {
         mLedger.allocated_words -= words;
     } else {

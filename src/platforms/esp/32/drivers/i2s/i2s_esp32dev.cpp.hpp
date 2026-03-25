@@ -31,6 +31,7 @@
 #include "fl/stl/stdint.h"
 #include "fl/stl/cstring.h"
 #include "fl/chipsets/led_timing.h"
+#include "fl/stl/noexcept.h"
 // IWYU pragma: begin_keep
 #include "fl/stl/cstring.h"  // ok include - for memset
 // IWYU pragma: end_keep
@@ -90,7 +91,7 @@ int gCurBuffer = 0;
 bool gDoneFilling = false;
 void_func_t gCallback = nullptr;
 
-void i2s_set_fill_buffer_callback(void_func_t callback) {
+void i2s_set_fill_buffer_callback(void_func_t callback) FL_NOEXCEPT {
     gCallback = callback;
 }
 
@@ -107,7 +108,7 @@ static xSemaphoreHandle gTX_semaphore = nullptr;
 // -- One-time I2S initialization
 static bool gInitializedI2sInitialized = false;
 
-static I2SDMABuffer *allocateDMABuffer(int bytes) {
+static I2SDMABuffer *allocateDMABuffer(int bytes) FL_NOEXCEPT {
     I2SDMABuffer *b =
         (I2SDMABuffer *)heap_caps_malloc(sizeof(I2SDMABuffer), MALLOC_CAP_DMA);
 
@@ -127,7 +128,7 @@ static I2SDMABuffer *allocateDMABuffer(int bytes) {
     return b;
 }
 
-int pgcd(int smallest, int precision, int a, int b, int c) {
+int pgcd(int smallest, int precision, int a, int b, int c) FL_NOEXCEPT {
     int pgc = 1;
     for (int i = smallest; i > 0; --i) {
 
@@ -140,7 +141,7 @@ int pgcd(int smallest, int precision, int a, int b, int c) {
 }
 
 // -- Custom interrupt handler
-static FL_IRAM void interruptHandler(void *arg) {
+static FL_IRAM void interruptHandler(void *arg) FL_NOEXCEPT {
     if (i2s->int_st.out_eof) {
         i2s->int_clr.val = i2s->int_raw.val;
 #if FASTLED_ESP32_I2S_NUM_DMA_BUFFERS > 2
@@ -166,7 +167,7 @@ static FL_IRAM void interruptHandler(void *arg) {
 /** Transpose 8x8 bit matrix
  *  From Hacker's Delight
  */
-static void transpose8rS32(u8 *A, int m, int n, u8 *B) {
+static void transpose8rS32(u8 *A, int m, int n, u8 *B) FL_NOEXCEPT {
     u32 x, y, t;
 
     // Load the array and pack it into x and y.
@@ -198,14 +199,14 @@ static void transpose8rS32(u8 *A, int m, int n, u8 *B) {
     B[7 * n] = y;
 }
 
-static void transpose32(u8 *pixels, u8 *bits) {
+static void transpose32(u8 *pixels, u8 *bits) FL_NOEXCEPT {
     transpose8rS32(&pixels[0], 1, 4, &bits[0]);
     transpose8rS32(&pixels[8], 1, 4, &bits[1]);
     transpose8rS32(&pixels[16], 1, 4, &bits[2]);
     // transpose8rS32(& pixels[24], 1, 4, & bits[3]);  Can only use 24 bits
 }
 
-void i2s_define_bit_patterns(const ChipsetTiming& TIMING) {
+void i2s_define_bit_patterns(const ChipsetTiming& TIMING) FL_NOEXCEPT {
     // Extract timing values from struct (already in nanoseconds)
     u32 T1ns = TIMING.T1;
     u32 T2ns = TIMING.T2;
@@ -357,9 +358,9 @@ void i2s_define_bit_patterns(const ChipsetTiming& TIMING) {
     fl::memset(gPixelBits, 0, NUM_COLOR_CHANNELS * 32);
 }
 
-bool i2s_is_initialized() { return gInitializedI2sInitialized; }
+bool i2s_is_initialized() FL_NOEXCEPT { return gInitializedI2sInitialized; }
 
-void i2s_init(int i2s_device) {
+void i2s_init(int i2s_device) FL_NOEXCEPT {
 
     // -- Choose whether to use I2S device 0 or device 1
     //    Set up the various device-specific parameters
@@ -454,7 +455,7 @@ void i2s_init(int i2s_device) {
     gInitializedI2sInitialized = true;
 }
 
-void i2s_clear_dma_buffer(u32 *buf) {
+void i2s_clear_dma_buffer(u32 *buf) FL_NOEXCEPT {
     for (int i = 0; i < 8 * NUM_COLOR_CHANNELS; ++i) {
         int offset = gPulsesPerBit * i;
         for (int j = 0; j < ones_for_zero; ++j)
@@ -465,7 +466,7 @@ void i2s_clear_dma_buffer(u32 *buf) {
     }
 }
 
-void i2s_start() {
+void i2s_start() FL_NOEXCEPT {
     // esp_intr_disable(gI2S_intr_handle);
     // Serial.println("I2S start");
     i2s_reset();
@@ -489,7 +490,7 @@ void i2s_start() {
     i2s->conf.tx_start = 1;
 }
 
-void i2s_reset() {
+void i2s_reset() FL_NOEXCEPT {
     // Serial.println("I2S reset");
     const unsigned long lc_conf_reset_flags =
         I2S_IN_RST_M | I2S_OUT_RST_M | I2S_AHBM_RST_M | I2S_AHBM_FIFO_RST_M;
@@ -502,30 +503,30 @@ void i2s_reset() {
     i2s->conf.val &= ~conf_reset_flags;
 }
 
-void i2s_reset_dma() {
+void i2s_reset_dma() FL_NOEXCEPT {
     i2s->lc_conf.in_rst = 1;
     i2s->lc_conf.in_rst = 0;
     i2s->lc_conf.out_rst = 1;
     i2s->lc_conf.out_rst = 0;
 }
 
-void i2s_reset_fifo() {
+void i2s_reset_fifo() FL_NOEXCEPT {
     i2s->conf.rx_fifo_reset = 1;
     i2s->conf.rx_fifo_reset = 0;
     i2s->conf.tx_fifo_reset = 1;
     i2s->conf.tx_fifo_reset = 0;
 }
 
-void i2s_stop() {
+void i2s_stop() FL_NOEXCEPT {
     esp_intr_disable(gI2S_intr_handle);
     i2s_reset();
     i2s->conf.rx_start = 0;
     i2s->conf.tx_start = 0;
 }
 
-void i2s_begin() { xSemaphoreTake(gTX_semaphore, portMAX_DELAY); }
+void i2s_begin() FL_NOEXCEPT { xSemaphoreTake(gTX_semaphore, portMAX_DELAY); }
 
-void i2s_wait() {
+void i2s_wait() FL_NOEXCEPT {
     // -- Wait here while the rest of the data is sent. The interrupt handler
     //    will keep refilling the DMA buffers until it is all sent; then it
     //    gives the semaphore back.
@@ -533,7 +534,7 @@ void i2s_wait() {
     xSemaphoreGive(gTX_semaphore);
 }
 
-void i2s_setup_pin(int _pin, int offset) {
+void i2s_setup_pin(int _pin, int offset) FL_NOEXCEPT {
     gpio_num_t pin = (gpio_num_t)_pin;
     PIN_FUNC_SELECT(GPIO_PIN_MUX_REG[pin], PIN_FUNC_GPIO);
     gpio_set_direction(pin, (gpio_mode_t)GPIO_MODE_DEF_OUTPUT);
@@ -542,7 +543,7 @@ void i2s_setup_pin(int _pin, int offset) {
 }
 
 void i2s_transpose_and_encode(int channel, u32 has_data_mask,
-                              volatile u32 *buf) {
+                              volatile u32 *buf) FL_NOEXCEPT {
 
     // -- Tranpose each array: all the bit 7's, then all the bit 6's,
     // ...
@@ -577,8 +578,8 @@ void i2s_transpose_and_encode(int channel, u32 has_data_mask,
 
 // Stub: I2S driver not yet ported to ESP-IDF 6.0+
 namespace fl {
-bool i2s_is_initialized() { return false; }
-void i2s_init(int) {
+bool i2s_is_initialized() FL_NOEXCEPT { return false; }
+void i2s_init(int) FL_NOEXCEPT {
     FL_WARN_ONCE("I2S parallel driver is not yet implemented for ESP-IDF 6.0+. "
                  "Falling back to RMT/SPI driver.");
 }

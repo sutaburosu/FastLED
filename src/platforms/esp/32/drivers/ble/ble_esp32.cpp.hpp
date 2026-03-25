@@ -17,6 +17,7 @@
 #include "fl/stl/string_view.h"
 #include "fl/system/log.h"
 #include "fl/remote/transport/serial.h" // for formatJsonResponse
+#include "fl/stl/noexcept.h"
 
 // NimBLE C headers (all ESP-IDF, no Arduino dependency)
 FL_EXTERN_C_BEGIN
@@ -124,7 +125,7 @@ static const struct ble_gatt_svc_def fl_gatt_svr_svcs[] = {
 static struct ble_gatt_svc_def fl_gatt_svr_svcs_mut[2];
 static struct ble_gatt_chr_def fl_gatt_chr_defs_mut[3];
 
-static void fl_ble_patch_gatt_table(TransportState *state) {
+static void fl_ble_patch_gatt_table(TransportState *state) FL_NOEXCEPT {
     // Copy service table
     fl::memcpy(fl_gatt_svr_svcs_mut, fl_gatt_svr_svcs, sizeof(fl_gatt_svr_svcs));
     // Copy characteristic table
@@ -205,7 +206,7 @@ static int fl_ble_gatt_access_cb(u16 conn_handle, u16 attr_handle,
 // GAP event callback — handles connect, disconnect, adv complete
 // ---------------------------------------------------------------------------
 
-static void fl_ble_start_advertise(TransportState *state);
+static void fl_ble_start_advertise(TransportState *state) FL_NOEXCEPT;
 
 static int fl_ble_gap_event_cb(struct ble_gap_event *event, void *arg) {
     auto *state = static_cast<TransportState *>(arg);
@@ -260,7 +261,7 @@ static int fl_ble_gap_event_cb(struct ble_gap_event *event, void *arg) {
 // Advertising
 // ---------------------------------------------------------------------------
 
-static void fl_ble_start_advertise(TransportState *state) {
+static void fl_ble_start_advertise(TransportState *state) FL_NOEXCEPT {
     const char *name = ble_svc_gap_device_name();
 
     // Advertising packet: flags + device name (required for scanner discovery)
@@ -336,7 +337,7 @@ static void fl_ble_host_task(void *param) {
 // Public API implementation
 // ---------------------------------------------------------------------------
 
-TransportState* createTransport(const char* deviceName) {
+TransportState* createTransport(const char* deviceName) FL_NOEXCEPT {
     auto uptr = fl::make_unique<TransportState>();
     auto* state = uptr.get();
 
@@ -389,7 +390,7 @@ TransportState* createTransport(const char* deviceName) {
     return state;
 }
 
-void destroyTransport(TransportState* state) {
+void destroyTransport(TransportState* state) FL_NOEXCEPT {
     if (!state) return;
     fl::unique_ptr<TransportState> guard(state);
 
@@ -412,7 +413,7 @@ void destroyTransport(TransportState* state) {
     FL_WARN("[BLE] GATT server stopped");
 }
 
-StatusInfo queryStatus(const TransportState* state) {
+StatusInfo queryStatus(const TransportState* state) FL_NOEXCEPT {
     StatusInfo info;
     if (!state) return info;
     info.connected = state->connected;
@@ -425,7 +426,7 @@ StatusInfo queryStatus(const TransportState* state) {
 }
 
 fl::pair<fl::function<fl::optional<fl::json>()>, fl::function<void(const fl::json&)>>
-getTransportCallbacks(TransportState* state) {
+getTransportCallbacks(TransportState* state) FL_NOEXCEPT {
     // RequestSource: polls ring buffer for incoming JSON-RPC
     auto requestSource = [state]() -> fl::optional<fl::json> {
         if (state->tail == state->head) {

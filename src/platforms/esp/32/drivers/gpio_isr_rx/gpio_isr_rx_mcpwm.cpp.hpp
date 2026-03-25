@@ -43,6 +43,7 @@
 #include "fl/stl/vector.h"
 // IWYU pragma: end_keep
 #include "platforms/esp/32/core/fastpin_esp32.h"  // For pin validation macros
+#include "fl/stl/noexcept.h"
 
 FL_EXTERN_C_BEGIN
 // IWYU pragma: begin_keep
@@ -82,7 +83,7 @@ namespace {
  * @param interrupt_handle Output parameter for allocated interrupt handle
  * @return true on success, false on failure
  */
-bool install_direct_gpio_isr(int gpio_num, void* isr_context, intr_handle_t* interrupt_handle) {
+bool install_direct_gpio_isr(int gpio_num, void* isr_context, intr_handle_t* interrupt_handle) FL_NOEXCEPT {
     FL_DBG("Installing direct GPIO ISR for pin " << gpio_num);
 
     // Step 1: Determine GPIO interrupt source
@@ -161,7 +162,7 @@ namespace {
  * @param pin GPIO pin number to check
  * @return true if pin is valid and usable, false otherwise
  */
-inline bool isValidGpioPin(int pin) {
+inline bool isValidGpioPin(int pin) FL_NOEXCEPT {
     if (pin < 0 || pin >= 64) {
         return false;
     }
@@ -180,7 +181,7 @@ inline bool isValidGpioPin(int pin) {
  * @param timing Chipset timing thresholds
  * @return 0 for bit 0, 1 for bit 1, -1 for invalid timing
  */
-inline int decodePulseBit(u32 high_ns, u32 low_ns, const ChipsetTiming4Phase &timing) {
+inline int decodePulseBit(u32 high_ns, u32 low_ns, const ChipsetTiming4Phase &timing) FL_NOEXCEPT {
     // Decision logic: check if timing matches bit 0 pattern
     bool t0h_match = (high_ns >= timing.t0h_min_ns) && (high_ns <= timing.t0h_max_ns);
     bool t0l_match = (low_ns >= timing.t0l_min_ns) && (low_ns <= timing.t0l_max_ns);
@@ -207,7 +208,7 @@ inline int decodePulseBit(u32 high_ns, u32 low_ns, const ChipsetTiming4Phase &ti
  * @param timing Timing thresholds
  * @return true if pulse is reset pulse (long low duration)
  */
-inline bool isResetPulse(u32 duration_ns, const ChipsetTiming4Phase &timing) {
+inline bool isResetPulse(u32 duration_ns, const ChipsetTiming4Phase &timing) FL_NOEXCEPT {
     u32 reset_min_ns = timing.reset_min_us * 1000;
     return duration_ns >= reset_min_ns;
 }
@@ -224,7 +225,7 @@ inline bool isResetPulse(u32 duration_ns, const ChipsetTiming4Phase &timing) {
  */
 fl::result<u32, DecodeError> decodeEdgeTimestamps(const ChipsetTiming4Phase &timing,
                                                          fl::span<const EdgeTimestamp> edges,
-                                                         fl::span<u8> bytes_out) {
+                                                         fl::span<u8> bytes_out) FL_NOEXCEPT {
     const size_t edge_count = edges.size();
     const size_t bytes_capacity = bytes_out.size();
 
@@ -383,7 +384,7 @@ public:
         cleanup();
     }
 
-    bool begin(const RxConfig& config) override {
+    bool begin(const RxConfig& config) FL_NOEXCEPT override {
         // Validate pin
         if (!isValidGpioPin(static_cast<int>(mPin))) {
             FL_ERROR("GPIO ISR RX MCPWM: Invalid pin " << static_cast<int>(mPin)
@@ -649,12 +650,12 @@ public:
         return true;
     }
 
-    bool finished() const override {
+    bool finished() const FL_NOEXCEPT override {
         // Atomic load with acquire semantics
         return __atomic_load_n(&mIsrContext.done, __ATOMIC_ACQUIRE);
     }
 
-    RxWaitResult wait(u32 timeout_ms) override {
+    RxWaitResult wait(u32 timeout_ms) FL_NOEXCEPT override {
         if (!mInitialized) {
             FL_WARN("wait(): GPIO ISR RX MCPWM not initialized");
             return RxWaitResult::TIMEOUT;
@@ -685,7 +686,7 @@ public:
         return RxWaitResult::SUCCESS;
     }
 
-    fl::span<const EdgeTimestamp> getEdges() const override {
+    fl::span<const EdgeTimestamp> getEdges() const FL_NOEXCEPT override {
         if (mOutputBuffer.empty()) {
             return fl::span<const EdgeTimestamp>();
         }
@@ -711,7 +712,7 @@ public:
     }
 
     fl::result<u32, DecodeError> decode(const ChipsetTiming4Phase &timing,
-                                               fl::span<u8> out) override {
+                                               fl::span<u8> out) FL_NOEXCEPT override {
         // Get captured edges
         fl::span<const EdgeTimestamp> edges = getEdges();
 
@@ -723,7 +724,7 @@ public:
         return decodeEdgeTimestamps(timing, edges, out);
     }
 
-    size_t getRawEdgeTimes(fl::span<EdgeTime> out, size_t offset = 0) override {
+    size_t getRawEdgeTimes(fl::span<EdgeTime> out, size_t offset = 0) FL_NOEXCEPT override {
         // Get converted edges
         fl::span<const EdgeTimestamp> edges = getEdges();
 
@@ -766,7 +767,7 @@ public:
         return out_index;
     }
 
-    bool injectEdges(fl::span<const EdgeTime> edges) override {
+    bool injectEdges(fl::span<const EdgeTime> edges) FL_NOEXCEPT override {
         // Ensure output buffer is large enough
         if (edges.size() > mOutputBuffer.size()) {
             mOutputBuffer.clear();
@@ -791,11 +792,11 @@ public:
         return true;
     }
 
-    const char* name() const override {
+    const char* name() const FL_NOEXCEPT override {
         return "ISR_MCPWM";
     }
 
-    int getPin() const override {
+    int getPin() const FL_NOEXCEPT override {
         return static_cast<int>(mPin);
     }
 
@@ -885,7 +886,7 @@ private:
     /**
      * @brief Clean up resources
      */
-    void cleanup() {
+    void cleanup() FL_NOEXCEPT {
         if (!mInitialized) {
             return;
         }
@@ -940,7 +941,7 @@ private:
 
 // Factory method for MCPWM-based implementation
 // Note: This is a separate factory - doesn't override the existing GpioIsrRx::create()
-fl::shared_ptr<GpioIsrRx> GpioIsrRxMcpwm_create(int pin) {
+fl::shared_ptr<GpioIsrRx> GpioIsrRxMcpwm_create(int pin) FL_NOEXCEPT {
     return fl::make_shared<GpioIsrRxMcpwm>(pin);
 }
 

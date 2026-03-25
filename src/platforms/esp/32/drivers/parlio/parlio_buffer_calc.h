@@ -12,6 +12,7 @@
 
 #include "fl/stl/compiler_control.h"
 #include "fl/system/log.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 namespace detail {
@@ -73,7 +74,7 @@ struct ParlioBufferCalculator {
 
     /// @brief Calculate output bytes per input byte after wave encoding + transpose
     /// @return Output bytes per input byte
-    size_t outputBytesPerInputByte() const {
+    size_t outputBytesPerInputByte() const FL_NOEXCEPT {
         if (mUseWave3) {
             // Wave3: 8 LED bits × 3 ticks = 24 bits = 3 bytes per input byte per lane
             return 3 * mDataWidth;
@@ -98,7 +99,7 @@ struct ParlioBufferCalculator {
     /// - Total: 16 bytes per lane (8 front + 8 back)
     ///
     /// For multi-lane (mDataWidth > 1), each lane gets its own padding.
-    size_t boundaryPaddingBytes() const {
+    size_t boundaryPaddingBytes() const FL_NOEXCEPT {
         // ITERATION 18: Zero front padding, keep back padding
         // Front padding caused phase shift (75% improvement when removed)
         // Back padding is REQUIRED for stable transmission (removing it makes things worse)
@@ -120,7 +121,7 @@ struct ParlioBufferCalculator {
     /// @param inputBytes Number of input bytes to transmit
     /// @param reset_us Reset time in microseconds (default: 0)
     /// @return Total DMA buffer size in bytes (front_pad + pixel data + back_pad + reset_pad)
-    size_t dmaBufferSize(size_t inputBytes, u32 reset_us = 0) const {
+    size_t dmaBufferSize(size_t inputBytes, u32 reset_us = 0) const FL_NOEXCEPT {
         size_t front_back_padding = boundaryPaddingBytes();
         size_t pixel_bytes = inputBytes * outputBytesPerInputByte();
         size_t reset_padding = resetPaddingBytes(reset_us);
@@ -129,7 +130,7 @@ struct ParlioBufferCalculator {
 
     /// @brief Calculate transpose output block size for populateDmaBuffer
     /// @return Block size in bytes for transpose operation
-    size_t FL_IRAM transposeBlockSize() const {
+    size_t FL_IRAM transposeBlockSize() const FL_NOEXCEPT {
         if (mUseWave3) {
             // Wave3: 3 bytes per input byte per lane
             return 3 * mDataWidth;
@@ -153,7 +154,7 @@ struct ParlioBufferCalculator {
     /// - Wave3: 24 ticks per Wave3Byte. At 2.4MHz (416.7ns/tick): 10µs per Wave3Byte.
     /// - Formula: us_per_unit = (ticks_per_unit * 1,000,000) / mClockFreqHz
     /// - Padding bytes = ceil(reset_us / us_per_unit) × bytes_per_unit × mDataWidth
-    size_t resetPaddingBytes(u32 reset_us) const {
+    size_t resetPaddingBytes(u32 reset_us) const FL_NOEXCEPT {
         if (reset_us == 0) {
             return 0;
         }
@@ -205,7 +206,7 @@ struct ParlioBufferCalculator {
     /// - Reset padding: 280 bytes (35 Wave8Bytes × 8 bytes)
     /// - With safety margin: 24000 + 280 + 128 = 24408 bytes
     size_t calculateRingBufferCapacity(size_t maxLedsPerChannel, u32 reset_us, size_t numRingBuffers = 3,
-                                       size_t totalCapBytes = FASTLED_PARLIO_MAX_RING_BUFFER_TOTAL_BYTES) const {
+                                       size_t totalCapBytes = FASTLED_PARLIO_MAX_RING_BUFFER_TOTAL_BYTES) const FL_NOEXCEPT {
         size_t safetyMargin = 128;
         size_t perBufferCap = totalCapBytes / numRingBuffers;
 

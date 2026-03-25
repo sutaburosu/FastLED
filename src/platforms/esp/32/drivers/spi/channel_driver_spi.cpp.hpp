@@ -43,6 +43,7 @@
 #include "fl/stl/chrono.h"
 #include "platforms/esp/32/drivers/spi/spi_hw_base.h" // SPI host definitions (SPI2_HOST, SPI3_HOST)
 #include "platforms/esp/is_esp.h" // Platform detection (FL_IS_ESP_32C6, etc.)
+#include "fl/stl/noexcept.h"
 
 FL_EXTERN_C_BEGIN
 // IWYU pragma: begin_keep
@@ -99,7 +100,7 @@ namespace {
 ///   - ESP32-P4: SPI2_D_PAD_OUT_IDX, SPI3_D_PAD_OUT_IDX
 ///   - ESP32-S2/S3/C3/C6/H2: FSPID_OUT_IDX (for SPI2_HOST/FSPI)
 ///   - ESP32 original: HSPID_OUT_IDX, VSPID_OUT_IDX
-inline int getSpiMosiSignalIndex(spi_host_device_t host) {
+inline int getSpiMosiSignalIndex(spi_host_device_t host) FL_NOEXCEPT {
 #if defined(FL_IS_ESP_32P4)
     // ESP32-P4: Use SPI2_D_PAD_OUT_IDX or SPI3_D_PAD_OUT_IDX
     if (host == SPI2_HOST) {
@@ -135,7 +136,7 @@ inline int getSpiMosiSignalIndex(spi_host_device_t host) {
 // ============================================================================
 
 /// @brief Greatest common divisor (Euclidean algorithm)
-inline u32 gcd(u32 a, u32 b) {
+inline u32 gcd(u32 a, u32 b) FL_NOEXCEPT {
     while (b != 0) {
         u32 t = b;
         b = a % b;
@@ -185,7 +186,7 @@ constexpr bool kSpiUsePolling = false;
 /// @return ESP_OK on success
 /// On ESP32-C6: uses spi_device_polling_start (split polling, non-blocking start)
 /// On other variants: uses spi_device_queue_trans (ISR-driven async DMA)
-inline esp_err_t spiStart(spi_device_handle_t dev, spi_transaction_t* trans) {
+inline esp_err_t spiStart(spi_device_handle_t dev, spi_transaction_t* trans) FL_NOEXCEPT {
     if (kSpiUsePolling) {
         return spi_device_polling_start(dev, trans, portMAX_DELAY);
     }
@@ -198,7 +199,7 @@ inline esp_err_t spiStart(spi_device_handle_t dev, spi_transaction_t* trans) {
 /// @return ESP_OK if done, ESP_ERR_TIMEOUT if still in flight
 /// On ESP32-C6: uses spi_device_polling_end with 0 tick timeout
 /// On other variants: uses spi_device_get_trans_result with 0 tick timeout
-inline esp_err_t spiCheckDone(spi_device_handle_t dev, spi_transaction_t** out_trans) {
+inline esp_err_t spiCheckDone(spi_device_handle_t dev, spi_transaction_t** out_trans) FL_NOEXCEPT {
     if (kSpiUsePolling) {
         return spi_device_polling_end(dev, 0);
     }
@@ -207,7 +208,7 @@ inline esp_err_t spiCheckDone(spi_device_handle_t dev, spi_transaction_t** out_t
 
 } // namespace
 
-ChannelEngineSpi::ChannelEngineSpi()
+ChannelEngineSpi::ChannelEngineSpi() FL_NOEXCEPT
     : mAllocationFailed(false), mLastRetryFrame(0) {
     FL_DBG("ChannelEngineSpi: Constructor called");
 }
@@ -266,7 +267,7 @@ ChannelEngineSpi::~ChannelEngineSpi() {
     }
 }
 
-bool ChannelEngineSpi::canHandle(const ChannelDataPtr& data) const {
+bool ChannelEngineSpi::canHandle(const ChannelDataPtr& data) const FL_NOEXCEPT {
     if (!data) {
         return false;
     }
@@ -294,7 +295,7 @@ bool ChannelEngineSpi::canHandle(const ChannelDataPtr& data) const {
 }
 
 void ChannelEngineSpi::configureMultiLanePins(
-    const MultiLanePinConfig &pinConfig) {
+    const MultiLanePinConfig &pinConfig) FL_NOEXCEPT {
     if (pinConfig.data0_pin < 0) {
         FL_WARN("ChannelEngineSpi: Invalid multi-lane config - data0_pin must "
                 "be >= 0");
@@ -326,7 +327,7 @@ void ChannelEngineSpi::configureMultiLanePins(
            << pinConfig.data0_pin);
 }
 
-void ChannelEngineSpi::enqueue(ChannelDataPtr channelData) {
+void ChannelEngineSpi::enqueue(ChannelDataPtr channelData) FL_NOEXCEPT {
     if (!channelData) {
         FL_WARN("ChannelEngineSpi: Null channel data passed to enqueue()");
         return;
@@ -335,7 +336,7 @@ void ChannelEngineSpi::enqueue(ChannelDataPtr channelData) {
     mEnqueuedChannels.push_back(channelData);
 }
 
-void ChannelEngineSpi::show() {
+void ChannelEngineSpi::show() FL_NOEXCEPT {
     if (mEnqueuedChannels.empty()) {
         return;
     }
@@ -391,7 +392,7 @@ void ChannelEngineSpi::show() {
     }
 }
 
-IChannelDriver::DriverState ChannelEngineSpi::poll() {
+IChannelDriver::DriverState ChannelEngineSpi::poll() FL_NOEXCEPT {
     // If pipeline is active, advance it
     if (mPipeline.mPhase != DmaPipelineState::IDLE) {
         return advancePipeline();
@@ -423,7 +424,7 @@ IChannelDriver::DriverState ChannelEngineSpi::poll() {
 }
 
 /// @brief Poll channel states for cleanup
-IChannelDriver::DriverState ChannelEngineSpi::pollChannels() {
+IChannelDriver::DriverState ChannelEngineSpi::pollChannels() FL_NOEXCEPT {
     bool anyDraining = false;
 
     for (auto &channel : mChannels) {
@@ -447,7 +448,7 @@ IChannelDriver::DriverState ChannelEngineSpi::pollChannels() {
 }
 
 void ChannelEngineSpi::beginBatchedTransmission(
-    fl::span<const ChannelDataPtr> channels) {
+    fl::span<const ChannelDataPtr> channels) FL_NOEXCEPT {
 
     // Safety check: Pending queue should be empty before starting new batches
     // If pending channels exist, it indicates incomplete transmission from previous frame
@@ -564,7 +565,7 @@ void ChannelEngineSpi::beginBatchedTransmission(
 }
 
 u8 ChannelEngineSpi::determineLaneCapacity(
-    fl::span<const ChannelDataPtr> channels) {
+    fl::span<const ChannelDataPtr> channels) FL_NOEXCEPT {
 
     // Determine the maximum number of channels that can transmit in parallel (K).
     //
@@ -602,7 +603,7 @@ u8 ChannelEngineSpi::determineLaneCapacity(
 }
 
 void ChannelEngineSpi::beginTransmission(
-    fl::span<const ChannelDataPtr> channelData) {
+    fl::span<const ChannelDataPtr> channelData) FL_NOEXCEPT {
     for (const auto &data : channelData) {
         gpio_num_t pin = static_cast<gpio_num_t>(data->getPin());
 
@@ -678,7 +679,7 @@ void ChannelEngineSpi::beginTransmission(
 
 ChannelEngineSpi::SpiChannelState *
 ChannelEngineSpi::acquireChannel(gpio_num_t pin, const ChipsetTimingConfig &timing,
-                                 size_t dataSize) {
+                                 size_t dataSize) FL_NOEXCEPT {
 
     // Try to find existing idle channel with matching pin and timing
     for (auto &channel : mChannels) {
@@ -787,7 +788,7 @@ ChannelEngineSpi::acquireChannel(gpio_num_t pin, const ChipsetTimingConfig &timi
     return channelPtr;
 }
 
-void ChannelEngineSpi::releaseChannel(SpiChannelState *channel) {
+void ChannelEngineSpi::releaseChannel(SpiChannelState *channel) FL_NOEXCEPT {
     if (channel) {
         // Clear usage flags - keep SPI hardware allocated for fast reuse
         channel->inUse = false;
@@ -816,7 +817,7 @@ void ChannelEngineSpi::releaseChannel(SpiChannelState *channel) {
 }
 
 bool ChannelEngineSpi::reinitSpiHardware(SpiChannelState *state, gpio_num_t pin,
-                                         size_t dataSize) {
+                                         size_t dataSize) FL_NOEXCEPT {
     // Lightweight re-initialization: only SPI bus + device.
     // Staging buffers, timer ISR, and LED source buffer are already allocated.
 
@@ -884,7 +885,7 @@ bool ChannelEngineSpi::reinitSpiHardware(SpiChannelState *state, gpio_num_t pin,
 
 bool ChannelEngineSpi::createChannel(SpiChannelState *state, gpio_num_t pin,
                                      const ChipsetTimingConfig &timing,
-                                     size_t dataSize) {
+                                     size_t dataSize) FL_NOEXCEPT {
     // Safety counter to detect infinite channel creation loops
     static int creation_count = 0;
     static u32 last_reset_ms = 0;
@@ -1130,7 +1131,7 @@ bool ChannelEngineSpi::createChannel(SpiChannelState *state, gpio_num_t pin,
 
     return true;
 }
-spi_host_device_t ChannelEngineSpi::acquireSpiHost() {
+spi_host_device_t ChannelEngineSpi::acquireSpiHost() FL_NOEXCEPT {
     // POLICY: Use SPI3_HOST on ESP32-S3 to avoid FSPI+DMA issues
     //
     // ESP32-S3 FSPI (SPI2_HOST) has known DMA issues when MISO=-1:
@@ -1204,7 +1205,7 @@ spi_host_device_t ChannelEngineSpi::acquireSpiHost() {
     return SPI_HOST_MAX;
 }
 
-void ChannelEngineSpi::releaseSpiHost(spi_host_device_t host) {
+void ChannelEngineSpi::releaseSpiHost(spi_host_device_t host) FL_NOEXCEPT {
     for (auto &entry : sSpiHostUsage) {
         if (entry.host == host) {
             if (entry.refCount > 0) {
@@ -1224,7 +1225,7 @@ void ChannelEngineSpi::releaseSpiHost(spi_host_device_t host) {
     }
 }
 
-void ChannelEngineSpi::processPendingChannels() {
+void ChannelEngineSpi::processPendingChannels() FL_NOEXCEPT {
     // Try to process pending channels now that hardware may be available
     fl::vector_inlined<PendingChannel, 16> stillPending;
 
@@ -1286,7 +1287,7 @@ void ChannelEngineSpi::processPendingChannels() {
     mPendingChannels = fl::move(stillPending);
 }
 
-size_t ChannelEngineSpi::encodeChunk(SpiChannelState* channel, u8* output, size_t output_capacity) {
+size_t ChannelEngineSpi::encodeChunk(SpiChannelState* channel, u8* output, size_t output_capacity) FL_NOEXCEPT {
     // Encode one chunk of LED data into the output buffer using wave8 encoding.
     // Advances channel->ledSource and decrements channel->ledBytesRemaining.
     // Appends reset zero bytes after the last chunk.
@@ -1332,7 +1333,7 @@ size_t ChannelEngineSpi::encodeChunk(SpiChannelState* channel, u8* output, size_
     return total_bytes_written;
 }
 
-void ChannelEngineSpi::transmitStreaming(SpiChannelState* channel) {
+void ChannelEngineSpi::transmitStreaming(SpiChannelState* channel) FL_NOEXCEPT {
     // Synchronous streaming: encode chunks and transmit via blocking SPI DMA.
     if (!channel || !channel->ledSource || channel->ledBytesRemaining == 0) {
         return;
@@ -1365,7 +1366,7 @@ void ChannelEngineSpi::transmitStreaming(SpiChannelState* channel) {
     channel->stagingOffset = 0;
 }
 
-bool ChannelEngineSpi::startNextChannel() {
+bool ChannelEngineSpi::startNextChannel() FL_NOEXCEPT {
     // Walk through timing groups and find the next channel to transmit
     while (mPipeline.mCurrentTimingGroup < mPipeline.mTimingGroups.size()) {
         auto& group = mPipeline.mTimingGroups[mPipeline.mCurrentTimingGroup];
@@ -1413,7 +1414,7 @@ bool ChannelEngineSpi::startNextChannel() {
     return false;
 }
 
-void ChannelEngineSpi::startFirstDma() {
+void ChannelEngineSpi::startFirstDma() FL_NOEXCEPT {
     auto* ch = mPipeline.mActiveChannel;
     if (!ch || !ch->ledSource || ch->ledBytesRemaining == 0) {
         mPipeline.mPhase = DmaPipelineState::IDLE;
@@ -1453,7 +1454,7 @@ void ChannelEngineSpi::startFirstDma() {
     }
 }
 
-IChannelDriver::DriverState ChannelEngineSpi::advancePipeline() {
+IChannelDriver::DriverState ChannelEngineSpi::advancePipeline() FL_NOEXCEPT {
     auto* ch = mPipeline.mActiveChannel;
 
     switch (mPipeline.mPhase) {

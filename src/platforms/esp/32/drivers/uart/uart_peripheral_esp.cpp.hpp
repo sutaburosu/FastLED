@@ -12,6 +12,7 @@
 #include "platforms/esp/32/drivers/uart/uart_peripheral_esp.h"
 #include "fl/system/log.h"
 #include "fl/system/log.h"
+#include "fl/stl/noexcept.h"
 // IWYU pragma: begin_keep
 #include "fl/system/arduino.h"
 // IWYU pragma: end_keep
@@ -71,7 +72,7 @@ UartPeripheralEsp::~UartPeripheralEsp() {
 // Lifecycle Methods
 //=============================================================================
 
-bool UartPeripheralEsp::initialize(const UartPeripheralConfig& config) {
+bool UartPeripheralEsp::initialize(const UartPeripheralConfig& config) FL_NOEXCEPT {
     FL_DBG("UART_PERIPH: initialize() called - uart_num=" << config.mUartNum
            << " baud=" << config.mBaudRate);
 
@@ -177,7 +178,7 @@ bool UartPeripheralEsp::initialize(const UartPeripheralConfig& config) {
     return true;
 }
 
-void UartPeripheralEsp::deinitialize() {
+void UartPeripheralEsp::deinitialize() FL_NOEXCEPT {
     if (!mInitialized) {
         return;
     }
@@ -203,7 +204,7 @@ void UartPeripheralEsp::deinitialize() {
     FL_DBG("UART: Deinitialized (uart_num=" << mConfig.mUartNum << ")");
 }
 
-bool UartPeripheralEsp::isInitialized() const {
+bool UartPeripheralEsp::isInitialized() const FL_NOEXCEPT {
     return mInitialized;
 }
 
@@ -211,7 +212,7 @@ bool UartPeripheralEsp::isInitialized() const {
 // Transmission Methods
 //=============================================================================
 
-bool UartPeripheralEsp::writeBytes(const u8* data, size_t length) {
+bool UartPeripheralEsp::writeBytes(const u8* data, size_t length) FL_NOEXCEPT {
     if (!mInitialized) {
         FL_WARN("UartPeripheralEsp: Cannot write - not initialized");
         return false;
@@ -256,7 +257,7 @@ bool UartPeripheralEsp::writeBytes(const u8* data, size_t length) {
     return true;
 }
 
-bool UartPeripheralEsp::waitTxDone(u32 timeout_ms) {
+bool UartPeripheralEsp::waitTxDone(u32 timeout_ms) FL_NOEXCEPT {
     if (!mInitialized) {
         FL_WARN("UartPeripheralEsp: Cannot wait - not initialized");
         return false;
@@ -293,7 +294,7 @@ bool UartPeripheralEsp::waitTxDone(u32 timeout_ms) {
     return (err == ESP_OK);
 }
 
-bool UartPeripheralEsp::isBusy() const {
+bool UartPeripheralEsp::isBusy() const FL_NOEXCEPT {
     if (!mInitialized) {
         return false;
     }
@@ -314,7 +315,7 @@ bool UartPeripheralEsp::isBusy() const {
 // State Queries
 //=============================================================================
 
-const UartPeripheralConfig& UartPeripheralEsp::getConfig() const {
+const UartPeripheralConfig& UartPeripheralEsp::getConfig() const FL_NOEXCEPT {
     return mConfig;
 }
 

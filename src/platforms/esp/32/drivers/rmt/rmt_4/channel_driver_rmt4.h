@@ -33,6 +33,7 @@
 #include "fl/stl/compiler_control.h"
 #include "platforms/esp/32/core/clock_cycles.h"
 #include "fl/stl/vector.h"
+#include "fl/stl/noexcept.h"
 
 FL_EXTERN_C_BEGIN
 // IWYU pragma: begin_keep
@@ -183,18 +184,18 @@ class ChannelEngineRMT4 : public IChannelDriver {
 public:
     /// @brief Create RMT4 driver instance
     /// @return Shared pointer to driver implementation
-    static ChannelEngineRMT4Ptr create();
+    static ChannelEngineRMT4Ptr create() FL_NOEXCEPT;
 
     virtual ~ChannelEngineRMT4() = default;
 
     /// @brief Check if driver can handle channel data (clockless only)
     /// @param data Channel data to check
     /// @return true if clockless channel (rejects SPI), false otherwise
-    virtual bool canHandle(const ChannelDataPtr& data) const = 0;
+    virtual bool canHandle(const ChannelDataPtr& data) const FL_NOEXCEPT = 0;
 
     /// @brief Get the driver name for affinity binding
     /// @return "RMT"
-    fl::string getName() const override { return fl::string::from_literal("RMT"); }
+    fl::string getName() const FL_NOEXCEPT override { return fl::string::from_literal("RMT"); }
 
 protected:
     ChannelEngineRMT4() = default;
@@ -213,17 +214,17 @@ protected:
 /// - Time-multiplexing queue
 class ChannelEngineRMT4Impl final : public ChannelEngineRMT4 {
 public:
-    ChannelEngineRMT4Impl();
+    ChannelEngineRMT4Impl() FL_NOEXCEPT;
     ~ChannelEngineRMT4Impl() override;
 
     /// @brief Enqueue channel data for transmission
-    void enqueue(ChannelDataPtr channelData) override;
+    void enqueue(ChannelDataPtr channelData) FL_NOEXCEPT override;
 
     /// @brief Trigger transmission of enqueued data
-    void show() override;
+    void show() FL_NOEXCEPT override;
 
     /// @brief Query driver state (hardware polling implementation)
-    DriverState poll() override;
+    DriverState poll() FL_NOEXCEPT override;
 
 private:
     // ═══════════════════════════════════════════════════════════════════════════
@@ -279,7 +280,7 @@ private:
     // ISR Handlers (IRAM) - INLINED TO AVOID DUPLICATE IRAM_ATTR
     // ═══════════════════════════════════════════════════════════════════════════
 
-    static inline IRAM_ATTR void handleInterrupt(void* arg) {
+    static inline IRAM_ATTR void handleInterrupt(void* arg) FL_NOEXCEPT {
         // Main ISR dispatcher
         auto* driver = static_cast<ChannelEngineRMT4Impl*>(arg);
 
@@ -327,7 +328,7 @@ private:
         }
     }
 
-    inline IRAM_ATTR void onThresholdInterrupt(int channelNum) {
+    inline IRAM_ATTR void onThresholdInterrupt(int channelNum) FL_NOEXCEPT {
         // Threshold interrupt: Half of the RMT buffer has been transmitted
         ChannelState* state = findChannelByNumber(channelNum);
         if (state == nullptr || !state->inUse) {
@@ -338,7 +339,7 @@ private:
         fillNextBuffer(state, true);
     }
 
-    inline IRAM_ATTR void onTxDoneInterrupt(int channelNum) {
+    inline IRAM_ATTR void onTxDoneInterrupt(int channelNum) FL_NOEXCEPT {
         // TX done interrupt: Transmission is complete on this channel
         ChannelState* state = findChannelByNumber(channelNum);
         if (state == nullptr || !state->inUse) {
@@ -369,7 +370,7 @@ private:
         state->transmissionComplete = true;
     }
 
-    inline IRAM_ATTR void fillNextBuffer(ChannelState* state, bool checkTime) {
+    inline IRAM_ATTR void fillNextBuffer(ChannelState* state, bool checkTime) FL_NOEXCEPT {
         // Fill the next half of the RMT double-buffer with pixel data
         if (!state) {
             return;
@@ -424,7 +425,7 @@ private:
         const rmt_item32_t& zero,
         const rmt_item32_t& one,
         volatile rmt_item32_t* pItem
-    ) {
+    ) FL_NOEXCEPT {
         // Convert 1 byte → 8 RMT symbols (MSB first)
         u32 pixel_u32 = byteval;
         pixel_u32 <<= 24;  // Shift to MSB position for bit extraction
@@ -450,7 +451,7 @@ private:
         pItem[7].val = tmp[7];
     }
 
-    static inline IRAM_ATTR void tx_start(ChannelState* state) {
+    static inline IRAM_ATTR void tx_start(ChannelState* state) FL_NOEXCEPT {
         // Start RMT transmission by setting hardware flag
         if (!state) {
             return;
@@ -531,7 +532,7 @@ private:
 #endif
     }
 
-    inline IRAM_ATTR ChannelState* findChannelByNumber(int channelNum) {
+    inline IRAM_ATTR ChannelState* findChannelByNumber(int channelNum) FL_NOEXCEPT {
         // Linear search through active channels
         for (auto& state : mChannels) {
             if (state.inUse && state.channel == channelNum) {
@@ -546,20 +547,20 @@ private:
     // ═══════════════════════════════════════════════════════════════════════════
 
     /// @brief Begin LED data transmission for all channels (internal helper)
-    void beginTransmission(fl::span<const ChannelDataPtr> channelData);
+    void beginTransmission(fl::span<const ChannelDataPtr> channelData) FL_NOEXCEPT;
 
-    ChannelState* acquireChannel(gpio_num_t pin, const ChipsetTimingConfig& timing);
-    void releaseChannel(ChannelState* state);
-    bool configureChannel(ChannelState* state, gpio_num_t pin, const ChipsetTimingConfig& timing);
-    void processPendingChannels();
-    void startTransmission(ChannelState* state, const ChannelDataPtr& data);
+    ChannelState* acquireChannel(gpio_num_t pin, const ChipsetTimingConfig& timing) FL_NOEXCEPT;
+    void releaseChannel(ChannelState* state) FL_NOEXCEPT;
+    bool configureChannel(ChannelState* state, gpio_num_t pin, const ChipsetTimingConfig& timing) FL_NOEXCEPT;
+    void processPendingChannels() FL_NOEXCEPT;
+    void startTransmission(ChannelState* state, const ChannelDataPtr& data) FL_NOEXCEPT;
 
     // ═══════════════════════════════════════════════════════════════════════════
     // Helpers
     // ═══════════════════════════════════════════════════════════════════════════
 
-    static rmt_item32_t makeZeroSymbol(const ChipsetTimingConfig& timing);
-    static rmt_item32_t makeOneSymbol(const ChipsetTimingConfig& timing);
+    static rmt_item32_t makeZeroSymbol(const ChipsetTimingConfig& timing) FL_NOEXCEPT;
+    static rmt_item32_t makeOneSymbol(const ChipsetTimingConfig& timing) FL_NOEXCEPT;
 };
 
 } // namespace fl

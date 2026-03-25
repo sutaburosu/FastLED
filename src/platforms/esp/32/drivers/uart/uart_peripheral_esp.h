@@ -37,6 +37,7 @@
 #ifdef FL_IS_ESP32
 
 #include "platforms/esp/32/drivers/uart/iuart_peripheral.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 
@@ -73,16 +74,16 @@ public:
     /// @return true on success, false on error
     ///
     /// Maps to ESP-IDF: uart_param_config() + uart_driver_install() + uart_set_pin()
-    bool initialize(const UartPeripheralConfig& config) override;
+    bool initialize(const UartPeripheralConfig& config) FL_NOEXCEPT override;
 
     /// @brief Deinitialize UART peripheral and release resources
     ///
     /// Maps to ESP-IDF: uart_driver_delete()
-    void deinitialize() override;
+    void deinitialize() FL_NOEXCEPT override;
 
     /// @brief Check if peripheral is initialized
     /// @return true if initialized, false otherwise
-    bool isInitialized() const override;
+    bool isInitialized() const FL_NOEXCEPT override;
 
     /// @brief Write bytes to UART TX buffer
     /// @param data Pointer to data buffer
@@ -90,22 +91,22 @@ public:
     /// @return true on success, false on error
     ///
     /// Maps to ESP-IDF: uart_write_bytes()
-    bool writeBytes(const u8* data, size_t length) override;
+    bool writeBytes(const u8* data, size_t length) FL_NOEXCEPT override;
 
     /// @brief Wait for all queued bytes to be transmitted
     /// @param timeout_ms Timeout in milliseconds (0 = non-blocking poll)
     /// @return true if transmission complete, false on timeout or error
     ///
     /// Maps to ESP-IDF: uart_wait_tx_done()
-    bool waitTxDone(u32 timeout_ms) override;
+    bool waitTxDone(u32 timeout_ms) FL_NOEXCEPT override;
 
     /// @brief Check if UART is busy transmitting
     /// @return true if transmission in progress, false if idle
-    bool isBusy() const override;
+    bool isBusy() const FL_NOEXCEPT override;
 
     /// @brief Get current UART configuration
     /// @return Reference to current configuration
-    const UartPeripheralConfig& getConfig() const override;
+    const UartPeripheralConfig& getConfig() const FL_NOEXCEPT override;
 
 private:
     UartPeripheralConfig mConfig;        ///< Stored configuration

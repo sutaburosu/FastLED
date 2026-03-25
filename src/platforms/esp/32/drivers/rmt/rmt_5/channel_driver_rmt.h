@@ -23,6 +23,7 @@
 #include "fl/channels/data.h"
 #include "fl/system/engine_events.h"
 #include "fl/stl/shared_ptr.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 
@@ -52,7 +53,7 @@ public:
      * @brief Factory method to create RMT channel driver
      * @return Shared pointer to ChannelEngineRMT instance
      */
-    static fl::shared_ptr<ChannelEngineRMT> create();
+    static fl::shared_ptr<ChannelEngineRMT> create() FL_NOEXCEPT;
 
     /**
      * @brief Virtual destructor
@@ -64,36 +65,36 @@ public:
      * @param data Channel data to check
      * @return true if clockless channel (rejects SPI), false otherwise
      */
-    virtual bool canHandle(const ChannelDataPtr& data) const override = 0;
+    virtual bool canHandle(const ChannelDataPtr& data) const FL_NOEXCEPT override = 0;
 
     /**
      * @brief Enqueue channel data for transmission
      * @param channelData Channel data to transmit
      */
-    virtual void enqueue(ChannelDataPtr channelData) override = 0;
+    virtual void enqueue(ChannelDataPtr channelData) FL_NOEXCEPT override = 0;
 
     /**
      * @brief Trigger transmission of enqueued data
      */
-    virtual void show() override = 0;
+    virtual void show() FL_NOEXCEPT override = 0;
 
     /**
      * @brief Query driver state and perform maintenance
      * @return Current driver state (READY, BUSY, DRAINING, or ERROR)
      */
-    virtual DriverState poll() override = 0;
+    virtual DriverState poll() FL_NOEXCEPT override = 0;
 
     /**
      * @brief Get the driver name for affinity binding
      * @return "RMT"
      */
-    fl::string getName() const override { return fl::string::from_literal("RMT"); }
+    fl::string getName() const FL_NOEXCEPT override { return fl::string::from_literal("RMT"); }
 
     /**
      * @brief Get driver capabilities (CLOCKLESS protocols only)
      * @return Capabilities with supportsClockless=true, supportsSpi=false
      */
-    Capabilities getCapabilities() const override {
+    Capabilities getCapabilities() const FL_NOEXCEPT override {
         return Capabilities(true, false);  // Clockless only
     }
 

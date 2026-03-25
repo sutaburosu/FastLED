@@ -23,6 +23,7 @@
 #include "fl/task/executor.h"
 #include "fl/channels/wave8.h"
 #include "fl/channels/detail/wave8.hpp"
+#include "fl/stl/noexcept.h"
 
 // Include ESP implementation only on real hardware
 #if defined(FL_IS_ESP_32S3)
@@ -50,7 +51,7 @@ namespace fl {
 // Constructor / Destructor
 //=============================================================================
 
-ChannelEngineI2S::ChannelEngineI2S(fl::shared_ptr<detail::II2sLcdCamPeripheral> peripheral)
+ChannelEngineI2S::ChannelEngineI2S(fl::shared_ptr<detail::II2sLcdCamPeripheral> peripheral) FL_NOEXCEPT
     : mPeripheral(fl::move(peripheral)),
       mInitialized(false),
       mConfig(),
@@ -97,7 +98,7 @@ ChannelEngineI2S::~ChannelEngineI2S() {
 // IChannelDriver Interface
 //=============================================================================
 
-bool ChannelEngineI2S::canHandle(const ChannelDataPtr& data) const {
+bool ChannelEngineI2S::canHandle(const ChannelDataPtr& data) const FL_NOEXCEPT {
     if (!data) {
         return false;
     }
@@ -106,11 +107,11 @@ bool ChannelEngineI2S::canHandle(const ChannelDataPtr& data) const {
 }
 
 
-void ChannelEngineI2S::enqueue(ChannelDataPtr channelData) {
+void ChannelEngineI2S::enqueue(ChannelDataPtr channelData) FL_NOEXCEPT {
     mEnqueuedChannels.push_back(fl::move(channelData));
 }
 
-void ChannelEngineI2S::show() {
+void ChannelEngineI2S::show() FL_NOEXCEPT {
     if (mEnqueuedChannels.empty()) {
         return;
     }
@@ -154,7 +155,7 @@ void ChannelEngineI2S::show() {
     }
 }
 
-IChannelDriver::DriverState ChannelEngineI2S::poll() {
+IChannelDriver::DriverState ChannelEngineI2S::poll() FL_NOEXCEPT {
     if (mTransmittingChannels.empty()) {
         return DriverState::READY;
     }
@@ -194,7 +195,7 @@ IChannelDriver::DriverState ChannelEngineI2S::poll() {
 // Transpose Implementation (from Yves driver)
 //=============================================================================
 
-void ChannelEngineI2S::transpose16x1(const u8* A, u16* B) {
+void ChannelEngineI2S::transpose16x1(const u8* A, u16* B) FL_NOEXCEPT {
     u32 x, y, x1, y1, t;
 
     // Load the array - handle up to 16 strips
@@ -258,7 +259,7 @@ void ChannelEngineI2S::transpose16x1(const u8* A, u16* B) {
 // Transmission Implementation
 //=============================================================================
 
-bool ChannelEngineI2S::beginTransmission(fl::span<const ChannelDataPtr> channelData) {
+bool ChannelEngineI2S::beginTransmission(fl::span<const ChannelDataPtr> channelData) FL_NOEXCEPT {
     if (channelData.empty() || !mPeripheral) {
         return false;
     }
@@ -448,7 +449,7 @@ bool ChannelEngineI2S::beginTransmission(fl::span<const ChannelDataPtr> channelD
 }
 
 void ChannelEngineI2S::prepareScratchBuffer(fl::span<const ChannelDataPtr> channelData,
-                                            size_t maxChannelSize) {
+                                            size_t maxChannelSize) FL_NOEXCEPT {
     // Resize scratch buffer to hold all channel data
     size_t totalSize = channelData.size() * maxChannelSize;
     mScratchBuffer.resize(totalSize);
@@ -468,7 +469,7 @@ void ChannelEngineI2S::prepareScratchBuffer(fl::span<const ChannelDataPtr> chann
     }
 }
 
-void ChannelEngineI2S::encodeFrame() {
+void ChannelEngineI2S::encodeFrame() FL_NOEXCEPT {
     int backBuffer = 1 - mFrontBuffer;
     u16* output = mBuffers[backBuffer];
 
@@ -563,38 +564,38 @@ void ChannelEngineI2S::encodeFrame() {
 /// the singleton manages its own lifetime.
 class I2sLcdCamPeripheralSingletonWrapper : public detail::II2sLcdCamPeripheral {
 public:
-    I2sLcdCamPeripheralSingletonWrapper(detail::II2sLcdCamPeripheral& impl) : mImpl(impl) {}
+    I2sLcdCamPeripheralSingletonWrapper(detail::II2sLcdCamPeripheral& impl) FL_NOEXCEPT : mImpl(impl) {}
 
-    bool initialize(const detail::I2sLcdCamConfig& config) override {
+    bool initialize(const detail::I2sLcdCamConfig& config) FL_NOEXCEPT override {
         return mImpl.initialize(config);
     }
-    void deinitialize() override { mImpl.deinitialize(); }
-    bool isInitialized() const override { return mImpl.isInitialized(); }
-    u16* allocateBuffer(size_t size_bytes) override {
+    void deinitialize() FL_NOEXCEPT override { mImpl.deinitialize(); }
+    bool isInitialized() const FL_NOEXCEPT override { return mImpl.isInitialized(); }
+    u16* allocateBuffer(size_t size_bytes) FL_NOEXCEPT override {
         return mImpl.allocateBuffer(size_bytes);
     }
-    void freeBuffer(u16* buffer) override { mImpl.freeBuffer(buffer); }
-    bool transmit(const u16* buffer, size_t size_bytes) override {
+    void freeBuffer(u16* buffer) FL_NOEXCEPT override { mImpl.freeBuffer(buffer); }
+    bool transmit(const u16* buffer, size_t size_bytes) FL_NOEXCEPT override {
         return mImpl.transmit(buffer, size_bytes);
     }
-    bool waitTransmitDone(u32 timeout_ms) override {
+    bool waitTransmitDone(u32 timeout_ms) FL_NOEXCEPT override {
         return mImpl.waitTransmitDone(timeout_ms);
     }
-    bool isBusy() const override { return mImpl.isBusy(); }
-    bool registerTransmitCallback(void* callback, void* user_ctx) override {
+    bool isBusy() const FL_NOEXCEPT override { return mImpl.isBusy(); }
+    bool registerTransmitCallback(void* callback, void* user_ctx) FL_NOEXCEPT override {
         return mImpl.registerTransmitCallback(callback, user_ctx);
     }
-    const detail::I2sLcdCamConfig& getConfig() const override {
+    const detail::I2sLcdCamConfig& getConfig() const FL_NOEXCEPT override {
         return mImpl.getConfig();
     }
-    u64 getMicroseconds() override { return mImpl.getMicroseconds(); }
-    void delay(u32 ms) override { mImpl.delay(ms); }
+    u64 getMicroseconds() FL_NOEXCEPT override { return mImpl.getMicroseconds(); }
+    void delay(u32 ms) FL_NOEXCEPT override { mImpl.delay(ms); }
 
 private:
     detail::II2sLcdCamPeripheral& mImpl;
 };
 
-fl::shared_ptr<IChannelDriver> createI2sEngine() {
+fl::shared_ptr<IChannelDriver> createI2sEngine() FL_NOEXCEPT {
 #if defined(FL_IS_ESP_32S3)
     // Wrap singleton in shared_ptr (singleton manages its own lifetime)
     auto wrapper = fl::make_shared<I2sLcdCamPeripheralSingletonWrapper>(

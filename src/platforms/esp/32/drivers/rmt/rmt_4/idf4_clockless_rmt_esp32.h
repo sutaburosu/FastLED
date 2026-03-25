@@ -42,6 +42,7 @@
 #include "fl/channels/manager.h"
 #include "platforms/esp/32/core/fastpin_esp32.h"
 #include "fl/chipsets/timing_traits.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 
@@ -59,7 +60,7 @@ private:
     static_assert(FastPin<DATA_PIN>::validpin(), "This pin has been marked as an invalid pin, common reasons includes it being a ground pin, read only, or too noisy (e.g. hooked up to the uart).");
 
 public:
-    ClocklessIdf4()
+    ClocklessIdf4() FL_NOEXCEPT
         : mDriver(getRmtEngine())
     {
         // Create channel data with pin and timing configuration
@@ -67,13 +68,13 @@ public:
         mChannelData = ChannelData::create(DATA_PIN, timing);
     }
 
-    void init() override { }
-    virtual u16 getMaxRefreshRate() const { return 400; }
+    void init() FL_NOEXCEPT override { }
+    virtual u16 getMaxRefreshRate() const FL_NOEXCEPT { return 400; }
 
 protected:
     // -- Show pixels
     //    This is the main entry point for the controller.
-    virtual void showPixels(PixelController<RGB_ORDER> &pixels) override
+    virtual void showPixels(PixelController<RGB_ORDER> &pixels) FL_NOEXCEPT override
     {
         if (!mDriver) {
             FL_WARN_EVERY(100, "No Engine");
@@ -103,7 +104,7 @@ protected:
         mDriver->enqueue(mChannelData);
     }
 
-    static fl::shared_ptr<IChannelDriver> getRmtEngine() {
+    static fl::shared_ptr<IChannelDriver> getRmtEngine() FL_NOEXCEPT {
         return ChannelManager::instance().getDriverByName("RMT");
     }
 

@@ -7,10 +7,11 @@
 #include "fl/stl/compiler_control.h"
 #include "fl/system/log.h"
 #include "fl/system/log.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 
-RMTBufferPool::RMTBufferPool() {
+RMTBufferPool::RMTBufferPool() FL_NOEXCEPT {
     // Start with empty pool - buffers allocated on-demand
 }
 
@@ -32,7 +33,7 @@ RMTBufferPool::~RMTBufferPool() {
     }
 }
 
-int RMTBufferPool::findSuitableSlot(fl::size size) {
+int RMTBufferPool::findSuitableSlot(fl::size size) FL_NOEXCEPT {
     int bestFit = -1;
     fl::size bestCapacity = ~fl::size(0); // MAX_SIZE
 
@@ -53,7 +54,7 @@ int RMTBufferPool::findSuitableSlot(fl::size size) {
     return bestFit;
 }
 
-int RMTBufferPool::allocateOrResizeSlot(fl::size size) {
+int RMTBufferPool::allocateOrResizeSlot(fl::size size) FL_NOEXCEPT {
     // First, try to find an unused slot we can resize
     for (fl::size i = 0; i < mInternalBuffers.size(); ++i) {
         auto& slot = mInternalBuffers[i];
@@ -88,7 +89,7 @@ int RMTBufferPool::allocateOrResizeSlot(fl::size size) {
     return static_cast<int>(mInternalBuffers.size() - 1);
 }
 
-fl::span<u8> RMTBufferPool::acquireInternal(fl::size size) {
+fl::span<u8> RMTBufferPool::acquireInternal(fl::size size) FL_NOEXCEPT {
     if (size == 0) {
         return fl::span<u8>();
     }
@@ -110,7 +111,7 @@ fl::span<u8> RMTBufferPool::acquireInternal(fl::size size) {
     return fl::span<u8>(slot.data, size);
 }
 
-fl::span<u8> RMTBufferPool::acquireDMA(fl::size size) {
+fl::span<u8> RMTBufferPool::acquireDMA(fl::size size) FL_NOEXCEPT {
     if (size == 0) {
         return fl::span<u8>();
     }
@@ -142,7 +143,7 @@ fl::span<u8> RMTBufferPool::acquireDMA(fl::size size) {
     return fl::span<u8>(mDMABuffer.data, size);
 }
 
-void RMTBufferPool::releaseInternal(fl::span<u8> buffer) {
+void RMTBufferPool::releaseInternal(fl::span<u8> buffer) FL_NOEXCEPT {
     if (buffer.empty()) {
         return;
     }
@@ -162,14 +163,14 @@ void RMTBufferPool::releaseInternal(fl::span<u8> buffer) {
     FL_WARN("RMTBufferPool: Attempted to release unknown buffer " << static_cast<void*>(bufferPtr));
 }
 
-void RMTBufferPool::releaseDMA() {
+void RMTBufferPool::releaseDMA() FL_NOEXCEPT {
     if (!mDMABuffer.inUse) {
         FL_WARN("RMTBufferPool: Releasing DMA buffer that was not in use");
     }
     mDMABuffer.inUse = false;
 }
 
-RMTBufferPool::Stats RMTBufferPool::getStats() const {
+RMTBufferPool::Stats RMTBufferPool::getStats() const FL_NOEXCEPT {
     Stats stats;
     stats.numInternalBuffers = mInternalBuffers.size();
     stats.totalInternalCapacity = 0;

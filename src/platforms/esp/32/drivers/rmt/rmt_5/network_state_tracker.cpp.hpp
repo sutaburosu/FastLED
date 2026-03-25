@@ -9,10 +9,11 @@
 #if defined(FL_IS_ESP32) && FASTLED_RMT5
 
 #include "platforms/esp/32/drivers/rmt/rmt_5/network_detector.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 
-bool NetworkStateTracker::hasChanged() {
+bool NetworkStateTracker::hasChanged() FL_NOEXCEPT {
     bool currentState = NetworkDetector::isAnyNetworkActive();
 
     if (currentState != mLastKnownState) {
@@ -25,7 +26,7 @@ bool NetworkStateTracker::hasChanged() {
     return false;
 }
 
-bool NetworkStateTracker::isActive() const {
+bool NetworkStateTracker::isActive() const FL_NOEXCEPT {
     return NetworkDetector::isAnyNetworkActive();
 }
 

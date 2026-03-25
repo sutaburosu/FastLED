@@ -27,6 +27,7 @@
 #include "fl/stl/algorithm.h"
 #include "fl/trace.h"
 #include "fl/stl/assert.h"
+#include "fl/stl/noexcept.h"
 
     // The test may have 3000 LEDs, but we use streaming buffers for large strips
 #ifndef FL_ESP_PARLIO_MAX_LEDS_PER_CHANNEL
@@ -78,7 +79,7 @@ ChannelDriverPARLIOImpl::~ChannelDriverPARLIOImpl() {
     mCurrentGroupIndex = 0;
 }
 
-bool ChannelDriverPARLIOImpl::canHandle(const ChannelDataPtr& data) const {
+bool ChannelDriverPARLIOImpl::canHandle(const ChannelDataPtr& data) const FL_NOEXCEPT {
     if (!data) {
         return false;
     }
@@ -95,17 +96,17 @@ bool ChannelDriverPARLIOImpl::canHandle(const ChannelDataPtr& data) const {
 // Public Interface - IChannelDriver Implementation
 //=============================================================================
 
-void ChannelDriverPARLIOImpl::enqueue(ChannelDataPtr channelData) {
+void ChannelDriverPARLIOImpl::enqueue(ChannelDataPtr channelData) FL_NOEXCEPT {
     if (channelData) {
         mEnqueuedChannels.push_back(channelData);
     }
 }
 
-void ChannelDriverPARLIOImpl::setReversedPinOrder(bool reversed_pin_order) {
+void ChannelDriverPARLIOImpl::setReversedPinOrder(bool reversed_pin_order) FL_NOEXCEPT {
     mReversedPinOrder = reversed_pin_order;
 }
 
-void ChannelDriverPARLIOImpl::show() {
+void ChannelDriverPARLIOImpl::show() FL_NOEXCEPT {
     FL_SCOPED_TRACE;
     if (!mEnqueuedChannels.empty()) {
         // Wait for previous transmission to complete
@@ -213,7 +214,7 @@ void ChannelDriverPARLIOImpl::show() {
     }
 }
 
-IChannelDriver::DriverState ChannelDriverPARLIOImpl::poll() {
+IChannelDriver::DriverState ChannelDriverPARLIOImpl::poll() FL_NOEXCEPT {
     // If not initialized, we're ready (no hardware to poll)
     if (!mInitialized) {
         return DriverState::READY;
@@ -277,7 +278,7 @@ IChannelDriver::DriverState ChannelDriverPARLIOImpl::poll() {
 //=============================================================================
 
 void ChannelDriverPARLIOImpl::beginTransmission(
-    fl::span<const ChannelDataPtr> channelData) {
+    fl::span<const ChannelDataPtr> channelData) FL_NOEXCEPT {
 
     // Validate channel data first (before initialization)
     if (channelData.size() == 0) {
@@ -374,7 +375,7 @@ void ChannelDriverPARLIOImpl::beginTransmission(
 
 void ChannelDriverPARLIOImpl::prepareScratchBuffer(
     fl::span<const ChannelDataPtr> channelData,
-    size_t maxChannelSize) {
+    size_t maxChannelSize) FL_NOEXCEPT {
 
     // Resize scratch buffer (per-lane layout)
     size_t totalSize = channelData.size() * maxChannelSize;
@@ -417,7 +418,7 @@ ChannelDriverPARLIO::~ChannelDriverPARLIO() {
     mCurrentDataWidth = 0;
 }
 
-bool ChannelDriverPARLIO::canHandle(const ChannelDataPtr& data) const {
+bool ChannelDriverPARLIO::canHandle(const ChannelDataPtr& data) const FL_NOEXCEPT {
     if (!data) {
         return false;
     }
@@ -425,13 +426,13 @@ bool ChannelDriverPARLIO::canHandle(const ChannelDataPtr& data) const {
     return true;
 }
 
-void ChannelDriverPARLIO::enqueue(ChannelDataPtr channelData) {
+void ChannelDriverPARLIO::enqueue(ChannelDataPtr channelData) FL_NOEXCEPT {
     if (channelData) {
         mTransmittingChannels.push_back(channelData);
     }
 }
 
-void ChannelDriverPARLIO::show() {
+void ChannelDriverPARLIO::show() FL_NOEXCEPT {
     FL_SCOPED_TRACE;
     if (mTransmittingChannels.empty()) return;
 
@@ -462,7 +463,7 @@ void ChannelDriverPARLIO::show() {
     }
 }
 
-IChannelDriver::DriverState ChannelDriverPARLIO::poll() {
+IChannelDriver::DriverState ChannelDriverPARLIO::poll() FL_NOEXCEPT {
     switch (mPhase) {
         case TransmitPhase::IDLE:
             return DriverState::READY;
@@ -537,7 +538,7 @@ IChannelDriver::DriverState ChannelDriverPARLIO::poll() {
 }
 
 void ChannelDriverPARLIO::beginClocklessTransmission(
-    fl::span<const ChannelDataPtr> channelData) {
+    fl::span<const ChannelDataPtr> channelData) FL_NOEXCEPT {
     if (channelData.size() == 0) {
         return;
     }
@@ -568,14 +569,14 @@ void ChannelDriverPARLIO::beginClocklessTransmission(
     mClocklessDriver->show();
 }
 
-void ChannelDriverPARLIO::beginSpiTransmission() {
+void ChannelDriverPARLIO::beginSpiTransmission() FL_NOEXCEPT {
     if (mPendingSpi.empty()) return;
 
     mCurrentSpiChannelIndex = 0;
     beginSingleSpiChannel(mPendingSpi[0]);
 }
 
-void ChannelDriverPARLIO::beginSingleSpiChannel(const ChannelDataPtr& channelData) {
+void ChannelDriverPARLIO::beginSingleSpiChannel(const ChannelDataPtr& channelData) FL_NOEXCEPT {
     if (!channelData || !channelData->isSpi()) return;
 
     // Extract SPI config from channel data

@@ -29,6 +29,7 @@ FL_EXTERN_C_END
 #include "fl/system/log.h"
 #include "fl/system/log.h"
 #include "fl/chipsets/led_timing.h"
+#include "fl/stl/noexcept.h"
 
 #define RMT5_CONTROLLER_TAG "rmt5_controller_lowlevel"
 
@@ -37,7 +38,7 @@ namespace fl {
 RmtController5LowLevel::RmtController5LowLevel(
     int pin,
     const ChipsetTiming& timing
-)
+) FL_NOEXCEPT
 {
     // Create ChipsetTimingConfig from ChipsetTiming
     ChipsetTimingConfig timingConfig(
@@ -61,7 +62,7 @@ RmtController5LowLevel::~RmtController5LowLevel() {
     // Engine holds reference until transmission completes
 }
 
-void RmtController5LowLevel::loadPixelData(PixelIterator& pixels) {
+void RmtController5LowLevel::loadPixelData(PixelIterator& pixels) FL_NOEXCEPT {
     // Safety check: don't modify buffer if driver is transmitting it
     if (mChannelData->isInUse()) {
         FL_WARN("RMT5 Controller: Skipping update - buffer in use by driver");
@@ -76,7 +77,7 @@ void RmtController5LowLevel::loadPixelData(PixelIterator& pixels) {
     pixels.writeWS2812(&data);
 }
 
-void RmtController5LowLevel::showPixels() {
+void RmtController5LowLevel::showPixels() FL_NOEXCEPT {
     // Get RMT driver if not already set
     if (!mDriver) {
         auto& manager = channelManager();

@@ -41,6 +41,7 @@
 
 #include "platforms/esp/32/drivers/spi/ispi_peripheral.h"
 #include "fl/stl/singleton.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 namespace detail {
@@ -64,7 +65,7 @@ public:
     /// @return Reference to the singleton peripheral
     ///
     /// Mirrors the hardware constraint that there is a limited number of SPI hosts.
-    static SpiPeripheralESP& instance();
+    static SpiPeripheralESP& instance() FL_NOEXCEPT;
 
     /// @brief Destructor - frees ESP-IDF device handle
     ~SpiPeripheralESP() override;

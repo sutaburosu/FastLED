@@ -42,6 +42,7 @@
 
 #include "platforms/esp/32/drivers/parlio/iparlio_peripheral.h"
 #include "fl/stl/singleton.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 namespace detail {
@@ -65,7 +66,7 @@ public:
     /// @return Reference to the singleton peripheral
     ///
     /// Mirrors the hardware constraint that there is only one PARLIO peripheral.
-    static ParlioPeripheralESP& instance();
+    static ParlioPeripheralESP& instance() FL_NOEXCEPT;
 
     /// @brief Destructor - frees ESP-IDF TX unit handle
     ~ParlioPeripheralESP() override;

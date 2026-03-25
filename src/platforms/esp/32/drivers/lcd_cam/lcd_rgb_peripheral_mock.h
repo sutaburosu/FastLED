@@ -50,6 +50,7 @@
 #include "fl/stl/vector.h"
 #include "fl/stl/stdint.h"
 #include "fl/stl/span.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 namespace detail {
@@ -72,7 +73,7 @@ public:
     /// @return Reference to the singleton mock peripheral
     ///
     /// This mirrors the hardware constraint that there is only one LCD RGB peripheral.
-    static LcdRgbPeripheralMock& instance();
+    static LcdRgbPeripheralMock& instance() FL_NOEXCEPT;
 
     //=========================================================================
     // Lifecycle

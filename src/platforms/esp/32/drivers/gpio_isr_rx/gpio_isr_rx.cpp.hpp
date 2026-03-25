@@ -15,6 +15,7 @@
 // IWYU pragma: begin_keep
 #include "platforms/esp/32/drivers/gpio_isr_rx/gpio_isr_rx.h"
 // IWYU pragma: end_keep
+#include "fl/stl/noexcept.h"
 
 // Include feature flags
 // IWYU pragma: begin_keep
@@ -34,7 +35,7 @@
 namespace fl {
 
 // Factory method implementation - binds to MCPWM implementation
-fl::shared_ptr<GpioIsrRx> GpioIsrRx::create(int pin) {
+fl::shared_ptr<GpioIsrRx> GpioIsrRx::create(int pin) FL_NOEXCEPT {
     return GpioIsrRxMcpwm_create(pin);
 }
 
@@ -45,7 +46,7 @@ fl::shared_ptr<GpioIsrRx> GpioIsrRx::create(int pin) {
 namespace fl {
 
 // No MCPWM hardware on this SoC - ISR RX not supported
-fl::shared_ptr<GpioIsrRx> GpioIsrRx::create(int pin) {
+fl::shared_ptr<GpioIsrRx> GpioIsrRx::create(int pin) FL_NOEXCEPT {
     (void)pin;
     return fl::shared_ptr<GpioIsrRx>();
 }

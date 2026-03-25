@@ -19,6 +19,7 @@
 #include "fl/channels/manager.h"
 #include "fl/chipsets/timing_traits.h"
 #include "fl/system/log.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 template <int DATA_PIN, typename TIMING, EOrder RGB_ORDER = RGB, int XTRA0 = 0, bool FLIP = false, int WAIT_TIME = 5>
@@ -43,13 +44,13 @@ public:
         mChannelData = ChannelData::create(DATA_PIN, timing);
     }
 
-    void init() override { }
-    virtual u16 getMaxRefreshRate() const { return 800; }
+    void init() FL_NOEXCEPT override { }
+    virtual u16 getMaxRefreshRate() const FL_NOEXCEPT { return 800; }
 
 protected:
     // -- Show pixels
     //    This is the main entry point for the controller.
-    virtual void showPixels(PixelController<RGB_ORDER> &pixels) override
+    virtual void showPixels(PixelController<RGB_ORDER> &pixels) FL_NOEXCEPT override
     {
         if (!mDriver) {
             FL_WARN_EVERY(100, "No Engine");
@@ -78,7 +79,7 @@ protected:
         mDriver->enqueue(mChannelData);
     }
 
-    static fl::shared_ptr<IChannelDriver> getClocklessSpiEngine() {
+    static fl::shared_ptr<IChannelDriver> getClocklessSpiEngine() FL_NOEXCEPT {
         return ChannelManager::instance().getDriverByName("SPI");
     }
 };

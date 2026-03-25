@@ -7,6 +7,7 @@
 
 #include "fl/stl/stdint.h"
 #include "fl/stl/cstddef.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 
@@ -22,14 +23,14 @@ struct UsbSerialJtagConfig {
     /**
      * @brief Default configuration (4096-byte buffers)
      */
-    static UsbSerialJtagConfig defaults() {
+    static UsbSerialJtagConfig defaults() FL_NOEXCEPT {
         return UsbSerialJtagConfig{};
     }
 
     /**
      * @brief High-throughput configuration (larger buffers)
      */
-    static UsbSerialJtagConfig highThroughput() {
+    static UsbSerialJtagConfig highThroughput() FL_NOEXCEPT {
         UsbSerialJtagConfig config;
         config.txBufferSize = 4096*4;
         config.rxBufferSize = 4096*4;
@@ -97,7 +98,7 @@ public:
      * Buffered mode: Copies to TX ring buffer (non-blocking)
      * Fallback mode: Writes directly via ROM UART (may block if full)
      */
-    void write(const char* str);
+    void write(const char* str) FL_NOEXCEPT;
 
     /**
      * @brief Write raw bytes to USB-Serial JTAG (binary data)
@@ -108,13 +109,13 @@ public:
      * Buffered mode: Copies to TX ring buffer (non-blocking)
      * Fallback mode: Writes directly via ROM UART (may block if full)
      */
-    size_t write(const u8* buffer, size_t size);
+    size_t write(const u8* buffer, size_t size) FL_NOEXCEPT;
 
     /**
      * @brief Write string with newline to USB-Serial JTAG
      * @param str Null-terminated string to write
      */
-    void writeln(const char* str);
+    void writeln(const char* str) FL_NOEXCEPT;
 
     /**
      * @brief Check how many bytes are available to read
@@ -122,7 +123,7 @@ public:
      *
      * Only works in buffered mode. Returns 0 in fallback mode.
      */
-    int available();
+    int available() FL_NOEXCEPT;
 
     /**
      * @brief Read single byte from USB-Serial JTAG
@@ -131,7 +132,7 @@ public:
      * Non-blocking read (timeout=0).
      * Only works in buffered mode. Returns -1 in fallback mode.
      */
-    int read();
+    int read() FL_NOEXCEPT;
 
     /**
      * @brief Flush TX buffer and wait for transmission to complete
@@ -141,7 +142,7 @@ public:
      * Blocks until all buffered data is transmitted.
      * Only works in buffered mode.
      */
-    bool flush(u32 timeoutMs = 1000);
+    bool flush(u32 timeoutMs = 1000) FL_NOEXCEPT;
 
     /**
      * @brief Check if USB-Serial JTAG is connected to host
@@ -150,13 +151,13 @@ public:
      * Uses usb_serial_jtag_is_connected() ESP-IDF function.
      * Returns false if driver not installed.
      */
-    bool isConnected() const;
+    bool isConnected() const FL_NOEXCEPT;
 
     /**
      * @brief Check if driver is in buffered mode
      * @return true if driver successfully installed, false if using ROM fallback
      */
-    bool isBuffered() const { return mBuffered; }
+    bool isBuffered() const FL_NOEXCEPT { return mBuffered; }
 
 private:
     UsbSerialJtagConfig mConfig;  // Configuration parameters
@@ -164,7 +165,7 @@ private:
     bool mInstalledDriver;        // true if WE installed the driver (vs inherited from Arduino)
 
     // Helper: Initialize USB-Serial JTAG driver (called by constructor)
-    bool initDriver();
+    bool initDriver() FL_NOEXCEPT;
 };
 
 } // namespace fl
