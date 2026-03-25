@@ -78,6 +78,7 @@
 
 // Mock implementation has no platform guards - runs on all platforms for testing
 #include "platforms/esp/32/drivers/uart/iuart_peripheral.h"
+#include "fl/stl/noexcept.h"
 #include "fl/stl/vector.h"
 #include "fl/stl/stdint.h"
 
@@ -104,13 +105,13 @@ public:
     // IUartPeripheral Interface Implementation
     //=========================================================================
 
-    bool initialize(const UartPeripheralConfig& config) override;
-    void deinitialize() override;
-    bool isInitialized() const override;
-    bool writeBytes(const u8* data, size_t length) override;
-    bool waitTxDone(u32 timeout_ms) override;
-    bool isBusy() const override;
-    const UartPeripheralConfig& getConfig() const override;
+    bool initialize(const UartPeripheralConfig& config) FL_NOEXCEPT override;
+    void deinitialize() FL_NOEXCEPT override;
+    bool isInitialized() const FL_NOEXCEPT override;
+    bool writeBytes(const u8* data, size_t length) FL_NOEXCEPT override;
+    bool waitTxDone(u32 timeout_ms) FL_NOEXCEPT override;
+    bool isBusy() const FL_NOEXCEPT override;
+    const UartPeripheralConfig& getConfig() const FL_NOEXCEPT override;
 
     //=========================================================================
     // Mock-Specific API (for unit tests)

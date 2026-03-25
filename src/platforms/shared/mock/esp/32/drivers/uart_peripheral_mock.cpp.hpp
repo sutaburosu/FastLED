@@ -42,7 +42,7 @@ UartPeripheralMock::~UartPeripheralMock() {
 // IUartPeripheral Interface Implementation
 //=============================================================================
 
-bool UartPeripheralMock::initialize(const UartPeripheralConfig& config) {
+bool UartPeripheralMock::initialize(const UartPeripheralConfig& config) FL_NOEXCEPT {
     if (mInitialized) {
         // Already initialized - deinitialize first
         deinitialize();
@@ -68,7 +68,7 @@ bool UartPeripheralMock::initialize(const UartPeripheralConfig& config) {
     return true;
 }
 
-void UartPeripheralMock::deinitialize() {
+void UartPeripheralMock::deinitialize() FL_NOEXCEPT {
     if (!mInitialized) {
         return;  // Already deinitialized
     }
@@ -79,11 +79,11 @@ void UartPeripheralMock::deinitialize() {
     mLastWriteTimestamp = 0;
 }
 
-bool UartPeripheralMock::isInitialized() const {
+bool UartPeripheralMock::isInitialized() const FL_NOEXCEPT {
     return mInitialized;
 }
 
-bool UartPeripheralMock::writeBytes(const u8* data, size_t length) {
+bool UartPeripheralMock::writeBytes(const u8* data, size_t length) FL_NOEXCEPT {
     if (!mInitialized) {
         return false;  // Not initialized
     }
@@ -123,7 +123,7 @@ bool UartPeripheralMock::writeBytes(const u8* data, size_t length) {
     return true;
 }
 
-bool UartPeripheralMock::waitTxDone(u32 timeout_ms) {
+bool UartPeripheralMock::waitTxDone(u32 timeout_ms) FL_NOEXCEPT {
     if (!mInitialized) {
         return false;  // Not initialized
     }
@@ -161,7 +161,7 @@ bool UartPeripheralMock::waitTxDone(u32 timeout_ms) {
     return true;
 }
 
-bool UartPeripheralMock::isBusy() const {
+bool UartPeripheralMock::isBusy() const FL_NOEXCEPT {
     if (!mInitialized) {
         return false;
     }
@@ -182,7 +182,7 @@ bool UartPeripheralMock::isBusy() const {
     return false;
 }
 
-const UartPeripheralConfig& UartPeripheralMock::getConfig() const {
+const UartPeripheralConfig& UartPeripheralMock::getConfig() const FL_NOEXCEPT {
     return mConfig;
 }
 

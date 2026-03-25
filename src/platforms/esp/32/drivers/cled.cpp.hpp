@@ -27,7 +27,7 @@
 namespace fl {
 namespace esp32 {
 
-CLED::CLED()
+CLED::CLED() FL_NOEXCEPT
     : mMaxDuty(0)
     , mInitialized(false) {
 }
