@@ -32,7 +32,7 @@ struct CLEDConfig {
 class CLED {
 public:
     /// Default constructor
-    CLED();
+    CLED() FL_NOEXCEPT;
 
     /// Destructor - releases LEDC resources
     ~CLED();

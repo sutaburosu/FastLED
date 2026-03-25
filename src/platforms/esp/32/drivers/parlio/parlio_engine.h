@@ -216,7 +216,7 @@ private:
     // Singleton pattern - allow Singleton<T> to construct instance
     friend class fl::Singleton<ParlioEngine>;
 
-    ParlioEngine();
+    ParlioEngine() FL_NOEXCEPT;
     ParlioEngine(const ParlioEngine&) = delete;
     ParlioEngine& operator=(const ParlioEngine&) = delete;
 

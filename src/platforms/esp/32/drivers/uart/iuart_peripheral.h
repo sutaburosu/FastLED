@@ -159,7 +159,7 @@ public:
     ///
     /// Call once during initialization. Must succeed before any other
     /// methods can be used.
-    virtual bool initialize(const UartPeripheralConfig& config) = 0;
+    virtual bool initialize(const UartPeripheralConfig& config) FL_NOEXCEPT = 0;
 
     /// @brief Deinitialize UART peripheral and release resources
     ///
@@ -167,7 +167,7 @@ public:
     ///
     /// Call after all transmissions are complete. Frees TX/RX buffers
     /// and releases UART hardware.
-    virtual void deinitialize() = 0;
+    virtual void deinitialize() FL_NOEXCEPT = 0;
 
     /// @brief Check if peripheral is initialized
     /// @return true if initialized, false otherwise
@@ -175,7 +175,7 @@ public:
     /// Used to detect if peripheral was reset (for testing).
     /// Production hardware: Always returns true after initialize() succeeds.
     /// Mock implementation: Returns false after deinitialize() is called.
-    virtual bool isInitialized() const = 0;
+    virtual bool isInitialized() const FL_NOEXCEPT = 0;
 
     //=========================================================================
     // Transmission Methods
@@ -197,7 +197,7 @@ public:
     /// - If TX buffer is full: Blocks until space available (or timeout)
     ///
     /// Each byte is automatically framed with start bit (LOW) and stop bit (HIGH).
-    virtual bool writeBytes(const u8* data, size_t length) = 0;
+    virtual bool writeBytes(const u8* data, size_t length) FL_NOEXCEPT = 0;
 
     /// @brief Wait for all queued bytes to be transmitted
     /// @param timeout_ms Timeout in milliseconds (0 = non-blocking poll)
@@ -215,7 +215,7 @@ public:
     /// Returns false if:
     /// - Timeout occurs before completion
     /// - Hardware error occurs during transmission
-    virtual bool waitTxDone(u32 timeout_ms) = 0;
+    virtual bool waitTxDone(u32 timeout_ms) FL_NOEXCEPT = 0;
 
     //=========================================================================
     // State Queries
@@ -226,14 +226,14 @@ public:
     ///
     /// Used to poll transmission status without blocking. Equivalent to
     /// calling waitTxDone(0) but more explicit.
-    virtual bool isBusy() const = 0;
+    virtual bool isBusy() const FL_NOEXCEPT = 0;
 
     /// @brief Get current UART configuration
     /// @return Reference to current configuration
     ///
     /// Returns the configuration passed to initialize(). Useful for
     /// debugging and validation.
-    virtual const UartPeripheralConfig& getConfig() const = 0;
+    virtual const UartPeripheralConfig& getConfig() const FL_NOEXCEPT = 0;
 };
 
 } // namespace fl

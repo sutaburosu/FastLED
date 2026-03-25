@@ -117,7 +117,7 @@ public:
     ///
     /// Stores a shared pointer to the peripheral to maintain proper lifetime.
     /// The peripheral will remain valid for the lifetime of this driver.
-    explicit ChannelEngineLcdRgb(fl::shared_ptr<detail::ILcdRgbPeripheral> peripheral);
+    explicit ChannelEngineLcdRgb(fl::shared_ptr<detail::ILcdRgbPeripheral> peripheral) FL_NOEXCEPT;
 
     /// @brief Destructor - waits for transmission completion
     ~ChannelEngineLcdRgb() override;

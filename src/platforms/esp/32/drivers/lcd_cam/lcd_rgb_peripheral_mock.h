@@ -85,22 +85,22 @@ public:
     // ILcdRgbPeripheral Interface Implementation
     //=========================================================================
 
-    bool initialize(const LcdRgbPeripheralConfig& config) override = 0;
-    void deinitialize() override = 0;
-    bool isInitialized() const override = 0;
+    bool initialize(const LcdRgbPeripheralConfig& config) FL_NOEXCEPT override = 0;
+    void deinitialize() FL_NOEXCEPT override = 0;
+    bool isInitialized() const FL_NOEXCEPT override = 0;
 
-    u16* allocateFrameBuffer(size_t size_bytes) override = 0;
-    void freeFrameBuffer(u16* buffer) override = 0;
+    u16* allocateFrameBuffer(size_t size_bytes) FL_NOEXCEPT override = 0;
+    void freeFrameBuffer(u16* buffer) FL_NOEXCEPT override = 0;
 
-    bool drawFrame(const u16* buffer, size_t size_bytes) override = 0;
-    bool waitFrameDone(u32 timeout_ms) override = 0;
-    bool isBusy() const override = 0;
+    bool drawFrame(const u16* buffer, size_t size_bytes) FL_NOEXCEPT override = 0;
+    bool waitFrameDone(u32 timeout_ms) FL_NOEXCEPT override = 0;
+    bool isBusy() const FL_NOEXCEPT override = 0;
 
-    bool registerDrawCallback(void* callback, void* user_ctx) override = 0;
-    const LcdRgbPeripheralConfig& getConfig() const override = 0;
+    bool registerDrawCallback(void* callback, void* user_ctx) FL_NOEXCEPT override = 0;
+    const LcdRgbPeripheralConfig& getConfig() const FL_NOEXCEPT override = 0;
 
-    u64 getMicroseconds() override = 0;
-    void delay(u32 ms) override = 0;
+    u64 getMicroseconds() FL_NOEXCEPT override = 0;
+    void delay(u32 ms) FL_NOEXCEPT override = 0;
 
     //=========================================================================
     // Mock-Specific API (for unit tests)
@@ -121,15 +121,15 @@ public:
     ///
     /// Simulates the hardware "frame complete" interrupt. Calls the
     /// registered callback if one is set.
-    virtual void simulateDrawComplete() = 0;
+    virtual void simulateDrawComplete() FL_NOEXCEPT = 0;
 
     /// @brief Inject draw failure for negative testing
     /// @param should_fail true = fail next drawFrame(), false = succeed
-    virtual void setDrawFailure(bool should_fail) = 0;
+    virtual void setDrawFailure(bool should_fail) FL_NOEXCEPT = 0;
 
     /// @brief Set simulated draw delay
     /// @param microseconds Delay in microseconds (0 = instant)
-    virtual void setDrawDelay(u32 microseconds) = 0;
+    virtual void setDrawDelay(u32 microseconds) FL_NOEXCEPT = 0;
 
     //-------------------------------------------------------------------------
     // Data Capture (for validation)
@@ -137,27 +137,27 @@ public:
 
     /// @brief Get history of all drawn frames
     /// @return Vector of frame records (chronological order)
-    virtual const fl::vector<FrameRecord>& getFrameHistory() const = 0;
+    virtual const fl::vector<FrameRecord>& getFrameHistory() const FL_NOEXCEPT = 0;
 
     /// @brief Clear frame history (reset for next test)
-    virtual void clearFrameHistory() = 0;
+    virtual void clearFrameHistory() FL_NOEXCEPT = 0;
 
     /// @brief Get most recent frame data as span
     /// @return Span of uint16_t frame data (empty if no frames)
-    virtual fl::span<const u16> getLastFrameData() const = 0;
+    virtual fl::span<const u16> getLastFrameData() const FL_NOEXCEPT = 0;
 
     //-------------------------------------------------------------------------
     // State Inspection
     //-------------------------------------------------------------------------
 
     /// @brief Check if peripheral is enabled
-    virtual bool isEnabled() const = 0;
+    virtual bool isEnabled() const FL_NOEXCEPT = 0;
 
     /// @brief Get total number of drawFrame() calls
-    virtual size_t getDrawCount() const = 0;
+    virtual size_t getDrawCount() const FL_NOEXCEPT = 0;
 
     /// @brief Reset mock to uninitialized state
-    virtual void reset() = 0;
+    virtual void reset() FL_NOEXCEPT = 0;
 };
 
 } // namespace detail

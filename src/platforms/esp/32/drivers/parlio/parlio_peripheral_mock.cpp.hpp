@@ -77,7 +77,7 @@ namespace detail {
 /// No threads, no real delays. transmit() fires ISR callback immediately.
 class ParlioPeripheralMockImpl : public ParlioPeripheralMock {
 public:
-    ParlioPeripheralMockImpl();
+    ParlioPeripheralMockImpl() FL_NOEXCEPT;
     ~ParlioPeripheralMockImpl() override;
 
     // IParlioPeripheral Interface
@@ -108,7 +108,7 @@ public:
     bool isTransmitting() const FL_NOEXCEPT override;
     size_t getTransmitCount() const FL_NOEXCEPT override;
     const ParlioPeripheralConfig& getConfig() const FL_NOEXCEPT override;
-    void reset() override;
+    void reset() FL_NOEXCEPT override;
 
 private:
     // Lifecycle state
@@ -142,10 +142,10 @@ private:
     bool mFiringCallbacks;  // Re-entrancy guard
 
     /// Fire the ISR callback synchronously
-    void fireCallback();
+    void fireCallback() FL_NOEXCEPT;
 
     /// Pump all deferred callbacks (called from delay/poll points)
-    void pumpDeferredCallbacks();
+    void pumpDeferredCallbacks() FL_NOEXCEPT;
 };
 
 //=============================================================================

@@ -105,18 +105,18 @@ public:
     // IParlioPeripheral Interface Implementation
     //=========================================================================
 
-    bool initialize(const ParlioPeripheralConfig& config) override = 0;
-    bool deinitialize() override = 0;
-    bool enable() override = 0;
-    bool disable() override = 0;
-    bool transmit(const u8* buffer, size_t bit_count, u16 idle_value) override = 0;
-    bool waitAllDone(u32 timeout_ms) override = 0;
-    bool registerTxDoneCallback(void* callback, void* user_ctx) override = 0;
-    u8* allocateDmaBuffer(size_t size) override = 0;
-    void freeDmaBuffer(u8* buffer) override = 0;
-    void delay(u32 ms) override = 0;
-    u64 getMicroseconds() override = 0;
-    void freeDmaBuffer(void* ptr) override = 0;
+    bool initialize(const ParlioPeripheralConfig& config) FL_NOEXCEPT override = 0;
+    bool deinitialize() FL_NOEXCEPT override = 0;
+    bool enable() FL_NOEXCEPT override = 0;
+    bool disable() FL_NOEXCEPT override = 0;
+    bool transmit(const u8* buffer, size_t bit_count, u16 idle_value) FL_NOEXCEPT override = 0;
+    bool waitAllDone(u32 timeout_ms) FL_NOEXCEPT override = 0;
+    bool registerTxDoneCallback(void* callback, void* user_ctx) FL_NOEXCEPT override = 0;
+    u8* allocateDmaBuffer(size_t size) FL_NOEXCEPT override = 0;
+    void freeDmaBuffer(u8* buffer) FL_NOEXCEPT override = 0;
+    void delay(u32 ms) FL_NOEXCEPT override = 0;
+    u64 getMicroseconds() FL_NOEXCEPT override = 0;
+    void freeDmaBuffer(void* ptr) FL_NOEXCEPT override = 0;
 
     //=========================================================================
     // Mock-Specific API (for unit tests)
@@ -138,7 +138,7 @@ public:
     /// @param microseconds Delay in microseconds (0 = instant)
     ///
     /// Simulates hardware transmission time. Affects waitAllDone() behavior.
-    virtual void setTransmitDelay(u32 microseconds) = 0;
+    virtual void setTransmitDelay(u32 microseconds) FL_NOEXCEPT = 0;
 
     /// @brief Manually trigger transmission completion (fire ISR callback)
     ///
@@ -151,7 +151,7 @@ public:
     /// mock->simulateTransmitComplete();  // Trigger ISR
     /// driver.poll();  // Process completion
     /// ```
-    virtual void simulateTransmitComplete() = 0;
+    virtual void simulateTransmitComplete() FL_NOEXCEPT = 0;
 
     /// @brief Inject transmission failure for negative testing
     /// @param should_fail true = fail next transmit(), false = succeed
@@ -162,7 +162,7 @@ public:
     /// bool result = driver.beginTransmission(...);
     /// CHECK_FALSE(result);  // Should fail
     /// ```
-    virtual void setTransmitFailure(bool should_fail) = 0;
+    virtual void setTransmitFailure(bool should_fail) FL_NOEXCEPT = 0;
 
     //-------------------------------------------------------------------------
     // Waveform Capture (for validation)
@@ -173,10 +173,10 @@ public:
     ///
     /// Each record contains a copy of the transmitted buffer, allowing
     /// tests to validate waveform correctness.
-    virtual const fl::vector<TransmissionRecord>& getTransmissionHistory() const = 0;
+    virtual const fl::vector<TransmissionRecord>& getTransmissionHistory() const FL_NOEXCEPT = 0;
 
     /// @brief Clear transmission history (reset for next test)
-    virtual void clearTransmissionHistory() = 0;
+    virtual void clearTransmissionHistory() FL_NOEXCEPT = 0;
 
     /// @brief Get transmission data for a specific GPIO pin from the most recent transmission
     /// @param gpio_pin GPIO pin number (e.g., 1, 2, 4, 8 - actual pin numbers from config)
@@ -192,7 +192,7 @@ public:
     /// fl::span<const uint8_t> pin1_data = mock.getTransmissionDataForPin(1);
     /// REQUIRE(pin1_data[0] == 0xFF);  // Check first byte of GPIO pin 1 waveform
     /// ```
-    virtual fl::span<const u8> getTransmissionDataForPin(int gpio_pin) const = 0;
+    virtual fl::span<const u8> getTransmissionDataForPin(int gpio_pin) const FL_NOEXCEPT = 0;
 
     /// @brief Untranspose interleaved bit-parallel data to per-pin waveforms
     /// @param transposed_data Interleaved bit data (output from wave8Transpose_N)
@@ -221,25 +221,25 @@ public:
     //-------------------------------------------------------------------------
 
     /// @brief Check if peripheral is initialized
-    bool isInitialized() const override = 0;
+    bool isInitialized() const FL_NOEXCEPT override = 0;
 
     /// @brief Check if peripheral is enabled
-    virtual bool isEnabled() const = 0;
+    virtual bool isEnabled() const FL_NOEXCEPT = 0;
 
     /// @brief Check if transmission is in progress
-    virtual bool isTransmitting() const = 0;
+    virtual bool isTransmitting() const FL_NOEXCEPT = 0;
 
     /// @brief Get total number of transmit() calls
     /// @note Waits for all pending transmissions to complete before returning
-    virtual size_t getTransmitCount() const = 0;
+    virtual size_t getTransmitCount() const FL_NOEXCEPT = 0;
 
     /// @brief Get current configuration
-    virtual const ParlioPeripheralConfig& getConfig() const = 0;
+    virtual const ParlioPeripheralConfig& getConfig() const FL_NOEXCEPT = 0;
 
     /// @brief Reset mock to uninitialized state (for testing)
     /// @note Waits for worker thread to finish pending transmissions
     /// @note Does NOT stop or restart the worker thread
-    virtual void reset() = 0;
+    virtual void reset() FL_NOEXCEPT = 0;
 };
 
 //=============================================================================

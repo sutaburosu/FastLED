@@ -46,7 +46,7 @@ public:
     // Lifecycle
     //=========================================================================
 
-    LcdRgbPeripheralMockImpl();
+    LcdRgbPeripheralMockImpl() FL_NOEXCEPT;
     ~LcdRgbPeripheralMockImpl() override;
 
     //=========================================================================
@@ -123,7 +123,7 @@ private:
     fl::atomic<bool> mCallbackExecuting{false};
 
     // Simulation thread
-    void simulationThreadFunc();
+    void simulationThreadFunc() FL_NOEXCEPT;
     fl::unique_ptr<fl::thread> mSimulationThread;
     fl::atomic<bool> mSimulationThreadShouldStop;
 };
