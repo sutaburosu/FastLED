@@ -7,7 +7,7 @@
 
 namespace fl {
 
-class string;  // Forward declaration
+class string;
 
 /// @brief High-performance SPSC async log queue
 /// @tparam DescriptorCount Number of message descriptors (must be power of 2)
