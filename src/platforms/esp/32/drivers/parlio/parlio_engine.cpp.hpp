@@ -1368,7 +1368,13 @@ bool ParlioEngine::initialize(size_t dataWidth,
     // Store data width and pins
     mDataWidth = dataWidth;
     mPins = pins;
-    mActualChannels = pins.size();
+    // Count only real (non-negative) pins - dummy lanes use pin=-1
+    mActualChannels = 0;
+    for (size_t i = 0; i < pins.size(); i++) {
+        if (pins[i] >= 0) {
+            mActualChannels++;
+        }
+    }
     mDummyLanes = mDataWidth - mActualChannels;
 
     FL_LOG_PARLIO("PARLIO_INIT: mDataWidth=" << mDataWidth << " mActualChannels=" << mActualChannels << " mDummyLanes=" << mDummyLanes);

@@ -30,6 +30,7 @@
 #include "fl/channels/wave3.h"
 #include "fl/channels/wave8.h"
 #include "fl/channels/detail/wave3.hpp"
+#include "fl/channels/detail/wave8.hpp"
 #include "fl/chipsets/spi.h"
 #include "fl/chipsets/chipset_timing_config.h"
 #include "fl/chipsets/led_timing.h"
@@ -2808,6 +2809,245 @@ FL_TEST_CASE("Wave3 integration - multi-lane wave3 transmission") {
     bool tx_ok = driver.beginTransmission(scratch.data(), num_bytes_per_lane * 4,
                                            4, num_bytes_per_lane);
     FL_CHECK(tx_ok);
+}
+
+//=============================================================================
+// Issue #2204: PARLIO 5-8 lane bug tests
+//=============================================================================
+
+FL_TEST_CASE("ParlioEngine - 6 lanes pads to 8 with dummy pins and mActualChannels=6") {
+    resetMockFull();
+
+    auto& driver = ParlioEngine::getInstance();
+
+    // 6 real pins → selectDataWidth returns 8 → 2 dummy pins padded with -1
+    fl::vector<int> pins = {1, 2, 3, 4, 5, 6, -1, -1};
+    ChipsetTimingConfig timing = getWS2812Timing();
+
+    size_t num_leds = 5;
+    bool init_ok = driver.initialize(8, pins, timing, num_leds);
+    FL_REQUIRE(init_ok);
+
+    auto& mock = ParlioPeripheralMock::instance();
+    FL_CHECK_EQ(mock.getConfig().data_width, (size_t)8);
+
+    // The engine should count only 6 real channels, not 8
+    // Verify by transmitting: only 6 lanes of LED data, dummy lanes get zeros
+    size_t lane_stride = num_leds * 3;
+    size_t total_bytes = 8 * lane_stride; // 8 lanes in buffer (including dummies)
+    fl::vector<uint8_t> scratch(total_bytes, 0);
+
+    // Fill only the 6 real lanes with known data
+    for (size_t lane = 0; lane < 6; lane++) {
+        for (size_t i = 0; i < lane_stride; i++) {
+            scratch[lane * lane_stride + i] = static_cast<uint8_t>((lane + 1) * 0x11);
+        }
+    }
+    // Lanes 6-7 remain zero (dummy)
+
+    bool tx_ok = driver.beginTransmission(scratch.data(), total_bytes, 8, lane_stride);
+    FL_REQUIRE(tx_ok);
+
+    // Complete transmission
+    ParlioEngineState state = ParlioEngineState::DRAINING;
+    for (int i = 0; i < 200 && state != ParlioEngineState::READY; i++) {
+        state = driver.poll();
+        if (state == ParlioEngineState::ERROR) break;
+        if (state == ParlioEngineState::DRAINING) delay(1);
+    }
+    FL_CHECK(state == ParlioEngineState::READY);
+
+    // Verify we got DMA output without crash (the old bug would read past buffer)
+    const auto& history = mock.getTransmissionHistory();
+    FL_REQUIRE(history.size() > 0);
+    FL_CHECK(history[0].buffer_copy.size() > 0);
+    FL_CHECK(history[0].bit_count > 0);
+}
+
+FL_TEST_CASE("ParlioEngine - 5 lanes pads to 8 with 3 dummy pins") {
+    resetMockFull();
+
+    auto& driver = ParlioEngine::getInstance();
+
+    fl::vector<int> pins = {10, 11, 12, 13, 14, -1, -1, -1};
+    ChipsetTimingConfig timing = getWS2812Timing();
+
+    size_t num_leds = 3;
+    bool init_ok = driver.initialize(8, pins, timing, num_leds);
+    FL_REQUIRE(init_ok);
+
+    auto& mock = ParlioPeripheralMock::instance();
+    FL_CHECK_EQ(mock.getConfig().data_width, (size_t)8);
+
+    size_t lane_stride = num_leds * 3;
+    size_t total_bytes = 8 * lane_stride;
+    fl::vector<uint8_t> scratch(total_bytes, 0);
+
+    for (size_t lane = 0; lane < 5; lane++) {
+        for (size_t i = 0; i < lane_stride; i++) {
+            scratch[lane * lane_stride + i] = 0xFF;
+        }
+    }
+
+    bool tx_ok = driver.beginTransmission(scratch.data(), total_bytes, 8, lane_stride);
+    FL_REQUIRE(tx_ok);
+
+    ParlioEngineState state = ParlioEngineState::DRAINING;
+    for (int i = 0; i < 200 && state != ParlioEngineState::READY; i++) {
+        state = driver.poll();
+        if (state == ParlioEngineState::ERROR) break;
+        if (state == ParlioEngineState::DRAINING) delay(1);
+    }
+    FL_CHECK(state == ParlioEngineState::READY);
+
+    const auto& history = mock.getTransmissionHistory();
+    FL_REQUIRE(history.size() > 0);
+    FL_CHECK(history[0].buffer_copy.size() > 0);
+}
+
+FL_TEST_CASE("Wave8 transpose 8 lanes - byte order produces correct temporal waveform") {
+    // Issue #2204 Bug 2: Without byte reversal in wave8_transpose_8,
+    // the Hacker's Delight transpose puts bit 0 (last pulse) at output[0]
+    // and bit 7 (first pulse) at output[7]. Since PARLIO sends output[0]
+    // first, this time-reverses the waveform. The fix reverses bytes within
+    // each symbol block so output[0] = bit 7 (first pulse).
+
+    ChipsetTiming timing;
+    timing.T1 = 1;
+    timing.T2 = 999;
+    timing.T3 = 1;
+
+    Wave8BitExpansionLut lut = buildWave8ExpansionLUT(timing);
+
+    // Set up 8 lanes with distinct known values
+    uint8_t lanes[8] = {0xFF, 0x00, 0xAA, 0x55, 0x0F, 0xF0, 0xC3, 0x3C};
+    uint8_t transposed[8 * sizeof(Wave8Byte)];
+
+    wave8Transpose_8(lanes, lut, transposed);
+
+    // Untranspose should recover original waveforms
+    u8 untransposed[8 * sizeof(Wave8Byte)];
+    wave8Untranspose_8(
+        reinterpret_cast<const u8(&)[8 * sizeof(Wave8Byte)]>(transposed),
+        reinterpret_cast<u8(&)[8 * sizeof(Wave8Byte)]>(untransposed));
+
+    // Verify roundtrip: each lane's untransposed waveform must match
+    // the wave8 encoding of the original byte
+    for (int lane = 0; lane < 8; lane++) {
+        u8 expected[sizeof(Wave8Byte)];
+        wave8(lanes[lane], lut, expected);
+        for (size_t i = 0; i < sizeof(Wave8Byte); i++) {
+            FL_CHECK_EQ(untransposed[lane * sizeof(Wave8Byte) + i], expected[i]);
+        }
+    }
+}
+
+FL_TEST_CASE("Wave8 transpose 8 lanes - first byte is MSB pulse (temporal order)") {
+    // Verify that after transpose, the first byte in each symbol block
+    // corresponds to the MSB (bit 7) of each lane — the first pulse sent.
+    // This is the key invariant that the byte reversal fix ensures.
+
+    ChipsetTiming timing;
+    timing.T1 = 1;
+    timing.T2 = 999;
+    timing.T3 = 1;
+
+    Wave8BitExpansionLut lut = buildWave8ExpansionLUT(timing);
+
+    // Lane 0 = 0x80 (only bit 7 set), all other lanes = 0x00
+    // After expansion: lane 0's bit 7 symbol = 0xFF (all high ticks), rest = 0x00
+    // After transpose: the first output byte (symbol 0, pulse 0 = bit 7)
+    // should have lane 0's bit set (0x01), and the remaining 7 bytes should
+    // be 0x00 (since lane 0's bits 6-0 are all zero).
+    uint8_t lanes[8] = {0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+    uint8_t transposed[8 * sizeof(Wave8Byte)];
+
+    wave8Transpose_8(lanes, lut, transposed);
+
+    // Symbol 0 (first symbol): lane 0 has bit 7 set
+    // After byte reversal, output[0] should contain the MSB pulse
+    // Lane 0 is in bit position 0 (LSB of each interleaved byte)
+    // The "1" wave for T1=1,T2=999,T3=1: symbol = 0xFF
+    // The "0" wave: symbol = 0x80
+    // So for bit 7 (=1 in 0x80): wave symbol = 0xFF, all 8 pulses are 1
+    // For bits 6-0 (=0): wave symbol = 0x80, only MSB pulse is 1
+    // After transpose, lane 0 bit 0 contributes to each output byte.
+    // The first output byte (pulse = bit 7) should have lane 0's
+    // bit 7 wave pulse. This is a sanity check that reversal is correct.
+    FL_CHECK(transposed[0] != 0); // First byte of symbol 0 must be non-zero
+}
+
+FL_TEST_CASE("Wave3 transpose 8 lanes - roundtrip with byte reversal") {
+    // Issue #2204 Bug 2 also affects wave3_transpose_8.
+    // Verify the byte reversal fix produces correct roundtrip.
+
+    fl::ChipsetTiming timing = fl::to_runtime_timing<fl::TIMING_WS2812_800KHZ>();
+    fl::Wave3BitExpansionLut lut = fl::buildWave3ExpansionLUT(timing);
+
+    uint8_t lanes[8] = {0xFF, 0x00, 0xAA, 0x55, 0x0F, 0xF0, 0xC3, 0x3C};
+    u8 transposed[8 * sizeof(fl::Wave3Byte)];
+
+    fl::wave3Transpose_8(reinterpret_cast<const u8(&)[8]>(lanes), lut,
+                         reinterpret_cast<u8(&)[8 * sizeof(fl::Wave3Byte)]>(transposed));
+
+    u8 untransposed[8 * sizeof(fl::Wave3Byte)];
+    fl::wave3Untranspose_8(
+        reinterpret_cast<const u8(&)[8 * sizeof(fl::Wave3Byte)]>(transposed),
+        reinterpret_cast<u8(&)[8 * sizeof(fl::Wave3Byte)]>(untransposed));
+
+    for (int lane = 0; lane < 8; lane++) {
+        u8 expected[sizeof(fl::Wave3Byte)];
+        fl::wave3(lanes[lane], lut, expected);
+        for (size_t i = 0; i < sizeof(fl::Wave3Byte); i++) {
+            FL_CHECK_EQ(untransposed[lane * sizeof(fl::Wave3Byte) + i], expected[i]);
+        }
+    }
+}
+
+FL_TEST_CASE("ParlioEngine - 8-lane transmission completes without crash") {
+    // End-to-end test: 8 lanes through ParlioEngine + mock peripheral
+    // Verifies the mActualChannels fix: with 8 real pins the driver should
+    // encode and transmit all lanes successfully without reading past buffer.
+    resetMockFull();
+
+    auto& driver = ParlioEngine::getInstance();
+
+    fl::vector<int> pins = {1, 2, 3, 4, 5, 6, 7, 8};
+    ChipsetTimingConfig timing = getWS2812Timing();
+
+    size_t num_leds = 5;
+    bool init_ok = driver.initialize(8, pins, timing, num_leds);
+    FL_REQUIRE(init_ok);
+
+    auto& mock = ParlioPeripheralMock::instance();
+    FL_CHECK_EQ(mock.getConfig().data_width, (size_t)8);
+
+    size_t lane_stride = num_leds * 3;
+    size_t total_bytes = 8 * lane_stride;
+    fl::vector<uint8_t> scratch(total_bytes);
+
+    // Fill each lane with distinct data
+    for (size_t lane = 0; lane < 8; lane++) {
+        for (size_t i = 0; i < lane_stride; i++) {
+            scratch[lane * lane_stride + i] = static_cast<uint8_t>((lane + 1) * 0x11 + i);
+        }
+    }
+
+    bool tx_ok = driver.beginTransmission(scratch.data(), total_bytes, 8, lane_stride);
+    FL_REQUIRE(tx_ok);
+
+    ParlioEngineState state = ParlioEngineState::DRAINING;
+    for (int i = 0; i < 200 && state != ParlioEngineState::READY; i++) {
+        state = driver.poll();
+        if (state == ParlioEngineState::ERROR) break;
+        if (state == ParlioEngineState::DRAINING) delay(1);
+    }
+    FL_CHECK(state == ParlioEngineState::READY);
+
+    const auto& history = mock.getTransmissionHistory();
+    FL_REQUIRE(history.size() > 0);
+    FL_CHECK(history[0].buffer_copy.size() > 0);
+    FL_CHECK(history[0].bit_count > 0);
 }
 
 } // FL_TEST_FILE

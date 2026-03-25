@@ -230,11 +230,12 @@ void wave3Untranspose_8(const u8 (&FL_RESTRICT_PARAM transposed)[8 * sizeof(Wave
     for (int symbol_idx = 0; symbol_idx < 3; symbol_idx++) {
         u8 lane_bytes[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 
-        // Hacker's Delight 8x8 transpose outputs columns in LSB-first order:
-        // byte 0 = column 0 (bit 0 of each lane), byte 7 = column 7 (bit 7)
+        // After transpose+reversal: byte 0 = bit 7 (first pulse, MSB),
+        // byte 7 = bit 0 (last pulse, LSB)
         for (int byte_idx = 0; byte_idx < 8; byte_idx++) {
             u8 input_byte = transposed[symbol_idx * 8 + byte_idx];
-            int pulse_bit = byte_idx;
+            // byte 0 = bit 7, byte 7 = bit 0 (reversed order)
+            int pulse_bit = 7 - byte_idx;
 
             for (int lane = 0; lane < 8; lane++) {
                 u8 pulse = (input_byte >> lane) & 1;

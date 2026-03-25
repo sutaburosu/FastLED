@@ -162,6 +162,17 @@ void wave3_transpose_8(const Wave3Byte lane_waves[8],
 
         isr::memcpy_32(reinterpret_cast<u32*>(output + symbol_idx * 8), &y, 1);     // ok reinterpret cast - output byte array to u32
         isr::memcpy_32(reinterpret_cast<u32*>(output + symbol_idx * 8 + 4), &x, 1); // ok reinterpret cast - output byte array to u32
+
+        // Reverse byte order within symbol block: Hacker's Delight transpose
+        // puts column N at output[N], but bit 7 (MSB) is the first clock pulse
+        // and bit 0 (LSB) is the last. PARLIO sends output[0] first, so without
+        // reversal the waveform is time-reversed (last pulse sent first).
+        u8* blk = output + symbol_idx * 8;
+        u8 tmp;
+        tmp = blk[0]; blk[0] = blk[7]; blk[7] = tmp;
+        tmp = blk[1]; blk[1] = blk[6]; blk[6] = tmp;
+        tmp = blk[2]; blk[2] = blk[5]; blk[5] = tmp;
+        tmp = blk[3]; blk[3] = blk[4]; blk[4] = tmp;
     }
 }
 
