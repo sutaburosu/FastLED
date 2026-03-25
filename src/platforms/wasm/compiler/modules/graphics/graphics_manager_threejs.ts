@@ -481,7 +481,21 @@ export class GraphicsManagerThreeJS {
     this.composer.addPass(renderScene);
 
     // Create LED grid
-    const { isDenseScreenMap } = this.createGrid(frameData);
+    const { isDenseScreenMap, maxLedVisualRadius } = this.createGrid(frameData);
+
+    // Update camera bounds to ensure all LEDs (including their visual radius) are visible.
+    // The initial camera uses a fixed 5% margin which is insufficient for small grids
+    // where LED dots are large relative to the screen (e.g. 2x2, 3x3).
+    if (maxLedVisualRadius > 0 && this.camera) {
+      const AESTHETIC_MARGIN = 1.05;
+      const halfWidth = (this.SCREEN_WIDTH / 2 + maxLedVisualRadius) * AESTHETIC_MARGIN;
+      const halfHeight = (this.SCREEN_HEIGHT / 2 + maxLedVisualRadius) * AESTHETIC_MARGIN;
+      this.camera.left = -halfWidth;
+      this.camera.right = halfWidth;
+      this.camera.top = halfHeight;
+      this.camera.bottom = -halfHeight;
+      this.camera.updateProjectionMatrix();
+    }
 
     // Configure bloom effect based on grid density
     if (!isDenseScreenMap) {
@@ -562,6 +576,27 @@ export class GraphicsManagerThreeJS {
       isDenseScreenMap,
     );
 
+    // Compute the max LED visual radius so the camera can be adjusted to fit all LEDs.
+    // Without this, small grids (e.g. 2x2) have LEDs clipped by the camera bounds.
+    let maxLedVisualRadius = 0;
+    for (const screenMap of Object.values(this.screenMaps)) {
+      for (const stripId in screenMap.strips) {
+        if (!Object.prototype.hasOwnProperty.call(screenMap.strips, stripId)) continue;
+        const strip = screenMap.strips[stripId];
+        let diameter;
+        if (strip.diameter) {
+          diameter = strip.diameter * normalizedScale;
+        } else {
+          diameter = defaultDotSize;
+        }
+        // CircleGeometry radius = diameter * LED_SCALE; PlaneGeometry half-extent = diameter * LED_SCALE / 2
+        const visualRadius = isDenseScreenMap
+          ? (diameter * this.LED_SCALE / 2)
+          : (diameter * this.LED_SCALE);
+        maxLedVisualRadius = Math.max(maxLedVisualRadius, visualRadius);
+      }
+    }
+
     // Create LED objects
     this._createLedObjects(
       frameData,
@@ -572,7 +607,7 @@ export class GraphicsManagerThreeJS {
       normalizedScale,
     );
 
-    return { isDenseScreenMap };
+    return { isDenseScreenMap, maxLedVisualRadius };
   }
 
   /**
