@@ -3,7 +3,7 @@
 #include "fl/audio/audio_detector.h"
 #include "fl/stl/function.h"
 #include "fl/stl/shared_ptr.h"
-#include "fl/stl/unordered_map.h"
+#include "fl/stl/flat_map.h"
 
 namespace fl {
 namespace audio {
@@ -90,7 +90,7 @@ private:
 
     // Template lookup map (O(1) access, pre-computed at init)
     // Maps ChordType (as int) to ChordTemplate pointer for fast template lookups
-    unordered_map<int, const ChordTemplate*> mTemplateMap;
+    flat_map<int, const ChordTemplate*> mTemplateMap;
 
     shared_ptr<const fft::Bins> mRetainedFFT;
 

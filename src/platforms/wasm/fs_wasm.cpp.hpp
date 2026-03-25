@@ -42,7 +42,7 @@
 // IWYU pragma: end_keep
 
 // IWYU pragma: begin_keep
-#include "fl/stl/map.h"  // ok include
+#include "fl/stl/flat_map.h"  // ok include
 #include "fl/stl/mutex.h"  // ok include
 #include "fl/stl/cstdio.h"  // ok include
 #include "fl/stl/vector.h"  // ok include
@@ -113,13 +113,18 @@ class FileData {
     mutable fl::mutex mMutex;
 };
 
-typedef fl::map<fl::string, FileDataPtr> FileMap;  // okay fl namespace
-static FileMap gFileMap;
-// At the time of creation, it's unclear whether this can be called by multiple
-// threads. With an std::map items remain valid while not erased. So we only
-// need to protect the map itself for thread safety. The values in the map are
-// safe to access without a lock.
-static fl::mutex gFileMapMutex;
+typedef fl::flat_map<fl::string, FileDataPtr, fl::StringFastLess> FileMap;  // okay fl namespace
+
+struct FileRegistry {
+    FileMap files;
+    fl::mutex mutex;
+    static FileRegistry &instance() {
+        static FileRegistry registry;
+        return registry;
+    }
+private:
+    FileRegistry() = default;
+};
 
 class WasmFileHandle : public fl::filebuf {
   private:
@@ -223,9 +228,10 @@ class FsImplWasm : public fl::FsImpl {
         string path(_path);
         filebuf_ptr out;
         {
-            fl::unique_lock<fl::mutex> lock(gFileMapMutex);
-            auto it = gFileMap.find(path);
-            if (it != gFileMap.end()) {
+            auto &reg = FileRegistry::instance();
+            fl::unique_lock<fl::mutex> lock(reg.mutex);
+            auto it = reg.files.find(path);
+            if (it != reg.files.end()) {
                 auto &data = it->second;
                 out = fl::make_shared<WasmFileHandle>(path, data);
                 // FASTLED_DBG("Opened file: " << _path);
@@ -239,33 +245,36 @@ class FsImplWasm : public fl::FsImpl {
 };
 
 FileDataPtr _findIfExists(const fl::string &path) {
-    fl::unique_lock<fl::mutex> lock(gFileMapMutex);
-    auto it = gFileMap.find(path);
-    if (it != gFileMap.end()) {
+    auto &reg = FileRegistry::instance();
+    fl::unique_lock<fl::mutex> lock(reg.mutex);
+    auto it = reg.files.find(path);
+    if (it != reg.files.end()) {
         return it->second;
     }
     return FileDataPtr();
 }
 
 FileDataPtr _findOrCreate(const fl::string &path, size_t len) {
-    fl::unique_lock<fl::mutex> lock(gFileMapMutex);
-    auto it = gFileMap.find(path);
-    if (it != gFileMap.end()) {
+    auto &reg = FileRegistry::instance();
+    fl::unique_lock<fl::mutex> lock(reg.mutex);
+    auto it = reg.files.find(path);
+    if (it != reg.files.end()) {
         return it->second;
     }
     auto entry = fl::make_shared<FileData>(len);
-    gFileMap.insert(fl::make_pair(path, entry));  // okay fl namespace
+    reg.files.insert(fl::make_pair(path, entry));  // okay fl namespace
     return entry;
 }
 
 FileDataPtr _createIfNotExists(const fl::string &path, size_t len) {
-    fl::unique_lock<fl::mutex> lock(gFileMapMutex);
-    auto it = gFileMap.find(path);
-    if (it != gFileMap.end()) {
+    auto &reg = FileRegistry::instance();
+    fl::unique_lock<fl::mutex> lock(reg.mutex);
+    auto it = reg.files.find(path);
+    if (it != reg.files.end()) {
         return FileDataPtr();
     }
     auto entry = fl::make_shared<FileData>(len);
-    gFileMap.insert(fl::make_pair(path, entry));  // okay fl namespace
+    reg.files.insert(fl::make_pair(path, entry));  // okay fl namespace
     return entry;
 }
 

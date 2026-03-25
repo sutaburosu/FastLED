@@ -4,7 +4,7 @@
 // IWYU pragma: private
 
 #include "platforms/stub/stub_gpio.h"
-#include "fl/stl/map.h"
+#include "fl/stl/flat_map.h"
 #include "fl/stl/vector.h"
 
 namespace fl {
@@ -17,16 +17,16 @@ namespace stub {
 namespace {
 
 /// Per-pin callback storage: map from pin number to callback
-static fl::map<int, PinEdgeCallback>& pinCallbackMap() {
-    static fl::map<int, PinEdgeCallback>* m = new fl::map<int, PinEdgeCallback>();  // ok bare allocation
+static fl::flat_map<int, PinEdgeCallback>& pinCallbackMap() {
+    static fl::flat_map<int, PinEdgeCallback>* m = new fl::flat_map<int, PinEdgeCallback>();  // ok bare allocation
     return *m;
 }
 
 /// Per-pin state: current HIGH/LOW value
-static fl::map<int, int>& pinStateMap() {
+static fl::flat_map<int, int>& pinStateMap() {
     // Heap-allocated and never freed: avoids static destructor ordering issues
     // on Windows where fl::allocator_slab may be destroyed before this map.
-    static fl::map<int, int>* state = new fl::map<int, int>();  // ok bare allocation
+    static fl::flat_map<int, int>* state = new fl::flat_map<int, int>();  // ok bare allocation
     return *state;
 }
 
@@ -36,9 +36,9 @@ struct PinEdgeBuffer {
     bool armed = false;
 };
 
-static fl::map<int, PinEdgeBuffer>& edgeBufferMap() {
+static fl::flat_map<int, PinEdgeBuffer>& edgeBufferMap() {
     // Heap-allocated and never freed: avoids static destructor ordering issues.
-    static fl::map<int, PinEdgeBuffer>* buffers = new fl::map<int, PinEdgeBuffer>();  // ok bare allocation
+    static fl::flat_map<int, PinEdgeBuffer>* buffers = new fl::flat_map<int, PinEdgeBuffer>();  // ok bare allocation
     return *buffers;
 }
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "fl/stl/unordered_map.h"
+#include "fl/stl/flat_map.h"
 #include "fl/stl/mutex.h"
 namespace fl {
 
@@ -87,7 +87,7 @@ private:
     mutable fl::mutex mMutex;
     
     // ID mapping and counter
-    fl::hash_map<void*, int> mPointerToId;
+    fl::flat_map<void*, int> mPointerToId;
     int mNextId = 0;  // Start IDs at 0 to match StripIdMap behavior
 };
 

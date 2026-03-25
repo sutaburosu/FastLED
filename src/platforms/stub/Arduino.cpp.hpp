@@ -9,7 +9,7 @@
 
 #include "platforms/stub/Arduino.h"  // ok include
 
-#include "fl/stl/map.h"
+#include "fl/stl/flat_map.h"
 #include "fl/stl/stdio.h"
 #include "fl/math/math.h"
 #include "fl/stl/cstdlib.h"
@@ -46,7 +46,7 @@ long random(long max) {
 
 // Analog value storage for test injection
 // Key: pin number, Value: analog value (or -1 for unset/random)
-static fl::map<int, int> g_analog_values;
+static fl::flat_map<int, int> g_analog_values;
 
 int analogRead(int pin) {
     // Check if a test value has been set for this pin

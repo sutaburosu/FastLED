@@ -5,7 +5,7 @@
 #include "fl/stl/vector.h"
 #include "fl/stl/shared_ptr.h"
 #include "fl/stl/span.h"
-#include "fl/stl/unordered_map.h"
+#include "fl/stl/flat_map.h"
 
 namespace fl {
 namespace audio {
@@ -76,7 +76,7 @@ private:
     Sample mSample;
     fft::FFT mFFT; // fft::FFT engine (has its own kernel cache)
     vector<FFTCacheEntry> mFFTCache; // Strong cache: co-owned with callers
-    unordered_map<fl::size, int> mFFTCacheMap; // Maps args hash to index in mFFTCache
+    flat_map<fl::size, int> mFFTCacheMap; // Maps args hash to index in mFFTCache
     vector<shared_ptr<fft::Bins>> mRecyclePool; // Recycled bins for zero-alloc reuse
     vector<fft::Bins> mFFTHistory;
     int mFFTHistoryDepth = 0;

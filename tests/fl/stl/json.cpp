@@ -532,7 +532,7 @@ FL_TEST_CASE("Json2 Tests") {
         strip2.set(1, {1.0f, 1.0f});
         strip2.set(2, {2.0f, 1.0f});
         
-        fl::map<fl::string, fl::ScreenMap> segmentMaps;
+        fl::flat_map<fl::string, fl::ScreenMap> segmentMaps;
         segmentMaps["strip1"] = strip1;
         segmentMaps["strip2"] = strip2;
         
@@ -568,7 +568,7 @@ FL_TEST_CASE("Json2 Tests") {
         FL_CHECK(parsedJson.contains("map"));
         
         // Parse it back using new json2 implementation
-        fl::map<fl::string, fl::ScreenMap> parsedSegmentMaps;
+        fl::flat_map<fl::string, fl::ScreenMap> parsedSegmentMaps;
         fl::string err;
         bool result = fl::ScreenMap::ParseJson(jsonBuffer.c_str(), &parsedSegmentMaps, &err);
         
@@ -605,7 +605,7 @@ FL_TEST_CASE("Json2 Tests") {
     FL_SUBCASE("ScreenMap deserialization from fl::string") {
         const char* jsonStr = R"({"map":{"strip1":{"x":[0,1,2],"y":[0,0,0],"diameter":0.5},"strip2":{"x":[0,1,2],"y":[1,1,1],"diameter":0.3}}})";
         
-        fl::map<fl::string, fl::ScreenMap> segmentMaps;
+        fl::flat_map<fl::string, fl::ScreenMap> segmentMaps;
         fl::string err;
         
         bool result = fl::ScreenMap::ParseJson(jsonStr, &segmentMaps, &err);

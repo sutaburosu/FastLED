@@ -11,9 +11,9 @@ int IdTracker::getOrCreateId(void* ptr) {
     mMutex.lock();
     
     // Check if ID already exists
-    const int* existingId = mPointerToId.find_value(ptr);
-    if (existingId) {
-        int id = *existingId;
+    auto it = mPointerToId.find(ptr);
+    if (it != mPointerToId.end()) {
+        int id = it->second;
         mMutex.unlock();
         return id;
     }
@@ -34,10 +34,10 @@ bool IdTracker::getId(void* ptr, int* outId) {
     // Lock for thread safety
     mMutex.lock();
     
-    const int* existingId = mPointerToId.find_value(ptr);
-    bool found = (existingId != nullptr);
+    auto it = mPointerToId.find(ptr);
+    bool found = (it != mPointerToId.end());
     if (found) {
-        *outId = *existingId;
+        *outId = it->second;
     }
     
     mMutex.unlock();
@@ -78,4 +78,4 @@ void IdTracker::clear() {
     mMutex.unlock();
 }
 
-} // namespace fl 
+} // namespace fl

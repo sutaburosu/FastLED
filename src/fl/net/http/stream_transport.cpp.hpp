@@ -126,10 +126,11 @@ void HttpStreamTransport::parseChunkedMessages() {
 }
 
 bool HttpStreamTransport::resolveRpc(const fl::json& msg, const fl::string& idKey) {
-    PendingCall* pending = mPendingCalls.find_value(idKey);
-    if (!pending) {
+    auto it = mPendingCalls.find(idKey);
+    if (it == mPendingCalls.end()) {
         return false;
     }
+    PendingCall* pending = &it->second;
 
     // Check for error
     if (msg.contains("error")) {
@@ -154,10 +155,11 @@ bool HttpStreamTransport::resolveRpc(const fl::json& msg, const fl::string& idKe
 }
 
 bool HttpStreamTransport::resolveRpcStream(const fl::json& msg, const fl::string& idKey) {
-    PendingStream* pending = mPendingStreams.find_value(idKey);
-    if (!pending) {
+    auto it = mPendingStreams.find(idKey);
+    if (it == mPendingStreams.end()) {
         return false;
     }
+    PendingStream* pending = &it->second;
 
     // Check for error
     if (msg.contains("error")) {

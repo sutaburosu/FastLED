@@ -1510,7 +1510,7 @@ using fl::delay;  // Template version coexists with Arduino's extern "C" delay()
 
 // Common fl:: type aliases for global namespace convenience
 template<typename T> using fl_vector = fl::vector<T>;
-template<typename Key, typename Value, typename Compare = fl::less<Key>> using fl_map = fl::map<Key, Value, Compare>;
+template<typename Key, typename Value, typename Compare = fl::less<Key>> using fl_map = fl::flat_map<Key, Value, Compare>;
 using fl_string = fl::string;
 
 // Note: delayMicroseconds and delayMillis are provided by Arduino core

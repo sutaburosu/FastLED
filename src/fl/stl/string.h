@@ -2547,11 +2547,14 @@ class string : public StrN<FASTLED_STR_INLINED_SIZE> {
     }
 
     bool operator==(const string &other) const {
-        return fl::strcmp(c_str(), other.c_str()) == 0;
+        if (size() != other.size()) {
+            return false;
+        }
+        return fl::memcmp(c_str(), other.c_str(), size()) == 0;
     }
 
     bool operator!=(const string &other) const {
-        return fl::strcmp(c_str(), other.c_str()) != 0;
+        return !(*this == other);
     }
 
     string &operator+=(const string &other) {
@@ -3094,5 +3097,18 @@ fl::string to_hex(T value, bool uppercase, bool pad_to_width) {
 
     return detail::hex(unsigned_value, width, is_negative, uppercase, pad_to_width);
 }
+
+// Comparator that orders strings by size first, then by content.
+// Not lexicographic — use only for associative containers (flat_map, etc.)
+// where you need fast lookup and don't care about alphabetical order.
+struct StringFastLess {
+    bool operator()(const string &a, const string &b) const {
+        fl::size al = a.size(), bl = b.size();
+        if (al != bl) {
+            return al < bl;
+        }
+        return fl::memcmp(a.c_str(), b.c_str(), al) < 0;
+    }
+};
 
 } // namespace fl

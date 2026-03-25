@@ -5,7 +5,7 @@
 #include "fl/stl/vector.h"
 #include "fl/stl/optional.h"
 #include "fl/stl/string.h"
-#include "fl/stl/map.h"
+#include "fl/stl/flat_map.h"
 #include "fl/stl/stdint.h"
 
 // Forward declaration — breaks fl.stl+ -> fl.net+ link chain
@@ -18,7 +18,7 @@ struct HttpRequest {
     fl::string method;           // "GET", "POST", etc.
     fl::string uri;              // "/rpc"
     fl::string version;          // "HTTP/1.1"
-    fl::map<fl::string, fl::string> headers;
+    fl::flat_map<fl::string, fl::string, fl::StringFastLess> headers;
     fl::vector<u8> body;    // Decoded body (if chunked, already decoded)
 };
 
@@ -27,7 +27,7 @@ struct HttpResponse {
     fl::string version;          // "HTTP/1.1"
     int statusCode = 0;
     fl::string reasonPhrase;     // "OK", "Not Found", etc.
-    fl::map<fl::string, fl::string> headers;
+    fl::flat_map<fl::string, fl::string, fl::StringFastLess> headers;
     fl::vector<u8> body;    // Decoded body
 };
 

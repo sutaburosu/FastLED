@@ -7,7 +7,7 @@
 #include "fl/stl/asio/http/http_parser.h"
 #include "fl/stl/string.h"
 #include "fl/stl/unique_ptr.h"
-#include "fl/stl/map.h"
+#include "fl/stl/flat_map.h"
 #include "fl/stl/vector.h"
 
 namespace fl {
@@ -141,7 +141,7 @@ private:
     u16 mPort;
 
     /// Client states (maps client ID to state)
-    fl::map<u32, ClientState> mClientStates;
+    fl::flat_map<u32, ClientState> mClientStates;
 
     /// Buffer for reading data from clients
     fl::vector<u8> mRecvBuffer;

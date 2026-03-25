@@ -232,13 +232,15 @@ bool JsonConsole::setSliderValue(const fl::string& name, float value) {
         FL_WARN("JsonConsole: Using numeric ID: " << componentId);
     } else {
         // Not a valid integer, try to find component ID by name
-        int* componentIdPtr = mComponentNameToId.find_value(name);
+        auto it = mComponentNameToId.find(name);
+        int* componentIdPtr = (it != mComponentNameToId.end()) ? &it->second : nullptr;
         
         // WORKAROUND: Handle subtle string comparison issue in some environments
         // Try with a fresh string if the parsed name doesn't work
         if (!componentIdPtr && name == "slider") {
             fl::string freshKey = "slider";
-            componentIdPtr = mComponentNameToId.find_value(freshKey);
+            auto it2 = mComponentNameToId.find(freshKey);
+            componentIdPtr = (it2 != mComponentNameToId.end()) ? &it2->second : nullptr;
         }
         
         if (!componentIdPtr) {

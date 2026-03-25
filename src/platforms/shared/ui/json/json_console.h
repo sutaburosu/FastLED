@@ -4,7 +4,7 @@
 
 #include "fl/stl/function.h"
 #include "fl/stl/string.h"
-#include "fl/stl/unordered_map.h"
+#include "fl/stl/flat_map.h"
 #include "fl/stl/sstream.h"
 #include "fl/stl/memory.h"
 #include "platforms/shared/ui/json/ui.h"
@@ -103,7 +103,7 @@ private:
     fl::string mInputBuffer;
     
     // Component name to ID mapping (updated when UI sends component list)
-    fl::hash_map<fl::string, int> mComponentNameToId;
+    fl::flat_map<fl::string, int, fl::StringFastLess> mComponentNameToId;
     
     // Helper methods
     void readInputFromSerial();

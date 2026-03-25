@@ -6,7 +6,7 @@
 
 #include "fl/stl/shared_ptr.h"         // For FASTLED_SHARED_PTR macros
 #include "fl/stl/fstream.h"            // For fl::ifstream (STL-like file I/O)
-#include "fl/stl/map.h"               // For fl::map
+#include "fl/stl/flat_map.h"          // For fl::flat_map
 #include "fl/stl/string.h"  // For fl::string
 #include "fl/fx/video.h"
 #include "fl/codec/jpeg.h"  // For JpegConfig (lightweight struct, no linker symbols)
@@ -65,7 +65,7 @@ class FileSystem {
                    fl::size nFrameHistory = 0); // Open MPEG1 video file
     bool readText(const char *path, string *out);
     bool readJson(const char *path, json *doc);
-    bool readScreenMaps(const char *path, fl::map<string, ScreenMap> *out,
+    bool readScreenMaps(const char *path, fl::flat_map<string, ScreenMap> *out,
                         string *error = nullptr);
     bool readScreenMap(const char *path, const char *name, ScreenMap *out,
                        string *error = nullptr);

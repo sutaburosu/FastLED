@@ -6,7 +6,7 @@
 #include "fl/stl/shared_ptr.h"
 #include "fl/stl/span.h"
 #include "fl/stl/string.h"
-#include "fl/stl/unordered_map.h"
+#include "fl/stl/flat_map.h"
 #include "fl/stl/vector.h"
 #include "fl/stl/asio/http/connection.h"
 #include "fl/net/http/chunked_encoding.h"
@@ -194,8 +194,8 @@ private:
     StateCallback mOnDisconnect;
 
     // Promise-based call tracking
-    fl::unordered_map<fl::string, PendingCall> mPendingCalls;
-    fl::unordered_map<fl::string, PendingStream> mPendingStreams;
+    fl::flat_map<fl::string, PendingCall, fl::StringFastLess> mPendingCalls;
+    fl::flat_map<fl::string, PendingStream, fl::StringFastLess> mPendingStreams;
     fl::vector<fl::json> mIncomingQueue;
     int mNextCallId = 1;
 

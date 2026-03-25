@@ -10,7 +10,7 @@
 #include "fl/math/lut.h"       // Full LUT definitions needed for implementation
 #include "fl/stl/json.h"      // 61.1ms - only needed for ParseJson/toJson implementations
 #include "fl/stl/string.h"       // 129.4ms - only needed for string parameters in implementations
-#include "fl/stl/map.h"       // 12.4ms - only needed for fl_map parameters in implementations
+#include "fl/stl/flat_map.h"  // 12.4ms - only needed for flat_map parameters in implementations
 // IWYU pragma: begin_keep
 #include "fl/stl/function.h"
 // IWYU pragma: end_keep  // ~5ms - only needed for function<> constructor implementation
@@ -94,7 +94,7 @@ ScreenMap ScreenMap::DefaultStrip(int numLeds, float cm_between_leds,
 }
 
 bool ScreenMap::ParseJson(const char *jsonStrScreenMap,
-                          fl::map<string, ScreenMap> *segmentMaps, string *err) {
+                          fl::flat_map<string, ScreenMap> *segmentMaps, string *err) {
 
 #if FASTLED_NO_JSON
     FL_UNUSED(jsonStrScreenMap);
@@ -232,7 +232,7 @@ bool ScreenMap::ParseJson(const char *jsonStrScreenMap,
                           const char *screenMapName, ScreenMap *screenmap,
                           string *err) {
 
-    fl::map<string, ScreenMap> segmentMaps;
+    fl::flat_map<string, ScreenMap> segmentMaps;
     bool ok = ParseJson(jsonStrScreenMap, &segmentMaps, err);
     if (!ok) {
         return false;
@@ -253,7 +253,7 @@ bool ScreenMap::ParseJson(const char *jsonStrScreenMap,
     return false;
 }
 
-void ScreenMap::toJson(const fl::map<string, ScreenMap> &segmentMaps,
+void ScreenMap::toJson(const fl::flat_map<string, ScreenMap> &segmentMaps,
                        fl::json *doc) {
 
 #if FASTLED_NO_JSON
@@ -314,7 +314,7 @@ void ScreenMap::toJson(const fl::map<string, ScreenMap> &segmentMaps,
 #endif
 }
 
-void ScreenMap::toJsonStr(const fl::map<string, ScreenMap> &segmentMaps,
+void ScreenMap::toJsonStr(const fl::flat_map<string, ScreenMap> &segmentMaps,
                           string *jsonBuffer) {
     fl::json doc;
     toJson(segmentMaps, &doc);

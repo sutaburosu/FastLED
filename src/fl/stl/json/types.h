@@ -6,7 +6,7 @@
 #include "fl/stl/int.h"
 #include "fl/stl/string.h"
 #include "fl/stl/vector.h"
-#include "fl/stl/unordered_map.h"
+#include "fl/stl/flat_map.h"
 #include "fl/stl/variant.h"
 #include "fl/stl/optional.h"
 #include "fl/stl/shared_ptr.h"
@@ -38,7 +38,7 @@ struct json_value;
 // Define Array and Object as pointers to avoid incomplete type issues
 // We'll use heap-allocated containers for these to avoid alignment issues
 using json_array = fl::vector<fl::shared_ptr<json_value>>;
-using json_object = fl::unordered_map<fl::string, fl::shared_ptr<json_value>>;
+using json_object = fl::flat_map<fl::string, fl::shared_ptr<json_value>, fl::StringFastLess>;
 
 // parse_result struct to replace variant<T, task::Error>
 template<typename T>

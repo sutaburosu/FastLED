@@ -15,7 +15,7 @@
 #include "fl/stl/bit_cast.h"
 #include "fl/stl/cstring.h"
 #include "fl/stl/singleton.h"
-#include "fl/stl/unordered_map.h"
+#include "fl/stl/flat_map.h"
 
 #include "fl/stl/cstdlib.h"
 
@@ -114,8 +114,8 @@ private:
     //=========================================================================
 
     // Channel and encoder management (store pointers for stable references)
-    fl::unordered_map<int, MockChannel*> mChannels;
-    fl::unordered_map<int, MockEncoder*> mEncoders;
+    fl::flat_map<int, MockChannel*> mChannels;
+    fl::flat_map<int, MockEncoder*> mEncoders;
     int mNextChannelId;
     int mNextEncoderId;
 

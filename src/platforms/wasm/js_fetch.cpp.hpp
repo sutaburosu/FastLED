@@ -5,7 +5,7 @@
 #include "fl/system/log.h"
 #include "fl/stl/string.h"
 #include "fl/stl/function.h"
-#include "fl/stl/unordered_map.h"
+#include "fl/stl/flat_map.h"
 #include "fl/stl/mutex.h"
 #include "fl/stl/singleton.h"
 #include "fl/stl/optional.h"
@@ -60,7 +60,7 @@ public:
 
 private:
     // Thread-safe storage for pending callbacks using request IDs
-    fl::hash_map<u32, FetchResponseCallback> mPendingCallbacks;
+    fl::flat_map<u32, FetchResponseCallback> mPendingCallbacks;
     fl::mutex mCallbacksMutex;
     u32 mNextRequestId;
 };
@@ -118,21 +118,6 @@ void WasmFetchRequest::response(const FetchResponseCallback& callback) {
     
     // Start the JavaScript fetch (non-blocking) with request ID
     js_fetch_async(request_id, mUrl.c_str());
-}
-
-#else
-// Non-WASM platforms: HTTP fetch is not supported
-
-void WasmFetchRequest::response(const FetchResponseCallback& callback) {
-    FL_WARN("HTTP fetch is not supported on non-WASM platforms (Arduino/embedded). URL: " << mUrl);
-    
-    // Return immediate error response using unified fl::response
-    fl::net::http::Response error_response(501, "Not Implemented");
-    error_response.set_body("HTTP fetch is only available in WASM/browser builds. This platform does not support network requests.");
-    error_response.set_header("content-type", "text/plain");
-    
-    // Immediately call the callback with error
-    callback(error_response);
 }
 
 #endif // FL_IS_WASM

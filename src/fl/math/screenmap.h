@@ -1,7 +1,7 @@
 #pragma once
 
 
-#include "fl/stl/map.h"      // Required: fl_map is a template alias, cannot be forward declared
+#include "fl/stl/flat_map.h"  // Required: fl_map is a template alias, cannot be forward declared
 #include "fl/stl/shared_ptr.h"
 #include "fl/stl/int.h"
 /* Screenmap maps strip indexes to x,y coordinates. This is used for FastLED Web
@@ -91,16 +91,16 @@ class ScreenMap {
     vec2f getBounds() const;
 
     static bool ParseJson(const char *jsonStrScreenMap,
-                          fl::map<string, ScreenMap> *segmentMaps,
+                          fl::flat_map<string, ScreenMap> *segmentMaps,
                           string *err = nullptr);
 
     static bool ParseJson(const char *jsonStrScreenMap,
                           const char *screenMapName, ScreenMap *screenmap,
                           string *err = nullptr);
 
-    static void toJsonStr(const fl::map<string, ScreenMap> &,
+    static void toJsonStr(const fl::flat_map<string, ScreenMap> &,
                           string *jsonBuffer);
-    static void toJson(const fl::map<string, ScreenMap> &, fl::json *doc);
+    static void toJson(const fl::flat_map<string, ScreenMap> &, fl::json *doc);
 
     /// @brief Set the source XYMap (used for pixel transformation during encoding)
     /// @param xymap Source XYMap that this ScreenMap was created from (can be nullptr)

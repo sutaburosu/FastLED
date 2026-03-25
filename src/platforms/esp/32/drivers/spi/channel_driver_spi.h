@@ -46,7 +46,7 @@
 #include "fl/system/engine_events.h"
 #include "fl/stl/span.h"
 #include "fl/stl/vector.h"
-#include "fl/stl/unordered_map.h"
+#include "fl/stl/flat_map.h"
 #include "fl/stl/chrono.h"
 
 // EXCEPTION: Platform headers in .h file (technical debt)
@@ -494,7 +494,7 @@ private:
     u32 mLastRetryFrame;
 
     /// @brief Multi-lane pin configurations (keyed by data0_pin)
-    fl::hash_map<gpio_num_t, MultiLanePinConfig> mMultiLaneConfigs;
+    fl::flat_map<gpio_num_t, MultiLanePinConfig> mMultiLaneConfigs;
 
     // IChannelDriver state management
     /// @brief Channels enqueued via enqueue(), waiting for show()
