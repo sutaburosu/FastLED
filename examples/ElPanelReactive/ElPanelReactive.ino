@@ -82,7 +82,7 @@ static float updateAdaptiveWindow(float bassRaw) {
 
     // Adaptive window: quiet floor → loud ceiling
     float targetMin = q1 * 0.8f;
-    float targetMax = MAX(targetMin + 0.05f, q7_8 * 1.2f);
+    float targetMax = (targetMin + 0.05f > q7_8 * 1.2f) ? targetMin + 0.05f : q7_8 * 1.2f;
 
     // Smooth the window — slow tracking avoids jitter
     const float kSmooth = 0.08f;
