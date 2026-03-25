@@ -19,6 +19,7 @@
 #include "fl/stl/ostream.h"
 #include "fl/stl/stdio.h"
 #include "fl/stl/type_traits.h"
+#include "fl/stl/singleton.h"
 #include "platforms/stub/time_stub.h"
 #include "fl/math/math.h"
 

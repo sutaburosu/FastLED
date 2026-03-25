@@ -9,6 +9,7 @@
 
 #include "platforms/stub/Arduino.h"  // ok include
 
+#include "fl/stl/singleton.h"
 #include "fl/stl/flat_map.h"
 #include "fl/stl/stdio.h"
 #include "fl/math/math.h"

@@ -19,6 +19,7 @@
 #if defined(FASTLED_SPI_HOST_SIMULATION) || defined(STUB_PLATFORM)
 #include "fl/stl/stdint.h"
 #include "fl/stl/cstring.h"
+#include "fl/stl/singleton.h"
 
 /* Ring buffer for capturing GPIO events */
 #define FL_GPIO_SIM_RING_SIZE 4096
@@ -31,76 +32,78 @@ typedef struct {
     fl::u32 overflow_count;
 } FL_GPIO_RingBuffer;
 
-static FL_GPIO_RingBuffer g_gpio_ring;
+static FL_GPIO_RingBuffer& g_gpio_ring() {
+    return fl::Singleton<FL_GPIO_RingBuffer>::instance();
+}
 
 extern "C" {
 
 /* Initialize ring buffer */
 void fl_gpio_sim_init(void) {
-    fl::memset(&g_gpio_ring, 0, sizeof(g_gpio_ring));
+    fl::memset(&g_gpio_ring(), 0, sizeof(g_gpio_ring()));
 }
 
 /* Capture SET event */
 void fl_gpio_sim_write_set(fl::u32 mask) {
-    fl::u32 pos = g_gpio_ring.write_pos;
-    g_gpio_ring.events[pos].event_type = 0;  /* SET */
-    g_gpio_ring.events[pos].gpio_mask = mask;
-    g_gpio_ring.events[pos].timestamp = g_gpio_ring.tick_counter;
+    fl::u32 pos = g_gpio_ring().write_pos;
+    g_gpio_ring().events[pos].event_type = 0;  /* SET */
+    g_gpio_ring().events[pos].gpio_mask = mask;
+    g_gpio_ring().events[pos].timestamp = g_gpio_ring().tick_counter;
 
-    g_gpio_ring.write_pos = (pos + 1) % FL_GPIO_SIM_RING_SIZE;
-    if (g_gpio_ring.write_pos == g_gpio_ring.read_pos) {
-        g_gpio_ring.overflow_count++;
+    g_gpio_ring().write_pos = (pos + 1) % FL_GPIO_SIM_RING_SIZE;
+    if (g_gpio_ring().write_pos == g_gpio_ring().read_pos) {
+        g_gpio_ring().overflow_count++;
     }
 }
 
 /* Capture CLEAR event */
 void fl_gpio_sim_write_clear(fl::u32 mask) {
-    fl::u32 pos = g_gpio_ring.write_pos;
-    g_gpio_ring.events[pos].event_type = 1;  /* CLEAR */
-    g_gpio_ring.events[pos].gpio_mask = mask;
-    g_gpio_ring.events[pos].timestamp = g_gpio_ring.tick_counter;
+    fl::u32 pos = g_gpio_ring().write_pos;
+    g_gpio_ring().events[pos].event_type = 1;  /* CLEAR */
+    g_gpio_ring().events[pos].gpio_mask = mask;
+    g_gpio_ring().events[pos].timestamp = g_gpio_ring().tick_counter;
 
-    g_gpio_ring.write_pos = (pos + 1) % FL_GPIO_SIM_RING_SIZE;
-    if (g_gpio_ring.write_pos == g_gpio_ring.read_pos) {
-        g_gpio_ring.overflow_count++;
+    g_gpio_ring().write_pos = (pos + 1) % FL_GPIO_SIM_RING_SIZE;
+    if (g_gpio_ring().write_pos == g_gpio_ring().read_pos) {
+        g_gpio_ring().overflow_count++;
     }
 }
 
 /* Advance simulation time (called by test harness) */
 void fl_gpio_sim_tick(void) {
-    g_gpio_ring.tick_counter++;
+    g_gpio_ring().tick_counter++;
 }
 
 /* Read event from ring buffer (returns false if empty) */
 bool fl_gpio_sim_read_event(FL_GPIO_Event* out) {
-    if (g_gpio_ring.read_pos == g_gpio_ring.write_pos) {
+    if (g_gpio_ring().read_pos == g_gpio_ring().write_pos) {
         return false;  /* Empty */
     }
 
-    *out = g_gpio_ring.events[g_gpio_ring.read_pos];
-    g_gpio_ring.read_pos = (g_gpio_ring.read_pos + 1) % FL_GPIO_SIM_RING_SIZE;
+    *out = g_gpio_ring().events[g_gpio_ring().read_pos];
+    g_gpio_ring().read_pos = (g_gpio_ring().read_pos + 1) % FL_GPIO_SIM_RING_SIZE;
     return true;
 }
 
 /* Get event count */
 fl::u32 fl_gpio_sim_get_event_count(void) {
-    if (g_gpio_ring.write_pos >= g_gpio_ring.read_pos) {
-        return g_gpio_ring.write_pos - g_gpio_ring.read_pos;
+    if (g_gpio_ring().write_pos >= g_gpio_ring().read_pos) {
+        return g_gpio_ring().write_pos - g_gpio_ring().read_pos;
     } else {
-        return FL_GPIO_SIM_RING_SIZE - g_gpio_ring.read_pos + g_gpio_ring.write_pos;
+        return FL_GPIO_SIM_RING_SIZE - g_gpio_ring().read_pos + g_gpio_ring().write_pos;
     }
 }
 
 /* Clear ring buffer */
 void fl_gpio_sim_clear(void) {
-    g_gpio_ring.write_pos = 0;
-    g_gpio_ring.read_pos = 0;
-    g_gpio_ring.overflow_count = 0;
+    g_gpio_ring().write_pos = 0;
+    g_gpio_ring().read_pos = 0;
+    g_gpio_ring().overflow_count = 0;
 }
 
 /* Get overflow count (for diagnostics) */
 fl::u32 fl_gpio_sim_get_overflow_count(void) {
-    return g_gpio_ring.overflow_count;
+    return g_gpio_ring().overflow_count;
 }
 
 }  // extern "C"

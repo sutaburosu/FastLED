@@ -8,6 +8,7 @@
 #include "fastpin.h"          // Pin
 #include "fl/stl/int.h"           // fl::u32, fl::u8
 #include "power_mgt.h"        // Function declarations (to avoid redefinition errors)
+#include "fl/stl/singleton.h"    // fl::Singleton
 // POWER MANAGEMENT
 
 /// @name Power Usage Values
@@ -30,7 +31,9 @@
 /// @{
 
 /// Global RGB power model (initialized to WS2812 @ 5V defaults)
-static PowerModelRGB gPowerModel;  // Uses default constructor: R=80, G=55, B=75, dark=5
+static PowerModelRGB& gPowerModel() {
+    return fl::Singleton<PowerModelRGB>::instance();
+}
 
 /// @}
 
@@ -70,15 +73,15 @@ fl::u32 calculate_unscaled_power_mW(fl::span<const CRGB> leds) {
         blue32  += leds[i].b;
     }
 
-    red32   *= gPowerModel.red_mW;
-    green32 *= gPowerModel.green_mW;
-    blue32  *= gPowerModel.blue_mW;
+    red32   *= gPowerModel().red_mW;
+    green32 *= gPowerModel().green_mW;
+    blue32  *= gPowerModel().blue_mW;
 
     red32   >>= 8;
     green32 >>= 8;
     blue32  >>= 8;
 
-    fl::u32 total = red32 + green32 + blue32 + (gPowerModel.dark_mW * leds.size());
+    fl::u32 total = red32 + green32 + blue32 + (gPowerModel().dark_mW * leds.size());
 
     return total;
 }
@@ -174,11 +177,11 @@ void set_max_power_indicator_LED( fl::u8 pinNumber)
 }
 
 void set_power_model(const PowerModelRGB& model) {
-    gPowerModel = model;
+    gPowerModel() = model;
 }
 
 PowerModelRGB get_power_model() {
-    return gPowerModel;
+    return gPowerModel();
 }
 
 // Note: The following deprecated wrapper functions have been moved to FastLED.cpp:

@@ -46,16 +46,19 @@
 #include "fl/stl/compiler_control.h"
 #include "platforms/shared/spi_bitbang/spi_isr_engine.h"
 #include "fl/stl/atomic.h"
+#include "fl/stl/singleton.h"
 
 
 // All implementation uses C linkage for clean assembly generation
 FL_EXTERN_C_BEGIN
 
-/* Single instance (internal linkage). Provide accessors below for host code. */
-static FastLED_SPI_ISR_State g_isr_state;
+/* Single instance via Singleton for safe initialization. */
+static FastLED_SPI_ISR_State& g_isr_state() {
+    return fl::Singleton<FastLED_SPI_ISR_State>::instance();
+}
 
 /* --- Host-side convenience (optional, small & header-free) ------------------ */
-FastLED_SPI_ISR_State* fl_spi_state(void) { return &g_isr_state; }
+FastLED_SPI_ISR_State* fl_spi_state(void) { return &g_isr_state(); }
 
 /* Visibility: crude ~microsecond spin (portable). Replace with platform fence if desired. */
 void fl_spi_visibility_delay_us(fl::u32 approx_us) {
@@ -70,52 +73,52 @@ void fl_spi_visibility_delay_us(fl::u32 approx_us) {
 
 /* Arm: ring the doorbell AFTER payload & delay */
 void fl_spi_arm(void) {
-  g_isr_state.doorbell_counter++;
+  g_isr_state().doorbell_counter++;
 }
 
 /* Status accessors (main thread) */
 fl::u32 fl_spi_status_flags(void) {
-  return g_isr_state.status_flags;
+  return g_isr_state().status_flags;
 }
 void fl_spi_ack_done(void) {
-  g_isr_state.status_flags &= ~FASTLED_STATUS_DONE;
+  g_isr_state().status_flags &= ~FASTLED_STATUS_DONE;
 }
 
 /* Payload setters (main thread) */
-void fl_spi_set_clock_mask(fl::u32 mask) { g_isr_state.clock_pin_mask = mask; }
-void fl_spi_set_total_bytes(fl::u16 n)   { g_isr_state.total_bytes_to_send = n; }
-void fl_spi_set_data_byte(fl::u16 i, fl::u8 v){ g_isr_state.spi_data_bytes[i] = v; }
+void fl_spi_set_clock_mask(fl::u32 mask) { g_isr_state().clock_pin_mask = mask; }
+void fl_spi_set_total_bytes(fl::u16 n)   { g_isr_state().total_bytes_to_send = n; }
+void fl_spi_set_data_byte(fl::u16 i, fl::u8 v){ g_isr_state().spi_data_bytes[i] = v; }
 void fl_spi_set_lut_entry(fl::u8 v, fl::u32 set_m, fl::u32 clr_m) {
-  g_isr_state.pin_lookup_table[v].set_mask  = set_m;
-  g_isr_state.pin_lookup_table[v].clear_mask= clr_m;
+  g_isr_state().pin_lookup_table[v].set_mask  = set_m;
+  g_isr_state().pin_lookup_table[v].clear_mask= clr_m;
 }
 
 /* Optional reset (safe between runs) */
 void fl_spi_reset_state(void) {
-  g_isr_state.current_position       = 0;
-  g_isr_state.last_processed_counter = g_isr_state.doorbell_counter;
-  g_isr_state.status_flags           = 0;
-  g_isr_state.clock_phase            = 0;
+  g_isr_state().current_position       = 0;
+  g_isr_state().last_processed_counter = g_isr_state().doorbell_counter;
+  g_isr_state().status_flags           = 0;
+  g_isr_state().clock_phase            = 0;
 #ifdef FL_SPI_ISR_VALIDATE
-  g_isr_state.validation_event_count = 0;
+  g_isr_state().validation_event_count = 0;
 #endif
 
 }
 
 /* Direct array accessors (main thread) */
 PinMaskEntry* fl_spi_get_lut_array(void) {
-  return g_isr_state.pin_lookup_table;
+  return g_isr_state().pin_lookup_table;
 }
 
 fl::u8* fl_spi_get_data_array(void) {
-  return g_isr_state.spi_data_bytes;
+  return g_isr_state().spi_data_bytes;
 }
 
 #ifdef FL_SPI_ISR_VALIDATE
 /* Log GPIO event to validation buffer */
 static inline FL_IRAM void fl_spi_log_event(FastLED_GPIO_Event_Type type, fl::u32 payload) {
-  if (g_isr_state.validation_event_count < FL_SPI_ISR_VALIDATE_SIZE) {
-    FastLED_GPIO_Event *evt = &g_isr_state.validation_events[g_isr_state.validation_event_count++];
+  if (g_isr_state().validation_event_count < FL_SPI_ISR_VALIDATE_SIZE) {
+    FastLED_GPIO_Event *evt = &g_isr_state().validation_events[g_isr_state().validation_event_count++];
     evt->event_type = (fl::u8)type;
     evt->padding[0] = 0;
     evt->padding[1] = 0;
@@ -126,10 +129,10 @@ static inline FL_IRAM void fl_spi_log_event(FastLED_GPIO_Event_Type type, fl::u3
 
 /* Validation buffer accessors (main thread) */
 const FastLED_GPIO_Event* fl_spi_get_validation_events(void) {
-  return g_isr_state.validation_events;
+  return g_isr_state().validation_events;
 }
 fl::u16 fl_spi_get_validation_event_count(void) {
-  return g_isr_state.validation_event_count;
+  return g_isr_state().validation_event_count;
 }
 #endif
 
@@ -137,30 +140,31 @@ fl::u16 fl_spi_get_validation_event_count(void) {
 /* Place in IRAM (attribute depends on platform). For .S generation, just -S.  */
 /* Note: Function has C linkage via extern "C" block above                      */
 FL_IRAM void fl_parallel_spi_isr(void) {
+  FastLED_SPI_ISR_State& st = g_isr_state();
   /* 1) Edge detect: new work? */
-  fl::u32 current_doorbell = g_isr_state.doorbell_counter;
-  if (current_doorbell != g_isr_state.last_processed_counter) {
-    g_isr_state.last_processed_counter = current_doorbell;
-    g_isr_state.current_position       = 0;
-    g_isr_state.status_flags          |= FASTLED_STATUS_BUSY;
-    g_isr_state.clock_phase            = 0; /* start with data+CLK low */
+  fl::u32 current_doorbell = st.doorbell_counter;
+  if (current_doorbell != st.last_processed_counter) {
+    st.last_processed_counter = current_doorbell;
+    st.current_position       = 0;
+    st.status_flags          |= FASTLED_STATUS_BUSY;
+    st.clock_phase            = 0; /* start with data+CLK low */
 #ifdef FL_SPI_ISR_VALIDATE
-    fl_spi_log_event(FASTLED_GPIO_EVENT_STATE_START, g_isr_state.total_bytes_to_send);
+    fl_spi_log_event(FASTLED_GPIO_EVENT_STATE_START, st.total_bytes_to_send);
 #endif
   }
 
   /* 2) Nothing to send? Mark as done and return (but only if we're not in phase 1). */
-  if (g_isr_state.current_position >= g_isr_state.total_bytes_to_send) {
+  if (st.current_position >= st.total_bytes_to_send) {
     /* If we're in phase 1, we need to complete it (raise clock high) before returning */
-    if (g_isr_state.clock_phase == 0) {
+    if (st.clock_phase == 0) {
       /* Phase 0: No more bytes to send, mark as done */
-      if (g_isr_state.status_flags & FASTLED_STATUS_BUSY) {
-        fl::u32 s = g_isr_state.status_flags;
+      if (st.status_flags & FASTLED_STATUS_BUSY) {
+        fl::u32 s = st.status_flags;
         s &= ~FASTLED_STATUS_BUSY;
         s |=  FASTLED_STATUS_DONE;
-        g_isr_state.status_flags = s;
+        st.status_flags = s;
 #ifdef FL_SPI_ISR_VALIDATE
-        fl_spi_log_event(FASTLED_GPIO_EVENT_STATE_DONE, g_isr_state.current_position);
+        fl_spi_log_event(FASTLED_GPIO_EVENT_STATE_DONE, st.current_position);
 #endif
       }
       return;
@@ -169,51 +173,51 @@ FL_IRAM void fl_parallel_spi_isr(void) {
   }
 
   /* 3) Two-phase engine */
-  if (g_isr_state.clock_phase == 0) {
+  if (st.clock_phase == 0) {
     /* Phase 0: present data + force CLK low */
-    if (g_isr_state.current_position >= g_isr_state.total_bytes_to_send) {
-      g_isr_state.clock_phase = 1; /* final edge will occur in Phase 1 */
+    if (st.current_position >= st.total_bytes_to_send) {
+      st.clock_phase = 1; /* final edge will occur in Phase 1 */
       return;
     }
 
-    fl::u8  next_data = g_isr_state.spi_data_bytes[g_isr_state.current_position++];
-    fl::u32 pins_to_set   = g_isr_state.pin_lookup_table[next_data].set_mask;
-    fl::u32 pins_to_clear = g_isr_state.pin_lookup_table[next_data].clear_mask | g_isr_state.clock_pin_mask;
+    fl::u8  next_data = st.spi_data_bytes[st.current_position++];
+    fl::u32 pins_to_set   = st.pin_lookup_table[next_data].set_mask;
+    fl::u32 pins_to_clear = st.pin_lookup_table[next_data].clear_mask | st.clock_pin_mask;
 
 #ifdef FL_SPI_ISR_VALIDATE
     /* Log GPIO operations */
     fl_spi_log_event(FASTLED_GPIO_EVENT_SET_BITS, pins_to_set);
     fl_spi_log_event(FASTLED_GPIO_EVENT_CLEAR_BITS, pins_to_clear);
-    fl_spi_log_event(FASTLED_GPIO_EVENT_CLOCK_LOW, g_isr_state.clock_pin_mask);
+    fl_spi_log_event(FASTLED_GPIO_EVENT_CLOCK_LOW, st.clock_pin_mask);
 #endif
 
     FL_GPIO_WRITE_SET(pins_to_set);      /* data-high bits */
     FL_GPIO_WRITE_CLEAR(pins_to_clear);  /* data-low bits + CLK low */
 
-    g_isr_state.clock_phase = 1;
+    st.clock_phase = 1;
     return;
 
   } else {
     /* Phase 1: raise CLK high to latch data */
 #ifdef FL_SPI_ISR_VALIDATE
-    fl_spi_log_event(FASTLED_GPIO_EVENT_CLOCK_HIGH, g_isr_state.clock_pin_mask);
+    fl_spi_log_event(FASTLED_GPIO_EVENT_CLOCK_HIGH, st.clock_pin_mask);
 #endif
 
-    FL_GPIO_WRITE_SET(g_isr_state.clock_pin_mask);
+    FL_GPIO_WRITE_SET(st.clock_pin_mask);
 
     /* If we've emitted the last byte, this rise completes the burst. */
-    if (g_isr_state.current_position >= g_isr_state.total_bytes_to_send) {
-      fl::u32 s = g_isr_state.status_flags;
+    if (st.current_position >= st.total_bytes_to_send) {
+      fl::u32 s = st.status_flags;
       s &= ~FASTLED_STATUS_BUSY;
       s |=  FASTLED_STATUS_DONE;
-      g_isr_state.status_flags = s;
+      st.status_flags = s;
 #ifdef FL_SPI_ISR_VALIDATE
-      fl_spi_log_event(FASTLED_GPIO_EVENT_STATE_DONE, g_isr_state.current_position);
+      fl_spi_log_event(FASTLED_GPIO_EVENT_STATE_DONE, st.current_position);
 #endif
       /* Timer disable/ack (if any) belongs in your vector wrapper. */
     }
 
-    g_isr_state.clock_phase = 0;
+    st.clock_phase = 0;
     return;
   }
 }
