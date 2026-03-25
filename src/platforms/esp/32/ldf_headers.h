@@ -21,14 +21,12 @@
 // IWYU pragma: end_keep
 #endif
 
-// Additional ESP32 framework libraries that FastLED may use conditionally
-#if 0
-// IWYU pragma: begin_keep
-#include <Wire.h>      // I2C support (if used by user code)
-#include <WiFi.h>      // WiFi support (if used by user code)
-#include <FS.h>        // File system support (if used by user code)
-// IWYU pragma: end_keep
-#endif
+// WARNING: Do NOT add WiFi.h, Wire.h, FS.h, or other large framework libraries here.
+// PlatformIO's LDF scans #include directives even inside #if 0 blocks, which causes
+// the entire library (and its global constructors) to be linked. Global C++ objects
+// like the Arduino `WiFi` instance end up in .init_array, creating GC roots that
+// prevent --gc-sections from removing ~326 KB of WiFi/lwIP/mbedTLS code — even when
+// the user's sketch never uses networking.
 
 // BLE: No Arduino BLE dependency — uses ESP-IDF NimBLE C API directly.
 // See drivers/ble/ble_esp32.cpp.hpp for implementation.
