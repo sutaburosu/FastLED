@@ -18,9 +18,30 @@ from pathlib import Path
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-CLANG_QUERY = (
-    PROJECT_ROOT / ".cache" / "clang-tools" / "clang" / "bin" / "clang-query.exe"
-)
+
+
+def _find_clang_query() -> Path:
+    """Find clang-query binary."""
+    # System LLVM install (Windows)
+    system_path = Path("C:/Program Files/LLVM/bin/clang-query.exe")
+    if system_path.exists():
+        return system_path
+    # Project cache
+    cache_path = (
+        PROJECT_ROOT / ".cache" / "clang-tools" / "clang" / "bin" / "clang-query.exe"
+    )
+    if cache_path.exists():
+        return cache_path
+    # Fallback
+    import shutil
+
+    found = shutil.which("clang-query")
+    if found:
+        return Path(found)
+    return cache_path  # will fail with clear error message
+
+
+CLANG_QUERY = _find_clang_query()
 NOEXCEPT_INCLUDE = '#include "fl/stl/noexcept.h"'
 
 # ============================================================================
@@ -33,14 +54,21 @@ def run_clang_query(scope: str) -> list[tuple[str, int]]:
 
     Returns list of (filepath, line_number) tuples.
     """
-    # Use fl.cpp as the translation unit — it includes everything
-    tu = "src/fl/build/fl.cpp"
+    # Pick translation unit based on scope
+    if "platforms/esp/32/drivers" in scope:
+        tu = "ci/tools/_noexcept_check_tu.cpp"
+    else:
+        tu = "src/fl/build/fl.cpp"
 
     # Build the file matching regex from scope
     scope_regex = scope.replace("/", ".")
     query = (
         f"set output diag\n"
-        f"match functionDecl(isDefinition(), unless(isNoThrow()), "
+        f"match functionDecl("
+        f"unless(isNoThrow()), "
+        f"unless(isDeleted()), "
+        f"unless(isDefaulted()), "
+        f"unless(isImplicit()), "
         f'isExpansionInFileMatching(".*{scope_regex}.*"))'
     )
 
@@ -55,6 +83,8 @@ def run_clang_query(scope: str) -> list[tuple[str, int]]:
         "-DFASTLED_TESTING",
         "-DFASTLED_NO_AUTO_NAMESPACE",
         "-fno-exceptions",
+        # Make FL_NOEXCEPT expand to noexcept under stub mode
+        "-DFL_NOEXCEPT=noexcept",
     ]
 
     if not CLANG_QUERY.exists():
