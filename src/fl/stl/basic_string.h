@@ -20,6 +20,7 @@
 #include "fl/stl/cstddef.h"
 #include "fl/stl/move.h"
 #include "fl/math/math.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 
@@ -40,16 +41,16 @@ class basic_string {
     // Non-owning pointer to constant null-terminated string data.
     struct ConstLiteral {
         const char* data;
-        constexpr ConstLiteral() : data(nullptr) {}
-        constexpr explicit ConstLiteral(const char* str) : data(str) {}
+        constexpr ConstLiteral() FL_NOEXCEPT : data(nullptr) {}
+        constexpr explicit ConstLiteral(const char* str) FL_NOEXCEPT : data(str) {}
     };
 
     // Non-owning pointer + length to constant string data.
     struct ConstView {
         const char* data;
         fl::size length;
-        constexpr ConstView() : data(nullptr), length(0) {}
-        constexpr ConstView(const char* str, fl::size len) : data(str), length(len) {}
+        constexpr ConstView() FL_NOEXCEPT : data(nullptr), length(0) {}
+        constexpr ConstView(const char* str, fl::size len) FL_NOEXCEPT : data(str), length(len) {}
     };
 
     class iterator {
@@ -62,31 +63,31 @@ class basic_string {
         typedef fl::ptrdiff_t difference_type;
         typedef fl::random_access_iterator_tag iterator_category;
 
-        iterator() : ptr(nullptr) {}
-        explicit iterator(char* p) : ptr(p) {}
+        iterator() FL_NOEXCEPT : ptr(nullptr) {}
+        explicit iterator(char* p) FL_NOEXCEPT : ptr(p) {}
 
-        reference operator*() const { return *ptr; }
+        reference operator*() const FL_NOEXCEPT { return *ptr; }
         pointer operator->() const { return ptr; }
-        iterator& operator++() { ++ptr; return *this; }
-        iterator operator++(int) { iterator tmp = *this; ++ptr; return tmp; }
-        iterator& operator--() { --ptr; return *this; }
-        iterator operator--(int) { iterator tmp = *this; --ptr; return tmp; }
+        iterator& operator++() FL_NOEXCEPT { ++ptr; return *this; }
+        iterator operator++(int) FL_NOEXCEPT { iterator tmp = *this; ++ptr; return tmp; }
+        iterator& operator--() FL_NOEXCEPT { --ptr; return *this; }
+        iterator operator--(int) FL_NOEXCEPT { iterator tmp = *this; --ptr; return tmp; }
 
-        iterator operator+(difference_type n) const { return iterator(ptr + n); }
-        iterator operator-(difference_type n) const { return iterator(ptr - n); }
-        iterator& operator+=(difference_type n) { ptr += n; return *this; }
-        iterator& operator-=(difference_type n) { ptr -= n; return *this; }
-        difference_type operator-(const iterator& other) const { return ptr - other.ptr; }
-        reference operator[](difference_type n) const { return ptr[n]; }
+        iterator operator+(difference_type n) const FL_NOEXCEPT { return iterator(ptr + n); }
+        iterator operator-(difference_type n) const FL_NOEXCEPT { return iterator(ptr - n); }
+        iterator& operator+=(difference_type n) FL_NOEXCEPT { ptr += n; return *this; }
+        iterator& operator-=(difference_type n) FL_NOEXCEPT { ptr -= n; return *this; }
+        difference_type operator-(const iterator& other) const FL_NOEXCEPT { return ptr - other.ptr; }
+        reference operator[](difference_type n) const FL_NOEXCEPT { return ptr[n]; }
 
-        bool operator==(const iterator& other) const { return ptr == other.ptr; }
-        bool operator!=(const iterator& other) const { return ptr != other.ptr; }
-        bool operator<(const iterator& other) const { return ptr < other.ptr; }
-        bool operator>(const iterator& other) const { return ptr > other.ptr; }
-        bool operator<=(const iterator& other) const { return ptr <= other.ptr; }
-        bool operator>=(const iterator& other) const { return ptr >= other.ptr; }
+        bool operator==(const iterator& other) const FL_NOEXCEPT { return ptr == other.ptr; }
+        bool operator!=(const iterator& other) const FL_NOEXCEPT { return ptr != other.ptr; }
+        bool operator<(const iterator& other) const FL_NOEXCEPT { return ptr < other.ptr; }
+        bool operator>(const iterator& other) const FL_NOEXCEPT { return ptr > other.ptr; }
+        bool operator<=(const iterator& other) const FL_NOEXCEPT { return ptr <= other.ptr; }
+        bool operator>=(const iterator& other) const FL_NOEXCEPT { return ptr >= other.ptr; }
 
-        operator char*() const { return ptr; }
+        operator char*() const FL_NOEXCEPT { return ptr; }
     };
 
     class const_iterator {
@@ -99,32 +100,32 @@ class basic_string {
         typedef fl::ptrdiff_t difference_type;
         typedef fl::random_access_iterator_tag iterator_category;
 
-        const_iterator() : ptr(nullptr) {}
-        explicit const_iterator(const char* p) : ptr(p) {}
-        const_iterator(const iterator& it) : ptr(it.operator char*()) {}
+        const_iterator() FL_NOEXCEPT : ptr(nullptr) {}
+        explicit const_iterator(const char* p) FL_NOEXCEPT : ptr(p) {}
+        const_iterator(const iterator& it) FL_NOEXCEPT : ptr(it.operator char*()) {}
 
-        reference operator*() const { return *ptr; }
+        reference operator*() const FL_NOEXCEPT { return *ptr; }
         pointer operator->() const { return ptr; }
-        const_iterator& operator++() { ++ptr; return *this; }
-        const_iterator operator++(int) { const_iterator tmp = *this; ++ptr; return tmp; }
-        const_iterator& operator--() { --ptr; return *this; }
-        const_iterator operator--(int) { const_iterator tmp = *this; --ptr; return tmp; }
+        const_iterator& operator++() FL_NOEXCEPT { ++ptr; return *this; }
+        const_iterator operator++(int) FL_NOEXCEPT { const_iterator tmp = *this; ++ptr; return tmp; }
+        const_iterator& operator--() FL_NOEXCEPT { --ptr; return *this; }
+        const_iterator operator--(int) FL_NOEXCEPT { const_iterator tmp = *this; --ptr; return tmp; }
 
-        const_iterator operator+(difference_type n) const { return const_iterator(ptr + n); }
-        const_iterator operator-(difference_type n) const { return const_iterator(ptr - n); }
-        const_iterator& operator+=(difference_type n) { ptr += n; return *this; }
-        const_iterator& operator-=(difference_type n) { ptr -= n; return *this; }
-        difference_type operator-(const const_iterator& other) const { return ptr - other.ptr; }
-        reference operator[](difference_type n) const { return ptr[n]; }
+        const_iterator operator+(difference_type n) const FL_NOEXCEPT { return const_iterator(ptr + n); }
+        const_iterator operator-(difference_type n) const FL_NOEXCEPT { return const_iterator(ptr - n); }
+        const_iterator& operator+=(difference_type n) FL_NOEXCEPT { ptr += n; return *this; }
+        const_iterator& operator-=(difference_type n) FL_NOEXCEPT { ptr -= n; return *this; }
+        difference_type operator-(const const_iterator& other) const FL_NOEXCEPT { return ptr - other.ptr; }
+        reference operator[](difference_type n) const FL_NOEXCEPT { return ptr[n]; }
 
-        bool operator==(const const_iterator& other) const { return ptr == other.ptr; }
-        bool operator!=(const const_iterator& other) const { return ptr != other.ptr; }
-        bool operator<(const const_iterator& other) const { return ptr < other.ptr; }
-        bool operator>(const const_iterator& other) const { return ptr > other.ptr; }
-        bool operator<=(const const_iterator& other) const { return ptr <= other.ptr; }
-        bool operator>=(const const_iterator& other) const { return ptr >= other.ptr; }
+        bool operator==(const const_iterator& other) const FL_NOEXCEPT { return ptr == other.ptr; }
+        bool operator!=(const const_iterator& other) const FL_NOEXCEPT { return ptr != other.ptr; }
+        bool operator<(const const_iterator& other) const FL_NOEXCEPT { return ptr < other.ptr; }
+        bool operator>(const const_iterator& other) const FL_NOEXCEPT { return ptr > other.ptr; }
+        bool operator<=(const const_iterator& other) const FL_NOEXCEPT { return ptr <= other.ptr; }
+        bool operator>=(const const_iterator& other) const FL_NOEXCEPT { return ptr >= other.ptr; }
 
-        operator const char*() const { return ptr; }
+        operator const char*() const FL_NOEXCEPT { return ptr; }
     };
 
     typedef fl::reverse_iterator<iterator> reverse_iterator;
@@ -134,19 +135,19 @@ class basic_string {
     static constexpr fl::size npos = static_cast<fl::size>(-1);
 
     // ======= STORAGE TYPE QUERIES =======
-    bool is_literal() const { return mStorage.is<ConstLiteral>(); }
-    bool is_view() const { return mStorage.is<ConstView>(); }
-    bool is_owning() const {
+    bool is_literal() const FL_NOEXCEPT { return mStorage.is<ConstLiteral>(); }
+    bool is_view() const FL_NOEXCEPT { return mStorage.is<ConstView>(); }
+    bool is_owning() const FL_NOEXCEPT {
         return isInline() || mStorage.is<NotNullStringHolderPtr>();
     }
-    bool is_referencing() const { return is_literal() || is_view(); }
+    bool is_referencing() const FL_NOEXCEPT { return is_literal() || is_view(); }
 
     // ======= ACCESSORS =======
-    fl::size size() const { return mLength; }
-    fl::size length() const { return mLength; }
-    bool empty() const { return mLength == 0; }
+    fl::size size() const FL_NOEXCEPT { return mLength; }
+    fl::size length() const FL_NOEXCEPT { return mLength; }
+    bool empty() const FL_NOEXCEPT { return mLength == 0; }
     const char* c_str() const;
-    const char* data() const { return c_str(); }
+    const char* data() const FL_NOEXCEPT { return c_str(); }
     char* c_str_mutable();
     fl::size capacity() const;
 
@@ -160,18 +161,18 @@ class basic_string {
     char charAt(fl::size index) const;
 
     // ======= ITERATORS =======
-    iterator begin() { return iterator(c_str_mutable()); }
-    iterator end() { return iterator(c_str_mutable() + mLength); }
-    const_iterator begin() const { return const_iterator(c_str()); }
-    const_iterator end() const { return const_iterator(c_str() + mLength); }
-    const_iterator cbegin() const { return const_iterator(c_str()); }
-    const_iterator cend() const { return const_iterator(c_str() + mLength); }
-    reverse_iterator rbegin() { return reverse_iterator(end()); }
-    reverse_iterator rend() { return reverse_iterator(begin()); }
-    const_reverse_iterator rbegin() const { return const_reverse_iterator(end()); }
-    const_reverse_iterator rend() const { return const_reverse_iterator(begin()); }
-    const_reverse_iterator crbegin() const { return const_reverse_iterator(end()); }
-    const_reverse_iterator crend() const { return const_reverse_iterator(begin()); }
+    iterator begin() FL_NOEXCEPT { return iterator(c_str_mutable()); }
+    iterator end() FL_NOEXCEPT { return iterator(c_str_mutable() + mLength); }
+    const_iterator begin() const FL_NOEXCEPT { return const_iterator(c_str()); }
+    const_iterator end() const FL_NOEXCEPT { return const_iterator(c_str() + mLength); }
+    const_iterator cbegin() const FL_NOEXCEPT { return const_iterator(c_str()); }
+    const_iterator cend() const FL_NOEXCEPT { return const_iterator(c_str() + mLength); }
+    reverse_iterator rbegin() FL_NOEXCEPT { return reverse_iterator(end()); }
+    reverse_iterator rend() FL_NOEXCEPT { return reverse_iterator(begin()); }
+    const_reverse_iterator rbegin() const FL_NOEXCEPT { return const_reverse_iterator(end()); }
+    const_reverse_iterator rend() const FL_NOEXCEPT { return const_reverse_iterator(begin()); }
+    const_reverse_iterator crbegin() const FL_NOEXCEPT { return const_reverse_iterator(end()); }
+    const_reverse_iterator crend() const FL_NOEXCEPT { return const_reverse_iterator(begin()); }
 
     // ======= COMPARISON OPERATORS =======
     bool operator==(const basic_string& other) const;
@@ -226,7 +227,7 @@ class basic_string {
 
     // Assign from iterator range
     template <typename InputIt>
-    basic_string& assign(InputIt first, InputIt last) {
+    basic_string& assign(InputIt first, InputIt last) FL_NOEXCEPT {
         clear();
         fl::size len = 0;
         for (auto it = first; it != last; ++it) {
@@ -418,7 +419,7 @@ class basic_string {
     void reserve(fl::size newCapacity);
     void clear(bool freeMemory = false);
     void shrink_to_fit();
-    fl::size max_size() const { return (npos / 2) - 1; }
+    fl::size max_size() const FL_NOEXCEPT { return (npos / 2) - 1; }
     void resize(fl::size count);
     void resize(fl::size count, char ch);
 
@@ -430,7 +431,7 @@ class basic_string {
 
   protected:
     // ======= CONSTRUCTION (only callable by StrN<N>) =======
-    basic_string(char* inlineBuffer, fl::size inlineCapacity)
+    basic_string(char* inlineBuffer, fl::size inlineCapacity) FL_NOEXCEPT
         : mInlineOffset(static_cast<fl::size>(
               inlineBuffer -
               static_cast<char*>(static_cast<void*>(this))))
@@ -440,10 +441,10 @@ class basic_string {
     {}
 
     // Deleted copy/move — StrN<N> handles these
-    basic_string(const basic_string&) = delete;
-    basic_string(basic_string&&) = delete;
-    basic_string& operator=(const basic_string&) = delete;
-    basic_string& operator=(basic_string&&) = delete;
+    basic_string(const basic_string&) FL_NOEXCEPT = delete;
+    basic_string(basic_string&&) FL_NOEXCEPT = delete;
+    basic_string& operator=(const basic_string&) FL_NOEXCEPT = delete;
+    basic_string& operator=(basic_string&&) FL_NOEXCEPT = delete;
 
     // ======= CONTENT POPULATION (for StrN<N> constructors) =======
     void moveFrom(basic_string&& other) noexcept;
@@ -466,18 +467,18 @@ class basic_string {
 
     // ======= HELPER METHODS =======
     // Compute inline buffer pointer from offset (survives trivial relocation)
-    char* inlineBufferPtr() {
+    char* inlineBufferPtr() FL_NOEXCEPT {
         return static_cast<char*>(static_cast<void*>(this)) + mInlineOffset;
     }
-    const char* inlineBufferPtr() const {
+    const char* inlineBufferPtr() const FL_NOEXCEPT {
         return static_cast<const char*>(static_cast<const void*>(this)) + mInlineOffset;
     }
 
-    bool isInline() const { return mStorage.empty(); }
-    bool hasHeapData() const { return mStorage.is<NotNullStringHolderPtr>(); }
-    bool hasConstLiteral() const { return mStorage.is<ConstLiteral>(); }
-    bool hasConstView() const { return mStorage.is<ConstView>(); }
-    bool isNonOwning() const { return hasConstLiteral() || hasConstView(); }
+    bool isInline() const FL_NOEXCEPT { return mStorage.empty(); }
+    bool hasHeapData() const FL_NOEXCEPT { return mStorage.is<NotNullStringHolderPtr>(); }
+    bool hasConstLiteral() const FL_NOEXCEPT { return mStorage.is<ConstLiteral>(); }
+    bool hasConstView() const FL_NOEXCEPT { return mStorage.is<ConstView>(); }
+    bool isNonOwning() const FL_NOEXCEPT { return hasConstLiteral() || hasConstView(); }
 
     const char* constData() const;
     void materialize();

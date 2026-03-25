@@ -23,6 +23,7 @@
 #include "fl/stl/string_view.h"
 
 #include "fl/system/sketch_macros.h"
+#include "fl/stl/noexcept.h"
 
 #ifndef FASTLED_ENABLE_JSON
 // FASTLED_ENABLE_JSON enables JSON UI components (always enabled on platforms with memory)
@@ -46,15 +47,15 @@ struct parse_result {
     T value;
     task::Error error;
     
-    parse_result(const T& val) : value(val), error() {}
-    parse_result(const task::Error& err) : value(), error(err) {}
+    parse_result(const T& val) FL_NOEXCEPT : value(val), error() {}
+    parse_result(const task::Error& err) FL_NOEXCEPT : value(), error(err) {}
     
-    bool has_error() const { return !error.is_empty(); }
-    const T& get_value() const { return value; }
-    const task::Error& get_error() const { return error; }
+    bool has_error() const FL_NOEXCEPT { return !error.is_empty(); }
+    const T& get_value() const FL_NOEXCEPT { return value; }
+    const task::Error& get_error() const FL_NOEXCEPT { return error; }
     
     // Implicit conversion operator to allow using parse_result as T directly
-    operator const T&() const { 
+    operator const T&() const FL_NOEXCEPT {
         if (has_error()) {
             // This should ideally trigger some kind of error handling
             // For now, we'll just return the value (which might be default-initialized)
@@ -76,11 +77,11 @@ struct default_value_visitor {
     const T* result = nullptr;
     T storage; // Use instance storage instead of static
 
-    default_value_visitor(const T& fb) : fallback(fb) {}
+    default_value_visitor(const T& fb) FL_NOEXCEPT : fallback(fb) {}
 
     // This is the method that fl::variant expects
     template<typename U>
-    void accept(const U& value) {
+    void accept(const U& value) FL_NOEXCEPT {
         // Dispatch to the correct operator() overload
         (*this)(value);
     }
@@ -150,7 +151,7 @@ struct int_conversion_visitor {
     fl::optional<IntType> result;
     
     template<typename U>
-    void accept(const U& value) {
+    void accept(const U& value) FL_NOEXCEPT {
         // Dispatch to the correct operator() overload
         (*this)(value);
     }
@@ -255,7 +256,7 @@ struct int_conversion_visitor<i64> {
     fl::optional<i64> result;
     
     template<typename U>
-    void accept(const U& value) {
+    void accept(const U& value) FL_NOEXCEPT {
         // Dispatch to the correct operator() overload
         (*this)(value);
     }
@@ -316,7 +317,7 @@ struct BoolConversionVisitor {
     fl::optional<bool> result;
 
     template<typename U>
-    void accept(const U& value) {
+    void accept(const U& value) FL_NOEXCEPT {
         // Dispatch to the correct operator() overload
         (*this)(value);
     }
@@ -388,7 +389,7 @@ struct float_conversion_visitor {
     fl::optional<FloatType> result;
     
     template<typename U>
-    void accept(const U& value) {
+    void accept(const U& value) FL_NOEXCEPT {
         // Dispatch to the correct operator() overload
         (*this)(value);
     }
@@ -486,7 +487,7 @@ struct float_conversion_visitor<double> {
     fl::optional<double> result;
     
     template<typename U>
-    void accept(const U& value) {
+    void accept(const U& value) FL_NOEXCEPT {
         // Dispatch to the correct operator() overload
         (*this)(value);
     }
@@ -573,7 +574,7 @@ struct StringConversionVisitor {
     fl::optional<fl::string> result;
 
     template<typename U>
-    void accept(const U& value) {
+    void accept(const U& value) FL_NOEXCEPT {
         // Dispatch to the correct operator() overload
         (*this)(value);
     }
@@ -618,7 +619,7 @@ struct SizeVisitor {
     size_t result = 0;
 
     template<typename U>
-    void accept(const U& value) {
+    void accept(const U& value) FL_NOEXCEPT {
         // Dispatch to the correct operator() overload
         (*this)(value);
     }
@@ -681,47 +682,47 @@ struct json_value {
     json_value(int i) noexcept : data(static_cast<i64>(i)) {}
     json_value(unsigned int i) noexcept : data(static_cast<i64>(i)) {}
     json_value(float f) noexcept : data(f) {}  // Changed from double to float
-    json_value(const fl::string& s) : data(s) {
+    json_value(const fl::string& s) FL_NOEXCEPT : data(s) {
     }
-    json_value(const json_array& a) : data(a) {
+    json_value(const json_array& a) FL_NOEXCEPT : data(a) {
         //FASTLED_WARN("Created json_value with array");
     }
-    json_value(const json_object& o) : data(o) {
+    json_value(const json_object& o) FL_NOEXCEPT : data(o) {
         //FASTLED_WARN("Created json_value with object");
     }
-    json_value(const fl::vector<i16>& audio) : data(audio) {
+    json_value(const fl::vector<i16>& audio) FL_NOEXCEPT : data(audio) {
         //FASTLED_WARN("Created json_value with audio data");
     }
     
-    json_value(fl::vector<i16>&& audio) : data(fl::move(audio)) {
+    json_value(fl::vector<i16>&& audio) FL_NOEXCEPT : data(fl::move(audio)) {
         //FASTLED_WARN("Created json_value with moved audio data");
     }
     
-    json_value(const fl::vector<u8>& bytes) : data(bytes) {
+    json_value(const fl::vector<u8>& bytes) FL_NOEXCEPT : data(bytes) {
         //FASTLED_WARN("Created json_value with byte data");
     }
     
-    json_value(fl::vector<u8>&& bytes) : data(fl::move(bytes)) {
+    json_value(fl::vector<u8>&& bytes) FL_NOEXCEPT : data(fl::move(bytes)) {
         //FASTLED_WARN("Created json_value with moved byte data");
     }
     
-    json_value(const fl::vector<float>& floats) : data(floats) {
+    json_value(const fl::vector<float>& floats) FL_NOEXCEPT : data(floats) {
         //FASTLED_WARN("Created json_value with float data");
     }
     
-    json_value(fl::vector<float>&& floats) : data(fl::move(floats)) {
+    json_value(fl::vector<float>&& floats) FL_NOEXCEPT : data(fl::move(floats)) {
         //FASTLED_WARN("Created json_value with moved float data");
     }
 
     // Copy constructor
-    json_value(const json_value& other) : data(other.data) {}
+    json_value(const json_value& other) FL_NOEXCEPT : data(other.data) {}
 
-    json_value& operator=(const json_value& other) {
+    json_value& operator=(const json_value& other) FL_NOEXCEPT {
         data = other.data;
         return *this;
     }
 
-    json_value& operator=(json_value&& other) {
+    json_value& operator=(json_value&& other) FL_NOEXCEPT {
         data = fl::move(other.data);
         return *this;
     }
@@ -733,58 +734,58 @@ struct json_value {
         return *this;
     }
 
-    json_value& operator=(fl::nullptr_t) {
+    json_value& operator=(fl::nullptr_t) FL_NOEXCEPT {
         data = nullptr;
         return *this;
     }
 
-    json_value& operator=(bool b) {
+    json_value& operator=(bool b) FL_NOEXCEPT {
         data = b;
         return *this;
     }
 
-    json_value& operator=(i64 i) {
+    json_value& operator=(i64 i) FL_NOEXCEPT {
         data = i;
         return *this;
     }
 
-    json_value& operator=(double d) {
+    json_value& operator=(double d) FL_NOEXCEPT {
         data = static_cast<float>(d);
         return *this;
     }
     
-    json_value& operator=(float f) {
+    json_value& operator=(float f) FL_NOEXCEPT {
         data = f;
         return *this;
     }
 
-    json_value& operator=(fl::string s) {
+    json_value& operator=(fl::string s) FL_NOEXCEPT {
         data = fl::move(s);
         return *this;
     }
 
-    json_value& operator=(json_array a) {
+    json_value& operator=(json_array a) FL_NOEXCEPT {
         data = fl::move(a);
         return *this;
     }
     
-    json_value& operator=(fl::vector<i16> audio) {
+    json_value& operator=(fl::vector<i16> audio) FL_NOEXCEPT {
         data = fl::move(audio);
         return *this;
     }
     
-    json_value& operator=(fl::vector<u8> bytes) {
+    json_value& operator=(fl::vector<u8> bytes) FL_NOEXCEPT {
         data = fl::move(bytes);
         return *this;
     }
     
-    json_value& operator=(fl::vector<float> floats) {
+    json_value& operator=(fl::vector<float> floats) FL_NOEXCEPT {
         data = fl::move(floats);
         return *this;
     }
 
     // Special constructor for char values
-    static fl::shared_ptr<json_value> from_char(char c) {
+    static fl::shared_ptr<json_value> from_char(char c) FL_NOEXCEPT {
         return fl::make_shared<json_value>(fl::string(1, c));
     }
     
@@ -832,7 +833,7 @@ struct json_value {
         bool result = false;
         
         template<typename T>
-        void accept(const T& value) {
+        void accept(const T& value) FL_NOEXCEPT {
             // Dispatch to the correct operator() overload
             (*this)(value);
         }
@@ -892,7 +893,7 @@ struct json_value {
     }
 
     // Safe extractors (return optional values, not references)
-    fl::optional<bool> as_bool() {
+    fl::optional<bool> as_bool() FL_NOEXCEPT {
         // Check if we have a valid value first
         if (data.empty()) {
             return fl::nullopt;
@@ -903,7 +904,7 @@ struct json_value {
         return visitor.result;
     }
     
-    fl::optional<i64> as_int() {
+    fl::optional<i64> as_int() FL_NOEXCEPT {
         // Check if we have a valid value first
         if (data.empty()) {
             return fl::nullopt;
@@ -915,7 +916,7 @@ struct json_value {
     }
     
     template<typename IntType>
-    fl::optional<IntType> as_int() {
+    fl::optional<IntType> as_int() FL_NOEXCEPT {
         // Check if we have a valid value first
         if (data.empty()) {
             return fl::nullopt;
@@ -926,7 +927,7 @@ struct json_value {
         return visitor.result;
     }
     
-    fl::optional<double> as_double() const {
+    fl::optional<double> as_double() const FL_NOEXCEPT {
         // Check if we have a valid value first
         if (data.empty()) {
             return fl::nullopt;
@@ -937,12 +938,12 @@ struct json_value {
         return visitor.result;
     }
     
-    fl::optional<float> as_float() {
+    fl::optional<float> as_float() FL_NOEXCEPT {
         return as_float<float>();
     }
     
     template<typename FloatType>
-    fl::optional<FloatType> as_float() {
+    fl::optional<FloatType> as_float() FL_NOEXCEPT {
         // Check if we have a valid value first
         if (data.empty()) {
             return fl::nullopt;
@@ -953,7 +954,7 @@ struct json_value {
         return visitor.result;
     }
     
-    fl::optional<fl::string> as_string() {
+    fl::optional<fl::string> as_string() FL_NOEXCEPT {
         // Check if we have a valid value first
         if (data.empty()) {
             return fl::nullopt;
@@ -965,11 +966,11 @@ struct json_value {
     }
     
     // Zero-copy pointer accessors (non-const)
-    json_array*           as_array()   { return data.ptr<json_array>(); }
-    json_object*          as_object()  { return data.ptr<json_object>(); }
+    json_array*           as_array() FL_NOEXCEPT { return data.ptr<json_array>(); }
+    json_object*          as_object() FL_NOEXCEPT { return data.ptr<json_object>(); }
 
     // Const overloads
-    fl::optional<bool> as_bool() const {
+    fl::optional<bool> as_bool() const FL_NOEXCEPT {
         // Check if we have a valid value first
         if (data.empty()) {
             return fl::nullopt;
@@ -980,7 +981,7 @@ struct json_value {
         return visitor.result;
     }
     
-    fl::optional<i64> as_int() const {
+    fl::optional<i64> as_int() const FL_NOEXCEPT {
         // Check if we have a valid value first
         if (data.empty()) {
             return fl::nullopt;
@@ -992,7 +993,7 @@ struct json_value {
     }
     
     template<typename IntType>
-    fl::optional<IntType> as_int() const {
+    fl::optional<IntType> as_int() const FL_NOEXCEPT {
         // Check if we have a valid value first
         if (data.empty()) {
             return fl::nullopt;
@@ -1003,12 +1004,12 @@ struct json_value {
         return visitor.result;
     }
     
-    fl::optional<float> as_float() const {
+    fl::optional<float> as_float() const FL_NOEXCEPT {
         return as_float<float>();
     }
     
     template<typename FloatType>
-    fl::optional<FloatType> as_float() const {
+    fl::optional<FloatType> as_float() const FL_NOEXCEPT {
         // Check if we have a valid value first
         if (data.empty()) {
             return fl::nullopt;
@@ -1019,7 +1020,7 @@ struct json_value {
         return visitor.result;
     }
     
-    fl::optional<fl::string> as_string() const {
+    fl::optional<fl::string> as_string() const FL_NOEXCEPT {
         // Check if we have a valid value first
         if (data.empty()) {
             return fl::nullopt;
@@ -1031,11 +1032,11 @@ struct json_value {
     }
     
     // Zero-copy pointer accessors (const)
-    const json_array*           as_array()   const { return data.ptr<json_array>(); }
-    const json_object*          as_object()  const { return data.ptr<json_object>(); }
+    const json_array*           as_array()   const FL_NOEXCEPT { return data.ptr<json_array>(); }
+    const json_object*          as_object()  const FL_NOEXCEPT { return data.ptr<json_object>(); }
 
     // Explicit copy methods - use when you need an owned copy or packed-array conversion
-    fl::optional<json_array> clone_array() const {
+    fl::optional<json_array> clone_array() const FL_NOEXCEPT {
         auto ptr = data.ptr<json_array>();
         if (ptr) return fl::optional<json_array>(*ptr);
         // Handle specialized array types by converting them to regular json_array
@@ -1065,7 +1066,7 @@ struct json_value {
         }
         return fl::nullopt;
     }
-    fl::optional<json_object> clone_object() const {
+    fl::optional<json_object> clone_object() const FL_NOEXCEPT {
         auto ptr = data.ptr<json_object>();
         return ptr ? fl::optional<json_object>(*ptr) : fl::nullopt;
     }
@@ -1074,7 +1075,7 @@ struct json_value {
     // Returns number of elements copied (min of array size and span size).
     // Returns 0 if this value is not a numeric array.
     template<typename T>
-    size_t copy_to(fl::span<T> out) const {
+    size_t copy_to(fl::span<T> out) const FL_NOEXCEPT {
         CopyToVisitor<T> visitor(out);
         data.visit(visitor);
         return visitor.result;
@@ -1084,7 +1085,7 @@ struct json_value {
     // Use with fl::back_inserter(container) to append to any container.
     // Returns number of elements written. Returns 0 if not a numeric array.
     template<typename T, typename OutputIt>
-    size_t copy_to_output_iterator(OutputIt out) const {
+    size_t copy_to_output_iterator(OutputIt out) const FL_NOEXCEPT {
         CopyToOutputIteratorVisitor<T, OutputIt> visitor(out);
         data.visit(visitor);
         return visitor.result;
@@ -1092,7 +1093,7 @@ struct json_value {
 
     // Overload for back_insert_iterator: T deduced from container's value_type
     template<typename Container>
-    size_t copy_to_output_iterator(fl::back_insert_iterator<Container> out) const {
+    size_t copy_to_output_iterator(fl::back_insert_iterator<Container> out) const FL_NOEXCEPT {
         using T = typename Container::value_type;
         CopyToOutputIteratorVisitor<T, fl::back_insert_iterator<Container>> visitor(out);
         data.visit(visitor);
@@ -1101,19 +1102,19 @@ struct json_value {
 
     // Generic getter template method
     template<typename T>
-    fl::optional<T> get() const {
+    fl::optional<T> get() const FL_NOEXCEPT {
         auto ptr = data.ptr<T>();
         return ptr ? fl::optional<T>(*ptr) : fl::nullopt;
     }
     
     template<typename T>
-    fl::optional<T> get() {
+    fl::optional<T> get() FL_NOEXCEPT {
         auto ptr = data.ptr<T>();
         return ptr ? fl::optional<T>(*ptr) : fl::nullopt;
     }
 
     // Iterator support for objects and arrays
-    iterator begin() {
+    iterator begin() FL_NOEXCEPT {
         if (is_object()) {
             auto ptr = data.ptr<json_object>();
             return iterator(ptr->begin());
@@ -1122,7 +1123,7 @@ struct json_value {
         return iterator(json_object().begin());
     }
     
-    iterator end() {
+    iterator end() FL_NOEXCEPT {
         if (is_object()) {
             auto ptr = data.ptr<json_object>();
             return iterator(ptr->end());
@@ -1131,7 +1132,7 @@ struct json_value {
         return iterator(json_object().end());
     }
     
-    const_iterator begin() const {
+    const_iterator begin() const FL_NOEXCEPT {
         if (is_object()) {
             auto ptr = data.ptr<const json_object>();
             if (!ptr) return const_iterator::from_iterator(json_object().begin());
@@ -1141,7 +1142,7 @@ struct json_value {
         return const_iterator::from_iterator(json_object().begin());
     }
     
-    const_iterator end() const {
+    const_iterator end() const FL_NOEXCEPT {
         if (is_object()) {
             auto ptr = data.ptr<const json_object>();
             if (!ptr) return const_iterator::from_iterator(json_object().end());
@@ -1160,7 +1161,7 @@ struct json_value {
         size_t mIndex;
         
         // Helper to get the size of the array regardless of its type
-        size_t get_size() const {
+        size_t get_size() const FL_NOEXCEPT {
             if (!mVariant) return 0;
             
             if (mVariant->is<json_array>()) {
@@ -1187,7 +1188,7 @@ struct json_value {
         }
         
         // Helper to convert current element to target type T
-        parse_result<T> get_value() const {
+        parse_result<T> get_value() const FL_NOEXCEPT {
             if (!mVariant || mIndex >= get_size()) {
                 return parse_result<T>(task::Error("Index out of bounds"));
             }
@@ -1265,36 +1266,36 @@ struct json_value {
         }
         
     public:
-        array_iterator() : mVariant(nullptr), mIndex(0) {}
-        array_iterator(variant_t* variant, size_t index) : mVariant(variant), mIndex(index) {}
+        array_iterator() FL_NOEXCEPT : mVariant(nullptr), mIndex(0) {}
+        array_iterator(variant_t* variant, size_t index) FL_NOEXCEPT : mVariant(variant), mIndex(index) {}
         
-        parse_result<T> operator*() const {
+        parse_result<T> operator*() const FL_NOEXCEPT {
             return get_value();
         }
         
-        array_iterator& operator++() {
+        array_iterator& operator++() FL_NOEXCEPT {
             ++mIndex;
             return *this;
         }
         
-        array_iterator operator++(int) {
+        array_iterator operator++(int) FL_NOEXCEPT {
             array_iterator tmp(*this);
             ++(*this);
             return tmp;
         }
         
-        bool operator!=(const array_iterator& other) const {
+        bool operator!=(const array_iterator& other) const FL_NOEXCEPT {
             return mIndex != other.mIndex || mVariant != other.mVariant;
         }
         
-        bool operator==(const array_iterator& other) const {
+        bool operator==(const array_iterator& other) const FL_NOEXCEPT {
             return mIndex == other.mIndex && mVariant == other.mVariant;
         }
     };
     
     // Begin/end methods for array iteration
     template<typename T>
-    array_iterator<T> begin_array() {
+    array_iterator<T> begin_array() FL_NOEXCEPT {
         if (is_array()) {
             return array_iterator<T>(&data, 0);
         }
@@ -1302,7 +1303,7 @@ struct json_value {
     }
     
     template<typename T>
-    array_iterator<T> end_array() {
+    array_iterator<T> end_array() FL_NOEXCEPT {
         if (is_array()) {
             return array_iterator<T>(&data, size());
         }
@@ -1310,7 +1311,7 @@ struct json_value {
     }
     
     template<typename T>
-    array_iterator<T> begin_array() const {
+    array_iterator<T> begin_array() const FL_NOEXCEPT {
         if (is_array()) {
             return array_iterator<T>(const_cast<variant_t*>(&data), 0);
         }
@@ -1318,7 +1319,7 @@ struct json_value {
     }
     
     template<typename T>
-    array_iterator<T> end_array() const {
+    array_iterator<T> end_array() const FL_NOEXCEPT {
         if (is_array()) {
             return array_iterator<T>(const_cast<variant_t*>(&data), size());
         }
@@ -1326,13 +1327,13 @@ struct json_value {
     }
     
     // Free functions for range-based for loops
-    friend iterator begin(json_value& v) { return v.begin(); }
-    friend iterator end(json_value& v) { return v.end(); }
-    friend const_iterator begin(const json_value& v) { return v.begin(); }
-    friend const_iterator end(const json_value& v) { return v.end(); }
+    friend iterator begin(json_value& v) FL_NOEXCEPT { return v.begin(); }
+    friend iterator end(json_value& v) FL_NOEXCEPT { return v.end(); }
+    friend const_iterator begin(const json_value& v) FL_NOEXCEPT { return v.begin(); }
+    friend const_iterator end(const json_value& v) FL_NOEXCEPT { return v.end(); }
 
     // Indexing for fluid chaining
-    json_value& operator[](size_t idx) {
+    json_value& operator[](size_t idx) FL_NOEXCEPT {
         if (!is_array()) data = json_array{};
         // Handle regular json_array
         if (data.is<json_array>()) {
@@ -1373,7 +1374,7 @@ struct json_value {
         return get_null_json_value();
     }
     
-    json_value& operator[](const fl::string &key) {
+    json_value& operator[](const fl::string &key) FL_NOEXCEPT {
         if (!is_object()) data = json_object{};
         auto ptr = data.ptr<json_object>();
         if (!ptr) return get_null_json_value(); // Handle error case
@@ -1387,7 +1388,7 @@ struct json_value {
 
     // Default-value operator (pipe)
     template<typename T>
-    T operator|(const T& fallback) const {
+    T operator|(const T& fallback) const FL_NOEXCEPT {
         default_value_visitor<T> visitor(fallback);
         data.visit(visitor);
         return visitor.result ? *visitor.result : fallback;
@@ -1395,14 +1396,14 @@ struct json_value {
     
     // Explicit method for default values (alternative to operator|)
     template<typename T>
-    T as_or(const T& fallback) const {
+    T as_or(const T& fallback) const FL_NOEXCEPT {
         default_value_visitor<T> visitor(fallback);
         data.visit(visitor);
         return visitor.result ? *visitor.result : fallback;
     }
 
     // Contains methods for checking existence
-    bool contains(size_t idx) const {
+    bool contains(size_t idx) const FL_NOEXCEPT {
         // Handle regular json_array first
         if (data.is<json_array>()) {
             auto ptr = data.ptr<json_array>();
@@ -1425,14 +1426,14 @@ struct json_value {
         return false;
     }
     
-    bool contains(const fl::string &key) const {
+    bool contains(const fl::string &key) const FL_NOEXCEPT {
         if (!is_object()) return false;
         auto ptr = data.ptr<json_object>();
         return ptr && ptr->find(key) != ptr->end();
     }
 
     // Object iteration support (needed for screenmap conversion)
-    fl::vector<fl::string> keys() const {
+    fl::vector<fl::string> keys() const FL_NOEXCEPT {
         fl::vector<fl::string> result;
         if (is_object()) {
             for (auto it = begin(); it != end(); ++it) {
@@ -1444,10 +1445,10 @@ struct json_value {
     }
     
     // Backward compatibility method
-    fl::vector<fl::string> get_object_keys() const { return keys(); }
+    fl::vector<fl::string> get_object_keys() const FL_NOEXCEPT { return keys(); }
 
     // Size methods
-    size_t size() const {
+    size_t size() const FL_NOEXCEPT {
         SizeVisitor visitor;
         data.visit(visitor);
         return visitor.result;
@@ -1480,27 +1481,27 @@ struct json_value {
         using iterator_category = fl::forward_iterator_tag;
 
         iterator() = default;
-        iterator(json_object::iterator iter) : mIter(iter) {}
+        iterator(json_object::iterator iter) FL_NOEXCEPT : mIter(iter) {}
         
         // Getter for const iterator conversion
-        json_object::iterator get_iter() const { return mIter; }
+        json_object::iterator get_iter() const FL_NOEXCEPT { return mIter; }
         
-        iterator& operator++() {
+        iterator& operator++() FL_NOEXCEPT {
             ++mIter;
             return *this;
         }
         
-        iterator operator++(int) {
+        iterator operator++(int) FL_NOEXCEPT {
             iterator tmp(*this);
             ++(*this);
             return tmp;
         }
         
-        bool operator!=(const iterator& other) const {
+        bool operator!=(const iterator& other) const FL_NOEXCEPT {
             return mIter != other.mIter;
         }
         
-        bool operator==(const iterator& other) const {
+        bool operator==(const iterator& other) const FL_NOEXCEPT {
             return mIter == other.mIter;
         }
         
@@ -1508,11 +1509,11 @@ struct json_value {
             fl::string first;
             json_value& second;
             
-            KeyValue(const fl::string& key, const fl::shared_ptr<json_value>& value_ptr) 
+            KeyValue(const fl::string& key, const fl::shared_ptr<json_value>& value_ptr) FL_NOEXCEPT
                 : first(key), second(value_ptr ? *value_ptr : get_null_json_value()) {}
         };
         
-        KeyValue operator*() const {
+        KeyValue operator*() const FL_NOEXCEPT {
             return KeyValue(mIter->first, mIter->second);
         }
         
@@ -1528,35 +1529,35 @@ struct json_value {
         using iterator_category = fl::forward_iterator_tag;
 
         const_iterator() = default;
-        const_iterator(json_object::const_iterator iter) : mIter(iter) {}
+        const_iterator(json_object::const_iterator iter) FL_NOEXCEPT : mIter(iter) {}
         
         // Factory method for conversion from iterator
-        static const_iterator from_object_iterator(const iterator& other) {
+        static const_iterator from_object_iterator(const iterator& other) FL_NOEXCEPT {
             json_object::const_iterator const_iter(other.get_iter());
             return const_iterator(const_iter);
         }
         
         // Factory method for conversion from Object::iterator
-        static const_iterator from_iterator(json_object::const_iterator iter) {
+        static const_iterator from_iterator(json_object::const_iterator iter) FL_NOEXCEPT {
             return const_iterator(iter);
         }
         
-        const_iterator& operator++() {
+        const_iterator& operator++() FL_NOEXCEPT {
             ++mIter;
             return *this;
         }
         
-        const_iterator operator++(int) {
+        const_iterator operator++(int) FL_NOEXCEPT {
             const_iterator tmp(*this);
             ++(*this);
             return tmp;
         }
         
-        bool operator!=(const const_iterator& other) const {
+        bool operator!=(const const_iterator& other) const FL_NOEXCEPT {
             return mIter != other.mIter;
         }
         
-        bool operator==(const const_iterator& other) const {
+        bool operator==(const const_iterator& other) const FL_NOEXCEPT {
             return mIter == other.mIter;
         }
         
@@ -1564,11 +1565,11 @@ struct json_value {
             fl::string first;
             const json_value& second;
             
-            KeyValue(const fl::string& key, const fl::shared_ptr<json_value>& value_ptr) 
+            KeyValue(const fl::string& key, const fl::shared_ptr<json_value>& value_ptr) FL_NOEXCEPT
                 : first(key), second(value_ptr ? *value_ptr : get_null_json_value()) {}
         };
         
-        KeyValue operator*() const {
+        KeyValue operator*() const FL_NOEXCEPT {
             return KeyValue(mIter->first, mIter->second);
         }
         
@@ -1585,7 +1586,7 @@ struct NumericExtractVisitor {
     T result = T(0);
 
     template<typename U>
-    void accept(const U& value) { (*this)(value); }
+    void accept(const U& value) FL_NOEXCEPT { (*this)(value); }
 
     void operator()(const i64& v)    { result = static_cast<T>(v); }
     void operator()(const float& v)  { result = static_cast<T>(v); }
@@ -1606,10 +1607,10 @@ struct CopyToVisitor {
     fl::span<T> dst;
     size_t result;
 
-    explicit CopyToVisitor(fl::span<T> d) : dst(d), result(0) {}
+    explicit CopyToVisitor(fl::span<T> d) FL_NOEXCEPT : dst(d), result(0) {}
 
     template<typename U>
-    void accept(const U& value) { (*this)(value); }
+    void accept(const U& value) FL_NOEXCEPT { (*this)(value); }
 
     // Packed vectors: element-wise static_cast
     void operator()(const fl::vector<u8>& v)    { copy_vec(v); }
@@ -1639,7 +1640,7 @@ struct CopyToVisitor {
 
 private:
     template<typename ElemT>
-    void copy_vec(const fl::vector<ElemT>& vec) {
+    void copy_vec(const fl::vector<ElemT>& vec) FL_NOEXCEPT {
         size_t n = (vec.size() < dst.size()) ? vec.size() : dst.size();
         for (size_t i = 0; i < n; ++i) {
             dst[i] = static_cast<T>(vec[i]);
@@ -1655,10 +1656,10 @@ struct CopyToOutputIteratorVisitor {
     OutputIt out;
     size_t result;
 
-    explicit CopyToOutputIteratorVisitor(OutputIt o) : out(o), result(0) {}
+    explicit CopyToOutputIteratorVisitor(OutputIt o) FL_NOEXCEPT : out(o), result(0) {}
 
     template<typename U>
-    void accept(const U& value) { (*this)(value); }
+    void accept(const U& value) FL_NOEXCEPT { (*this)(value); }
 
     // Packed vectors: element-wise static_cast
     void operator()(const fl::vector<u8>& v)    { write_vec(v); }
@@ -1688,7 +1689,7 @@ struct CopyToOutputIteratorVisitor {
 
 private:
     template<typename ElemT>
-    void write_vec(const fl::vector<ElemT>& vec) {
+    void write_vec(const fl::vector<ElemT>& vec) FL_NOEXCEPT {
         for (size_t i = 0; i < vec.size(); ++i) {
             *out = static_cast<T>(vec[i]);
             ++out;

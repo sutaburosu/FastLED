@@ -12,6 +12,8 @@
 
 #pragma once
 
+#include "fl/stl/noexcept.h"
+
 #include "cpixel_ledcontroller.h"
 #include "fl/stl/shared_ptr.h"
 #include "fl/stl/weak_ptr.h"
@@ -172,7 +174,7 @@ public:
 private:
     /// @brief Friend declaration for make_shared to access private constructor
     template<typename T, typename... Args>
-    friend fl::shared_ptr<T> fl::make_shared(Args&&... args);
+    friend fl::shared_ptr<T> fl::make_shared(Args&&... args) FL_NOEXCEPT;
 
 protected:
     // CPixelLEDController interface implementation - protected so subclass delegates

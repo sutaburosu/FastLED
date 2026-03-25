@@ -4,6 +4,7 @@
 
 #include "fl/stl/variant.h"
 #include "fl/stl/type_traits.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 
@@ -19,32 +20,32 @@ struct Empty {};
 template <typename T> class Optional {
 
   public:
-    Optional() : mValue(Empty()) {}
-    Optional(nullopt_t) : mValue(Empty()) {}
-    Optional(const Optional &other) : mValue(other.mValue) {}
+    Optional() FL_NOEXCEPT : mValue(Empty()) {}
+    Optional(nullopt_t) FL_NOEXCEPT : mValue(Empty()) {}
+    Optional(const Optional &other) FL_NOEXCEPT : mValue(other.mValue) {}
     Optional(Optional &&other) noexcept : mValue(fl::move(other.mValue)) {}
     
-    Optional(const T &value) : mValue(value) {}
-    Optional(T &&value) : mValue(fl::move(value)) {}
-    ~Optional() { mValue.reset(); }
+    Optional(const T &value) FL_NOEXCEPT : mValue(value) {}
+    Optional(T &&value) FL_NOEXCEPT : mValue(fl::move(value)) {}
+    ~Optional() FL_NOEXCEPT { mValue.reset(); }
 
     /// Emplace with rvalue reference
-    void emplace(T &&value) { mValue = fl::move(value); }
+    void emplace(T &&value) FL_NOEXCEPT { mValue = fl::move(value); }
 
     /// @brief Construct value in-place with variadic arguments
     template <typename... Args>
-    void emplace(Args&&... args) {
+    void emplace(Args&&... args) FL_NOEXCEPT {
         mValue = T(fl::forward<Args>(args)...);
     }
 
-    bool empty() const { return !mValue.template is<T>(); }
-    bool has_value() const { return !empty(); }  // std::optional compatibility
-    T *ptr() { return mValue.template ptr<T>(); }
-    const T *ptr() const { return mValue.template ptr<T>(); }
+    bool empty() const FL_NOEXCEPT { return !mValue.template is<T>(); }
+    bool has_value() const FL_NOEXCEPT { return !empty(); }  // std::optional compatibility
+    T *ptr() FL_NOEXCEPT { return mValue.template ptr<T>(); }
+    const T *ptr() const FL_NOEXCEPT { return mValue.template ptr<T>(); }
 
-    void reset() { mValue.reset(); }
+    void reset() FL_NOEXCEPT { mValue.reset(); }
 
-    Optional &operator=(const Optional &other) {
+    Optional &operator=(const Optional &other) FL_NOEXCEPT {
         if (this != &other) {
             mValue = other.mValue;
         }
@@ -58,28 +59,28 @@ template <typename T> class Optional {
         return *this;
     }
 
-    Optional &operator=(nullopt_t) {
+    Optional &operator=(nullopt_t) FL_NOEXCEPT {
         mValue = Empty();
         return *this;
     }
 
-    Optional &operator=(const T &value) {
+    Optional &operator=(const T &value) FL_NOEXCEPT {
         mValue = value;
         return *this;
     }
     
-    Optional &operator=(T &&value) {
+    Optional &operator=(T &&value) FL_NOEXCEPT {
         mValue = fl::move(value);
         return *this;
     }
 
     bool operator()() const { return !empty(); }
-    bool operator!() const { return empty(); }
+    bool operator!() const FL_NOEXCEPT { return empty(); }
 
     // Explicit conversion to bool for contextual boolean evaluation
-    explicit operator bool() const { return !empty(); }
+    explicit operator bool() const FL_NOEXCEPT { return !empty(); }
 
-    bool operator==(const Optional &other) const {
+    bool operator==(const Optional &other) const FL_NOEXCEPT {
         if (empty() && other.empty()) {
             return true;
         }
@@ -89,41 +90,41 @@ template <typename T> class Optional {
         return *ptr() == *other.ptr();
     }
 
-    bool operator!=(const Optional &other) const { return !(*this == other); }
+    bool operator!=(const Optional &other) const FL_NOEXCEPT { return !(*this == other); }
 
-    bool operator==(const T &value) const {
+    bool operator==(const T &value) const FL_NOEXCEPT {
         if (empty()) {
             return false;
         }
         return *ptr() == value;
     }
 
-    bool operator==(nullopt_t) const { return empty(); }
-    bool operator!=(nullopt_t) const { return !empty(); }
+    bool operator==(nullopt_t) const FL_NOEXCEPT { return empty(); }
+    bool operator!=(nullopt_t) const FL_NOEXCEPT { return !empty(); }
 
     // Dereference operators for compatibility with std::optional
-    T& operator*() { return *ptr(); }
-    const T& operator*() const { return *ptr(); }
+    T& operator*() FL_NOEXCEPT { return *ptr(); }
+    const T& operator*() const FL_NOEXCEPT { return *ptr(); }
     T* operator->() { return ptr(); }
     const T* operator->() const { return ptr(); }
 
     // value() method for std::optional compatibility
-    T& value() { return *ptr(); }
-    const T& value() const { return *ptr(); }
+    T& value() FL_NOEXCEPT { return *ptr(); }
+    const T& value() const FL_NOEXCEPT { return *ptr(); }
 
     // value_or() method for std::optional compatibility
     // Returns the contained value if present, otherwise returns the provided default
-    T value_or(const T& default_value) const {
+    T value_or(const T& default_value) const FL_NOEXCEPT {
         return has_value() ? *ptr() : default_value;
     }
 
     // value_or() overload for rvalue default values
-    T value_or(T&& default_value) const {
+    T value_or(T&& default_value) const FL_NOEXCEPT {
         return has_value() ? *ptr() : fl::move(default_value);
     }
 
     template <typename TT, typename UU>
-    bool operator==(const variant<TT, UU> &other) const {
+    bool operator==(const variant<TT, UU> &other) const FL_NOEXCEPT {
         if (!other.template holdsTypeOf<T>()) {
             return false;
         }
@@ -136,7 +137,7 @@ template <typename T> class Optional {
         return *ptr() == *other.template ptr<T>();
     }
 
-    void swap(Optional &other) {
+    void swap(Optional &other) FL_NOEXCEPT {
         if (this != &other) {
             mValue.swap(other.mValue);
         }
@@ -150,31 +151,31 @@ template <typename T> class Optional {
 // This allows optionals to hold and forward rvalue references properly
 template <typename T> class Optional<T&&> {
   public:
-    Optional() : mPtr(nullptr) {}
-    Optional(nullopt_t) : mPtr(nullptr) {}
+    Optional() FL_NOEXCEPT : mPtr(nullptr) {}
+    Optional(nullopt_t) FL_NOEXCEPT : mPtr(nullptr) {}
 
     // Construct from rvalue reference
-    Optional(T&& value) : mPtr(&value) {}
+    Optional(T&& value) FL_NOEXCEPT : mPtr(&value) {}
 
     // Copy constructor deleted - rvalue references cannot be copied
-    Optional(const Optional&) = delete;
+    Optional(const Optional&) FL_NOEXCEPT = delete;
 
     // Move constructor - transfers the reference
     Optional(Optional&& other) noexcept : mPtr(other.mPtr) {
         other.mPtr = nullptr;
     }
 
-    ~Optional() { reset(); }
+    ~Optional() FL_NOEXCEPT { reset(); }
 
-    bool empty() const { return mPtr == nullptr; }
-    bool has_value() const { return !empty(); }
-    T* ptr() { return mPtr; }
-    const T* ptr() const { return mPtr; }
+    bool empty() const FL_NOEXCEPT { return mPtr == nullptr; }
+    bool has_value() const FL_NOEXCEPT { return !empty(); }
+    T* ptr() FL_NOEXCEPT { return mPtr; }
+    const T* ptr() const FL_NOEXCEPT { return mPtr; }
 
-    void reset() { mPtr = nullptr; }
+    void reset() FL_NOEXCEPT { mPtr = nullptr; }
 
     // Copy assignment deleted - rvalue references cannot be copied
-    Optional& operator=(const Optional&) = delete;
+    Optional& operator=(const Optional&) FL_NOEXCEPT = delete;
 
     // Move assignment
     Optional& operator=(Optional&& other) noexcept {
@@ -185,18 +186,18 @@ template <typename T> class Optional<T&&> {
         return *this;
     }
 
-    Optional& operator=(nullopt_t) {
+    Optional& operator=(nullopt_t) FL_NOEXCEPT {
         reset();
         return *this;
     }
 
     bool operator()() const { return !empty(); }
-    bool operator!() const { return empty(); }
+    bool operator!() const FL_NOEXCEPT { return empty(); }
 
     // Explicit conversion to bool
-    explicit operator bool() const { return !empty(); }
+    explicit operator bool() const FL_NOEXCEPT { return !empty(); }
 
-    bool operator==(const Optional& other) const {
+    bool operator==(const Optional& other) const FL_NOEXCEPT {
         if (empty() && other.empty()) {
             return true;
         }
@@ -206,24 +207,24 @@ template <typename T> class Optional<T&&> {
         return *mPtr == *other.mPtr;
     }
 
-    bool operator!=(const Optional& other) const { return !(*this == other); }
+    bool operator!=(const Optional& other) const FL_NOEXCEPT { return !(*this == other); }
 
-    bool operator==(nullopt_t) const { return empty(); }
-    bool operator!=(nullopt_t) const { return !empty(); }
+    bool operator==(nullopt_t) const FL_NOEXCEPT { return empty(); }
+    bool operator!=(nullopt_t) const FL_NOEXCEPT { return !empty(); }
 
     // Dereference operators - returns rvalue reference to forward the value
-    T&& operator*() { return fl::forward<T>(*mPtr); }
-    const T& operator*() const { return *mPtr; }
-    T&& get() { return fl::forward<T>(*mPtr); }
-    const T& get() const { return *mPtr; }
+    T&& operator*() FL_NOEXCEPT { return fl::forward<T>(*mPtr); }
+    const T& operator*() const FL_NOEXCEPT { return *mPtr; }
+    T&& get() FL_NOEXCEPT { return fl::forward<T>(*mPtr); }
+    const T& get() const FL_NOEXCEPT { return *mPtr; }
 
     // Arrow operator - returns pointer for member access
     T* operator->() { return mPtr; }
     const T* operator->() const { return mPtr; }
 
     // value() method for std::optional compatibility
-    T&& value() { return fl::forward<T>(*mPtr); }
-    const T& value() const { return *mPtr; }
+    T&& value() FL_NOEXCEPT { return fl::forward<T>(*mPtr); }
+    const T& value() const FL_NOEXCEPT { return *mPtr; }
 
   private:
     T* mPtr;  // Pointer to the rvalue reference (only valid during the lifetime of the temporary)
@@ -231,12 +232,12 @@ template <typename T> class Optional<T&&> {
 
 // Helper function to create optionals
 template <typename T>
-optional<T> make_optional(const T& value) {
+optional<T> make_optional(const T& value) FL_NOEXCEPT {
     return optional<T>(value);
 }
 
 template <typename T>
-optional<T> make_optional(T&& value) {
+optional<T> make_optional(T&& value) FL_NOEXCEPT {
     return optional<T>(fl::move(value));
 }
 

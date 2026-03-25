@@ -12,6 +12,7 @@
 
 #ifdef FASTLED_TESTING
 #include "fl/stl/function.h"
+#include "fl/stl/noexcept.h"
 #endif
 
 namespace fl {
@@ -38,29 +39,29 @@ public:
     using period = Period;
 
     /// Default constructor - zero duration
-    constexpr duration() : mCount(0) {}
+    constexpr duration() FL_NOEXCEPT : mCount(0) {}
 
     /// Explicit constructor from tick count
     /// @param count Number of ticks
-    constexpr explicit duration(const Rep& count) : mCount(count) {}
+    constexpr explicit duration(const Rep& count) FL_NOEXCEPT : mCount(count) {}
 
     /// Implicit conversion constructor from compatible duration types
     /// @tparam Rep2 Source tick type
     /// @tparam Period2 Source tick period
     template<typename Rep2, typename Period2>
-    constexpr duration(const duration<Rep2, Period2>& d)
+    constexpr duration(const duration<Rep2, Period2>& d) FL_NOEXCEPT
         : mCount(duration_cast_impl<Rep, Period, Rep2, Period2>(d.count())) {}
 
     /// Get the tick count
     /// @return Number of ticks stored in this duration
-    constexpr Rep count() const { return mCount; }
+    constexpr Rep count() const FL_NOEXCEPT { return mCount; }
 
 private:
     Rep mCount;
 
     /// Internal duration_cast implementation
     template<typename ToRep, typename ToPeriod, typename FromRep, typename FromPeriod>
-    static constexpr ToRep duration_cast_impl(FromRep count) {
+    static constexpr ToRep duration_cast_impl(FromRep count) FL_NOEXCEPT {
         // Convert from source period to destination period
         // target_count = source_count * (FromPeriod / ToPeriod)
         // Using: target = source * FromPeriod::num * ToPeriod::den / (FromPeriod::den * ToPeriod::num)
@@ -85,7 +86,7 @@ private:
 /// // ms.count() == 1000
 /// @endcode
 template<typename ToDuration, typename Rep, typename Period>
-constexpr ToDuration duration_cast(const duration<Rep, Period>& d) {
+constexpr ToDuration duration_cast(const duration<Rep, Period>& d) FL_NOEXCEPT {
     return ToDuration(d);
 }
 
@@ -127,46 +128,46 @@ public:
     using period = typename Duration::period;
 
     /// Default constructor - epoch time point
-    constexpr time_point() : mDuration() {}
+    constexpr time_point() FL_NOEXCEPT : mDuration() {}
 
     /// Construct from a duration since epoch
-    constexpr explicit time_point(const Duration& d) : mDuration(d) {}
+    constexpr explicit time_point(const Duration& d) FL_NOEXCEPT : mDuration(d) {}
 
     /// Get the duration since epoch
-    constexpr Duration time_since_epoch() const { return mDuration; }
+    constexpr Duration time_since_epoch() const FL_NOEXCEPT { return mDuration; }
 
     // Comparison operators
-    constexpr bool operator<=(const time_point& rhs) const {
+    constexpr bool operator<=(const time_point& rhs) const FL_NOEXCEPT {
         return mDuration.count() <= rhs.mDuration.count();
     }
-    constexpr bool operator<(const time_point& rhs) const {
+    constexpr bool operator<(const time_point& rhs) const FL_NOEXCEPT {
         return mDuration.count() < rhs.mDuration.count();
     }
-    constexpr bool operator>=(const time_point& rhs) const {
+    constexpr bool operator>=(const time_point& rhs) const FL_NOEXCEPT {
         return mDuration.count() >= rhs.mDuration.count();
     }
-    constexpr bool operator>(const time_point& rhs) const {
+    constexpr bool operator>(const time_point& rhs) const FL_NOEXCEPT {
         return mDuration.count() > rhs.mDuration.count();
     }
-    constexpr bool operator==(const time_point& rhs) const {
+    constexpr bool operator==(const time_point& rhs) const FL_NOEXCEPT {
         return mDuration.count() == rhs.mDuration.count();
     }
-    constexpr bool operator!=(const time_point& rhs) const {
+    constexpr bool operator!=(const time_point& rhs) const FL_NOEXCEPT {
         return mDuration.count() != rhs.mDuration.count();
     }
 
     /// Subtract two time_points to get a duration
-    constexpr Duration operator-(const time_point& rhs) const {
+    constexpr Duration operator-(const time_point& rhs) const FL_NOEXCEPT {
         return Duration(mDuration.count() - rhs.mDuration.count());
     }
 
     /// Add a duration to a time_point
-    constexpr time_point operator+(const Duration& d) const {
+    constexpr time_point operator+(const Duration& d) const FL_NOEXCEPT {
         return time_point(Duration(mDuration.count() + d.count()));
     }
 
     /// Subtract a duration from a time_point
-    constexpr time_point operator-(const Duration& d) const {
+    constexpr time_point operator-(const Duration& d) const FL_NOEXCEPT {
         return time_point(Duration(mDuration.count() - d.count()));
     }
 
@@ -190,7 +191,7 @@ struct steady_clock {
     static constexpr bool is_steady = true;
 
     /// Returns the current time point (implemented after fl::micros() declaration)
-    static time_point now();
+    static time_point now() FL_NOEXCEPT;
 };
 
 /// @brief Wall clock (may not be monotonic)
@@ -206,7 +207,7 @@ struct system_clock {
     static constexpr bool is_steady = false;
 
     /// Returns the current time point (implemented after fl::micros() declaration)
-    static time_point now();
+    static time_point now() FL_NOEXCEPT;
 };
 
 } // namespace chrono
@@ -294,11 +295,11 @@ fl::u32 millis();
 fl::u32 micros();
 
 // Now that fl::micros() is declared, implement clock::now() methods
-inline chrono::steady_clock::time_point chrono::steady_clock::now() {
+inline chrono::steady_clock::time_point chrono::steady_clock::now() FL_NOEXCEPT {
     return time_point(duration(static_cast<fl::i64>(fl::micros())));
 }
 
-inline chrono::system_clock::time_point chrono::system_clock::now() {
+inline chrono::system_clock::time_point chrono::system_clock::now() FL_NOEXCEPT {
     return time_point(duration(static_cast<fl::i64>(fl::micros())));
 }
 
@@ -342,7 +343,7 @@ fl::u64 millis64();
 /// @return Number of milliseconds since system startup as a 64-bit value
 /// @note Inline function - zero overhead
 /// @see millis64() for full documentation
-inline fl::u64 time() {
+inline fl::u64 time() FL_NOEXCEPT {
     return fl::millis64();
 }
 

@@ -283,7 +283,7 @@ struct VsyncCallbackData {
 static VsyncCallbackData s_vsync_cb_data;
 
 // VSYNC ISR callback - must be in IRAM for ESP-IDF
-static bool IRAM_ATTR vsyncIsrCallback(
+static bool IRAM_ATTR vsyncIsrCallback( // ok no noexcept
         esp_lcd_panel_handle_t panel,
         const esp_lcd_rgb_panel_event_data_t* edata,
         void* ctx) {

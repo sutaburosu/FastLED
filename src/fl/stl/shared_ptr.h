@@ -7,6 +7,7 @@
 #include "fl/stl/int.h"
 #include "fl/stl/align.h"
 #include "fl/stl/cstdlib.h"
+#include "fl/stl/noexcept.h"
 
 
 namespace fl {
@@ -31,7 +32,7 @@ struct ControlBlockBase {
     // Special value indicating no-tracking mode
     static constexpr fl::u32 NO_TRACKING_VALUE = 0xffffffff;
     
-    ControlBlockBase(bool track = true)
+    ControlBlockBase(bool track = true) FL_NOEXCEPT
         : shared_count(track ? 1 : NO_TRACKING_VALUE), weak_count(1) {}
     // Destructor defined out-of-line in shared_ptr.cpp.hpp to anchor vtable
     // to a single translation unit, preventing ODR violations when using shared libraries.
@@ -80,17 +81,17 @@ struct ControlBlock : public ControlBlockBase {
     T* ptr;
     Deleter deleter;
 
-    ControlBlock(T* p, Deleter d = Deleter(), bool track = true)
+    ControlBlock(T* p, Deleter d = Deleter(), bool track = true) FL_NOEXCEPT
         : ControlBlockBase(track), ptr(p), deleter(d) {}
 
-    void destroy_object() override {
+    void destroy_object() FL_NOEXCEPT override {
         if (ptr && !is_no_tracking()) {  // Only delete if tracking
             deleter(ptr);
             ptr = nullptr;
         }
     }
 
-    void destroy_control_block() override {
+    void destroy_control_block() FL_NOEXCEPT override {
         delete this;
     }
 };
@@ -110,14 +111,14 @@ struct FL_ALIGNAS(control_block_alignment<T>::value) InlinedControlBlock : publi
     FL_ALIGNAS(T) char storage[sizeof(T)];  // Object storage (properly aligned)
     bool object_constructed;                 // Track construction state
 
-    InlinedControlBlock()
+    InlinedControlBlock() FL_NOEXCEPT
         : ControlBlockBase(true), object_constructed(false) {}
 
     // Aligned operator new/delete: when T has alignment > default new alignment
     // (e.g. FL_ALIGNAS(64)), plain `new` won't honour it on pre-C++17 compilers.
     // GCC emits -Waligned-new in that case.  These overrides route through
     // fl::aligned_alloc / fl::aligned_free so the block is always properly aligned.
-    static void* operator new(fl::size_t size) {
+    static void* operator new(fl::size_t size) FL_NOEXCEPT {
         constexpr fl::size_t align = control_block_alignment<T>::value;
         return fl::aligned_alloc(align, size);
     }
@@ -126,22 +127,22 @@ struct FL_ALIGNAS(control_block_alignment<T>::value) InlinedControlBlock : publi
     }
 
     // Get pointer to the inline object storage
-    T* get_object() {
+    T* get_object() FL_NOEXCEPT {
         return fl::bit_cast<T*>(&storage[0]);
     }
 
-    const T* get_object() const {
+    const T* get_object() const FL_NOEXCEPT {
         return fl::bit_cast<const T*>(&storage[0]);
     }
 
-    void destroy_object() override {
+    void destroy_object() FL_NOEXCEPT override {
         if (object_constructed) {
             get_object()->~T();  // Manual destructor call
             object_constructed = false;
         }
     }
 
-    void destroy_control_block() override {
+    void destroy_control_block() FL_NOEXCEPT override {
         delete this;
     }
 };
@@ -157,13 +158,13 @@ private:
     detail::ControlBlockBase* mControlBlock;
     
     // Internal constructor for make_shared and weak_ptr conversion
-    shared_ptr(T* ptr, detail::ControlBlockBase* control_block, detail::make_shared_tag) 
+    shared_ptr(T* ptr, detail::ControlBlockBase* control_block, detail::make_shared_tag) FL_NOEXCEPT
         : mPtr(ptr), mControlBlock(control_block) {
         // Control block was created with reference count 1, no need to increment
     }
     
     // Internal constructor for no-tracking (control_block should be nullptr)
-    shared_ptr(T* ptr, detail::ControlBlockBase* control_block, detail::no_tracking_tag)
+    shared_ptr(T* ptr, detail::ControlBlockBase* control_block, detail::no_tracking_tag) FL_NOEXCEPT
         : mPtr(ptr), mControlBlock(control_block) {
         // No control block - this is a zero-overhead wrapper around a raw pointer
     }
@@ -179,7 +180,7 @@ private:
     //     }
     // }
     
-    void acquire() {
+    void acquire() FL_NOEXCEPT {
         if (mControlBlock) {
             mControlBlock->add_shared_ref();
         }
@@ -196,13 +197,13 @@ public:
 
     
     // Copy constructor
-    shared_ptr(const shared_ptr& other) : mPtr(other.mPtr), mControlBlock(other.mControlBlock) {
+    shared_ptr(const shared_ptr& other) FL_NOEXCEPT : mPtr(other.mPtr), mControlBlock(other.mControlBlock) {
         acquire();
     }
     
     // Converting copy constructor (allows upcasting: shared_ptr<Derived> → shared_ptr<Base>)
     template<typename Y, typename = typename fl::enable_if<fl::is_base_of<T, Y>::value>::type>
-    shared_ptr(const shared_ptr<Y>& other) : mPtr(static_cast<T*>(other.mPtr)), mControlBlock(other.mControlBlock) {
+    shared_ptr(const shared_ptr<Y>& other) FL_NOEXCEPT : mPtr(static_cast<T*>(other.mPtr)), mControlBlock(other.mControlBlock) {
         acquire();
     }
     
@@ -233,14 +234,14 @@ public:
     }
     
     // Destructor
-    ~shared_ptr() {
+    ~shared_ptr() FL_NOEXCEPT {
         //FASTLED_WARN("shared_ptr destructor called, mPtr=" << mPtr 
         //          << ", mControlBlock=" << mControlBlock);
         reset();
     }
     
     // Assignment operators
-    shared_ptr& operator=(const shared_ptr& other) {
+    shared_ptr& operator=(const shared_ptr& other) FL_NOEXCEPT {
         if (this != &other) {
             reset();
             mPtr = other.mPtr;
@@ -252,7 +253,7 @@ public:
     
     // Converting copy assignment (allows upcasting: shared_ptr<Derived> → shared_ptr<Base>)
     template<typename Y, typename = typename fl::enable_if<fl::is_base_of<T, Y>::value>::type>
-    shared_ptr& operator=(const shared_ptr<Y>& other) {
+    shared_ptr& operator=(const shared_ptr<Y>& other) FL_NOEXCEPT {
         reset();
         mPtr = static_cast<T*>(other.mPtr);
         mControlBlock = other.mControlBlock;
@@ -335,7 +336,7 @@ public:
     T& operator*() const noexcept { return *mPtr; }
     T* operator->() const noexcept { return mPtr; }
     
-    T& operator[](ptrdiff_t idx) const { return mPtr[idx]; }
+    T& operator[](ptrdiff_t idx) const FL_NOEXCEPT { return mPtr[idx]; }
     
     // NEW: use_count returns 0 for no-tracking shared_ptrs
     long use_count() const noexcept {
@@ -369,7 +370,7 @@ private:
 
     // Constructor from raw pointer with default deleter
     template<typename Y>
-    explicit shared_ptr(Y* ptr) : mPtr(ptr) {
+    explicit shared_ptr(Y* ptr) FL_NOEXCEPT : mPtr(ptr) {
         if (mPtr) {
             mControlBlock = new detail::ControlBlock<Y>(ptr, detail::default_delete<Y>{});
         } else {
@@ -379,7 +380,7 @@ private:
     
     // Constructor from raw pointer with custom deleter
     template<typename Y, typename Deleter>
-    shared_ptr(Y* ptr, Deleter d) : mPtr(ptr) {
+    shared_ptr(Y* ptr, Deleter d) FL_NOEXCEPT : mPtr(ptr) {
         if (mPtr) {
             mControlBlock = new detail::ControlBlock<Y, Deleter>(mPtr, d);
         } else {
@@ -391,26 +392,26 @@ private:
     template<typename Y> friend class weak_ptr;
     
     template<typename Y, typename... Args>
-    friend shared_ptr<Y> make_shared(Args&&... args);
+    friend shared_ptr<Y> make_shared(Args&&... args) FL_NOEXCEPT;
 
     template<typename Y, typename Deleter, typename... Args>
-    friend shared_ptr<Y> make_shared_with_deleter(Deleter d, Args&&... args);
-    
+    friend shared_ptr<Y> make_shared_with_deleter(Deleter d, Args&&... args) FL_NOEXCEPT;
+
     template<typename Y, typename A, typename... Args>
-    friend shared_ptr<Y> allocate_shared(const A& alloc, Args&&... args);
-    
-    template<typename Y>
-    friend shared_ptr<Y> make_shared_no_tracking(Y& obj);
+    friend shared_ptr<Y> allocate_shared(const A& alloc, Args&&... args) FL_NOEXCEPT;
 
     template<typename Y>
-    friend shared_ptr<Y> make_shared_array(size_t n);
+    friend shared_ptr<Y> make_shared_no_tracking(Y& obj) FL_NOEXCEPT;
+
+    template<typename Y>
+    friend shared_ptr<Y> make_shared_array(size_t n) FL_NOEXCEPT;
 };
 
 // Factory functions
 
 // make_shared with optimized inlined storage (single allocation)
 template<typename T, typename... Args>
-shared_ptr<T> make_shared(Args&&... args) {
+shared_ptr<T> make_shared(Args&&... args) FL_NOEXCEPT {
     auto* control = new detail::InlinedControlBlock<T>();
     T* obj = control->get_object();
     new(obj) T(fl::forward<Args>(args)...);  // Placement new
@@ -419,7 +420,7 @@ shared_ptr<T> make_shared(Args&&... args) {
 }
 
 template<typename T, typename Deleter, typename... Args>
-shared_ptr<T> make_shared_with_deleter(Deleter d, Args&&... args) {
+shared_ptr<T> make_shared_with_deleter(Deleter d, Args&&... args) FL_NOEXCEPT {
     T* obj = new T(fl::forward<Args>(args)...);
     auto* control = new detail::ControlBlock<T, Deleter>(obj, d);
     //new(control->get_object()) T(fl::forward<Args>(args)...);
@@ -431,13 +432,13 @@ shared_ptr<T> make_shared_with_deleter(Deleter d, Args&&... args) {
 // The shared_ptr and any copies will not affect object lifetime.
 // No control block is allocated - this is a zero-overhead wrapper around a raw pointer.
 template<typename T>
-shared_ptr<T> make_shared_no_tracking(T& obj) {
+shared_ptr<T> make_shared_no_tracking(T& obj) FL_NOEXCEPT {
     return shared_ptr<T>(&obj, nullptr, detail::no_tracking_tag{});
 }
 
 // make_shared_array for array allocations
 template<typename T>
-shared_ptr<T> make_shared_array(size_t n) {
+shared_ptr<T> make_shared_array(size_t n) FL_NOEXCEPT {
     T* arr = new T[n]();  // Zero-initialize the array
     auto* control = new detail::ControlBlock<T, detail::array_delete<T>>(arr, detail::array_delete<T>{});
     return shared_ptr<T>(arr, control, detail::make_shared_tag{});
@@ -445,7 +446,7 @@ shared_ptr<T> make_shared_array(size_t n) {
 
 // allocate_shared (simplified version without full allocator support for now)
 template<typename T, typename A, typename... Args>
-shared_ptr<T> allocate_shared(const A& /* alloc */, Args&&... args) {
+shared_ptr<T> allocate_shared(const A& /* alloc */, Args&&... args) FL_NOEXCEPT {
     // For now, just delegate to make_shared
     // Full allocator support would require more complex control block management
     return make_shared<T>(fl::forward<Args>(args)...);

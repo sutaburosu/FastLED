@@ -7,6 +7,7 @@
 #include "fl/stl/initializer_list.h"
 #include "fl/stl/type_traits.h"
 #include "fl/stl/int.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 
@@ -90,54 +91,54 @@ template <typename T> class span<T, dynamic_extent> {
     static constexpr fl::size extent = dynamic_extent;
 
     // ======= CONSTRUCTORS =======
-    span() : mData(nullptr), mSize(0) {}
-    span(T *data, fl::size size) : mData(data), mSize(size) {}
+    span() FL_NOEXCEPT : mData(nullptr), mSize(0) {}
+    span(T *data, fl::size size) FL_NOEXCEPT : mData(data), mSize(size) {}
 
     // ======= INITIALIZER LIST CONSTRUCTOR DELETED =======
     // P2447R6 (C++26) adds span(initializer_list<T>) but the backing array is
     // always a temporary, so storing a span from a braced-init-list is UB unless
     // consumed in the same expression.  Deleted to prevent dangling references.
-    span(fl::initializer_list<value_type> init) = delete;
+    span(fl::initializer_list<value_type> init) FL_NOEXCEPT = delete;
 
     // ======= CONTAINER CONSTRUCTORS =======
     // Simple constructors that work for all cases
     template<typename Alloc>
-    span(const fl::vector<T, Alloc> &vector)
+    span(const fl::vector<T, Alloc> &vector) FL_NOEXCEPT
         : mData(vector.data()), mSize(vector.size()) {}
 
     template <fl::size INLINED_SIZE>
-    span(const FixedVector<T, INLINED_SIZE> &vector)
+    span(const FixedVector<T, INLINED_SIZE> &vector) FL_NOEXCEPT
         : mData(vector.data()), mSize(vector.size()) {}
 
     template <fl::size INLINED_SIZE>
-    span(const InlinedVector<T, INLINED_SIZE> &vector)
+    span(const InlinedVector<T, INLINED_SIZE> &vector) FL_NOEXCEPT
         : mData(vector.data()), mSize(vector.size()) {}
 
     // Additional constructors for const conversion (U -> const U)
     template<typename U, typename Alloc>
-    span(const fl::vector<U, Alloc> &vector)
+    span(const fl::vector<U, Alloc> &vector) FL_NOEXCEPT
         : mData(vector.data()), mSize(vector.size()) {}
 
     template<typename U, fl::size INLINED_SIZE>
-    span(const FixedVector<U, INLINED_SIZE> &vector)
+    span(const FixedVector<U, INLINED_SIZE> &vector) FL_NOEXCEPT
         : mData(vector.data()), mSize(vector.size()) {}
 
     template<typename U, fl::size INLINED_SIZE>
-    span(const InlinedVector<U, INLINED_SIZE> &vector)
+    span(const InlinedVector<U, INLINED_SIZE> &vector) FL_NOEXCEPT
         : mData(vector.data()), mSize(vector.size()) {}
 
     // ======= NON-CONST CONTAINER CONVERSIONS =======
     // Non-const versions for mutable spans
     template<typename Alloc>
-    span(fl::vector<T, Alloc> &vector)
+    span(fl::vector<T, Alloc> &vector) FL_NOEXCEPT
         : mData(vector.data()), mSize(vector.size()) {}
 
     template <fl::size INLINED_SIZE>
-    span(FixedVector<T, INLINED_SIZE> &vector)
+    span(FixedVector<T, INLINED_SIZE> &vector) FL_NOEXCEPT
         : mData(vector.data()), mSize(vector.size()) {}
 
     template <fl::size INLINED_SIZE>
-    span(InlinedVector<T, INLINED_SIZE> &vector)
+    span(InlinedVector<T, INLINED_SIZE> &vector) FL_NOEXCEPT
         : mData(vector.data()), mSize(vector.size()) {}
 
     // ======= GENERIC CONTAINER CONSTRUCTOR =======
@@ -164,103 +165,103 @@ template <typename T> class span<T, dynamic_extent> {
     // ======= FL::ARRAY CONVERSIONS =======
     // fl::array<T> -> span<T>
     template <fl::size N>
-    span(const array<T, N> &arr)
+    span(const array<T, N> &arr) FL_NOEXCEPT
         : mData(arr.data()), mSize(N) {}
 
     template <fl::size N>
-    span(array<T, N> &arr)
+    span(array<T, N> &arr) FL_NOEXCEPT
         : mData(arr.data()), mSize(N) {}
 
     // fl::array<U> -> span<T> (for type conversions like U -> const U)
     template <typename U, fl::size N>
-    span(const array<U, N> &arr)
+    span(const array<U, N> &arr) FL_NOEXCEPT
         : mData(arr.data()), mSize(N) {}
 
     template <typename U, fl::size N>
-    span(array<U, N> &arr)
+    span(array<U, N> &arr) FL_NOEXCEPT
         : mData(arr.data()), mSize(N) {}
 
     // ======= C-STYLE ARRAY CONVERSIONS =======
     // T[] -> span<T>
     template <fl::size ARRAYSIZE>
-    span(T (&array)[ARRAYSIZE]) 
+    span(T (&array)[ARRAYSIZE]) FL_NOEXCEPT
         : mData(array), mSize(ARRAYSIZE) {}
 
     // U[] -> span<T> (for type conversions like U -> const U)
     template <typename U, fl::size ARRAYSIZE>
-    span(U (&array)[ARRAYSIZE]) 
+    span(U (&array)[ARRAYSIZE]) FL_NOEXCEPT
         : mData(array), mSize(ARRAYSIZE) {}
 
     // const U[] -> span<T> (for const arrays)
     template <typename U, fl::size ARRAYSIZE>
-    span(const U (&array)[ARRAYSIZE]) 
+    span(const U (&array)[ARRAYSIZE]) FL_NOEXCEPT
         : mData(array), mSize(ARRAYSIZE) {}
 
     // ======= ITERATOR CONVERSIONS =======
     template <typename Iterator>
-    span(Iterator begin, Iterator end)
+    span(Iterator begin, Iterator end) FL_NOEXCEPT
         : mData(&(*begin)), mSize(end - begin) {}
 
-    span(const span &other) : mData(other.mData), mSize(other.mSize) {}
+    span(const span &other) FL_NOEXCEPT : mData(other.mData), mSize(other.mSize) {}
 
-    span &operator=(const span &other) {
+    span &operator=(const span &other) FL_NOEXCEPT {
         mData = other.mData;
         mSize = other.mSize;
         return *this;
     }
 
     // Automatic promotion to const span<const T, dynamic_extent>
-    operator span<const T, dynamic_extent>() const { return span<const T, dynamic_extent>(mData, mSize); }
+    operator span<const T, dynamic_extent>() const FL_NOEXCEPT { return span<const T, dynamic_extent>(mData, mSize); }
 
-    T &operator[](fl::size index) {
+    T &operator[](fl::size index) FL_NOEXCEPT {
         // No bounds checking in embedded environment
         return mData[index];
     }
 
-    const T &operator[](fl::size index) const {
+    const T &operator[](fl::size index) const FL_NOEXCEPT {
         // No bounds checking in embedded environment
         return mData[index];
     }
 
     // ======= ITERATORS =======
-    iterator begin() { return mData; }
-    const_iterator begin() const { return mData; }
-    const_iterator cbegin() const { return mData; }
+    iterator begin() FL_NOEXCEPT { return mData; }
+    const_iterator begin() const FL_NOEXCEPT { return mData; }
+    const_iterator cbegin() const FL_NOEXCEPT { return mData; }
 
-    iterator end() { return mData + mSize; }
-    const_iterator end() const { return mData + mSize; }
-    const_iterator cend() const { return mData + mSize; }
+    iterator end() FL_NOEXCEPT { return mData + mSize; }
+    const_iterator end() const FL_NOEXCEPT { return mData + mSize; }
+    const_iterator cend() const FL_NOEXCEPT { return mData + mSize; }
 
-    reverse_iterator rbegin() { return mData + mSize - 1; }
-    const_reverse_iterator rbegin() const { return mData + mSize - 1; }
-    const_reverse_iterator crbegin() const { return mData + mSize - 1; }
+    reverse_iterator rbegin() FL_NOEXCEPT { return mData + mSize - 1; }
+    const_reverse_iterator rbegin() const FL_NOEXCEPT { return mData + mSize - 1; }
+    const_reverse_iterator crbegin() const FL_NOEXCEPT { return mData + mSize - 1; }
 
-    reverse_iterator rend() { return mData - 1; }
-    const_reverse_iterator rend() const { return mData - 1; }
-    const_reverse_iterator crend() const { return mData - 1; }
+    reverse_iterator rend() FL_NOEXCEPT { return mData - 1; }
+    const_reverse_iterator rend() const FL_NOEXCEPT { return mData - 1; }
+    const_reverse_iterator crend() const FL_NOEXCEPT { return mData - 1; }
 
     // ======= SIZE AND ACCESS =======
-    fl::size length() const { return mSize; }
-    fl::size size() const { return mSize; }
-    fl::size size_bytes() const { return mSize * sizeof(T); }
+    fl::size length() const FL_NOEXCEPT { return mSize; }
+    fl::size size() const FL_NOEXCEPT { return mSize; }
+    fl::size size_bytes() const FL_NOEXCEPT { return mSize * sizeof(T); }
 
-    const T *data() const { return mData; }
-    T *data() { return mData; }
+    const T *data() const FL_NOEXCEPT { return mData; }
+    T *data() FL_NOEXCEPT { return mData; }
 
     // ======= SUBVIEWS =======
     // Runtime-sized subviews (existing slice methods)
-    span<T, dynamic_extent> slice(fl::size start, fl::size end) const {
+    span<T, dynamic_extent> slice(fl::size start, fl::size end) const FL_NOEXCEPT {
         // No bounds checking in embedded environment
         return span<T, dynamic_extent>(mData + start, end - start);
     }
 
-    span<T, dynamic_extent> slice(fl::size start) const {
+    span<T, dynamic_extent> slice(fl::size start) const FL_NOEXCEPT {
         // No bounds checking in embedded environment
         return span<T, dynamic_extent>(mData + start, mSize - start);
     }
 
     // std::span-compatible subspan (runtime version)
-    span<T, dynamic_extent> subspan(fl::size offset, fl::size count = dynamic_extent) const {
+    span<T, dynamic_extent> subspan(fl::size offset, fl::size count = dynamic_extent) const FL_NOEXCEPT {
         if (count == dynamic_extent) {
             return span<T, dynamic_extent>(mData + offset, mSize - offset);
         }
@@ -269,29 +270,29 @@ template <typename T> class span<T, dynamic_extent> {
 
     // Compile-time sized first N elements - returns static extent span
     template<fl::size N>
-    span<T, N> first() const {
+    span<T, N> first() const FL_NOEXCEPT {
         return span<T, N>(mData, N);
     }
 
     // Runtime-sized first count elements
-    span<T, dynamic_extent> first(fl::size count) const {
+    span<T, dynamic_extent> first(fl::size count) const FL_NOEXCEPT {
         return span<T, dynamic_extent>(mData, count);
     }
 
     // Compile-time sized last N elements - returns static extent span
     template<fl::size N>
-    span<T, N> last() const {
+    span<T, N> last() const FL_NOEXCEPT {
         return span<T, N>(mData + mSize - N, N);
     }
 
     // Runtime-sized last count elements
-    span<T, dynamic_extent> last(fl::size count) const {
+    span<T, dynamic_extent> last(fl::size count) const FL_NOEXCEPT {
         return span<T, dynamic_extent>(mData + mSize - count, count);
     }
 
     // Compile-time sized subspan - returns static extent span
     template<fl::size Offset, fl::size Count = dynamic_extent>
-    span<T, Count> subspan() const {
+    span<T, Count> subspan() const FL_NOEXCEPT {
         if (Count == dynamic_extent) {
             return span<T, dynamic_extent>(mData + Offset, mSize - Offset);
         }
@@ -301,7 +302,7 @@ template <typename T> class span<T, dynamic_extent> {
     // Find the first occurrence of a value in the slice
     // Returns the index of the first occurrence if found, or fl::size(-1) if not
     // found
-    fl::size find(const T &value) const {
+    fl::size find(const T &value) const FL_NOEXCEPT {
         for (fl::size i = 0; i < mSize; ++i) {
             if (mData[i] == value) {
                 return i;
@@ -310,7 +311,7 @@ template <typename T> class span<T, dynamic_extent> {
         return fl::size(-1);
     }
 
-    bool pop_front() {
+    bool pop_front() FL_NOEXCEPT {
         if (mSize == 0) {
             return false;
         }
@@ -319,7 +320,7 @@ template <typename T> class span<T, dynamic_extent> {
         return true;
     }
 
-    bool pop_back() {
+    bool pop_back() FL_NOEXCEPT {
         if (mSize == 0) {
             return false;
         }
@@ -327,19 +328,19 @@ template <typename T> class span<T, dynamic_extent> {
         return true;
     }
 
-    T &front() { return *mData; }
+    T &front() FL_NOEXCEPT { return *mData; }
 
-    const T &front() const { return *mData; }
+    const T &front() const FL_NOEXCEPT { return *mData; }
 
-    T &back() { return *(mData + mSize - 1); }
+    T &back() FL_NOEXCEPT { return *(mData + mSize - 1); }
 
-    const T &back() const { return *(mData + mSize - 1); }
+    const T &back() const FL_NOEXCEPT { return *(mData + mSize - 1); }
 
-    bool empty() const { return mSize == 0; }
+    bool empty() const FL_NOEXCEPT { return mSize == 0; }
 
     // ======= COMPARISON OPERATORS =======
     // Lexicographical comparison - compares element by element
-    bool operator==(const span<T, dynamic_extent>& other) const {
+    bool operator==(const span<T, dynamic_extent>& other) const FL_NOEXCEPT {
         if (mSize != other.mSize) return false;
         for (fl::size i = 0; i < mSize; ++i) {
             if (!(mData[i] == other.mData[i])) return false;
@@ -347,11 +348,11 @@ template <typename T> class span<T, dynamic_extent> {
         return true;
     }
 
-    bool operator!=(const span<T, dynamic_extent>& other) const {
+    bool operator!=(const span<T, dynamic_extent>& other) const FL_NOEXCEPT {
         return !(*this == other);
     }
 
-    bool operator<(const span<T, dynamic_extent>& other) const {
+    bool operator<(const span<T, dynamic_extent>& other) const FL_NOEXCEPT {
         fl::size min_size = mSize < other.mSize ? mSize : other.mSize;
         for (fl::size i = 0; i < min_size; ++i) {
             if (mData[i] < other.mData[i]) return true;
@@ -360,15 +361,15 @@ template <typename T> class span<T, dynamic_extent> {
         return mSize < other.mSize;
     }
 
-    bool operator<=(const span<T, dynamic_extent>& other) const {
+    bool operator<=(const span<T, dynamic_extent>& other) const FL_NOEXCEPT {
         return !(other < *this);
     }
 
-    bool operator>(const span<T, dynamic_extent>& other) const {
+    bool operator>(const span<T, dynamic_extent>& other) const FL_NOEXCEPT {
         return other < *this;
     }
 
-    bool operator>=(const span<T, dynamic_extent>& other) const {
+    bool operator>=(const span<T, dynamic_extent>& other) const FL_NOEXCEPT {
         return !(*this < other);
     }
 
@@ -399,92 +400,92 @@ template <typename T, fl::size Extent> class span {
     static constexpr fl::size extent = Extent;
 
     // ======= CONSTRUCTORS =======
-    span() : mData(nullptr) {}
-    span(T *data, fl::size size) : mData(data) {
+    span() FL_NOEXCEPT : mData(nullptr) {}
+    span(T *data, fl::size size) FL_NOEXCEPT : mData(data) {
         // In debug builds, could assert size == Extent
         (void)size; // Suppress unused parameter warning
     }
 
     // Constructor from pointer only (size is known at compile-time)
-    explicit span(T *data) : mData(data) {}
+    explicit span(T *data) FL_NOEXCEPT : mData(data) {}
 
     // Constructor from C-array with matching size
-    span(T (&array)[Extent]) : mData(array) {}
+    span(T (&array)[Extent]) FL_NOEXCEPT : mData(array) {}
 
     // Copy constructor
-    span(const span &other) : mData(other.mData) {}
+    span(const span &other) FL_NOEXCEPT : mData(other.mData) {}
 
-    span &operator=(const span &other) {
+    span &operator=(const span &other) FL_NOEXCEPT {
         mData = other.mData;
         return *this;
     }
 
     // Automatic promotion to const span<const T, Extent>
-    operator span<const T, Extent>() const { return span<const T, Extent>(mData, Extent); }
+    operator span<const T, Extent>() const FL_NOEXCEPT { return span<const T, Extent>(mData, Extent); }
 
     // Conversion to dynamic extent
-    operator span<T, dynamic_extent>() const { return span<T, dynamic_extent>(mData, Extent); }
+    operator span<T, dynamic_extent>() const FL_NOEXCEPT { return span<T, dynamic_extent>(mData, Extent); }
 
     // ======= ELEMENT ACCESS =======
-    T &operator[](fl::size index) {
+    T &operator[](fl::size index) FL_NOEXCEPT {
         return mData[index];
     }
 
-    const T &operator[](fl::size index) const {
+    const T &operator[](fl::size index) const FL_NOEXCEPT {
         return mData[index];
     }
 
     // ======= ITERATORS =======
-    iterator begin() { return mData; }
-    const_iterator begin() const { return mData; }
-    const_iterator cbegin() const { return mData; }
+    iterator begin() FL_NOEXCEPT { return mData; }
+    const_iterator begin() const FL_NOEXCEPT { return mData; }
+    const_iterator cbegin() const FL_NOEXCEPT { return mData; }
 
-    iterator end() { return mData + Extent; }
-    const_iterator end() const { return mData + Extent; }
-    const_iterator cend() const { return mData + Extent; }
+    iterator end() FL_NOEXCEPT { return mData + Extent; }
+    const_iterator end() const FL_NOEXCEPT { return mData + Extent; }
+    const_iterator cend() const FL_NOEXCEPT { return mData + Extent; }
 
-    reverse_iterator rbegin() { return mData + Extent - 1; }
-    const_reverse_iterator rbegin() const { return mData + Extent - 1; }
-    const_reverse_iterator crbegin() const { return mData + Extent - 1; }
+    reverse_iterator rbegin() FL_NOEXCEPT { return mData + Extent - 1; }
+    const_reverse_iterator rbegin() const FL_NOEXCEPT { return mData + Extent - 1; }
+    const_reverse_iterator crbegin() const FL_NOEXCEPT { return mData + Extent - 1; }
 
-    reverse_iterator rend() { return mData - 1; }
-    const_reverse_iterator rend() const { return mData - 1; }
-    const_reverse_iterator crend() const { return mData - 1; }
+    reverse_iterator rend() FL_NOEXCEPT { return mData - 1; }
+    const_reverse_iterator rend() const FL_NOEXCEPT { return mData - 1; }
+    const_reverse_iterator crend() const FL_NOEXCEPT { return mData - 1; }
 
     // ======= SIZE AND ACCESS =======
-    constexpr fl::size length() const { return Extent; }
-    constexpr fl::size size() const { return Extent; }
-    constexpr fl::size size_bytes() const { return Extent * sizeof(T); }
+    constexpr fl::size length() const FL_NOEXCEPT { return Extent; }
+    constexpr fl::size size() const FL_NOEXCEPT { return Extent; }
+    constexpr fl::size size_bytes() const FL_NOEXCEPT { return Extent * sizeof(T); }
 
-    const T *data() const { return mData; }
-    T *data() { return mData; }
+    const T *data() const FL_NOEXCEPT { return mData; }
+    T *data() FL_NOEXCEPT { return mData; }
 
     // ======= SUBVIEWS =======
     // Compile-time sized first N elements
     template<fl::size N>
-    span<T, N> first() const {
+    span<T, N> first() const FL_NOEXCEPT {
         return span<T, N>(mData);
     }
 
     // Runtime-sized first count elements
-    span<T, dynamic_extent> first(fl::size count) const {
+    span<T, dynamic_extent> first(fl::size count) const FL_NOEXCEPT {
         return span<T, dynamic_extent>(mData, count);
     }
 
     // Compile-time sized last N elements
     template<fl::size N>
-    span<T, N> last() const {
+    span<T, N> last() const FL_NOEXCEPT {
         return span<T, N>(mData + Extent - N);
     }
 
     // Runtime-sized last count elements
-    span<T, dynamic_extent> last(fl::size count) const {
+    span<T, dynamic_extent> last(fl::size count) const FL_NOEXCEPT {
         return span<T, dynamic_extent>(mData + Extent - count, count);
     }
 
     // Compile-time sized subspan
     template<fl::size Offset, fl::size Count = dynamic_extent>
-    span<T, Count> subspan() const {
+    span<T, Count> subspan() const FL_NOEXCEPT {
         if (Count == dynamic_extent) {
             return span<T, Extent - Offset>(mData + Offset);
         }
@@ -492,34 +493,34 @@ template <typename T, fl::size Extent> class span {
     }
 
     // Runtime subspan
-    span<T, dynamic_extent> subspan(fl::size offset, fl::size count = dynamic_extent) const {
+    span<T, dynamic_extent> subspan(fl::size offset, fl::size count = dynamic_extent) const FL_NOEXCEPT {
         if (count == dynamic_extent) {
             return span<T, dynamic_extent>(mData + offset, Extent - offset);
         }
         return span<T, dynamic_extent>(mData + offset, count);
     }
 
-    T &front() { return *mData; }
-    const T &front() const { return *mData; }
+    T &front() FL_NOEXCEPT { return *mData; }
+    const T &front() const FL_NOEXCEPT { return *mData; }
 
-    T &back() { return *(mData + Extent - 1); }
-    const T &back() const { return *(mData + Extent - 1); }
+    T &back() FL_NOEXCEPT { return *(mData + Extent - 1); }
+    const T &back() const FL_NOEXCEPT { return *(mData + Extent - 1); }
 
-    constexpr bool empty() const { return Extent == 0; }
+    constexpr bool empty() const FL_NOEXCEPT { return Extent == 0; }
 
     // ======= COMPARISON OPERATORS =======
-    bool operator==(const span<T, Extent>& other) const {
+    bool operator==(const span<T, Extent>& other) const FL_NOEXCEPT {
         for (fl::size i = 0; i < Extent; ++i) {
             if (!(mData[i] == other.mData[i])) return false;
         }
         return true;
     }
 
-    bool operator!=(const span<T, Extent>& other) const {
+    bool operator!=(const span<T, Extent>& other) const FL_NOEXCEPT {
         return !(*this == other);
     }
 
-    bool operator<(const span<T, Extent>& other) const {
+    bool operator<(const span<T, Extent>& other) const FL_NOEXCEPT {
         for (fl::size i = 0; i < Extent; ++i) {
             if (mData[i] < other.mData[i]) return true;
             if (other.mData[i] < mData[i]) return false;
@@ -527,15 +528,15 @@ template <typename T, fl::size Extent> class span {
         return false; // Equal when all elements are equal
     }
 
-    bool operator<=(const span<T, Extent>& other) const {
+    bool operator<=(const span<T, Extent>& other) const FL_NOEXCEPT {
         return !(other < *this);
     }
 
-    bool operator>(const span<T, Extent>& other) const {
+    bool operator>(const span<T, Extent>& other) const FL_NOEXCEPT {
         return other < *this;
     }
 
-    bool operator>=(const span<T, Extent>& other) const {
+    bool operator>=(const span<T, Extent>& other) const FL_NOEXCEPT {
         return !(*this < other);
     }
 
@@ -547,7 +548,7 @@ template <typename T, fl::size Extent> class span {
 // ======= BYTE VIEW CONVERSION FUNCTIONS =======
 // Convert span to read-only byte view
 template<typename T, fl::size Extent>
-span<const fl::u8, (Extent == dynamic_extent) ? dynamic_extent : (Extent * sizeof(T))>
+span<const fl::u8, (Extent == dynamic_extent) FL_NOEXCEPT ? dynamic_extent : (Extent * sizeof(T))>
 as_bytes(const span<T, Extent>& s) {
     if (Extent == dynamic_extent) {
         return span<const fl::u8, dynamic_extent>(
@@ -563,7 +564,7 @@ as_bytes(const span<T, Extent>& s) {
 
 // Convert span to writable byte view
 template<typename T, fl::size Extent>
-span<fl::u8, (Extent == dynamic_extent) ? dynamic_extent : (Extent * sizeof(T))>
+span<fl::u8, (Extent == dynamic_extent) FL_NOEXCEPT ? dynamic_extent : (Extent * sizeof(T))>
 as_writable_bytes(span<T, Extent>& s) {
     if (Extent == dynamic_extent) {
         return span<fl::u8, dynamic_extent>(
@@ -581,7 +582,7 @@ template <typename T> class MatrixSlice {
   public:
     // represents a window into a matrix
     // bottom-left and top-right corners are passed as plain ints
-    MatrixSlice() = default;
+    MatrixSlice() FL_NOEXCEPT = default;
     MatrixSlice(T *data, i32 dataWidth, i32 dataHeight,
                 i32 bottomLeftX, i32 bottomLeftY, i32 topRightX,
                 i32 topRightY)
@@ -589,15 +590,15 @@ template <typename T> class MatrixSlice {
           mBottomLeft{bottomLeftX, bottomLeftY},
           mTopRight{topRightX, topRightY} {}
 
-    MatrixSlice(const MatrixSlice &other) = default;
-    MatrixSlice &operator=(const MatrixSlice &other) = default;
+    MatrixSlice(const MatrixSlice &other) FL_NOEXCEPT = default;
+    MatrixSlice &operator=(const MatrixSlice &other) FL_NOEXCEPT = default;
 
     // outputs a vec2 but takes x,y as inputs
-    vec2<i32> getParentCoord(i32 x_local, i32 y_local) const {
+    vec2<i32> getParentCoord(i32 x_local, i32 y_local) const FL_NOEXCEPT {
         return {x_local + mBottomLeft.x, y_local + mBottomLeft.y};
     }
 
-    vec2<i32> getLocalCoord(i32 x_world, i32 y_world) const {
+    vec2<i32> getLocalCoord(i32 x_world, i32 y_world) const FL_NOEXCEPT {
         // clamp to [mBottomLeft, mTopRight]
         i32 x_clamped = fl::clamp(x_world, mBottomLeft.x, mTopRight.x);
         i32 y_clamped = fl::clamp(y_world, mBottomLeft.y, mTopRight.y);
@@ -609,17 +610,17 @@ template <typename T> class MatrixSlice {
     T &operator()(i32 x, i32 y) { return at(x, y); }
 
     // Add access like slice[y][x]
-    T *operator[](i32 row) {
+    T *operator[](i32 row) FL_NOEXCEPT {
         i32 parentRow = row + mBottomLeft.y;
         return mData + parentRow * mDataWidth + mBottomLeft.x;
     }
 
-    T &at(i32 x, i32 y) {
+    T &at(i32 x, i32 y) FL_NOEXCEPT {
         auto parent = getParentCoord(x, y);
         return mData[parent.x + parent.y * mDataWidth];
     }
 
-    const T &at(i32 x, i32 y) const {
+    const T &at(i32 x, i32 y) const FL_NOEXCEPT {
         auto parent = getParentCoord(x, y);
         return mData[parent.x + parent.y * mDataWidth];
     }

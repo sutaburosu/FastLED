@@ -7,12 +7,13 @@
 //   - fl/unique_ptr.h for unique_ptr and make_unique
 
 #include "fl/stl/shared_ptr.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 
 // Convenience factory - just an alias for fl::make_shared
 template <typename T, typename... Args>
-fl::shared_ptr<T> make_shared_ptr(Args&&... args) {
+fl::shared_ptr<T> make_shared_ptr(Args&&... args) FL_NOEXCEPT {
     return fl::make_shared<T>(fl::forward<Args>(args)...);
 }
 

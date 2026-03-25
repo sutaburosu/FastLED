@@ -6,6 +6,7 @@ Provides eanble_if and is_derived for compilers before C++14.
 
 #include "fl/stl/move.h"
 #include "fl/stl/int.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl { // mandatory namespace to prevent name collision with
                // std::enable_if.
@@ -859,7 +860,7 @@ template <typename T, bool = has_member_swap<T>::value> struct swap_impl;
 
 // POD case - now using move semantics for better performance
 template <typename T> struct swap_impl<T, false> {
-    static void apply(T &a, T &b) {
+    static void apply(T &a, T &b) FL_NOEXCEPT {
         T tmp = fl::move(a);
         a = fl::move(b);
         b = fl::move(tmp);
@@ -868,17 +869,17 @@ template <typename T> struct swap_impl<T, false> {
 
 // non‑POD case (requires T implements swap)
 template <typename T> struct swap_impl<T, true> {
-    static void apply(T &a, T &b) { a.swap(b); }
+    static void apply(T &a, T &b) FL_NOEXCEPT { a.swap(b); }
 };
 
 // single entry‑point
-template <typename T> void swap(T &a, T &b) {
+template <typename T> void swap(T &a, T &b) FL_NOEXCEPT {
     // if T is a POD, use use a simple data copy swap.
     // if T is not a POD, use the T::Swap method.
     swap_impl<T>::apply(a, b);
 }
 
-template <typename T> void swap_by_copy(T &a, T &b) {
+template <typename T> void swap_by_copy(T &a, T &b) FL_NOEXCEPT {
     // Force copy semantics (for cases where move might not be safe)
     T tmp = a;
     a = b;
@@ -1151,7 +1152,7 @@ struct callable_traits<T, typename enable_if<
 template <fl::size... Is>
 struct index_sequence {
     using type = index_sequence;
-    static constexpr fl::size size() { return sizeof...(Is); }
+    static constexpr fl::size size() FL_NOEXCEPT { return sizeof...(Is); }
 };
 
 template <fl::size N, fl::size... Is>

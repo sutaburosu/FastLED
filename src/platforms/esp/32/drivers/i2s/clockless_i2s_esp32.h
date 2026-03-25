@@ -314,7 +314,7 @@ class ClocklessI2S : public CPixelLEDController<RGB_ORDER> {
             //    treating it as RGB pixels (even though it's packed RGBW)
             CRGB* buffer = reinterpret_cast<CRGB*>(scratchpad.data()); // ok reinterpret cast
             ColorAdjustment no_adjustment = ColorAdjustment::noAdjustment();
-            PixelController<RGB_ORDER> converted_pixels(
+            PixelController<RGB_ORDER> converted_pixels( // ok no noexcept
                 buffer, rgb_pixel_count, no_adjustment, DISABLE_DITHER);
             (*mPixels) = converted_pixels;
         } else {

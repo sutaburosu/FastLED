@@ -43,6 +43,8 @@
 
 #pragma once
 
+#include "fl/stl/noexcept.h"
+
 #include "fl/channels/driver.h"
 #include "fl/channels/data.h"
 #include "fl/stl/vector.h"
@@ -116,7 +118,7 @@ public:
 private:
     /// @brief Friend declaration for make_shared to access private constructor
     template<typename T, typename... Args>
-    friend fl::shared_ptr<T> fl::make_shared(Args&&... args);
+    friend fl::shared_ptr<T> fl::make_shared(Args&&... args) FL_NOEXCEPT;
 
     /// @brief Private constructor - use create() factory method
     SpiChannelEngineAdapter(const char* name);

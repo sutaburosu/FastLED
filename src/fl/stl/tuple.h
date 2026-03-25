@@ -2,6 +2,7 @@
 
 #include "fl/stl/cstddef.h"
 #include "fl/stl/type_traits.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 
@@ -18,16 +19,16 @@ struct tuple<Head, Tail...> {
     Head head;
     tuple<Tail...> tail;
 
-    tuple() = default;
+    tuple() FL_NOEXCEPT = default;
 
-    tuple(const Head& h, const Tail&... t)
+    tuple(const Head& h, const Tail&... t) FL_NOEXCEPT
       : head(h), tail(t...) {}
 
     // Only enable rvalue constructor when Head is not a reference
     // (prevents overload ambiguity when Head = const T&)
     template<typename H = Head, typename... T,
              typename = typename enable_if<!is_reference<H>::value>::type>
-    tuple(H&& h, T&&... t)
+    tuple(H&& h, T&&... t) FL_NOEXCEPT
       : head(fl::forward<H>(h)), tail(fl::forward<T>(t)...) {}
 };
 

@@ -8,6 +8,7 @@
 
 #include "fl/stl/initializer_list.h"  // IWYU pragma: keep
 #include "fl/stl/alloca.h"  // IWYU pragma: keep
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 
@@ -40,31 +41,31 @@ template <typename T, fl::size N> class array {
     T mData[N];
 
     // Element access
-    T &at(fl::size pos) {
+    T &at(fl::size pos) FL_NOEXCEPT {
         if (pos >= N) {
             return error_value();
         }
         return mData[pos];
     }
 
-    const T &at(fl::size pos) const {
+    const T &at(fl::size pos) const FL_NOEXCEPT {
         if (pos >= N) {
             return error_value();
         }
         return mData[pos];
     }
 
-    T &operator[](fl::size pos) { return mData[pos]; }
+    T &operator[](fl::size pos) FL_NOEXCEPT { return mData[pos]; }
 
-    const_reference operator[](fl::size pos) const { return mData[pos]; }
+    const_reference operator[](fl::size pos) const FL_NOEXCEPT { return mData[pos]; }
 
-    T &front() { return mData[0]; }
+    T &front() FL_NOEXCEPT { return mData[0]; }
 
-    const T &front() const { return mData[0]; }
+    const T &front() const FL_NOEXCEPT { return mData[0]; }
 
-    T &back() { return mData[N - 1]; }
+    T &back() FL_NOEXCEPT { return mData[N - 1]; }
 
-    const T &back() const { return mData[N - 1]; }
+    const T &back() const FL_NOEXCEPT { return mData[N - 1]; }
 
     pointer data() noexcept { return mData; }
 
@@ -91,20 +92,20 @@ template <typename T, fl::size N> class array {
     fl::size max_size() const noexcept { return N; }
 
     // Operations
-    void fill(const T &value) {
+    void fill(const T &value) FL_NOEXCEPT {
         for (fl::size i = 0; i < N; ++i) {
             mData[i] = value;
         }
     }
 
-    void swap(array &other) {
+    void swap(array &other) FL_NOEXCEPT {
         for (fl::size i = 0; i < N; ++i) {
             fl::swap(mData[i], other.mData[i]);
         }
     }
 
   private:
-    static T &error_value() {
+    static T &error_value() FL_NOEXCEPT {
         static T empty_value;
         return empty_value;
     }
@@ -112,7 +113,7 @@ template <typename T, fl::size N> class array {
 
 // Non-member functions
 template <typename T, fl::size N>
-bool operator==(const array<T, N> &lhs, const array<T, N> &rhs) {
+bool operator==(const array<T, N> &lhs, const array<T, N> &rhs) FL_NOEXCEPT {
     // return std::equal(lhs.begin(), lhs.end(), rhs.begin());
     for (fl::size i = 0; i < N; ++i) {
         if (lhs[i] != rhs[i]) {
@@ -123,12 +124,12 @@ bool operator==(const array<T, N> &lhs, const array<T, N> &rhs) {
 }
 
 template <typename T, fl::size N>
-bool operator!=(const array<T, N> &lhs, const array<T, N> &rhs) {
+bool operator!=(const array<T, N> &lhs, const array<T, N> &rhs) FL_NOEXCEPT {
     return !(lhs == rhs);
 }
 
 template <typename T, fl::size N>
-bool operator<(const array<T, N> &lhs, const array<T, N> &rhs) {
+bool operator<(const array<T, N> &lhs, const array<T, N> &rhs) FL_NOEXCEPT {
     for (fl::size i = 0; i < N; ++i) {
         if (lhs[i] < rhs[i]) {
             return true;
@@ -141,17 +142,17 @@ bool operator<(const array<T, N> &lhs, const array<T, N> &rhs) {
 }
 
 template <typename T, fl::size N>
-bool operator<=(const array<T, N> &lhs, const array<T, N> &rhs) {
+bool operator<=(const array<T, N> &lhs, const array<T, N> &rhs) FL_NOEXCEPT {
     return !(rhs < lhs);
 }
 
 template <typename T, fl::size N>
-bool operator>(const array<T, N> &lhs, const array<T, N> &rhs) {
+bool operator>(const array<T, N> &lhs, const array<T, N> &rhs) FL_NOEXCEPT {
     return rhs < lhs;
 }
 
 template <typename T, fl::size N>
-bool operator>=(const array<T, N> &lhs, const array<T, N> &rhs) {
+bool operator>=(const array<T, N> &lhs, const array<T, N> &rhs) FL_NOEXCEPT {
     return !(lhs < rhs);
 }
 
@@ -164,7 +165,7 @@ void swap(array<T, N> &lhs,
 // Helper function to create array from span (dynamic extent)
 // Copies exactly N elements from span (span must have at least N elements)
 template <fl::size N, typename T>
-array<T, N> to_array(fl::span<const T, fl::size(-1)> s) {
+array<T, N> to_array(fl::span<const T, fl::size(-1)> s) FL_NOEXCEPT {
     array<T, N> result;
     for (fl::size i = 0; i < N; ++i) {
         result.mData[i] = s[i];
@@ -174,7 +175,7 @@ array<T, N> to_array(fl::span<const T, fl::size(-1)> s) {
 
 // Helper function to create array from span (static extent)
 template <typename T, fl::size N>
-array<T, N> to_array(fl::span<const T, N> s) {
+array<T, N> to_array(fl::span<const T, N> s) FL_NOEXCEPT {
     array<T, N> result;
     for (fl::size i = 0; i < N; ++i) {
         result.mData[i] = s[i];

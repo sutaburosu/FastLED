@@ -17,6 +17,7 @@
 #include "fl/stl/move.h"
 #include "fl/stl/align.h"
 #include "fl/stl/compiler_control.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 
@@ -38,22 +39,22 @@ struct FL_ALIGNAS(alignof(T) > alignof(fl::uptr) ? alignof(T) : alignof(fl::uptr
         kBlockSize = (kTotalBytesAligned + sizeof(MemoryType) - 1) / sizeof(MemoryType),
     };
 
-    InlinedMemoryBlock() {
+    InlinedMemoryBlock() FL_NOEXCEPT {
         fl::memset(mMemoryBlock, 0, sizeof(mMemoryBlock));
 #ifdef FASTLED_TESTING
         __data = memory();
 #endif
     }
 
-    InlinedMemoryBlock(const InlinedMemoryBlock &other) = default;
-    InlinedMemoryBlock(InlinedMemoryBlock &&other) = default;
+    InlinedMemoryBlock(const InlinedMemoryBlock &other) FL_NOEXCEPT = default;
+    InlinedMemoryBlock(InlinedMemoryBlock &&other) FL_NOEXCEPT = default;
 
     // u32 mRaw[N * sizeof(T)/sizeof(MemoryType) + kExtraSize];
     // align this to the size of MemoryType.
     // u32 mMemoryBlock[kTotalSize] = {0};
     MemoryType mMemoryBlock[kBlockSize];
 
-    T *memory() {
+    T *memory() FL_NOEXCEPT {
         MemoryType *begin = &mMemoryBlock[0];
         fl::uptr shift_up =
             fl::ptr_to_int(begin) & (sizeof(MemoryType) - 1);
@@ -61,7 +62,7 @@ struct FL_ALIGNAS(alignof(T) > alignof(fl::uptr) ? alignof(T) : alignof(fl::uptr
         return fl::bit_cast<T *>(raw);
     }
 
-    const T *memory() const {
+    const T *memory() const FL_NOEXCEPT {
         const MemoryType *begin = &mMemoryBlock[0];
         const fl::uptr shift_up =
             fl::ptr_to_int(begin) & (sizeof(MemoryType) - 1);
@@ -84,37 +85,37 @@ class FL_ALIGN FixedVector {
   private:
     InlinedMemoryBlock<T, N> mMemoryBlock;
 
-    T *memory() { return mMemoryBlock.memory(); }
+    T *memory() FL_NOEXCEPT { return mMemoryBlock.memory(); }
 
-    const T *memory() const { return mMemoryBlock.memory(); }
+    const T *memory() const FL_NOEXCEPT { return mMemoryBlock.memory(); }
 
   public:
     typedef T value_type;
     typedef T *iterator;
     typedef const T *const_iterator;
     // Constructor
-    constexpr FixedVector() : current_size(0) {}
+    constexpr FixedVector() FL_NOEXCEPT : current_size(0) {}
 
-    FixedVector(const T (&values)[N]) : current_size(N) {
+    FixedVector(const T (&values)[N]) FL_NOEXCEPT : current_size(N) {
         assign_array(values, N);
     }
 
-    FixedVector(FixedVector &&other) : current_size(0) {
+    FixedVector(FixedVector &&other) FL_NOEXCEPT : current_size(0) {
         fl::swap(*this, other);
         other.clear();
     }
 
-    FixedVector(const FixedVector &other) : current_size(other.current_size) {
+    FixedVector(const FixedVector &other) FL_NOEXCEPT : current_size(other.current_size) {
         assign_array(other.memory(), other.current_size);
     }
 
-    template <fl::size M> FixedVector(T (&values)[M]) : current_size(0) {
+    template <fl::size M> FixedVector(T (&values)[M]) FL_NOEXCEPT : current_size(0) {
         static_assert(M <= N, "Too many elements for FixedVector");
         assign_array(values, M);
     }
 
     // Initializer list constructor (C++11 and later) - uses fl::initializer_list
-    FixedVector(fl::initializer_list<T> init) : current_size(0) {
+    FixedVector(fl::initializer_list<T> init) FL_NOEXCEPT : current_size(0) {
         if (init.size() > N) {
             // Only assign the first N elements if the list is too long
             auto it = init.begin();
@@ -130,21 +131,21 @@ class FL_ALIGN FixedVector {
 
     // Implicit copy constructor from span (dynamic extent)
     // Only copies up to N elements from the span
-    FixedVector(fl::span<const T, fl::size(-1)> s) : current_size(0) {
+    FixedVector(fl::span<const T, fl::size(-1)> s) FL_NOEXCEPT : current_size(0) {
         fl::size count = s.size() < N ? s.size() : N;
         for (fl::size i = 0; i < count; ++i) {
             push_back(s[i]);
         }
     }
 
-    FixedVector &operator=(const FixedVector &other) { // cppcheck-suppress operatorEqVarError
+    FixedVector &operator=(const FixedVector &other) FL_NOEXCEPT { // cppcheck-suppress operatorEqVarError
         if (this != &other) {
             assign_array(other.memory(), other.current_size);
         }
         return *this;
     }
 
-    FixedVector &operator=(FixedVector &&other) { // cppcheck-suppress operatorEqVarError
+    FixedVector &operator=(FixedVector &&other) FL_NOEXCEPT { // cppcheck-suppress operatorEqVarError
         if (this != &other) {
             fl::swap(*this, other);
             other.clear();
@@ -153,13 +154,13 @@ class FL_ALIGN FixedVector {
     }
 
     // Destructor
-    ~FixedVector() { clear(); }
+    ~FixedVector() FL_NOEXCEPT { clear(); }
 
     // Array subscript operator
-    T &operator[](fl::size index) { return memory()[index]; }
+    T &operator[](fl::size index) FL_NOEXCEPT { return memory()[index]; }
 
     // Const array subscript operator
-    const T &operator[](fl::size index) const {
+    const T &operator[](fl::size index) const FL_NOEXCEPT {
         if (index >= current_size) {
             const T *out = nullptr;
             return *out; // Cause a nullptr dereference
@@ -167,7 +168,7 @@ class FL_ALIGN FixedVector {
         return memory()[index];
     }
 
-    void resize(fl::size n) {
+    void resize(fl::size n) FL_NOEXCEPT {
         while (current_size < n) {
             push_back(T());
         }
@@ -177,15 +178,15 @@ class FL_ALIGN FixedVector {
     }
 
     // Get the current size of the vector
-    constexpr fl::size size() const { return current_size; }
+    constexpr fl::size size() const FL_NOEXCEPT { return current_size; }
 
-    constexpr bool empty() const { return current_size == 0; }
+    constexpr bool empty() const FL_NOEXCEPT { return current_size == 0; }
 
     // Get the capacity of the vector
-    constexpr fl::size capacity() const { return N; }
+    constexpr fl::size capacity() const FL_NOEXCEPT { return N; }
 
     // Add an element to the end of the vector
-    void push_back(const T &value) {
+    void push_back(const T &value) FL_NOEXCEPT {
         if (current_size < N) {
             void *mem = &memory()[current_size];
             new (mem) T(value);
@@ -194,7 +195,7 @@ class FL_ALIGN FixedVector {
     }
 
     // Move version of push_back
-    void push_back(T &&value) {
+    void push_back(T &&value) FL_NOEXCEPT {
         if (current_size < N) {
             void *mem = &memory()[current_size];
             new (mem) T(fl::move(value));
@@ -204,7 +205,7 @@ class FL_ALIGN FixedVector {
 
     // Emplace back - construct in place
     template<typename... Args>
-    void emplace_back(Args&&... args) {
+    void emplace_back(Args&&... args) FL_NOEXCEPT {
         if (current_size < N) {
             void *mem = &memory()[current_size];
             new (mem) T(fl::forward<Args>(args)...);
@@ -212,21 +213,21 @@ class FL_ALIGN FixedVector {
         }
     }
 
-    void reserve(fl::size n) {
+    void reserve(fl::size n) FL_NOEXCEPT {
         if (n > N) {
             // This is a no-op for fixed size vectors
             return;
         }
     }
 
-    void assign_array(const T *values, fl::size count) {
+    void assign_array(const T *values, fl::size count) FL_NOEXCEPT {
         clear();
         for (fl::size i = 0; i < count; ++i) {
             push_back(values[i]);
         }
     }
 
-    void assign(const_iterator begin, const_iterator end) {
+    void assign(const_iterator begin, const_iterator end) FL_NOEXCEPT {
         clear();
         for (const_iterator it = begin; it != end; ++it) {
             push_back(*it);
@@ -234,7 +235,7 @@ class FL_ALIGN FixedVector {
     }
 
     // Remove the last element from the vector
-    void pop_back() {
+    void pop_back() FL_NOEXCEPT {
         if (current_size > 0) {
             --current_size;
             memory()[current_size].~T();
@@ -242,14 +243,14 @@ class FL_ALIGN FixedVector {
     }
 
     // Clear the vector
-    void clear() {
+    void clear() FL_NOEXCEPT {
         while (current_size > 0) {
             pop_back();
         }
     }
 
     // Erase the element at the given iterator position
-    iterator erase(iterator pos) {
+    iterator erase(iterator pos) FL_NOEXCEPT {
         if (pos != end()) {
             pos->~T();
             // shift all elements to the left
@@ -262,7 +263,7 @@ class FL_ALIGN FixedVector {
         return pos;
     }
 
-    iterator erase(const T &value) {
+    iterator erase(const T &value) FL_NOEXCEPT {
         iterator it = find(value);
         if (it != end()) {
             erase(it);
@@ -270,7 +271,7 @@ class FL_ALIGN FixedVector {
         return it;
     }
 
-    iterator find(const T &value) {
+    iterator find(const T &value) FL_NOEXCEPT {
         for (iterator it = begin(); it != end(); ++it) {
             if (*it == value) {
                 return it;
@@ -279,7 +280,7 @@ class FL_ALIGN FixedVector {
         return end();
     }
 
-    template <typename Predicate> iterator find_if(Predicate pred) {
+    template <typename Predicate> iterator find_if(Predicate pred) FL_NOEXCEPT {
         for (iterator it = begin(); it != end(); ++it) {
             if (pred(*it)) {
                 return it;
@@ -288,7 +289,7 @@ class FL_ALIGN FixedVector {
         return end();
     }
 
-    bool insert(iterator pos, const T &value) {
+    bool insert(iterator pos, const T &value) FL_NOEXCEPT {
         if (current_size >= N) {
             return false;
         }
@@ -308,7 +309,7 @@ class FL_ALIGN FixedVector {
     }
 
     // Move version of insert
-    bool insert(iterator pos, T &&value) {
+    bool insert(iterator pos, T &&value) FL_NOEXCEPT {
         if (current_size >= N) {
             return false;
         }
@@ -327,7 +328,7 @@ class FL_ALIGN FixedVector {
         return true;
     }
 
-    const_iterator find(const T &value) const {
+    const_iterator find(const T &value) const FL_NOEXCEPT {
         for (const_iterator it = begin(); it != end(); ++it) {
             if (*it == value) {
                 return it;
@@ -336,74 +337,74 @@ class FL_ALIGN FixedVector {
         return end();
     }
 
-    iterator data() { return begin(); }
+    iterator data() FL_NOEXCEPT { return begin(); }
 
-    const_iterator data() const { return begin(); }
+    const_iterator data() const FL_NOEXCEPT { return begin(); }
 
-    bool has(const T &value) const { return find(value) != end(); }
+    bool has(const T &value) const FL_NOEXCEPT { return find(value) != end(); }
 
     // Access to first and last elements
-    T &front() { return memory()[0]; }
+    T &front() FL_NOEXCEPT { return memory()[0]; }
 
-    const T &front() const { return memory()[0]; }
+    const T &front() const FL_NOEXCEPT { return memory()[0]; }
 
-    T &back() { return memory()[current_size - 1]; }
+    T &back() FL_NOEXCEPT { return memory()[current_size - 1]; }
 
-    const T &back() const { return memory()[current_size - 1]; }
+    const T &back() const FL_NOEXCEPT { return memory()[current_size - 1]; }
 
     // Reverse iterator types (same as vector)
     struct reverse_iterator {
         iterator it;
-        reverse_iterator(iterator i) : it(i) {}
-        T &operator*() { return *(it - 1); }
+        reverse_iterator(iterator i) FL_NOEXCEPT : it(i) {}
+        T &operator*() FL_NOEXCEPT { return *(it - 1); }
         T *operator->() { return (it - 1); }
-        reverse_iterator &operator++() {
+        reverse_iterator &operator++() FL_NOEXCEPT {
             --it;
             return *this;
         }
-        bool operator==(const reverse_iterator &other) const {
+        bool operator==(const reverse_iterator &other) const FL_NOEXCEPT {
             return it == other.it;
         }
-        bool operator!=(const reverse_iterator &other) const {
+        bool operator!=(const reverse_iterator &other) const FL_NOEXCEPT {
             return it != other.it;
         }
     };
 
     struct const_reverse_iterator {
         const_iterator it;
-        const_reverse_iterator(const_iterator i) : it(i) {}
-        const T &operator*() const { return *(it - 1); }
+        const_reverse_iterator(const_iterator i) FL_NOEXCEPT : it(i) {}
+        const T &operator*() const FL_NOEXCEPT { return *(it - 1); }
         const T *operator->() const { return (it - 1); }
-        const_reverse_iterator &operator++() {
+        const_reverse_iterator &operator++() FL_NOEXCEPT {
             --it;
             return *this;
         }
-        bool operator==(const const_reverse_iterator &other) const {
+        bool operator==(const const_reverse_iterator &other) const FL_NOEXCEPT {
             return it == other.it;
         }
-        bool operator!=(const const_reverse_iterator &other) const {
+        bool operator!=(const const_reverse_iterator &other) const FL_NOEXCEPT {
             return it != other.it;
         }
     };
 
     // Iterator support
-    iterator begin() { return &memory()[0]; }
-    const_iterator begin() const { return &memory()[0]; }
-    iterator end() { return &memory()[current_size]; }
-    const_iterator end() const { return &memory()[current_size]; }
+    iterator begin() FL_NOEXCEPT { return &memory()[0]; }
+    const_iterator begin() const FL_NOEXCEPT { return &memory()[0]; }
+    iterator end() FL_NOEXCEPT { return &memory()[current_size]; }
+    const_iterator end() const FL_NOEXCEPT { return &memory()[current_size]; }
 
     // Reverse iterator support
-    reverse_iterator rbegin() { return reverse_iterator(end()); }
-    const_reverse_iterator rbegin() const { return const_reverse_iterator(end()); }
-    reverse_iterator rend() { return reverse_iterator(begin()); }
-    const_reverse_iterator rend() const { return const_reverse_iterator(begin()); }
+    reverse_iterator rbegin() FL_NOEXCEPT { return reverse_iterator(end()); }
+    const_reverse_iterator rbegin() const FL_NOEXCEPT { return const_reverse_iterator(end()); }
+    reverse_iterator rend() FL_NOEXCEPT { return reverse_iterator(begin()); }
+    const_reverse_iterator rend() const FL_NOEXCEPT { return const_reverse_iterator(begin()); }
 
     // Capacity management (no-op for fixed-size vector)
-    void shrink_to_fit() {
+    void shrink_to_fit() FL_NOEXCEPT {
         // No-op for fixed-size vectors
     }
 
-    void swap(FixedVector<T, N> &other) {
+    void swap(FixedVector<T, N> &other) FL_NOEXCEPT {
         if (this == &other) return;
         fl::size min_sz = fl::min(current_size, other.current_size);
         fl::size max_sz = fl::max(current_size, other.current_size);
@@ -455,48 +456,48 @@ class FL_ALIGN vector {
 
     struct reverse_iterator {
         iterator it;
-        reverse_iterator(iterator i) : it(i) {}
-        T &operator*() { return *(it - 1); }
+        reverse_iterator(iterator i) FL_NOEXCEPT : it(i) {}
+        T &operator*() FL_NOEXCEPT { return *(it - 1); }
         T *operator->() { return (it - 1); }
-        reverse_iterator &operator++() {
+        reverse_iterator &operator++() FL_NOEXCEPT {
             --it;
             return *this;
         }
-        bool operator==(const reverse_iterator &other) const {
+        bool operator==(const reverse_iterator &other) const FL_NOEXCEPT {
             return it == other.it;
         }
-        bool operator!=(const reverse_iterator &other) const {
+        bool operator!=(const reverse_iterator &other) const FL_NOEXCEPT {
             return it != other.it;
         }
     };
 
     struct const_reverse_iterator {
         const_iterator it;
-        const_reverse_iterator(const_iterator i) : it(i) {}
-        const T &operator*() const { return *(it - 1); }
+        const_reverse_iterator(const_iterator i) FL_NOEXCEPT : it(i) {}
+        const T &operator*() const FL_NOEXCEPT { return *(it - 1); }
         const T *operator->() const { return (it - 1); }
-        const_reverse_iterator &operator++() {
+        const_reverse_iterator &operator++() FL_NOEXCEPT {
             --it;
             return *this;
         }
-        bool operator==(const const_reverse_iterator &other) const {
+        bool operator==(const const_reverse_iterator &other) const FL_NOEXCEPT {
             return it == other.it;
         }
-        bool operator!=(const const_reverse_iterator &other) const {
+        bool operator!=(const const_reverse_iterator &other) const FL_NOEXCEPT {
             return it != other.it;
         }
     };
 
     // Default constructor
-    vector() : mArray(nullptr),mCapacity(0), mSize(0) {
+    vector() FL_NOEXCEPT : mArray(nullptr),mCapacity(0), mSize(0) {
     }
 
     // Constructor with allocator
-    explicit vector(const Allocator& alloc) : mArray(nullptr), mCapacity(0), mSize(0), mAlloc(alloc) {
+    explicit vector(const Allocator& alloc) FL_NOEXCEPT : mArray(nullptr), mCapacity(0), mSize(0), mAlloc(alloc) {
     }
 
     // Constructor with size and value
-    vector(fl::size size, const T &value = T()) : mCapacity(size), mSize(size) {
+    vector(fl::size size, const T &value = T()) FL_NOEXCEPT : mCapacity(size), mSize(size) {
         if (size > 0) {
             // mArray.reset(size);
             mArray = mAlloc.allocate(size);
@@ -505,7 +506,7 @@ class FL_ALIGN vector {
             }
         }
     }
-    vector(const vector<T, Allocator> &other) {
+    vector(const vector<T, Allocator> &other) FL_NOEXCEPT {
         reserve(other.size());
         assign(other.begin(), other.end());
     }
@@ -552,7 +553,7 @@ class FL_ALIGN vector {
         return *this;
     }
 
-    template <fl::size N> vector(T (&values)[N]) {
+    template <fl::size N> vector(T (&values)[N]) FL_NOEXCEPT {
         T *begin = &values[0];
         T *end = &values[N];
         assign(begin, end);
@@ -560,12 +561,12 @@ class FL_ALIGN vector {
 
     // emplace back
     template <typename... Args>
-    void emplace_back(Args&&... args) {
+    void emplace_back(Args&&... args) FL_NOEXCEPT {
         push_back(T(fl::forward<Args>(args)...));
     }
 
     // Initializer list constructor (C++11 and later) - uses fl::initializer_list
-    vector(fl::initializer_list<T> init) {
+    vector(fl::initializer_list<T> init) FL_NOEXCEPT {
         reserve(init.size());
         for (const auto& value : init) {
             push_back(value);
@@ -574,19 +575,19 @@ class FL_ALIGN vector {
 
     // Iterator-based constructor
     template <typename InputIterator>
-    vector(InputIterator first, InputIterator last) {
+    vector(InputIterator first, InputIterator last) FL_NOEXCEPT {
         assign(first, last);
     }
 
     // Implicit copy constructor from span
     // Note: dynamic_extent is defined as fl::size(-1) in fl/stl/span.h
-    vector(span<const T, fl::size(-1)> s) {
+    vector(span<const T, fl::size(-1)> s) FL_NOEXCEPT {
         reserve(s.size());
         assign(s.begin(), s.end());
     }
 
     // Destructor
-    ~vector() {
+    ~vector() FL_NOEXCEPT {
         clear();  // Destroys all elements and sets mSize = 0
         if (mArray) {
             mAlloc.deallocate(mArray, mCapacity);
@@ -594,7 +595,7 @@ class FL_ALIGN vector {
         }
     }
 
-    void ensure_size(fl::size n) {
+    void ensure_size(fl::size n) FL_NOEXCEPT {
         if (n > mCapacity) {
             fl::size new_capacity = (3 * mCapacity) / 2;
             if (new_capacity < n) {
@@ -644,7 +645,7 @@ private:
     }
 
     // Implementation: Try optimized paths, fall back to standard if needed
-    void ensure_size_impl(fl::size n, fl::size new_capacity) {
+    void ensure_size_impl(fl::size n, fl::size new_capacity) FL_NOEXCEPT {
         FASTLED_UNUSED(n);
         // PATH 1: Try optimized reallocate() if allocator supports it
         // This avoids copying for POD types and moves memory in-place
@@ -680,13 +681,13 @@ private:
 
 public:
 
-    void reserve(fl::size n) {
+    void reserve(fl::size n) FL_NOEXCEPT {
         if (n > mCapacity) {
             ensure_size(n);
         }
     }
 
-    void resize(fl::size n) {
+    void resize(fl::size n) FL_NOEXCEPT {
         if (mSize == n) {
             return;
         }
@@ -701,7 +702,7 @@ public:
         }
     }
 
-    void resize(fl::size n, const T &value) {
+    void resize(fl::size n, const T &value) FL_NOEXCEPT {
         if (n > mCapacity) {
             // Need to allocate more space
             T* new_array = mAlloc.allocate(n);
@@ -742,7 +743,7 @@ public:
         }
     }
 
-    void shrink_to_fit() {
+    void shrink_to_fit() FL_NOEXCEPT {
         if (mCapacity > mSize && mSize > 0) {
             T* new_array = mAlloc.allocate(mSize);
             for (fl::size i = 0; i < mSize; ++i) {
@@ -760,7 +761,7 @@ public:
 
     template <typename InputIt,
               typename = fl::enable_if_t<!fl::is_integral<InputIt>::value>>
-    void assign(InputIt begin, InputIt end) {
+    void assign(InputIt begin, InputIt end) FL_NOEXCEPT {
         clear();
         // Don't try to compute distance for non-random-access iterators
         // Just push_back each element - reserve will grow as needed
@@ -769,7 +770,7 @@ public:
         }
     }
 
-    void assign(fl::size new_cap, const T &value) {
+    void assign(fl::size new_cap, const T &value) FL_NOEXCEPT {
         clear();
         reserve(new_cap);
         while (size() < new_cap) {
@@ -778,21 +779,21 @@ public:
     }
 
     // Array access operators
-    T &operator[](fl::size index) { return mArray[index]; }
+    T &operator[](fl::size index) FL_NOEXCEPT { return mArray[index]; }
 
-    const T &operator[](fl::size index) const { return mArray[index]; }
+    const T &operator[](fl::size index) const FL_NOEXCEPT { return mArray[index]; }
 
     // Capacity and size methods
-    fl::size size() const { return mSize; }
+    fl::size size() const FL_NOEXCEPT { return mSize; }
 
-    bool empty() const { return mSize == 0; }
+    bool empty() const FL_NOEXCEPT { return mSize == 0; }
 
-    fl::size capacity() const { return mCapacity; }
+    fl::size capacity() const FL_NOEXCEPT { return mCapacity; }
 
-    allocator_type get_allocator() const { return mAlloc; }
+    allocator_type get_allocator() const FL_NOEXCEPT { return mAlloc; }
 
     // Element addition/removal
-    void push_back(const T &value) {
+    void push_back(const T &value) FL_NOEXCEPT {
         ensure_size(mSize + 1);
         if (mSize < mCapacity) {
             mAlloc.construct(&mArray[mSize], value);
@@ -801,7 +802,7 @@ public:
     }
 
     // Move version of push_back
-    void push_back(T &&value) {
+    void push_back(T &&value) FL_NOEXCEPT {
         ensure_size(mSize + 1);
         if (mSize < mCapacity) {
             mAlloc.construct(&mArray[mSize], fl::move(value));
@@ -809,14 +810,14 @@ public:
         }
     }
 
-    void pop_back() {
+    void pop_back() FL_NOEXCEPT {
         if (mSize > 0) {
             --mSize;
             mAlloc.destroy(&mArray[mSize]);
         }
     }
 
-    void clear() {
+    void clear() FL_NOEXCEPT {
         if (mArray) {  // Add null check before accessing array
             for (fl::size i = 0; i < mSize; ++i) {
                 mAlloc.destroy(&mArray[i]);
@@ -826,44 +827,44 @@ public:
     }
 
     // Iterator methods
-    iterator begin() {
+    iterator begin() FL_NOEXCEPT {
         return mArray ? &mArray[0] : nullptr;
     }
-    const_iterator begin() const {
+    const_iterator begin() const FL_NOEXCEPT {
         return mArray ? &mArray[0] : nullptr;
     }
-    iterator end() {
+    iterator end() FL_NOEXCEPT {
         return mArray ? &mArray[mSize] : nullptr;
     }
-    const_iterator end() const {
+    const_iterator end() const FL_NOEXCEPT {
         return mArray ? &mArray[mSize] : nullptr;
     }
 
-    reverse_iterator rbegin() { return reverse_iterator(end()); }
-    const_reverse_iterator rbegin() const { return const_reverse_iterator(end()); }
+    reverse_iterator rbegin() FL_NOEXCEPT { return reverse_iterator(end()); }
+    const_reverse_iterator rbegin() const FL_NOEXCEPT { return const_reverse_iterator(end()); }
 
-    reverse_iterator rend() { return reverse_iterator(begin()); }
-    const_reverse_iterator rend() const { return const_reverse_iterator(begin()); }
+    reverse_iterator rend() FL_NOEXCEPT { return reverse_iterator(begin()); }
+    const_reverse_iterator rend() const FL_NOEXCEPT { return const_reverse_iterator(begin()); }
 
-    const_iterator cbegin() const {
+    const_iterator cbegin() const FL_NOEXCEPT {
         return mArray ? &mArray[0] : nullptr;
     }
 
-    const_iterator cend() const {
+    const_iterator cend() const FL_NOEXCEPT {
         return mArray ? &mArray[mSize] : nullptr;
     }
 
     // Element access
-    T &front() { return mArray[0]; }
+    T &front() FL_NOEXCEPT { return mArray[0]; }
 
-    const T &front() const { return mArray[0]; }
+    const T &front() const FL_NOEXCEPT { return mArray[0]; }
 
-    T &back() { return mArray[mSize - 1]; }
+    T &back() FL_NOEXCEPT { return mArray[mSize - 1]; }
 
-    const T &back() const { return mArray[mSize - 1]; }
+    const T &back() const FL_NOEXCEPT { return mArray[mSize - 1]; }
 
     // Search and modification
-    iterator find(const T &value) {
+    iterator find(const T &value) FL_NOEXCEPT {
         for (iterator it = begin(); it != end(); ++it) {
             if (*it == value) {
                 return it;
@@ -872,7 +873,7 @@ public:
         return end();
     }
 
-    const_iterator find(const T &value) const {
+    const_iterator find(const T &value) const FL_NOEXCEPT {
         for (const_iterator it = begin(); it != end(); ++it) {
             if (*it == value) {
                 return it;
@@ -881,7 +882,7 @@ public:
         return end();
     }
 
-    template <typename Predicate> iterator find_if(Predicate pred) {
+    template <typename Predicate> iterator find_if(Predicate pred) FL_NOEXCEPT {
         for (iterator it = begin(); it != end(); ++it) {
             if (pred(*it)) {
                 return it;
@@ -890,10 +891,10 @@ public:
         return end();
     }
 
-    bool has(const T &value) const { return find(value) != end(); }
+    bool has(const T &value) const FL_NOEXCEPT { return find(value) != end(); }
 
     // Standard STL-compatible erase that returns iterator to next element
-    iterator erase(iterator pos) {
+    iterator erase(iterator pos) FL_NOEXCEPT {
         if (pos == end() || empty()) {
             return end();
         }
@@ -913,7 +914,7 @@ public:
     }
 
     // Extended erase with optional output parameter
-    bool erase(iterator pos, T *out_value) {
+    bool erase(iterator pos, T *out_value) FL_NOEXCEPT {
         if (pos == end() || empty()) {
             return false;
         }
@@ -924,7 +925,7 @@ public:
         return true;
     }
 
-    void erase(const T &value) {
+    void erase(const T &value) FL_NOEXCEPT {
         iterator it = find(value);
         if (it != end()) {
             erase(it);
@@ -932,7 +933,7 @@ public:
     }
 
     // Range erase: remove count elements starting at first
-    void erase_range(iterator first, fl::size count) {
+    void erase_range(iterator first, fl::size count) FL_NOEXCEPT {
         if (count == 0 || first >= end()) return;
         if (first + count > end()) count = end() - first;
         // Move remaining elements forward
@@ -947,27 +948,27 @@ public:
         mSize -= count;
     }
 
-    void swap(vector<T> &other) {
+    void swap(vector<T> &other) FL_NOEXCEPT {
         fl::swap(mArray, other.mArray);
         fl::swap(mSize, other.mSize);
         fl::swap(mCapacity, other.mCapacity);
         fl::swap(mAlloc, other.mAlloc);
     }
 
-    void swap(vector<T> &&other) {
+    void swap(vector<T> &&other) FL_NOEXCEPT {
         fl::swap(mArray, other.mArray);
         fl::swap(mSize, other.mSize);
         fl::swap(mCapacity, other.mCapacity);
         fl::swap(mAlloc, other.mAlloc);
     }
 
-    void swap(iterator a, iterator b) {
+    void swap(iterator a, iterator b) FL_NOEXCEPT {
         fl::swap(*a, *b);
     }
 
-    bool full() const { return mSize >= mCapacity; }
+    bool full() const FL_NOEXCEPT { return mSize >= mCapacity; }
 
-    bool insert(iterator pos, const T &value) {
+    bool insert(iterator pos, const T &value) FL_NOEXCEPT {
         // TODO: Introduce mMaxSize (and move it from SortedVector to here)
         // push back and swap into place.
         fl::size target_idx = pos - begin();
@@ -983,7 +984,7 @@ public:
     }
 
     // Move version of insert
-    bool insert(iterator pos, T &&value) {
+    bool insert(iterator pos, T &&value) FL_NOEXCEPT {
         // push back and swap into place.
         fl::size target_idx = pos - begin();
         push_back(fl::move(value));
@@ -999,7 +1000,7 @@ public:
 
     // Range insert: insert elements from [first, last) before pos
     template <typename InputIt>
-    iterator insert(iterator pos, InputIt first, InputIt last) {
+    iterator insert(iterator pos, InputIt first, InputIt last) FL_NOEXCEPT {
         fl::size target_idx = pos - begin();
         fl::size count = 0;
         // First, push all elements to the back
@@ -1035,11 +1036,11 @@ public:
     //     }
     // }
 
-    T *data() { return mArray; }
+    T *data() FL_NOEXCEPT { return mArray; }
 
-    const T *data() const { return mArray; }
+    const T *data() const FL_NOEXCEPT { return mArray; }
 
-    bool operator==(const vector<T> &other) const {
+    bool operator==(const vector<T> &other) const FL_NOEXCEPT {
         if (size() != other.size()) {
             return false;
         }
@@ -1051,11 +1052,11 @@ public:
         return true;
     }
 
-    bool operator!=(const vector<T> &other) const {
+    bool operator!=(const vector<T> &other) const FL_NOEXCEPT {
         return !(*this == other);
     }
 
-    bool operator<(const vector<T> &other) const {
+    bool operator<(const vector<T> &other) const FL_NOEXCEPT {
         fl::size min_size = mSize < other.mSize ? mSize : other.mSize;
         for (fl::size i = 0; i < min_size; ++i) {
             if ((*this)[i] < other[i]) {
@@ -1068,15 +1069,15 @@ public:
         return mSize < other.mSize;
     }
 
-    bool operator<=(const vector<T> &other) const {
+    bool operator<=(const vector<T> &other) const FL_NOEXCEPT {
         return *this < other || *this == other;
     }
 
-    bool operator>(const vector<T> &other) const {
+    bool operator>(const vector<T> &other) const FL_NOEXCEPT {
         return other < *this;
     }
 
-    bool operator>=(const vector<T> &other) const {
+    bool operator>=(const vector<T> &other) const FL_NOEXCEPT {
         return *this > other || *this == other;
     }
 };
@@ -1098,15 +1099,15 @@ class FL_ALIGN SortedHeapVector {
     typedef typename vector<T, Allocator>::const_reverse_iterator const_reverse_iterator;
     typedef Allocator allocator_type;
 
-    SortedHeapVector(LessThan less = LessThan()) : mLess(less) {}
+    SortedHeapVector(LessThan less = LessThan()) FL_NOEXCEPT : mLess(less) {}
 
-    SortedHeapVector(LessThan less, const Allocator& alloc) : mArray(alloc), mLess(less) {}
+    SortedHeapVector(LessThan less, const Allocator& alloc) FL_NOEXCEPT : mArray(alloc), mLess(less) {}
 
     // Copy constructor
-    SortedHeapVector(const SortedHeapVector& other) = default;
+    SortedHeapVector(const SortedHeapVector& other) FL_NOEXCEPT = default;
 
     // Copy assignment
-    SortedHeapVector& operator=(const SortedHeapVector& other) = default;
+    SortedHeapVector& operator=(const SortedHeapVector& other) FL_NOEXCEPT = default;
 
     // Move constructor
     SortedHeapVector(SortedHeapVector&& other) noexcept
@@ -1129,7 +1130,7 @@ class FL_ALIGN SortedHeapVector {
         return *this;
     }
 
-    void setMaxSize(fl::size n) {
+    void setMaxSize(fl::size n) FL_NOEXCEPT {
         if (mMaxSize == n) {
             return;
         }
@@ -1142,12 +1143,12 @@ class FL_ALIGN SortedHeapVector {
         }
     }
 
-    ~SortedHeapVector() { mArray.clear(); }
+    ~SortedHeapVector() FL_NOEXCEPT { mArray.clear(); }
 
-    void reserve(fl::size n) { mArray.reserve(n); }
+    void reserve(fl::size n) FL_NOEXCEPT { mArray.reserve(n); }
 
     // Insert while maintaining sort order
-    bool insert(const T &value, insert_result *result = nullptr) {
+    bool insert(const T &value, insert_result *result = nullptr) FL_NOEXCEPT {
         // Find insertion point using binary search
         iterator pos = lower_bound(value);
         if (pos != end() && !mLess(value, *pos) && !mLess(*pos, value)) {
@@ -1171,7 +1172,7 @@ class FL_ALIGN SortedHeapVector {
 
     // Find the first position where we should insert value to maintain sort
     // order
-    iterator lower_bound(const T &value) {
+    iterator lower_bound(const T &value) FL_NOEXCEPT {
         iterator first = mArray.begin();
         iterator last = mArray.end();
 
@@ -1187,12 +1188,12 @@ class FL_ALIGN SortedHeapVector {
         return first;
     }
 
-    const_iterator lower_bound(const T &value) const {
+    const_iterator lower_bound(const T &value) const FL_NOEXCEPT {
         return const_cast<SortedHeapVector *>(this)->lower_bound(value);
     }
 
     // Lookup operations
-    iterator find(const T &value) {
+    iterator find(const T &value) FL_NOEXCEPT {
         iterator pos = lower_bound(value);
         if (pos != end() && !mLess(value, *pos) && !mLess(*pos, value)) {
             return pos;
@@ -1200,16 +1201,16 @@ class FL_ALIGN SortedHeapVector {
         return end();
     }
 
-    void swap(SortedHeapVector &other) { mArray.swap(other.mArray); }
+    void swap(SortedHeapVector &other) FL_NOEXCEPT { mArray.swap(other.mArray); }
 
-    const_iterator find(const T &value) const {
+    const_iterator find(const T &value) const FL_NOEXCEPT {
         return const_cast<SortedHeapVector *>(this)->find(value);
     }
 
-    bool has(const T &value) const { return find(value) != end(); }
+    bool has(const T &value) const FL_NOEXCEPT { return find(value) != end(); }
 
     // Removal operations
-    bool erase(const T &value) {
+    bool erase(const T &value) FL_NOEXCEPT {
         iterator it = find(value);
         if (it != end()) {
             return mArray.erase(it);
@@ -1217,16 +1218,16 @@ class FL_ALIGN SortedHeapVector {
         return false;
     }
 
-    bool erase(iterator pos) { return mArray.erase(pos); }
+    bool erase(iterator pos) FL_NOEXCEPT { return mArray.erase(pos); }
 
     // Basic container operations
-    fl::size size() const { return mArray.size(); }
-    bool empty() const { return mArray.empty(); }
-    fl::size capacity() const { return mArray.capacity(); }
-    allocator_type get_allocator() const { return mArray.get_allocator(); }
+    fl::size size() const FL_NOEXCEPT { return mArray.size(); }
+    bool empty() const FL_NOEXCEPT { return mArray.empty(); }
+    fl::size capacity() const FL_NOEXCEPT { return mArray.capacity(); }
+    allocator_type get_allocator() const FL_NOEXCEPT { return mArray.get_allocator(); }
 
-    void clear() { mArray.clear(); }
-    bool full() const {
+    void clear() FL_NOEXCEPT { mArray.clear(); }
+    bool full() const FL_NOEXCEPT {
         if (mArray.size() >= mMaxSize) {
             return true;
         }
@@ -1234,30 +1235,30 @@ class FL_ALIGN SortedHeapVector {
     }
 
     // Element access
-    T &operator[](fl::size index) { return mArray[index]; }
-    const T &operator[](fl::size index) const { return mArray[index]; }
+    T &operator[](fl::size index) FL_NOEXCEPT { return mArray[index]; }
+    const T &operator[](fl::size index) const FL_NOEXCEPT { return mArray[index]; }
 
-    T &front() { return mArray.front(); }
-    const T &front() const { return mArray.front(); }
+    T &front() FL_NOEXCEPT { return mArray.front(); }
+    const T &front() const FL_NOEXCEPT { return mArray.front(); }
 
-    T &back() { return mArray.back(); }
-    const T &back() const { return mArray.back(); }
+    T &back() FL_NOEXCEPT { return mArray.back(); }
+    const T &back() const FL_NOEXCEPT { return mArray.back(); }
 
     // Iterators
-    iterator begin() { return mArray.begin(); }
-    const_iterator begin() const { return mArray.begin(); }
-    iterator end() { return mArray.end(); }
-    const_iterator end() const { return mArray.end(); }
+    iterator begin() FL_NOEXCEPT { return mArray.begin(); }
+    const_iterator begin() const FL_NOEXCEPT { return mArray.begin(); }
+    iterator end() FL_NOEXCEPT { return mArray.end(); }
+    const_iterator end() const FL_NOEXCEPT { return mArray.end(); }
 
     // Reverse iterators
-    reverse_iterator rbegin() { return mArray.rbegin(); }
-    const_reverse_iterator rbegin() const { return mArray.rbegin(); }
-    reverse_iterator rend() { return mArray.rend(); }
-    const_reverse_iterator rend() const { return mArray.rend(); }
+    reverse_iterator rbegin() FL_NOEXCEPT { return mArray.rbegin(); }
+    const_reverse_iterator rbegin() const FL_NOEXCEPT { return mArray.rbegin(); }
+    reverse_iterator rend() FL_NOEXCEPT { return mArray.rend(); }
+    const_reverse_iterator rend() const FL_NOEXCEPT { return mArray.rend(); }
 
     // Raw data access
-    T *data() { return mArray.data(); }
-    const T *data() const { return mArray.data(); }
+    T *data() FL_NOEXCEPT { return mArray.data(); }
+    const T *data() const FL_NOEXCEPT { return mArray.data(); }
 };
 
 template <typename T, fl::size INLINED_SIZE>
@@ -1268,8 +1269,8 @@ class FL_ALIGN InlinedVector {
     using const_iterator =
         typename FixedVector<T, INLINED_SIZE>::const_iterator;
 
-    InlinedVector() = default;
-    InlinedVector(const InlinedVector &other) {
+    InlinedVector() FL_NOEXCEPT = default;
+    InlinedVector(const InlinedVector &other) FL_NOEXCEPT {
         if (other.mUsingHeap) {
             mHeap = other.mHeap;
             mUsingHeap = true;
@@ -1278,12 +1279,12 @@ class FL_ALIGN InlinedVector {
             mUsingHeap = false;
         }
     }
-    InlinedVector(InlinedVector &&other) {
+    InlinedVector(InlinedVector &&other) FL_NOEXCEPT {
         // swap(*this, other);
         fl::swap(*this, other);
         other.clear();
     }
-    InlinedVector(fl::size size) : mUsingHeap(false) {
+    InlinedVector(fl::size size) FL_NOEXCEPT : mUsingHeap(false) {
         if (size > INLINED_SIZE) {
             mHeap.resize(size);
             mUsingHeap = true;
@@ -1293,7 +1294,7 @@ class FL_ALIGN InlinedVector {
     }
 
     // Initializer list constructor (C++11 and later) - uses fl::initializer_list
-    InlinedVector(fl::initializer_list<T> init) : mUsingHeap(false) {
+    InlinedVector(fl::initializer_list<T> init) FL_NOEXCEPT : mUsingHeap(false) {
         if (init.size() > INLINED_SIZE) {
             mHeap.reserve(init.size());
             for (const auto& value : init) {
@@ -1307,14 +1308,14 @@ class FL_ALIGN InlinedVector {
         }
     }
 
-    InlinedVector &operator=(const InlinedVector &other) {
+    InlinedVector &operator=(const InlinedVector &other) FL_NOEXCEPT {
         if (this != &other) {
             assign(other.begin(), other.end());
         }
         return *this;
     }
 
-    InlinedVector &operator=(InlinedVector &&other) {
+    InlinedVector &operator=(InlinedVector &&other) FL_NOEXCEPT {
         this->clear();
         if (this != &other) {
             if (other.mUsingHeap) {
@@ -1329,7 +1330,7 @@ class FL_ALIGN InlinedVector {
         return *this;
     }
 
-    void reserve(fl::size size) {
+    void reserve(fl::size size) FL_NOEXCEPT {
         if (size > INLINED_SIZE) {
             if (mUsingHeap) {
                 mHeap.reserve(size);
@@ -1362,7 +1363,7 @@ class FL_ALIGN InlinedVector {
         }
     }
 
-    void resize(fl::size size) {
+    void resize(fl::size size) FL_NOEXCEPT {
         if (size > INLINED_SIZE) {
             if (mUsingHeap) {
                 mHeap.resize(size);
@@ -1389,12 +1390,12 @@ class FL_ALIGN InlinedVector {
     }
 
     // Get current size
-    fl::size size() const { return mUsingHeap ? mHeap.size() : mFixed.size(); }
-    bool empty() const { return size() == 0; }
-    T *data() { return mUsingHeap ? mHeap.data() : mFixed.data(); }
-    const T *data() const { return mUsingHeap ? mHeap.data() : mFixed.data(); }
+    fl::size size() const FL_NOEXCEPT { return mUsingHeap ? mHeap.size() : mFixed.size(); }
+    bool empty() const FL_NOEXCEPT { return size() == 0; }
+    T *data() FL_NOEXCEPT { return mUsingHeap ? mHeap.data() : mFixed.data(); }
+    const T *data() const FL_NOEXCEPT { return mUsingHeap ? mHeap.data() : mFixed.data(); }
 
-    void assign(fl::size new_cap, const T &value) {
+    void assign(fl::size new_cap, const T &value) FL_NOEXCEPT {
         clear();
         if (INLINED_SIZE > new_cap) {
             // mFixed.assign(value);
@@ -1413,7 +1414,7 @@ class FL_ALIGN InlinedVector {
 
     template <typename InputIt,
               typename = fl::enable_if_t<!fl::is_integral<InputIt>::value>>
-    void assign(InputIt begin, InputIt end) {
+    void assign(InputIt begin, InputIt end) FL_NOEXCEPT {
         clear();
         if (u32(end - begin) <= INLINED_SIZE) {
             mFixed.assign(begin, end);
@@ -1434,15 +1435,15 @@ class FL_ALIGN InlinedVector {
     // }
 
     // Element access
-    T &operator[](fl::size idx) { return mUsingHeap ? mHeap[idx] : mFixed[idx]; }
-    const T &operator[](fl::size idx) const {
+    T &operator[](fl::size idx) FL_NOEXCEPT { return mUsingHeap ? mHeap[idx] : mFixed[idx]; }
+    const T &operator[](fl::size idx) const FL_NOEXCEPT {
         return mUsingHeap ? mHeap[idx] : mFixed[idx];
     }
 
-    bool full() const { return INLINED_SIZE == size(); }
+    bool full() const FL_NOEXCEPT { return INLINED_SIZE == size(); }
 
     // Add an element
-    void push_back(const T &value) {
+    void push_back(const T &value) FL_NOEXCEPT {
         if (mUsingHeap || mFixed.size() == INLINED_SIZE) {
             if (!mUsingHeap && mFixed.size() == INLINED_SIZE) {
                 // transfer
@@ -1461,7 +1462,7 @@ class FL_ALIGN InlinedVector {
             }
 
     // Move version of push_back
-    void push_back(T &&value) {
+    void push_back(T &&value) FL_NOEXCEPT {
         if (mUsingHeap || mFixed.size() == INLINED_SIZE) {
             if (!mUsingHeap && mFixed.size() == INLINED_SIZE) {
                 // transfer
@@ -1481,7 +1482,7 @@ class FL_ALIGN InlinedVector {
 
     // Emplace back - construct in place
     template<typename... Args>
-    void emplace_back(Args&&... args) {
+    void emplace_back(Args&&... args) FL_NOEXCEPT {
         if (mUsingHeap || mFixed.size() == INLINED_SIZE) {
             if (!mUsingHeap && mFixed.size() == INLINED_SIZE) {
                 // Spill to heap
@@ -1500,7 +1501,7 @@ class FL_ALIGN InlinedVector {
     }
 
     // Remove last element
-    void pop_back() {
+    void pop_back() FL_NOEXCEPT {
         if (mUsingHeap) {
             mHeap.pop_back();
         } else {
@@ -1509,7 +1510,7 @@ class FL_ALIGN InlinedVector {
     }
 
     // Clear all elements
-    void clear() {
+    void clear() FL_NOEXCEPT {
         if (mUsingHeap) {
             mHeap.clear();
             // mUsingHeap = false;
@@ -1518,7 +1519,7 @@ class FL_ALIGN InlinedVector {
         }
     }
 
-    template <typename Predicate> iterator find_if(Predicate pred) {
+    template <typename Predicate> iterator find_if(Predicate pred) FL_NOEXCEPT {
         for (iterator it = begin(); it != end(); ++it) {
             if (pred(*it)) {
                 return it;
@@ -1527,7 +1528,7 @@ class FL_ALIGN InlinedVector {
         return end();
     }
 
-    iterator find(const T& value) {
+    iterator find(const T& value) FL_NOEXCEPT {
         for (iterator it = begin(); it != end(); ++it) {
             if (*it == value) {
                 return it;
@@ -1536,7 +1537,7 @@ class FL_ALIGN InlinedVector {
         return end();
     }
 
-    const_iterator find(const T& value) const {
+    const_iterator find(const T& value) const FL_NOEXCEPT {
         for (const_iterator it = begin(); it != end(); ++it) {
             if (*it == value) {
                 return it;
@@ -1545,7 +1546,7 @@ class FL_ALIGN InlinedVector {
         return end();
     }
 
-    iterator erase(iterator pos) {
+    iterator erase(iterator pos) FL_NOEXCEPT {
         if (mUsingHeap) {
             return mHeap.erase(pos);
         } else {
@@ -1553,7 +1554,7 @@ class FL_ALIGN InlinedVector {
         }
     }
 
-    bool insert(iterator pos, const T &value) {
+    bool insert(iterator pos, const T &value) FL_NOEXCEPT {
         if (mUsingHeap) {
             // return insert(pos, value);
             return mHeap.insert(pos, value);
@@ -1577,7 +1578,7 @@ class FL_ALIGN InlinedVector {
     }
 
     // Move version of insert
-    bool insert(iterator pos, T &&value) {
+    bool insert(iterator pos, T &&value) FL_NOEXCEPT {
         if (mUsingHeap) {
             // return insert(pos, value);
             return mHeap.insert(pos, fl::move(value));
@@ -1601,48 +1602,48 @@ class FL_ALIGN InlinedVector {
     }
 
     // Iterators
-    iterator begin() { return mUsingHeap ? mHeap.begin() : mFixed.begin(); }
-    iterator end() { return mUsingHeap ? mHeap.end() : mFixed.end(); }
-    const_iterator begin() const {
+    iterator begin() FL_NOEXCEPT { return mUsingHeap ? mHeap.begin() : mFixed.begin(); }
+    iterator end() FL_NOEXCEPT { return mUsingHeap ? mHeap.end() : mFixed.end(); }
+    const_iterator begin() const FL_NOEXCEPT {
         return mUsingHeap ? mHeap.begin() : mFixed.begin();
     }
-    const_iterator end() const {
+    const_iterator end() const FL_NOEXCEPT {
         return mUsingHeap ? mHeap.end() : mFixed.end();
     }
 
     // Reverse iterators (delegate to heap or fixed storage)
-    typename vector<T>::reverse_iterator rbegin() {
+    typename vector<T>::reverse_iterator rbegin() FL_NOEXCEPT {
         return mUsingHeap ? mHeap.rbegin() : mFixed.rbegin();
     }
-    typename vector<T>::reverse_iterator rend() {
+    typename vector<T>::reverse_iterator rend() FL_NOEXCEPT {
         return mUsingHeap ? mHeap.rend() : mFixed.rend();
     }
-    typename vector<T>::const_reverse_iterator rbegin() const {
+    typename vector<T>::const_reverse_iterator rbegin() const FL_NOEXCEPT {
         return mUsingHeap ? mHeap.rbegin() : mFixed.rbegin();
     }
-    typename vector<T>::const_reverse_iterator rend() const {
+    typename vector<T>::const_reverse_iterator rend() const FL_NOEXCEPT {
         return mUsingHeap ? mHeap.rend() : mFixed.rend();
     }
 
     // Capacity management
-    fl::size capacity() const { return mUsingHeap ? mHeap.capacity() : INLINED_SIZE; }
+    fl::size capacity() const FL_NOEXCEPT { return mUsingHeap ? mHeap.capacity() : INLINED_SIZE; }
 
-    void shrink_to_fit() {
+    void shrink_to_fit() FL_NOEXCEPT {
         if (mUsingHeap) {
             mHeap.shrink_to_fit();
         }
     }
 
     // back, front
-    T &front() { return mUsingHeap ? mHeap.front() : mFixed.front(); }
-    const T &front() const {
+    T &front() FL_NOEXCEPT { return mUsingHeap ? mHeap.front() : mFixed.front(); }
+    const T &front() const FL_NOEXCEPT {
         return mUsingHeap ? mHeap.front() : mFixed.front();
     }
 
-    T &back() { return mUsingHeap ? mHeap.back() : mFixed.back(); }
-    const T &back() const { return mUsingHeap ? mHeap.back() : mFixed.back(); }
+    T &back() FL_NOEXCEPT { return mUsingHeap ? mHeap.back() : mFixed.back(); }
+    const T &back() const FL_NOEXCEPT { return mUsingHeap ? mHeap.back() : mFixed.back(); }
 
-    void swap(InlinedVector &other) {
+    void swap(InlinedVector &other) FL_NOEXCEPT {
         if (this != &other) {
             fl::swap(mUsingHeap, other.mUsingHeap);
             fl::swap(mFixed, other.mFixed);

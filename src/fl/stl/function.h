@@ -9,6 +9,7 @@
 #include "fl/stl/pair.h"
 #include "fl/stl/vector.h"
 #include "fl/stl/algorithm.h"  // for fl::sort
+#include "fl/stl/noexcept.h"
 
 #ifndef FASTLED_INLINE_LAMBDA_SIZE
 #define FASTLED_INLINE_LAMBDA_SIZE 64
@@ -47,23 +48,23 @@ class FL_ALIGN function<R(Args...)> {
 private:
     struct CallableBase {
         virtual R invoke(Args... args) = 0;
-        virtual ~CallableBase() = default;
+        virtual ~CallableBase() FL_NOEXCEPT = default;
     };
 
     template <typename F>
     struct Callable : CallableBase {
         F f;
-        Callable(F fn) : f(fn) {}
-        R invoke(Args... args) override { return f(args...); }
+        Callable(F fn) FL_NOEXCEPT : f(fn) {}
+        R invoke(Args... args) FL_NOEXCEPT override { return f(args...); }
     };
 
     // Type-erased free function callable - stored inline!
     struct FreeFunctionCallable {
         R (*func_ptr)(Args...);
         
-        FreeFunctionCallable(R (*fp)(Args...)) : func_ptr(fp) {}
+        FreeFunctionCallable(R (*fp)(Args...)) FL_NOEXCEPT : func_ptr(fp) {}
         
-        R invoke(Args... args) const {
+        R invoke(Args... args) const FL_NOEXCEPT {
             return func_ptr(args...);
         }
     };
@@ -83,7 +84,7 @@ private:
         void (*destructor)(InlinedLambda& storage);
         
         template <typename Function>
-        InlinedLambda(Function f) {
+        InlinedLambda(Function f) FL_NOEXCEPT {
             static_assert(sizeof(Function) <= kInlineLambdaSize, 
                          "Lambda/functor too large for inline storage");
             static_assert(alignof(Function) <= alignof(max_align_t), 
@@ -101,7 +102,7 @@ private:
         }
         
         // Copy constructor
-        InlinedLambda(const InlinedLambda& other) 
+        InlinedLambda(const InlinedLambda& other) FL_NOEXCEPT
             : invoker(other.invoker), destructor(other.destructor) {
             // This is tricky - we need to copy the stored object
             // For now, we'll use memcopy (works for trivially copyable types)
@@ -109,21 +110,21 @@ private:
         }
         
         // Move constructor
-        InlinedLambda(InlinedLambda&& other) 
+        InlinedLambda(InlinedLambda&& other) FL_NOEXCEPT
             : invoker(other.invoker), destructor(other.destructor) {
             fl::memcpy(bytes, other.bytes, kInlineLambdaSize);
             // Reset the other object to prevent double destruction
             other.destructor = nullptr;
         }
         
-        ~InlinedLambda() {
+        ~InlinedLambda() FL_NOEXCEPT {
             if (destructor) {
                 destructor(*this);
             }
         }
         
         template <typename FUNCTOR>
-        static R invoke_lambda(const InlinedLambda& storage, Args... args) {
+        static R invoke_lambda(const InlinedLambda& storage, Args... args) FL_NOEXCEPT {
             // Use placement new to safely access the stored lambda
             FL_ALIGN_AS(FUNCTOR) char temp_storage[sizeof(FUNCTOR)];
             // Copy the lambda from storage
@@ -135,7 +136,7 @@ private:
         }
         
         template <typename FUNCTOR>
-        static void destroy_lambda(InlinedLambda& storage) {
+        static void destroy_lambda(InlinedLambda& storage) FL_NOEXCEPT {
             // For destruction, we need to call the destructor on the actual object
             // that was constructed with placement new in storage.bytes
             // We use the standard library approach: create a properly typed pointer
@@ -147,7 +148,7 @@ private:
             obj_ptr->~FUNCTOR();
         }
         
-        R invoke(Args... args) const {
+        R invoke(Args... args) const FL_NOEXCEPT {
             return invoker(*this, args...);
         }
     };
@@ -155,7 +156,7 @@ private:
     // Type-erased member function callable base
     struct MemberCallableBase {
         virtual R invoke(Args... args) const = 0;
-        virtual ~MemberCallableBase() = default;
+        virtual ~MemberCallableBase() FL_NOEXCEPT = default;
     };
 
     // Type-erased non-const member function callable
@@ -172,7 +173,7 @@ private:
         R (*invoker)(void* obj, const MemberFuncStorage& mfp, Args... args);
         
         template <typename C>
-        NonConstMemberCallable(C* o, R (C::*mf)(Args...)) : obj(o) {
+        NonConstMemberCallable(C* o, R (C::*mf)(Args...)) FL_NOEXCEPT : obj(o) {
             // Store the member function pointer as raw bytes
             static_assert(sizeof(mf) <= sizeof(member_func_storage), 
                          "Member function pointer too large");
@@ -182,14 +183,14 @@ private:
         }
         
         template <typename C>
-        static R invoke_nonconst_member(void* obj, const MemberFuncStorage& mfp, Args... args) {
+        static R invoke_nonconst_member(void* obj, const MemberFuncStorage& mfp, Args... args) FL_NOEXCEPT {
             C* typed_obj = static_cast<C*>(obj);
             R (C::*typed_mf)(Args...);
             fl::memcpy(&typed_mf, mfp.bytes, sizeof(typed_mf));
             return (typed_obj->*typed_mf)(args...);
         }
         
-        R invoke(Args... args) const override {
+        R invoke(Args... args) const FL_NOEXCEPT override {
             return invoker(obj, member_func_storage, args...);
         }
     };
@@ -208,7 +209,7 @@ private:
         R (*invoker)(const void* obj, const MemberFuncStorage& mfp, Args... args);
         
         template <typename C>
-        ConstMemberCallable(const C* o, R (C::*mf)(Args...) const) : obj(o) {
+        ConstMemberCallable(const C* o, R (C::*mf)(Args...) const) FL_NOEXCEPT : obj(o) {
             // Store the member function pointer as raw bytes
             static_assert(sizeof(mf) <= sizeof(member_func_storage), 
                          "Member function pointer too large");
@@ -218,14 +219,14 @@ private:
         }
         
         template <typename C>
-        static R invoke_const_member(const void* obj, const MemberFuncStorage& mfp, Args... args) {
+        static R invoke_const_member(const void* obj, const MemberFuncStorage& mfp, Args... args) FL_NOEXCEPT {
             const C* typed_obj = static_cast<const C*>(obj);
             R (C::*typed_mf)(Args...) const;
             fl::memcpy(&typed_mf, mfp.bytes, sizeof(typed_mf));
             return (typed_obj->*typed_mf)(args...);
         }
         
-        R invoke(Args... args) const override {
+        R invoke(Args... args) const FL_NOEXCEPT override {
             return invoker(obj, member_func_storage, args...);
         }
     };
@@ -248,16 +249,16 @@ private:
     }
 
 public:
-    function() = default;
+    function() FL_NOEXCEPT = default;
     
     // Copy constructor - properly handle variant alignment
-    function(const function& other) : mStorage(other.mStorage) {}
+    function(const function& other) FL_NOEXCEPT : mStorage(other.mStorage) {}
     
     // Move constructor - properly handle variant alignment  
     function(function&& other) noexcept : mStorage(fl::move(other.mStorage)) {}
     
     // Copy assignment
-    function& operator=(const function& other) {
+    function& operator=(const function& other) FL_NOEXCEPT {
         if (this != &other) {
             mStorage = other.mStorage;
         }
@@ -273,26 +274,26 @@ public:
     }
     
     // 1) Free function constructor - stored inline!
-    function(R (*fp)(Args...)) {
+    function(R (*fp)(Args...)) FL_NOEXCEPT {
         mStorage = FreeFunctionCallable(fp);
     }
     
     // 2) Lambda/functor constructor - inline if small, heap if large
     template <typename F, typename = enable_if_t<!is_member_function_pointer<F>::value && !is_function_pointer<F>::value>>
-    function(F f) {
+    function(F f) FL_NOEXCEPT {
         // Use template specialization instead of if constexpr for C++14 compatibility
         construct_lambda_or_functor(fl::move(f), typename conditional<sizeof(F) <= kInlineLambdaSize, true_type, false_type>::type{});
     }
     
     // 3) non‑const member function - stored inline!
     template <typename C>
-    function(R (C::*mf)(Args...), C* obj) {
+    function(R (C::*mf)(Args...), C* obj) FL_NOEXCEPT {
         mStorage = NonConstMemberCallable(obj, mf);
     }
     
     // 4) const member function - stored inline!
     template <typename C>
-    function(R (C::*mf)(Args...) const, const C* obj) {
+    function(R (C::*mf)(Args...) const, const C* obj) FL_NOEXCEPT {
         mStorage = ConstMemberCallable(obj, mf);
     }
     
@@ -313,34 +314,34 @@ public:
         return default_return_helper<R>();
     }
     
-    explicit operator bool() const {
+    explicit operator bool() const FL_NOEXCEPT {
         return !mStorage.empty();
     }
     
-    void clear() {
+    void clear() FL_NOEXCEPT {
         mStorage = Storage{};  // Reset to empty variant
     }
     
-    bool operator==(const function& o) const {
+    bool operator==(const function& o) const FL_NOEXCEPT {
         // For simplicity, just check if both are empty or both are non-empty
         // Full equality would require more complex comparison logic
         return mStorage.empty() == o.mStorage.empty();
     }
     
-    bool operator!=(const function& o) const {
+    bool operator!=(const function& o) const FL_NOEXCEPT {
         return !(*this == o);
     }
 
 private:
     // Helper for small lambdas/functors - inline storage
     template <typename F>
-    void construct_lambda_or_functor(F f, true_type /* small */) {
+    void construct_lambda_or_functor(F f, true_type /* small */) FL_NOEXCEPT {
         mStorage = InlinedLambda(fl::move(f));
     }
     
     // Helper for large lambdas/functors - heap storage
     template <typename F>
-    void construct_lambda_or_functor(F f, false_type /* large */) {
+    void construct_lambda_or_functor(F f, false_type /* large */) FL_NOEXCEPT {
         mStorage = fl::shared_ptr<CallableBase>(fl::make_shared<Callable<F>>(fl::move(f)));
     }
 };
@@ -369,8 +370,8 @@ class function_list<void(Args...)> {
         int priority;
         FunctionType fn;
 
-        FunctionEntry() : id(0), priority(0), fn() {}
-        FunctionEntry(int idParam, int priorityParam, FunctionType fnParam)
+        FunctionEntry() FL_NOEXCEPT : id(0), priority(0), fn() {}
+        FunctionEntry(int idParam, int priorityParam, FunctionType fnParam) FL_NOEXCEPT
             : id(idParam), priority(priorityParam), fn(fnParam) {}
     };
 
@@ -382,20 +383,20 @@ class function_list<void(Args...)> {
     bool mNeedsCompact = false;  // True when functions have been cleared during invocation
 
   public:
-    function_list() = default;
-    function_list(const function_list& other) = default;
-    function_list(function_list&& other) = default;
-    function_list& operator=(const function_list& other) = default;
-    function_list& operator=(function_list&& other) = default;
-    ~function_list() = default;
+    function_list() FL_NOEXCEPT = default;
+    function_list(const function_list& other) FL_NOEXCEPT = default;
+    function_list(function_list&& other) FL_NOEXCEPT = default;
+    function_list& operator=(const function_list& other) FL_NOEXCEPT = default;
+    function_list& operator=(function_list&& other) FL_NOEXCEPT = default;
+    ~function_list() FL_NOEXCEPT = default;
 
-    int add(function<void(Args...)> fn, int priority = 0) {
+    int add(function<void(Args...)> fn, int priority = 0) FL_NOEXCEPT {
         int id = mIdCounter++;
         mFunctions.push_back(FunctionEntry(id, priority, fn));
         return id;
     }
 
-    void remove(int id) {
+    void remove(int id) FL_NOEXCEPT {
         // During invocation: clear the function for deferred removal
         for (size_t i = 0; i < mFunctions.size(); ++i) {
             if (mFunctions[i].id == id) {
@@ -405,13 +406,13 @@ class function_list<void(Args...)> {
         }
     }
 
-    void clear() {
+    void clear() FL_NOEXCEPT {
         mFunctions.clear();
     }
 
     // Compact the storage by removing invalid (cleared) callbacks
     // Used internally after invocation if removals occurred
-    void compact() {
+    void compact() FL_NOEXCEPT {
         if (!mNeedsCompact) return;
         size_t write_pos = 0;
         for (size_t read_pos = 0; read_pos < mFunctions.size(); ++read_pos) {
@@ -427,7 +428,7 @@ class function_list<void(Args...)> {
     }
 
     // Size information - counts only valid (non-cleared) functions
-    fl::size size() const {
+    fl::size size() const FL_NOEXCEPT {
         fl::size count = 0;
         for (const auto& entry : mFunctions) {
             if (entry.fn) {
@@ -436,12 +437,12 @@ class function_list<void(Args...)> {
         }
         return count;
     }
-    bool empty() const { return size() == 0; }
+    bool empty() const FL_NOEXCEPT { return size() == 0; }
 
     // Boolean conversion for if (callback) checks
-    explicit operator bool() const { return !empty(); }
+    explicit operator bool() const FL_NOEXCEPT { return !empty(); }
 
-    void invoke(Args... args) {
+    void invoke(Args... args) FL_NOEXCEPT {
         if (mFunctions.empty()) return;
         // Compact the storage by removing invalid (cleared) callbacks
         compact();
@@ -465,7 +466,7 @@ class function_list<void(Args...)> {
         }
 
         // Sort priorities (higher priority first) - cheap since there are usually very few unique priorities
-        fl::sort(priorities.begin(), priorities.end(), [](int a, int b) { return a > b; });
+        fl::sort(priorities.begin(), priorities.end(), [](int a, int b) { return a > b; }) FL_NOEXCEPT;
 
         // Iterate through priorities (highest first), then through functions matching each priority
         for (size_t p_idx = 0; p_idx < priorities.size(); ++p_idx) {

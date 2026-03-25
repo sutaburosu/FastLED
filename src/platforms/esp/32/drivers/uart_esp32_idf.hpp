@@ -177,7 +177,7 @@ private:
 // UartEsp32 Implementation
 // ============================================================================
 
-UartEsp32::UartEsp32(const UartConfig& config)
+UartEsp32::UartEsp32(const UartConfig& config) FL_NOEXCEPT
     : mConfig(config)
     , mPortInt(static_cast<int>(convertPort(config.port)))
     , mBuffered(false)

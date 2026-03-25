@@ -9,6 +9,7 @@
 
 // Include cstdio for print function
 #include "fl/stl/cstdio.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 
@@ -17,19 +18,19 @@ public:
     ostream() = default;
 
     // Stream output operators that immediately print
-    ostream& operator<<(const char* str) {
+    ostream& operator<<(const char* str) FL_NOEXCEPT {
         if (str) {
             print(str);
         }
         return *this;
     }
 
-    ostream& operator<<(const string& str) {
+    ostream& operator<<(const string& str) FL_NOEXCEPT {
         print(str.c_str());
         return *this;
     }
 
-    ostream& operator<<(char c) {
+    ostream& operator<<(char c) FL_NOEXCEPT {
         char str[2] = {c, '\0'};
         print(str);
         return *this;
@@ -41,21 +42,21 @@ public:
     ostream& operator<<(fl::i32 n);
     ostream& operator<<(fl::u32 n);
 
-    ostream& operator<<(float f) {
+    ostream& operator<<(float f) FL_NOEXCEPT {
         string temp;
         temp.append(f);
         print(temp.c_str());
         return *this;
     }
 
-    ostream& operator<<(double d) {
+    ostream& operator<<(double d) FL_NOEXCEPT {
         string temp;
         temp.append(d);
         print(temp.c_str());
         return *this;
     }
 
-    ostream& operator<<(const CRGB& rgb) {
+    ostream& operator<<(const CRGB& rgb) FL_NOEXCEPT {
         string temp;
         temp.append(rgb);
         print(temp.c_str());
@@ -76,7 +77,7 @@ public:
     }
 
     // Get current formatting base (1=decimal, 16=hex, 8=octal)
-    int getBase() const { return mBase; }
+    int getBase() const FL_NOEXCEPT { return mBase; }
 
     // Friend operators for manipulators
     friend ostream& operator<<(ostream&, const hex_t&);
@@ -95,7 +96,7 @@ struct endl_t {};
 extern const endl_t endl;
 
 // endl manipulator implementation
-inline ostream& operator<<(ostream& os, const endl_t&) {
+inline ostream& operator<<(ostream& os, const endl_t&) FL_NOEXCEPT {
     os << "\n";
     return os;
 }

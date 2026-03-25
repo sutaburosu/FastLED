@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "fl/stl/noexcept.h"
+
 #include "fl/stl/vector.h"
 #include "fl/stl/stdint.h"
 #include "fl/stl/shared_ptr.h"
@@ -121,7 +123,7 @@ public:
 private:
     /// @brief Friend declaration for make_shared to access private constructor
     template<typename T, typename... Args>
-    friend fl::shared_ptr<T> fl::make_shared(Args&&... args);
+    friend fl::shared_ptr<T> fl::make_shared(Args&&... args) FL_NOEXCEPT;
 
     /// @brief Private constructor - variant-based (modern API)
     ChannelData(

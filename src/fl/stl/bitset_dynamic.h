@@ -6,6 +6,7 @@
 #include "fl/math/math.h"
 #include "fl/stl/cstring.h"
 #include "fl/stl/compiler_control.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 
@@ -26,7 +27,7 @@ class bitset_dynamic {
     fl::u32 _size = 0;
 
     // Helper to calculate block count from bit count
-    static fl::u32 calc_block_count(fl::u32 bit_count) {  // okay static in header
+    static fl::u32 calc_block_count(fl::u32 bit_count) FL_NOEXCEPT {  // okay static in header
         return (bit_count + bits_per_block - 1) / bits_per_block;
     }
 
@@ -35,10 +36,10 @@ class bitset_dynamic {
     bitset_dynamic() = default;
 
     // Constructor with initial size
-    explicit bitset_dynamic(fl::u32 size) { resize(size); }
+    explicit bitset_dynamic(fl::u32 size) FL_NOEXCEPT { resize(size); }
 
     // Copy constructor
-    bitset_dynamic(const bitset_dynamic &other) {
+    bitset_dynamic(const bitset_dynamic &other) FL_NOEXCEPT {
         if (other._size > 0) {
             resize(other._size);
             fl::memcpy(_blocks.get(), other._blocks.get(), _block_count * sizeof(block_type));
@@ -54,7 +55,7 @@ class bitset_dynamic {
     }
 
     // Copy assignment
-    bitset_dynamic &operator=(const bitset_dynamic &other) {
+    bitset_dynamic &operator=(const bitset_dynamic &other) FL_NOEXCEPT {
         if (this != &other) {
             if (other._size > 0) {
                 resize(other._size);
@@ -85,7 +86,7 @@ class bitset_dynamic {
     // Assign n bits to the value specified
     FL_DISABLE_WARNING_PUSH
     FL_DISABLE_WARNING_NULL_DEREFERENCE
-    void assign(fl::u32 n, bool value) {
+    void assign(fl::u32 n, bool value) FL_NOEXCEPT {
         if (n > _size) {
             resize(n);
         }
@@ -113,7 +114,7 @@ class bitset_dynamic {
     // Resize the bitset
     FL_DISABLE_WARNING_PUSH
     FL_DISABLE_WARNING_NULL_DEREFERENCE
-    void resize(fl::u32 new_size) {
+    void resize(fl::u32 new_size) FL_NOEXCEPT {
         if (new_size == _size)
             return;
 
@@ -146,19 +147,19 @@ class bitset_dynamic {
     FL_DISABLE_WARNING_POP
 
     // Clear the bitset (reset to empty)
-    void clear() {
+    void clear() FL_NOEXCEPT {
         _blocks.reset();
         _block_count = 0;
         _size = 0;
     }
 
     // Add a bit to the end (initialized to 0)
-    void push_back() {
+    void push_back() FL_NOEXCEPT {
         resize(_size + 1);
     }
 
     // Remove the last bit
-    void pop_back() {
+    void pop_back() FL_NOEXCEPT {
         if (_size > 0) {
             resize(_size - 1);
         }
@@ -367,7 +368,7 @@ class bitset_dynamic {
     }
 
     // Bitwise AND operator
-    bitset_dynamic operator&(const bitset_dynamic &other) const {
+    bitset_dynamic operator&(const bitset_dynamic &other) const FL_NOEXCEPT {
         bitset_dynamic result(_size);
 
         if (!_blocks || !other._blocks || !result._blocks) {
@@ -384,7 +385,7 @@ class bitset_dynamic {
     }
 
     // Bitwise OR operator
-    bitset_dynamic operator|(const bitset_dynamic &other) const {
+    bitset_dynamic operator|(const bitset_dynamic &other) const FL_NOEXCEPT {
         bitset_dynamic result(_size);
 
         if (!_blocks || !other._blocks || !result._blocks) {
@@ -407,7 +408,7 @@ class bitset_dynamic {
     }
 
     // Bitwise XOR operator
-    bitset_dynamic operator^(const bitset_dynamic &other) const {
+    bitset_dynamic operator^(const bitset_dynamic &other) const FL_NOEXCEPT {
         bitset_dynamic result(_size);
 
         if (!_blocks || !other._blocks || !result._blocks) {
@@ -430,7 +431,7 @@ class bitset_dynamic {
     }
 
     // Bitwise NOT operator
-    bitset_dynamic operator~() const {
+    bitset_dynamic operator~() const FL_NOEXCEPT {
         bitset_dynamic result(_size);
 
         if (!_blocks || !result._blocks) {

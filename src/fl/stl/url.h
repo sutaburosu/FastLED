@@ -8,50 +8,51 @@
 #include "fl/stl/int.h"
 #include "fl/stl/string.h"
 #include "fl/stl/string_view.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 
 class url {
   public:
-    url() : mValid(false), mRepaired(false) { zeroOffsets(); }
+    url() FL_NOEXCEPT : mValid(false), mRepaired(false) { zeroOffsets(); }
 
-    explicit url(const char *url)
+    explicit url(const char *url) FL_NOEXCEPT
         : mUrl(url), mValid(false), mRepaired(false) {
         zeroOffsets();
         parse();
     }
 
-    explicit url(const fl::string &u)
+    explicit url(const fl::string &u) FL_NOEXCEPT
         : mUrl(u), mValid(false), mRepaired(false) {
         zeroOffsets();
         parse();
     }
 
-    explicit url(fl::string_view url)
+    explicit url(fl::string_view url) FL_NOEXCEPT
         : mUrl(url.data(), url.size()), mValid(false), mRepaired(false) {
         zeroOffsets();
         parse();
     }
 
-    bool isValid() const { return mValid; }
-    explicit operator bool() const { return mValid; }
+    bool isValid() const FL_NOEXCEPT { return mValid; }
+    explicit operator bool() const FL_NOEXCEPT { return mValid; }
 
     /// True if the URL was missing a scheme and "https://" was assumed.
-    bool wasRepaired() const { return mRepaired; }
+    bool wasRepaired() const FL_NOEXCEPT { return mRepaired; }
 
     // ---- Component accessors (return views into mUrl) ----
-    fl::string_view scheme() const { return view(mScheme); }
-    fl::string_view userinfo() const { return view(mUserinfo); }
-    fl::string_view host() const { return view(mHost); }
-    fl::string_view port_str() const { return view(mPort); }
-    fl::string_view path() const { return view(mPath); }
-    fl::string_view query() const { return view(mQuery); }
-    fl::string_view fragment() const { return view(mFragment); }
-    fl::string_view authority() const { return view(mAuthority); }
+    fl::string_view scheme() const FL_NOEXCEPT { return view(mScheme); }
+    fl::string_view userinfo() const FL_NOEXCEPT { return view(mUserinfo); }
+    fl::string_view host() const FL_NOEXCEPT { return view(mHost); }
+    fl::string_view port_str() const FL_NOEXCEPT { return view(mPort); }
+    fl::string_view path() const FL_NOEXCEPT { return view(mPath); }
+    fl::string_view query() const FL_NOEXCEPT { return view(mQuery); }
+    fl::string_view fragment() const FL_NOEXCEPT { return view(mFragment); }
+    fl::string_view authority() const FL_NOEXCEPT { return view(mAuthority); }
 
     /// Numeric port. Returns the explicit port if present, otherwise the
     /// well-known default for the scheme (80 for http, 443 for https, etc.).
-    fl::u16 port() const {
+    fl::u16 port() const FL_NOEXCEPT {
         fl::string_view p = port_str();
         if (p.empty()) {
             return defaultPort();
@@ -65,15 +66,15 @@ class url {
     }
 
     // ---- Whole-URL access ----
-    fl::string_view str() const {
+    fl::string_view str() const FL_NOEXCEPT {
         return fl::string_view(mUrl.c_str(), mUrl.size());
     }
-    const fl::string &string() const { return mUrl; }
-    const char *c_str() const { return mUrl.c_str(); }
+    const fl::string &string() const FL_NOEXCEPT { return mUrl; }
+    const char *c_str() const FL_NOEXCEPT { return mUrl.c_str(); }
 
     // ---- Comparison ----
-    bool operator==(const url &o) const { return mUrl == o.mUrl; }
-    bool operator!=(const url &o) const { return !(mUrl == o.mUrl); }
+    bool operator==(const url &o) const FL_NOEXCEPT { return mUrl == o.mUrl; }
+    bool operator!=(const url &o) const FL_NOEXCEPT { return !(mUrl == o.mUrl); }
 
   private:
     // A (offset, length) pair stored as uint16_t.
@@ -82,13 +83,13 @@ class url {
         fl::u16 len;
     };
 
-    fl::string_view view(const Span &s) const {
+    fl::string_view view(const Span &s) const FL_NOEXCEPT {
         if (s.len == 0)
             return fl::string_view();
         return fl::string_view(mUrl.c_str() + s.off, s.len);
     }
 
-    void zeroOffsets() {
+    void zeroOffsets() FL_NOEXCEPT {
         mScheme = {0, 0};
         mUserinfo = {0, 0};
         mHost = {0, 0};
@@ -99,14 +100,14 @@ class url {
         mAuthority = {0, 0};
     }
 
-    static Span makeSpan(fl::size off, fl::size len) {
+    static Span makeSpan(fl::size off, fl::size len) FL_NOEXCEPT {
         Span s;
         s.off = static_cast<fl::u16>(off);
         s.len = static_cast<fl::u16>(len);
         return s;
     }
 
-    fl::u16 defaultPort() const {
+    fl::u16 defaultPort() const FL_NOEXCEPT {
         fl::string_view s = scheme();
         if (s == "https" || s == "wss")
             return 443;
@@ -117,7 +118,7 @@ class url {
         return 0;
     }
 
-    void parse() {
+    void parse() FL_NOEXCEPT {
         if (mUrl.empty()) {
             return;
         }
@@ -190,7 +191,7 @@ class url {
         mValid = true;
     }
 
-    void parseAuthority(fl::string_view auth, fl::size baseOff) {
+    void parseAuthority(fl::string_view auth, fl::size baseOff) FL_NOEXCEPT {
         fl::size pos = 0;
 
         // userinfo — everything before '@'

@@ -1,5 +1,6 @@
 #pragma once
 #include "fl/stl/type_traits.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 
@@ -39,7 +40,7 @@ struct use_pointer_syntax : is_pointer_like<typename remove_reference<T>::type> 
 
 // 1a. Member function pointer with object reference
 template <typename F, typename T1, typename... Args>
-auto invoke(F&& f, T1&& t1, Args&&... args)
+auto invoke(F&& f, T1&& t1, Args&&... args) FL_NOEXCEPT
     -> enable_if_t<is_member_function_pointer<typename remove_reference<F>::type>::value &&
                    !detail::use_pointer_syntax<T1>::value,
                    decltype((fl::forward<T1>(t1).*f)(fl::forward<Args>(args)...))>
@@ -49,7 +50,7 @@ auto invoke(F&& f, T1&& t1, Args&&... args)
 
 // 1b. Member function pointer with pointer-like object
 template <typename F, typename T1, typename... Args>
-auto invoke(F&& f, T1&& t1, Args&&... args)
+auto invoke(F&& f, T1&& t1, Args&&... args) FL_NOEXCEPT
     -> enable_if_t<is_member_function_pointer<typename remove_reference<F>::type>::value &&
                    detail::use_pointer_syntax<T1>::value,
                    decltype(((*fl::forward<T1>(t1)).*f)(fl::forward<Args>(args)...))>
@@ -59,7 +60,7 @@ auto invoke(F&& f, T1&& t1, Args&&... args)
 
 // 2a. Member data pointer with object reference
 template <typename F, typename T1>
-auto invoke(F&& f, T1&& t1)
+auto invoke(F&& f, T1&& t1) FL_NOEXCEPT
     -> enable_if_t<detail::is_member_data_pointer<typename remove_reference<F>::type>::value &&
                    !detail::use_pointer_syntax<T1>::value,
                    decltype(fl::forward<T1>(t1).*f)>
@@ -69,7 +70,7 @@ auto invoke(F&& f, T1&& t1)
 
 // 2b. Member data pointer with pointer-like object
 template <typename F, typename T1>
-auto invoke(F&& f, T1&& t1)
+auto invoke(F&& f, T1&& t1) FL_NOEXCEPT
     -> enable_if_t<detail::is_member_data_pointer<typename remove_reference<F>::type>::value &&
                    detail::use_pointer_syntax<T1>::value,
                    decltype((*fl::forward<T1>(t1)).*f)>
@@ -79,7 +80,7 @@ auto invoke(F&& f, T1&& t1)
 
 // 3. Regular callable (function pointer, lambda, functor)
 template <typename F, typename... Args>
-auto invoke(F&& f, Args&&... args)
+auto invoke(F&& f, Args&&... args) FL_NOEXCEPT
     -> enable_if_t<!is_member_function_pointer<typename remove_reference<F>::type>::value &&
                    !detail::is_member_data_pointer<typename remove_reference<F>::type>::value,
                    decltype(fl::forward<F>(f)(fl::forward<Args>(args)...))>

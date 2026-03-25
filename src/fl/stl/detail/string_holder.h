@@ -2,6 +2,7 @@
 
 #include "fl/stl/int.h"
 #include "fl/stl/cstring.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 
@@ -12,17 +13,17 @@ class StringHolder {
     StringHolder(const char *str);
     StringHolder(size length);
     StringHolder(const char *str, size length);
-    StringHolder(const StringHolder &other) = delete;
-    StringHolder &operator=(const StringHolder &other) = delete;
+    StringHolder(const StringHolder &other) FL_NOEXCEPT = delete;
+    StringHolder &operator=(const StringHolder &other) FL_NOEXCEPT = delete;
     ~StringHolder();
 
     void grow(size newLength);
-    bool hasCapacity(size newLength) const { return newLength + 1 <= mCapacity; }
-    const char *data() const { return mData; }
-    char *data() { return mData; }
-    size length() const { return mLength; }
-    size capacity() const { return mCapacity; }
-    bool copy(const char *str, size len) {
+    bool hasCapacity(size newLength) const FL_NOEXCEPT { return newLength + 1 <= mCapacity; }
+    const char *data() const FL_NOEXCEPT { return mData; }
+    char *data() FL_NOEXCEPT { return mData; }
+    size length() const FL_NOEXCEPT { return mLength; }
+    size capacity() const FL_NOEXCEPT { return mCapacity; }
+    bool copy(const char *str, size len) FL_NOEXCEPT {
         if ((len + 1) > mCapacity) {
             return false;
         }

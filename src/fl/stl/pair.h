@@ -3,6 +3,7 @@
 #include "fl/stl/move.h"
 #include "fl/stl/compiler_control.h"
 #include "fl/stl/type_traits.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 
@@ -15,31 +16,31 @@ template <typename T1, typename T2> struct pair {
     T2 second = T2();
     
     // Default constructor
-    pair() = default;
+    pair() FL_NOEXCEPT = default;
     
     // Constructor from values
     FL_DISABLE_WARNING_PUSH
     FL_DISABLE_WARNING_NULL_DEREFERENCE
-    pair(const T1 &k, const T2 &v) : first(k), second(v) {}
+    pair(const T1 &k, const T2 &v) FL_NOEXCEPT : first(k), second(v) {}
     FL_DISABLE_WARNING_POP
     
     // Perfect forwarding constructor
     template <typename U1, typename U2>
-    pair(U1&& u1, U2&& u2) : first(fl::forward<U1>(u1)), second(fl::forward<U2>(u2)) {}
+    pair(U1&& u1, U2&& u2) FL_NOEXCEPT : first(fl::forward<U1>(u1)), second(fl::forward<U2>(u2)) {}
     
     // Copy constructor from different pair types
     template <typename U1, typename U2>
-    pair(const pair<U1, U2> &other) : first(other.first), second(other.second) {}
+    pair(const pair<U1, U2> &other) FL_NOEXCEPT : first(other.first), second(other.second) {}
     
     // Move constructor from different pair types
     template <typename U1, typename U2>
-    pair(pair<U1, U2> &&other) : first(fl::move(other.first)), second(fl::move(other.second)) {}
+    pair(pair<U1, U2> &&other) FL_NOEXCEPT : first(fl::move(other.first)), second(fl::move(other.second)) {}
     
     // Rule of 5: copy constructor, copy assignment, move constructor, move assignment, destructor
-    pair(const pair &other) = default;
-    pair &operator=(const pair &other) = default;
+    pair(const pair &other) FL_NOEXCEPT = default;
+    pair &operator=(const pair &other) FL_NOEXCEPT = default;
     pair(pair &&other) noexcept : first(fl::move(other.first)), second(fl::move(other.second)) {}
-    pair &operator=(pair &&other) = default;
+    pair &operator=(pair &&other) FL_NOEXCEPT = default;
     
     // Note: Template assignment operators removed to avoid issues with const members
     // The default copy and move assignment operators will handle same-type assignments
@@ -53,32 +54,32 @@ template <typename T1, typename T2> struct pair {
 
 // Comparison operators
 template <typename T1, typename T2, typename U1, typename U2>
-bool operator==(const pair<T1, T2> &lhs, const pair<U1, U2> &rhs) {
+bool operator==(const pair<T1, T2> &lhs, const pair<U1, U2> &rhs) FL_NOEXCEPT {
     return lhs.first == rhs.first && lhs.second == rhs.second;
 }
 
 template <typename T1, typename T2, typename U1, typename U2>
-bool operator!=(const pair<T1, T2> &lhs, const pair<U1, U2> &rhs) {
+bool operator!=(const pair<T1, T2> &lhs, const pair<U1, U2> &rhs) FL_NOEXCEPT {
     return !(lhs == rhs);
 }
 
 template <typename T1, typename T2, typename U1, typename U2>
-bool operator<(const pair<T1, T2> &lhs, const pair<U1, U2> &rhs) {
+bool operator<(const pair<T1, T2> &lhs, const pair<U1, U2> &rhs) FL_NOEXCEPT {
     return lhs.first < rhs.first || (!(rhs.first < lhs.first) && lhs.second < rhs.second);
 }
 
 template <typename T1, typename T2, typename U1, typename U2>
-bool operator<=(const pair<T1, T2> &lhs, const pair<U1, U2> &rhs) {
+bool operator<=(const pair<T1, T2> &lhs, const pair<U1, U2> &rhs) FL_NOEXCEPT {
     return !(rhs < lhs);
 }
 
 template <typename T1, typename T2, typename U1, typename U2>
-bool operator>(const pair<T1, T2> &lhs, const pair<U1, U2> &rhs) {
+bool operator>(const pair<T1, T2> &lhs, const pair<U1, U2> &rhs) FL_NOEXCEPT {
     return rhs < lhs;
 }
 
 template <typename T1, typename T2, typename U1, typename U2>
-bool operator>=(const pair<T1, T2> &lhs, const pair<U1, U2> &rhs) {
+bool operator>=(const pair<T1, T2> &lhs, const pair<U1, U2> &rhs) FL_NOEXCEPT {
     return !(lhs < rhs);
 }
 
@@ -90,7 +91,7 @@ void swap(pair<T1, T2> &lhs, pair<T1, T2> &rhs) noexcept {
 
 // make_pair function
 template <typename T1, typename T2>
-pair<typename fl::decay<T1>::type, typename fl::decay<T2>::type> make_pair(T1&& t, T2&& u) {
+pair<typename fl::decay<T1>::type, typename fl::decay<T2>::type> make_pair(T1&& t, T2&& u) FL_NOEXCEPT {
     return pair<typename fl::decay<T1>::type, typename fl::decay<T2>::type>(fl::forward<T1>(t), fl::forward<T2>(u));
 }
 

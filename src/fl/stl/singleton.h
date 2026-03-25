@@ -4,6 +4,7 @@
 #include "fl/stl/new.h"         // Placement new operator  // IWYU pragma: keep
 #include "fl/stl/compiler_control.h" // FL_HAS_SANITIZER_LSAN macro
 #include "fl/stl/thread_local.h"
+#include "fl/stl/noexcept.h"
 
 #if FL_HAS_SANITIZER_LSAN
 #  include <sanitizer/lsan_interface.h>
@@ -37,7 +38,7 @@ void singleton_registry_set(const char* key, void* value);
 // LSAN COMPATIBILITY: Uses __lsan::ScopedDisabler to prevent false positives.
 template <typename T, int N = 0> class Singleton {
   public:
-    static T &instance() {
+    static T &instance() FL_NOEXCEPT {
         // Aligned char buffer storage — never destroyed
         struct FL_ALIGN_AS_T(alignof(T)) AlignedStorage {
             char data[sizeof(T)];
@@ -54,14 +55,14 @@ template <typename T, int N = 0> class Singleton {
         return *ptr;
     }
 
-    static T *instanceRef() { return &instance(); }
+    static T *instanceRef() FL_NOEXCEPT { return &instance(); }
 
-    Singleton(const Singleton &) = delete;
-    Singleton &operator=(const Singleton &) = delete;
+    Singleton(const Singleton &) FL_NOEXCEPT = delete;
+    Singleton &operator=(const Singleton &) FL_NOEXCEPT = delete;
 
   private:
-    Singleton() = default;
-    ~Singleton() = default;
+    Singleton() FL_NOEXCEPT = default;
+    ~Singleton() FL_NOEXCEPT = default;
 };
 
 // Cross-DLL singleton — WITH FL_PRETTY_FUNCTION registry. For use in header
@@ -77,7 +78,7 @@ template <typename T, int N = 0> class Singleton {
 // LSAN COMPATIBILITY: Uses __lsan::ScopedDisabler to prevent false positives.
 template <typename T, int N = 0> class SingletonShared {
   public:
-    static T &instance() {
+    static T &instance() FL_NOEXCEPT {
         // Check the process-wide registry first (handles cross-DLL sharing).
         // FL_PRETTY_FUNCTION produces a unique string per template instantiation
         // (includes template parameters in the signature).
@@ -91,16 +92,16 @@ template <typename T, int N = 0> class SingletonShared {
         return *ptr;
     }
 
-    static T *instanceRef() { return &instance(); }
+    static T *instanceRef() FL_NOEXCEPT { return &instance(); }
 
-    SingletonShared(const SingletonShared &) = delete;
-    SingletonShared &operator=(const SingletonShared &) = delete;
+    SingletonShared(const SingletonShared &) FL_NOEXCEPT = delete;
+    SingletonShared &operator=(const SingletonShared &) FL_NOEXCEPT = delete;
 
   private:
-    SingletonShared() = default;
-    ~SingletonShared() = default;
+    SingletonShared() FL_NOEXCEPT = default;
+    ~SingletonShared() FL_NOEXCEPT = default;
 
-    static T* instanceInner() {
+    static T* instanceInner() FL_NOEXCEPT {
         // Aligned char buffer storage — never destroyed
         struct FL_ALIGN_AS_T(alignof(T)) AlignedStorage {
             char data[sizeof(T)];
@@ -129,7 +130,7 @@ template <typename T, int N = 0> class SingletonShared {
 // LSAN COMPATIBILITY: Uses __lsan::ScopedDisabler to prevent false positives.
 template <typename T, int N = 0> class SingletonThreadLocal {
   public:
-    static T &instance() {
+    static T &instance() FL_NOEXCEPT {
         // Aligned char buffer storage — never destroyed
         struct FL_ALIGN_AS_T(alignof(ThreadLocal<T>)) AlignedStorage {
             char data[sizeof(ThreadLocal<T>)];
@@ -146,14 +147,14 @@ template <typename T, int N = 0> class SingletonThreadLocal {
         return ptr->access();
     }
 
-    static T *instanceRef() { return &instance(); }
+    static T *instanceRef() FL_NOEXCEPT { return &instance(); }
 
-    SingletonThreadLocal(const SingletonThreadLocal &) = delete;
-    SingletonThreadLocal &operator=(const SingletonThreadLocal &) = delete;
+    SingletonThreadLocal(const SingletonThreadLocal &) FL_NOEXCEPT = delete;
+    SingletonThreadLocal &operator=(const SingletonThreadLocal &) FL_NOEXCEPT = delete;
 
   private:
-    SingletonThreadLocal() = default;
-    ~SingletonThreadLocal() = default;
+    SingletonThreadLocal() FL_NOEXCEPT = default;
+    ~SingletonThreadLocal() FL_NOEXCEPT = default;
 };
 
 } // namespace fl

@@ -3,6 +3,7 @@
 #include "fl/stl/int.h"
 #include "fl/stl/cstddef.h"
 #include "fl/stl/optional.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 class sstream;  // Forward declaration
@@ -64,7 +65,7 @@ void setLogLevel(u8 level);
 class ScopedLogDisable {
 public:
     /// Constructor - saves current log level and disables logging
-    ScopedLogDisable() : mPreviousLevel(getLogLevel()) {
+    ScopedLogDisable() FL_NOEXCEPT : mPreviousLevel(getLogLevel()) {
         setLogLevel(static_cast<u8>(LogLevel::FL_LOG_LEVEL_NONE));
     }
 
@@ -74,8 +75,8 @@ public:
     }
 
     // Non-copyable (prevent accidental copies that would corrupt state)
-    ScopedLogDisable(const ScopedLogDisable&) = delete;
-    ScopedLogDisable& operator=(const ScopedLogDisable&) = delete;
+    ScopedLogDisable(const ScopedLogDisable&) FL_NOEXCEPT = delete;
+    ScopedLogDisable& operator=(const ScopedLogDisable&) FL_NOEXCEPT = delete;
 
     // Move-only (allow transfer of ownership)
     ScopedLogDisable(ScopedLogDisable&& other) noexcept
@@ -83,7 +84,7 @@ public:
         // Mark other as "moved-from" by setting to current level (no-op restore)
         other.mPreviousLevel = static_cast<u8>(LogLevel::FL_LOG_LEVEL_NONE);
     }
-    ScopedLogDisable& operator=(ScopedLogDisable&&) = delete;
+    ScopedLogDisable& operator=(ScopedLogDisable&&) FL_NOEXCEPT = delete;
 
 private:
     u8 mPreviousLevel;

@@ -4,6 +4,7 @@
 #include "fl/stl/utility.h"       // for fl::move, fl::forward, fl::swap  // IWYU pragma: keep
 #include "fl/stl/stdint.h"        // for fl::size_t  // IWYU pragma: keep
 #include "fl/stl/cstddef.h"       // for fl::nullptr_t
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 
@@ -20,7 +21,7 @@ struct default_delete {
     template<typename U>
     default_delete(const default_delete<U>&) noexcept {}
     
-    default_delete() = default;
+    default_delete() FL_NOEXCEPT = default;
 };
 
 template<typename T>
@@ -58,8 +59,8 @@ public:
         : mPtr(u.release()), mDeleter(fl::move(u.get_deleter())) {}
     
     // Copy semantics deleted
-    unique_ptr(const unique_ptr&) = delete;
-    unique_ptr& operator=(const unique_ptr&) = delete;
+    unique_ptr(const unique_ptr&) FL_NOEXCEPT = delete;
+    unique_ptr& operator=(const unique_ptr&) FL_NOEXCEPT = delete;
     
     // Move assignment
     unique_ptr& operator=(unique_ptr&& u) noexcept {
@@ -85,7 +86,7 @@ public:
     }
     
     // Destructor
-    ~unique_ptr() {
+    ~unique_ptr() FL_NOEXCEPT {
         if (mPtr) {
             mDeleter(mPtr);
         }
@@ -98,7 +99,7 @@ public:
     explicit operator bool() const noexcept { return mPtr != nullptr; }
     
     // Access
-    T& operator*() const { return *mPtr; }
+    T& operator*() const FL_NOEXCEPT { return *mPtr; }
     pointer operator->() const noexcept { return mPtr; }
     
     // Modifiers
@@ -152,8 +153,8 @@ public:
         : mPtr(u.release()), mDeleter(fl::move(u.get_deleter())) {}
     
     // Copy semantics deleted
-    unique_ptr(const unique_ptr&) = delete;
-    unique_ptr& operator=(const unique_ptr&) = delete;
+    unique_ptr(const unique_ptr&) FL_NOEXCEPT = delete;
+    unique_ptr& operator=(const unique_ptr&) FL_NOEXCEPT = delete;
     
     // Move assignment
     unique_ptr& operator=(unique_ptr&& u) noexcept {
@@ -179,7 +180,7 @@ public:
     }
     
     // Destructor
-    ~unique_ptr() {
+    ~unique_ptr() FL_NOEXCEPT {
         if (mPtr) {
             mDeleter(mPtr);
         }
@@ -192,7 +193,7 @@ public:
     explicit operator bool() const noexcept { return mPtr != nullptr; }
     
     // Array access (replaces scoped_array functionality)
-    T& operator[](fl::size_t i) const { return mPtr[i]; }
+    T& operator[](fl::size_t i) const FL_NOEXCEPT { return mPtr[i]; }
     
     // Modifiers
     pointer release() noexcept {
@@ -224,12 +225,12 @@ void swap(unique_ptr<T, Deleter>& lhs, unique_ptr<T, Deleter>& rhs) noexcept {
 
 // Comparison operators using FL equivalents
 template<typename T1, typename Deleter1, typename T2, typename Deleter2>
-bool operator==(const unique_ptr<T1, Deleter1>& lhs, const unique_ptr<T2, Deleter2>& rhs) {
+bool operator==(const unique_ptr<T1, Deleter1>& lhs, const unique_ptr<T2, Deleter2>& rhs) FL_NOEXCEPT {
     return lhs.get() == rhs.get();
 }
 
 template<typename T1, typename Deleter1, typename T2, typename Deleter2>
-bool operator!=(const unique_ptr<T1, Deleter1>& lhs, const unique_ptr<T2, Deleter2>& rhs) {
+bool operator!=(const unique_ptr<T1, Deleter1>& lhs, const unique_ptr<T2, Deleter2>& rhs) FL_NOEXCEPT {
     return !(lhs == rhs);
 }
 

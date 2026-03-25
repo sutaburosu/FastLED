@@ -174,6 +174,7 @@
 #include "fl/stl/unordered_set.h"
 #include "fl/stl/map.h"
 #include "fl/stl/unordered_map.h"
+#include "fl/stl/unordered_map_small.h"
 #include "fl/stl/multi_map.h"
 #include "fl/stl/circular_buffer.h"
 #include "fl/stl/shared_ptr.h"
@@ -1358,6 +1359,7 @@ FL_TEST_CASE("operator> and operator>= - all containers with comparison") {
 FL_TEST_CASE("map insert and find operations") {
     FL_SUBCASE("fl::map") { test_map_insert_find<fl::map<int, int>>(); }
     FL_SUBCASE("fl::unordered_map") { test_map_insert_find<fl::unordered_map<int, int>>(); }
+    FL_SUBCASE("fl::unordered_map_small") { test_map_insert_find<fl::unordered_map_small<int, int>>(); }
     FL_SUBCASE("fl::multi_map") { test_map_insert_find<fl::multi_map<int, int>>(); }
     FL_SUBCASE("fl::unsorted_map_fixed") { test_map_insert_find<fixed_map_test<int, int>>(); }
 }
@@ -1365,6 +1367,7 @@ FL_TEST_CASE("map insert and find operations") {
 FL_TEST_CASE("map operator[] access") {
     FL_SUBCASE("fl::map") { test_map_operator_subscript<fl::map<int, int>>(); }
     FL_SUBCASE("fl::unordered_map") { test_map_operator_subscript<fl::unordered_map<int, int>>(); }
+    FL_SUBCASE("fl::unordered_map_small") { test_map_operator_subscript<fl::unordered_map_small<int, int>>(); }
     FL_SUBCASE("fl::unsorted_map_fixed") { test_map_operator_subscript<fixed_map_test<int, int>>(); }
     // NOTE: fl::multi_map doesn't support operator[] (ambiguous with duplicate keys)
 }
@@ -1372,6 +1375,7 @@ FL_TEST_CASE("map operator[] access") {
 FL_TEST_CASE("map erase operations") {
     FL_SUBCASE("fl::map") { test_map_erase<fl::map<int, int>>(); }
     FL_SUBCASE("fl::unordered_map") { test_map_erase<fl::unordered_map<int, int>>(); }
+    FL_SUBCASE("fl::unordered_map_small") { test_map_erase<fl::unordered_map_small<int, int>>(); }
     FL_SUBCASE("fl::multi_map") { test_map_erase<fl::multi_map<int, int>>(); }
     FL_SUBCASE("fl::unsorted_map_fixed") { test_map_erase<fixed_map_test<int, int>>(); }
 }
@@ -1379,6 +1383,7 @@ FL_TEST_CASE("map erase operations") {
 FL_TEST_CASE("map iteration") {
     FL_SUBCASE("fl::map") { test_map_iteration<fl::map<int, int>>(); }
     FL_SUBCASE("fl::unordered_map") { test_map_iteration<fl::unordered_map<int, int>>(); }
+    FL_SUBCASE("fl::unordered_map_small") { test_map_iteration<fl::unordered_map_small<int, int>>(); }
     FL_SUBCASE("fl::multi_map") { test_map_iteration<fl::multi_map<int, int>>(); }
     FL_SUBCASE("fl::unsorted_map_fixed") { test_map_iteration<fixed_map_test<int, int>>(); }
 }
@@ -1386,6 +1391,7 @@ FL_TEST_CASE("map iteration") {
 FL_TEST_CASE("map size and clear") {
     FL_SUBCASE("fl::map") { test_map_size_clear<fl::map<int, int>>(); }
     FL_SUBCASE("fl::unordered_map") { test_map_size_clear<fl::unordered_map<int, int>>(); }
+    FL_SUBCASE("fl::unordered_map_small") { test_map_size_clear<fl::unordered_map_small<int, int>>(); }
     FL_SUBCASE("fl::multi_map") { test_map_size_clear<fl::multi_map<int, int>>(); }
     FL_SUBCASE("fl::unsorted_map_fixed") { test_map_size_clear<fixed_map_test<int, int>>(); }
 }
@@ -1393,6 +1399,7 @@ FL_TEST_CASE("map size and clear") {
 FL_TEST_CASE("map count operations") {
     FL_SUBCASE("fl::map") { test_map_count<fl::map<int, int>>(); }
     FL_SUBCASE("fl::unordered_map") { test_map_count<fl::unordered_map<int, int>>(); }
+    FL_SUBCASE("fl::unordered_map_small") { test_map_count<fl::unordered_map_small<int, int>>(); }
     FL_SUBCASE("fl::multi_map") { test_map_count<fl::multi_map<int, int>>(); }
     FL_SUBCASE("fl::unsorted_map_fixed") { test_map_count<fixed_map_test<int, int>>(); }
 }
@@ -1407,6 +1414,7 @@ FL_TEST_CASE("map move semantics - values inserted via move, no copies") {
     FL_SUBCASE("fl::map") { test_map_move_semantics<fl::map<int, MoveTrackItem>>(); }
     FL_SUBCASE("fl::flat_map") { test_map_move_semantics<fl::flat_map<int, MoveTrackItem>>(); }
     FL_SUBCASE("fl::unordered_map") { test_map_move_semantics<fl::unordered_map<int, MoveTrackItem>>(); }
+    FL_SUBCASE("fl::unordered_map_small") { test_map_move_semantics<fl::unordered_map_small<int, MoveTrackItem>>(); }
     FL_SUBCASE("fl::multi_map") { test_map_move_semantics<fl::multi_map<int, MoveTrackItem>>(); }
     // NOTE: fl::unsorted_map_fixed uses insert(key, value) not insert(pair),
     // normalized wrapper doesn't support move-only tracking
@@ -1472,6 +1480,7 @@ FL_TEST_CASE("erase while iterating - sequential containers") {
 FL_TEST_CASE("erase while iterating - map containers") {
     FL_SUBCASE("fl::map") { test_map_erase_while_iterating<fl::map<int, int>>(); }
     FL_SUBCASE("fl::unordered_map") { test_map_erase_while_iterating<fl::unordered_map<int, int>>(); }
+    FL_SUBCASE("fl::unordered_map_small") { test_map_erase_while_iterating<fl::unordered_map_small<int, int>>(); }
     FL_SUBCASE("fl::multi_map") { test_map_erase_while_iterating<fl::multi_map<int, int>>(); }
 }
 

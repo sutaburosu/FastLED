@@ -131,7 +131,7 @@ void ChannelEngineI2S::show() FL_NOEXCEPT {
             }
         }
         if (!found) {
-            ChipsetGroup newGroup(channel->getTiming());
+            ChipsetGroup newGroup(channel->getTiming()); // ok no noexcept
             newGroup.mChannels.push_back(channel);
             mChipsetGroups.push_back(fl::move(newGroup));
         }

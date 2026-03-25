@@ -44,6 +44,7 @@
 #include "platforms/esp/32/drivers/spi/spi_hw_base.h" // SPI host definitions (SPI2_HOST, SPI3_HOST)
 #include "platforms/esp/is_esp.h" // Platform detection (FL_IS_ESP_32C6, etc.)
 #include "fl/stl/noexcept.h"
+#include "fl/stl/flat_map.h"
 
 FL_EXTERN_C_BEGIN
 // IWYU pragma: begin_keep
@@ -361,7 +362,7 @@ void ChannelEngineSpi::show() FL_NOEXCEPT {
 
     // Build timing groups for batched transmission
     mPipeline.mTimingGroups.clear();
-    fl::hash_map<ChipsetTimingConfig, fl::vector<ChannelDataPtr>, TimingHash, TimingEqual> timingGroups;
+    fl::flat_map<ChipsetTimingConfig, fl::vector<ChannelDataPtr>, TimingLess> timingGroups;
     for (const auto& channel : mTransmittingChannels) {
         const ChipsetTimingConfig& timing = channel->getTiming();
         timingGroups[timing].push_back(channel);
@@ -471,7 +472,7 @@ void ChannelEngineSpi::beginBatchedTransmission(
     //
     // Hash map key: ChipsetTimingConfig (t1_ns, t2_ns, t3_ns, reset_us)
     // Hash map value: Vector of channels with matching timing
-    fl::hash_map<ChipsetTimingConfig, fl::vector<ChannelDataPtr>, TimingHash, TimingEqual> timingGroups;
+    fl::flat_map<ChipsetTimingConfig, fl::vector<ChannelDataPtr>, TimingLess> timingGroups;
 
     for (const auto& channel : channels) {
         const ChipsetTimingConfig& timing = channel->getTiming();

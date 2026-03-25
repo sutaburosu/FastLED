@@ -76,7 +76,7 @@ public:
      * 3. If not installed, installs driver with buffer sizes from config
      * 4. If installation fails, falls back to ROM UART
      */
-    explicit UsbSerialJtagEsp32(const UsbSerialJtagConfig& config);
+    explicit UsbSerialJtagEsp32(const UsbSerialJtagConfig& config) FL_NOEXCEPT;
 
     /**
      * @brief Destructor - uninstalls driver if we installed it

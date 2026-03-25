@@ -38,6 +38,7 @@
 #include "fl/stl/stdint.h"
 #include "fl/stl/variant.h"
 #include "fl/stl/string.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 
@@ -67,7 +68,7 @@ struct ErrorInfo {
     E code;
     fl::string message;
 
-    ErrorInfo(E err, const char* msg = nullptr) : code(err), message(msg ? msg : "") {}
+    ErrorInfo(E err, const char* msg = nullptr) FL_NOEXCEPT : code(err), message(msg ? msg : "") {}
 };
 
 /// @brief expected type for operations that can fail (C++23-style)
@@ -78,47 +79,47 @@ template<typename T, typename E>
 class expected {
 public:
     /// @brief Check if operation succeeded
-    bool ok() const { return mData.template is<T>(); }
+    bool ok() const FL_NOEXCEPT { return mData.template is<T>(); }
 
     /// @brief Check if operation succeeded (alias for ok())
-    bool has_value() const { return ok(); }
+    bool has_value() const FL_NOEXCEPT { return ok(); }
 
     /// @brief Get error code (only meaningful if !ok())
-    E error() const {
+    E error() const FL_NOEXCEPT {
         auto* err = mData.template ptr<ErrorInfo<E>>();
         return err ? err->code : E{};
     }
 
     /// @brief Get error message (only meaningful if !ok())
-    const char* message() const {
+    const char* message() const FL_NOEXCEPT {
         auto* err = mData.template ptr<ErrorInfo<E>>();
         return err ? err->message.c_str() : "";
     }
 
     /// @brief Get value (only valid if ok() == true)
     /// @warning Undefined behavior if called when !ok()
-    T& value() { return mData.template get<T>(); }
-    const T& value() const { return mData.template get<T>(); }
+    T& value() FL_NOEXCEPT { return mData.template get<T>(); }
+    const T& value() const FL_NOEXCEPT { return mData.template get<T>(); }
 
     /// @brief Explicit conversion to bool for contextual evaluation
-    explicit operator bool() const { return ok(); }
+    explicit operator bool() const FL_NOEXCEPT { return ok(); }
 
     /// @brief Create successful result
-    static expected success(T value) {
+    static expected success(T value) FL_NOEXCEPT {
         expected r;
         r.mData = fl::move(value);
         return r;
     }
 
     /// @brief Create error result
-    static expected failure(E err, const char* msg = nullptr) {
+    static expected failure(E err, const char* msg = nullptr) FL_NOEXCEPT {
         expected r;
         r.mData = ErrorInfo<E>(err, msg);
         return r;
     }
 
     /// @brief Default constructor (creates error state)
-    expected() : mData(ErrorInfo<E>(E{}, nullptr)) {}
+    expected() FL_NOEXCEPT : mData(ErrorInfo<E>(E{}, nullptr)) {}
 
     /// @brief Move constructor (defaulted - variant handles it)
     expected(expected&& other) noexcept = default;
@@ -127,14 +128,14 @@ public:
     expected& operator=(expected&& other) noexcept = default;
 
     /// @brief Destructor (defaulted - variant handles cleanup)
-    ~expected() = default;
+    ~expected() FL_NOEXCEPT = default;
 
 private:
     fl::variant<T, ErrorInfo<E>> mData;
 
     // Non-copyable
-    expected(const expected&) = delete;
-    expected& operator=(const expected&) = delete;
+    expected(const expected&) FL_NOEXCEPT = delete;
+    expected& operator=(const expected&) FL_NOEXCEPT = delete;
 };
 
 /// @brief Dummy type for void expected success state
@@ -146,34 +147,34 @@ struct VoidSuccess {};
 template<typename E>
 class expected<void, E> {
 public:
-    bool ok() const { return mData.template is<VoidSuccess>(); }
+    bool ok() const FL_NOEXCEPT { return mData.template is<VoidSuccess>(); }
 
-    E error() const {
+    E error() const FL_NOEXCEPT {
         auto* err = mData.template ptr<ErrorInfo<E>>();
         return err ? err->code : E{};
     }
 
-    const char* message() const {
+    const char* message() const FL_NOEXCEPT {
         auto* err = mData.template ptr<ErrorInfo<E>>();
         return err ? err->message.c_str() : "";
     }
 
-    explicit operator bool() const { return ok(); }
+    explicit operator bool() const FL_NOEXCEPT { return ok(); }
 
-    static expected success() {
+    static expected success() FL_NOEXCEPT {
         expected r;
         r.mData = VoidSuccess{};
         return r;
     }
 
-    static expected failure(E err, const char* msg = nullptr) {
+    static expected failure(E err, const char* msg = nullptr) FL_NOEXCEPT {
         expected r;
         r.mData = ErrorInfo<E>(err, msg);
         return r;
     }
 
     /// @brief Default constructor (creates error state)
-    expected() : mData(ErrorInfo<E>(E{}, nullptr)) {}
+    expected() FL_NOEXCEPT : mData(ErrorInfo<E>(E{}, nullptr)) {}
 
     /// @brief Move constructor (defaulted - variant handles it)
     expected(expected&& other) noexcept = default;
@@ -182,7 +183,7 @@ public:
     expected& operator=(expected&& other) noexcept = default;
 
     /// @brief Copy constructor (needed for some use cases like Impl initialization)
-    expected(const expected& other) : mData() {
+    expected(const expected& other) FL_NOEXCEPT : mData() {
         if (other.ok()) {
             mData = VoidSuccess{};
         } else {
@@ -194,7 +195,7 @@ public:
     }
 
     /// @brief Copy assignment
-    expected& operator=(const expected& other) {
+    expected& operator=(const expected& other) FL_NOEXCEPT {
         if (this != &other) {
             if (other.ok()) {
                 mData = VoidSuccess{};
@@ -209,7 +210,7 @@ public:
     }
 
     /// @brief Destructor (defaulted - variant handles cleanup)
-    ~expected() = default;
+    ~expected() FL_NOEXCEPT = default;
 
 private:
     fl::variant<VoidSuccess, ErrorInfo<E>> mData;

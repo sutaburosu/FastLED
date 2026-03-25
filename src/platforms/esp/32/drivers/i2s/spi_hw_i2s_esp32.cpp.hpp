@@ -275,7 +275,7 @@ bool SpiHwI2SESP32::validate_pins(int clock_pin, const fl::vector<int>& data_pin
     }
 
     // Check data pins
-    fl::vector<bool> seen(GPIO_NUM_MAX, false);
+    fl::vector<bool> seen(GPIO_NUM_MAX, false); // ok no noexcept
     seen[clock_pin] = true;  // Mark clock pin as used
 
     for (int pin : data_pins) {

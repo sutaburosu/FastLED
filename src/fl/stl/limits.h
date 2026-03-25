@@ -1,4 +1,5 @@
 #pragma once
+#include "fl/stl/noexcept.h"
 
 /*
 Provides numeric_limits for fundamental types, similar to <limits> from the C++ standard library.
@@ -13,7 +14,7 @@ namespace detail {
     // Compute number of value bits (excludes sign bit for signed types)
     // C++11 compatible: use constexpr function instead of variable template
     template<typename T>
-    constexpr int integer_digits_func() {
+    constexpr int integer_digits_func() FL_NOEXCEPT {
         return (sizeof(T) * 8) - (T(-1) < T(0) ? 1 : 0);
     }
 
@@ -26,7 +27,7 @@ namespace detail {
     // For 8 bits: 2, 16 bits: 4, 32 bits: 9, 64 bits: 19
     // C++11 compatible: use constexpr function instead of variable template
     template<typename T>
-    constexpr int integer_digits10_func() {
+    constexpr int integer_digits10_func() FL_NOEXCEPT {
         return sizeof(T) == 1 ? 2 :
                sizeof(T) == 2 ? 4 :
                sizeof(T) == 4 ? 9 :

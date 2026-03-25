@@ -395,6 +395,16 @@ private:
         }
     };
 
+    /// @brief Less-than comparator for ChipsetTimingConfig (flat_map key)
+    struct TimingLess {
+        bool operator()(const ChipsetTimingConfig& a, const ChipsetTimingConfig& b) const FL_NOEXCEPT {
+            if (a.t1_ns != b.t1_ns) return a.t1_ns < b.t1_ns;
+            if (a.t2_ns != b.t2_ns) return a.t2_ns < b.t2_ns;
+            if (a.t3_ns != b.t3_ns) return a.t3_ns < b.t3_ns;
+            return a.reset_us < b.reset_us;
+        }
+    };
+
     /// @brief Acquire a channel for given pin and timing
     /// @param dataSize Size of LED data in bytes
     /// @return Pointer to channel state, or nullptr if no hardware available

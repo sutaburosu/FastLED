@@ -8,6 +8,7 @@
 #include "fl/stl/new.h"          // for placement new operator (must be before namespace fl)  // IWYU pragma: keep
 #include "fl/stl/align.h"        // for FL_ALIGN_AS_T macro (GCC 4.8.3 workaround)
 #include "fl/stl/compiler_control.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 
@@ -24,17 +25,17 @@ class FL_ALIGN_AS_T(max_align<Types...>::value) variant {
 
     template <typename T, typename = typename fl::enable_if<
                               contains_type<T, Types...>::value>::type>
-    variant(const T &value) : _tag(Empty) {
+    variant(const T &value) FL_NOEXCEPT : _tag(Empty) {
         construct<T>(value);
     }
 
     template <typename T, typename = typename fl::enable_if<
                               contains_type<T, Types...>::value>::type>
-    variant(T &&value) : _tag(Empty) {
+    variant(T &&value) FL_NOEXCEPT : _tag(Empty) {
         construct<T>(fl::move(value));
     }
 
-    variant(const variant &other) : _tag(Empty) {
+    variant(const variant &other) FL_NOEXCEPT : _tag(Empty) {
         if (!other.empty()) {
             copy_construct_from(other);
         }
@@ -48,9 +49,9 @@ class FL_ALIGN_AS_T(max_align<Types...>::value) variant {
         }
     }
 
-    ~variant() { reset(); }
+    ~variant() FL_NOEXCEPT { reset(); }
 
-    variant &operator=(const variant &other) {
+    variant &operator=(const variant &other) FL_NOEXCEPT {
         if (this != &other) {
             reset();
             if (!other.empty()) {
@@ -74,7 +75,7 @@ class FL_ALIGN_AS_T(max_align<Types...>::value) variant {
 
     template <typename T, typename = typename fl::enable_if<
                               contains_type<T, Types...>::value>::type>
-    variant &operator=(const T &value) {
+    variant &operator=(const T &value) FL_NOEXCEPT {
         reset();
         construct<T>(value);
         return *this;
@@ -82,7 +83,7 @@ class FL_ALIGN_AS_T(max_align<Types...>::value) variant {
 
     template <typename T, typename = typename fl::enable_if<
                               contains_type<T, Types...>::value>::type>
-    variant &operator=(T &&value) {
+    variant &operator=(T &&value) FL_NOEXCEPT {
         reset();
         construct<T>(fl::move(value));
         return *this;
@@ -112,14 +113,14 @@ class FL_ALIGN_AS_T(max_align<Types...>::value) variant {
         return _tag == type_to_tag<T>();
     }
 
-    template <typename T> T *ptr() {
+    template <typename T> T *ptr() FL_NOEXCEPT {
         if (!is<T>()) return nullptr;
         // Use bit_cast_ptr for safe type-punning on properly aligned storage
         // The storage is guaranteed to be properly aligned by alignas(max_align<Types...>::value)
         return fl::bit_cast_ptr<T>(&_storage[0]);
     }
 
-    template <typename T> const T *ptr() const {
+    template <typename T> const T *ptr() const FL_NOEXCEPT {
         if (!is<T>()) return nullptr;
         // Use bit_cast_ptr for safe type-punning on properly aligned storage
         // The storage is guaranteed to be properly aligned by alignas(max_align<Types...>::value)
@@ -131,7 +132,7 @@ class FL_ALIGN_AS_T(max_align<Types...>::value) variant {
     /// @return Reference to the stored value
     /// @note Asserts if the variant doesn't contain type T. Use is<T>() to check first.
     /// @warning Will crash if called with wrong type - this is intentional for fast failure
-    template <typename T> T &get() {
+    template <typename T> T &get() FL_NOEXCEPT {
         // Dereference ptr() directly - will crash with null pointer access if wrong type
         // This provides fast failure semantics similar to std::variant
         return *ptr<T>();
@@ -142,13 +143,13 @@ class FL_ALIGN_AS_T(max_align<Types...>::value) variant {
     /// @return Const reference to the stored value
     /// @note Asserts if the variant doesn't contain type T. Use is<T>() to check first.
     /// @warning Will crash if called with wrong type - this is intentional for fast failure
-    template <typename T> const T &get() const {
+    template <typename T> const T &get() const FL_NOEXCEPT {
         // Dereference ptr() directly - will crash with null pointer access if wrong type
         // This provides fast failure semantics similar to std::variant
         return *ptr<T>();
     }
 
-    template <typename T> bool equals(const T &other) const {
+    template <typename T> bool equals(const T &other) const FL_NOEXCEPT {
         if (auto p = ptr<T>()) {
             return *p == other;
         }
@@ -156,7 +157,7 @@ class FL_ALIGN_AS_T(max_align<Types...>::value) variant {
     }
 
     // –– visitor using O(1) function‐pointer table
-    template <typename Visitor> void visit(Visitor &visitor) {
+    template <typename Visitor> void visit(Visitor &visitor) FL_NOEXCEPT {
         if (_tag == Empty)
             return;
 
@@ -177,7 +178,7 @@ class FL_ALIGN_AS_T(max_align<Types...>::value) variant {
         }
     }
 
-    template <typename Visitor> void visit(Visitor &visitor) const {
+    template <typename Visitor> void visit(Visitor &visitor) const FL_NOEXCEPT {
         if (_tag == Empty)
             return;
 
@@ -199,7 +200,7 @@ class FL_ALIGN_AS_T(max_align<Types...>::value) variant {
   private:
     // –– helper for the visit table
     template <typename T, typename Visitor>
-    static void visit_fn(void *storage, Visitor &v) {
+    static void visit_fn(void *storage, Visitor &v) FL_NOEXCEPT {
         // Use bit_cast_ptr for safe type-punning on properly aligned storage
         // The storage is guaranteed to be properly aligned by alignas(max_align<Types...>::value)
         T* typed_ptr = fl::bit_cast_ptr<T>(storage);
@@ -207,7 +208,7 @@ class FL_ALIGN_AS_T(max_align<Types...>::value) variant {
     }
 
     template <typename T, typename Visitor>
-    static void visit_fn_const(const void *storage, Visitor &v) {
+    static void visit_fn_const(const void *storage, Visitor &v) FL_NOEXCEPT {
         // Use bit_cast_ptr for safe type-punning on properly aligned storage
         // The storage is guaranteed to be properly aligned by alignas(max_align<Types...>::value)
         const T* typed_ptr = fl::bit_cast_ptr<const T>(storage);
@@ -226,7 +227,7 @@ class FL_ALIGN_AS_T(max_align<Types...>::value) variant {
         FL_DISABLE_WARNING_POP
     }
 
-    template <typename T> static void destroy_fn(void *storage) {
+    template <typename T> static void destroy_fn(void *storage) FL_NOEXCEPT {
         // Use bit_cast_ptr for safe type-punning on properly aligned storage
         // The storage is guaranteed to be properly aligned by alignas(max_align<Types...>::value)
         T* typed_ptr = fl::bit_cast_ptr<T>(storage);
@@ -234,7 +235,7 @@ class FL_ALIGN_AS_T(max_align<Types...>::value) variant {
     }
 
     // –– copy‐construct via table
-    void copy_construct_from(const variant &other) {
+    void copy_construct_from(const variant &other) FL_NOEXCEPT {
         using Fn = void (*)(void *, const variant &);
         FL_DISABLE_WARNING_PUSH
         FL_DISABLE_WARNING(array-bounds)
@@ -245,7 +246,7 @@ class FL_ALIGN_AS_T(max_align<Types...>::value) variant {
     }
 
     template <typename T>
-    static void copy_fn(void *storage, const variant &other) {
+    static void copy_fn(void *storage, const variant &other) FL_NOEXCEPT {
         // Use bit_cast_ptr for safe type-punning on properly aligned storage
         // The storage is guaranteed to be properly aligned by alignas(max_align<Types...>::value)
         const T* source_ptr = fl::bit_cast_ptr<const T>(&other._storage[0]);
@@ -264,7 +265,7 @@ class FL_ALIGN_AS_T(max_align<Types...>::value) variant {
         other.reset();
     }
 
-    template <typename T> static void move_fn(void *storage, variant &other) {
+    template <typename T> static void move_fn(void *storage, variant &other) FL_NOEXCEPT {
         // Use bit_cast_ptr for safe type-punning on properly aligned storage
         // The storage is guaranteed to be properly aligned by alignas(max_align<Types...>::value)
         T* source_ptr = fl::bit_cast_ptr<T>(&other._storage[0]);
@@ -278,7 +279,7 @@ class FL_ALIGN_AS_T(max_align<Types...>::value) variant {
     // … max_size, max_align, contains_type, type_to_tag_impl, etc. …
 
     // Helper to map a type to its tag value
-    template <typename T> static constexpr Tag type_to_tag() {
+    template <typename T> static constexpr Tag type_to_tag() FL_NOEXCEPT {
         return type_to_tag_impl<T, Types...>::value;
     }
 
@@ -299,7 +300,7 @@ class FL_ALIGN_AS_T(max_align<Types...>::value) variant {
                        : type_to_tag_impl<T, Rest...>::value + 1);
     };
 
-    template <typename T, typename... Args> void construct(Args &&...args) {
+    template <typename T, typename... Args> void construct(Args &&...args) FL_NOEXCEPT {
         new (&_storage) T(fl::forward<Args>(args)...);
         _tag = type_to_tag<T>();
     }

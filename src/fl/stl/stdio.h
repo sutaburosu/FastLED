@@ -6,6 +6,7 @@
 #include "fl/stl/string.h"  // For fl::string, to_hex
 #include "fl/stl/strstream.h"
 #include "fl/stl/type_traits.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 
@@ -33,7 +34,7 @@ namespace fl {
 /// fl::printf("Pointer: %p", ptr);
 /// @endcode
 template<typename... Args>
-void printf(const char* format, const Args&... args);
+void printf(const char* format, const Args&... args) FL_NOEXCEPT;
 
 /// @brief Snprintf-like formatting function that writes to a buffer
 /// @param buffer Output buffer to write formatted string to
@@ -60,7 +61,7 @@ void printf(const char* format, const Args&... args);
 /// int len = fl::snprintf(buffer, sizeof(buffer), "Value: %d, Name: %s", 42, "test");
 /// @endcode
 template<typename... Args>
-int snprintf(char* buffer, fl::size size, const char* format, const Args&... args);
+int snprintf(char* buffer, fl::size size, const char* format, const Args&... args) FL_NOEXCEPT;
 
 /// @brief Sprintf-like formatting function that writes to a buffer
 /// @param buffer Output buffer to write formatted string to
@@ -78,7 +79,7 @@ int snprintf(char* buffer, fl::size size, const char* format, const Args&... arg
 /// int len = fl::sprintf(buffer, "Value: %d, Name: %s", 42, "test");
 /// @endcode
 template<fl::size N, typename... Args>
-int sprintf(char (&buffer)[N], const char* format, const Args&... args);
+int sprintf(char (&buffer)[N], const char* format, const Args&... args) FL_NOEXCEPT;
 
 
 ///////////////////// IMPLEMENTATION /////////////////////
@@ -98,14 +99,14 @@ struct FormatSpec {
     bool alt_form = false;     // '#' flag: alternate form (0x, 0)
 
     FormatSpec() = default;
-    explicit FormatSpec(char t) : type(t) {}
-    FormatSpec(char t, int prec) : type(t), precision(prec) {}
+    explicit FormatSpec(char t) FL_NOEXCEPT : type(t) {}
+    FormatSpec(char t, int prec) FL_NOEXCEPT : type(t), precision(prec) {}
 };
 
 // Parse a format specifier from the format string
 // Returns the format spec and advances the pointer past the specifier
 // Format: %[flags][width][.precision][length]type
-inline FormatSpec parse_format_spec(const char*& format) {
+inline FormatSpec parse_format_spec(const char*& format) FL_NOEXCEPT {
     FormatSpec spec;
 
     if (*format != '%') {
@@ -197,7 +198,7 @@ inline FormatSpec parse_format_spec(const char*& format) {
 
 // Convert unsigned integer to octal string
 template<typename T>
-inline fl::string to_octal(T value) {
+inline fl::string to_octal(T value) FL_NOEXCEPT {
     if (value == 0) {
         return "0";
     }
@@ -216,7 +217,7 @@ inline fl::string to_octal(T value) {
 }
 
 // Apply width and padding to a string based on format spec
-inline fl::string apply_width(const fl::string& str, const FormatSpec& spec, bool is_numeric = false) {
+inline fl::string apply_width(const fl::string& str, const FormatSpec& spec, bool is_numeric = false) FL_NOEXCEPT {
     int len = static_cast<int>(str.length());
 
     // No width specified or content already wider
@@ -278,7 +279,7 @@ inline fl::string apply_width(const fl::string& str, const FormatSpec& spec, boo
 }
 
 // Format floating point with specified precision
-inline fl::string format_float(float value, int precision) {
+inline fl::string format_float(float value, int precision) FL_NOEXCEPT {
     if (precision < 0) {
         // Default precision - use sstream's default behavior
         sstream stream;
@@ -503,7 +504,7 @@ format_arg(sstream& stream, const FormatSpec& spec, const T& arg) {
 }
 
 // Specialized format_arg for const char* (string literals)
-inline void format_arg(sstream& stream, const FormatSpec& spec, const char* arg) {
+inline void format_arg(sstream& stream, const FormatSpec& spec, const char* arg) FL_NOEXCEPT {
     fl::string result;
 
     bool is_numeric = false;
@@ -547,12 +548,12 @@ inline void format_arg(sstream& stream, const FormatSpec& spec, const char* arg)
 
 // Specialized format_arg for char arrays (string literals like "hello")
 template<fl::size N>
-void format_arg(sstream& stream, const FormatSpec& spec, const char (&arg)[N]) {
+void format_arg(sstream& stream, const FormatSpec& spec, const char (&arg)[N]) FL_NOEXCEPT {
     format_arg(stream, spec, static_cast<const char*>(arg));
 }
 
 // Base case: no more arguments
-inline void format_impl(sstream& stream, const char* format) {
+inline void format_impl(sstream& stream, const char* format) FL_NOEXCEPT {
     while (*format) {
         if (*format == '%') {
             FormatSpec spec = parse_format_spec(format);
@@ -575,7 +576,7 @@ inline void format_impl(sstream& stream, const char* format) {
 
 // Recursive case: process one argument and continue
 template<typename T, typename... Args>
-void format_impl(sstream& stream, const char* format, const T& first, const Args&... rest) {
+void format_impl(sstream& stream, const char* format, const T& first, const Args&... rest) FL_NOEXCEPT {
     while (*format) {
         if (*format == '%') {
             FormatSpec spec = parse_format_spec(format);
@@ -624,7 +625,7 @@ void format_impl(sstream& stream, const char* format, const T& first, const Args
 /// fl::printf("Float: %.2f", 3.14159);
 /// @endcode
 template<typename... Args>
-void printf(const char* format, const Args&... args) {
+void printf(const char* format, const Args&... args) FL_NOEXCEPT {
     sstream stream;
     printf_detail::format_impl(stream, format, args...);
     fl::print(stream.str().c_str());
@@ -655,7 +656,7 @@ void printf(const char* format, const Args&... args) {
 /// int len = fl::snprintf(buffer, sizeof(buffer), "Value: %d, Name: %s", 42, "test");
 /// @endcode
 template<typename... Args>
-int snprintf(char* buffer, fl::size size, const char* format, const Args&... args) {
+int snprintf(char* buffer, fl::size size, const char* format, const Args&... args) FL_NOEXCEPT {
     // Handle null buffer or zero size
     if (!buffer || size == 0) {
         return 0;
@@ -701,7 +702,7 @@ int snprintf(char* buffer, fl::size size, const char* format, const Args&... arg
 /// int len = fl::sprintf(buffer, "Value: %d, Name: %s", 42, "test");
 /// @endcode
 template<fl::size N, typename... Args>
-int sprintf(char (&buffer)[N], const char* format, const Args&... args) {
+int sprintf(char (&buffer)[N], const char* format, const Args&... args) FL_NOEXCEPT {
     // Use the compile-time known buffer size for safety
     return snprintf(buffer, N, format, args...);
 }

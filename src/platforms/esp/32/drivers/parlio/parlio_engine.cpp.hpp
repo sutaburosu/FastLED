@@ -169,7 +169,7 @@ calculateBufferByteCount(const BufferPopulationParams& params) {
     constexpr size_t MIN_INPUT_BYTES_PER_BUFFER = 20;  // Increased from 15 to test glitch hypothesis
 
     // Calculate buffer sizing parameters (used throughout function)
-    ParlioBufferCalculator calc(params.dataWidth, params.useWave3, params.clockFreqHz);
+    ParlioBufferCalculator calc(params.dataWidth, params.useWave3, params.clockFreqHz); // ok no noexcept
     size_t expansionFactor = calc.outputBytesPerInputByte();
 
     // Calculate effective ring count to ensure minimum buffer size
@@ -795,7 +795,7 @@ ParlioEngine::populateDmaBuffer(u8* outputBuffer,
     size_t byteOffset = 0;
 
     // Use calculator for padding and transpose block size
-    ParlioBufferCalculator calc(mDataWidth, mUseWave3, mClockFreqHz);
+    ParlioBufferCalculator calc(mDataWidth, mUseWave3, mClockFreqHz); // ok no noexcept
     size_t blockSize = calc.transposeBlockSize();
 
     // ═══════════════════════════════════════════════════════════════
@@ -1283,7 +1283,7 @@ bool ParlioEngine::initialize(size_t dataWidth,
                          << " - reallocating ring buffers");
 
             // Recalculate ring buffer capacity for larger LED count
-            ParlioBufferCalculator calc(mDataWidth, mUseWave3, mClockFreqHz);
+            ParlioBufferCalculator calc(mDataWidth, mUseWave3, mClockFreqHz); // ok no noexcept
             size_t raw_capacity = calc.calculateRingBufferCapacity(
                 maxLedsPerChannel, mResetUs, ParlioRingBuffer3::RING_BUFFER_COUNT,
                 FASTLED_PARLIO_MAX_RING_BUFFER_TOTAL_BYTES_PSRAM);

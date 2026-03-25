@@ -66,7 +66,7 @@ FL_EXTERN_C_END
 
 extern "C" {
     // Our fast ISR handler (implemented in fast_isr.S)
-    extern void gpio_fast_edge_isr(void);
+    extern void gpio_fast_edge_isr(void); // ok no noexcept
 }
 
 namespace {
@@ -692,9 +692,9 @@ public:
         }
 
         // Memory barrier: ensure all ISR writes are visible
-        __asm__ __volatile__("" ::: "memory");  // Compiler barrier
+        __asm__ __volatile__("" ::: "memory");  // Compiler barrier // ok no noexcept
         #ifdef FL_IS_ESP32_RISCV
-        asm volatile("fence" ::: "memory");     // Hardware barrier (RISC-V)
+        asm volatile("fence" ::: "memory");     // Hardware barrier (RISC-V) // ok no noexcept
         #endif
 
         // Convert MCPWM ticks to nanoseconds
@@ -812,7 +812,7 @@ private:
      * - Atomic loads for write_index
      * - Minimal branches in hot path
      */
-    FL_IRAM static bool slowManagementISR(gptimer_handle_t timer,
+    FL_IRAM static bool slowManagementISR(gptimer_handle_t timer, // ok no noexcept
                                           const gptimer_alarm_event_data_t *edata,
                                           void *user_ctx) {
         DualIsrContext* ctx = static_cast<DualIsrContext*>(user_ctx);

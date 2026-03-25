@@ -1,6 +1,7 @@
 #pragma once
 
 #include "fl/stl/move.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 
@@ -86,12 +87,12 @@ public:
     typedef void iterator_category;  // Output iterator
 
     // Constructor
-    explicit back_insert_iterator(Container& c) : container(&c) {}
+    explicit back_insert_iterator(Container& c) FL_NOEXCEPT : container(&c) {}
 
     // Assignment operator - calls push_back on the container
     // Uses template to accept any type that the container's push_back accepts
     template <typename T>
-    back_insert_iterator& operator=(const T& value) {
+    back_insert_iterator& operator=(const T& value) FL_NOEXCEPT {
         container->push_back(value);
         return *this;
     }
@@ -99,23 +100,23 @@ public:
     // Move assignment operator - calls push_back with move
     // Uses template to accept any type that the container's push_back accepts
     template <typename T>
-    back_insert_iterator& operator=(T&& value) {
+    back_insert_iterator& operator=(T&& value) FL_NOEXCEPT {
         container->push_back(fl::move(value));
         return *this;
     }
 
     // Dereference operator (no-op for output iterator)
-    back_insert_iterator& operator*() {
+    back_insert_iterator& operator*() FL_NOEXCEPT {
         return *this;
     }
 
     // Pre-increment operator (no-op for output iterator)
-    back_insert_iterator& operator++() {
+    back_insert_iterator& operator++() FL_NOEXCEPT {
         return *this;
     }
 
     // Post-increment operator (no-op for output iterator)
-    back_insert_iterator operator++(int) {
+    back_insert_iterator operator++(int) FL_NOEXCEPT {
         return *this;
     }
 };
@@ -135,7 +136,7 @@ public:
 ///     *it = 42;  // vec now contains [42]
 /// @endcode
 template <typename Container>
-back_insert_iterator<Container> back_inserter(Container& c) {
+back_insert_iterator<Container> back_inserter(Container& c) FL_NOEXCEPT {
     return back_insert_iterator<Container>(c);
 }
 
@@ -169,18 +170,18 @@ protected:
 
 public:
     // Constructors
-    reverse_iterator() : current() {}
+    reverse_iterator() FL_NOEXCEPT : current() {}
 
-    explicit reverse_iterator(Iterator it) : current(it) {}
+    explicit reverse_iterator(Iterator it) FL_NOEXCEPT : current(it) {}
 
     template <typename U>
-    reverse_iterator(const reverse_iterator<U>& other) : current(other.base()) {}
+    reverse_iterator(const reverse_iterator<U>& other) FL_NOEXCEPT : current(other.base()) {}
 
     // Access to underlying iterator
-    Iterator base() const { return current; }
+    Iterator base() const FL_NOEXCEPT { return current; }
 
     // Dereference - returns element before current position
-    reference operator*() const {
+    reference operator*() const FL_NOEXCEPT {
         Iterator tmp = current;
         --tmp;
         return *tmp;
@@ -193,91 +194,91 @@ public:
     }
 
     // Pre-increment - moves backwards
-    reverse_iterator& operator++() {
+    reverse_iterator& operator++() FL_NOEXCEPT {
         --current;
         return *this;
     }
 
     // Post-increment
-    reverse_iterator operator++(int) {
+    reverse_iterator operator++(int) FL_NOEXCEPT {
         reverse_iterator tmp = *this;
         --current;
         return tmp;
     }
 
     // Pre-decrement - moves forwards
-    reverse_iterator& operator--() {
+    reverse_iterator& operator--() FL_NOEXCEPT {
         ++current;
         return *this;
     }
 
     // Post-decrement
-    reverse_iterator operator--(int) {
+    reverse_iterator operator--(int) FL_NOEXCEPT {
         reverse_iterator tmp = *this;
         ++current;
         return tmp;
     }
 
     // Random access operators
-    reverse_iterator operator+(difference_type n) const {
+    reverse_iterator operator+(difference_type n) const FL_NOEXCEPT {
         return reverse_iterator(current - n);
     }
 
-    reverse_iterator operator-(difference_type n) const {
+    reverse_iterator operator-(difference_type n) const FL_NOEXCEPT {
         return reverse_iterator(current + n);
     }
 
-    reverse_iterator& operator+=(difference_type n) {
+    reverse_iterator& operator+=(difference_type n) FL_NOEXCEPT {
         current -= n;
         return *this;
     }
 
-    reverse_iterator& operator-=(difference_type n) {
+    reverse_iterator& operator-=(difference_type n) FL_NOEXCEPT {
         current += n;
         return *this;
     }
 
-    difference_type operator-(const reverse_iterator& other) const {
+    difference_type operator-(const reverse_iterator& other) const FL_NOEXCEPT {
         return other.current - current;
     }
 
-    reference operator[](difference_type n) const {
+    reference operator[](difference_type n) const FL_NOEXCEPT {
         return *(*this + n);
     }
 
     // Comparison operators
-    bool operator==(const reverse_iterator& other) const {
+    bool operator==(const reverse_iterator& other) const FL_NOEXCEPT {
         return current == other.current;
     }
 
-    bool operator!=(const reverse_iterator& other) const {
+    bool operator!=(const reverse_iterator& other) const FL_NOEXCEPT {
         return current != other.current;
     }
 
-    bool operator<(const reverse_iterator& other) const {
+    bool operator<(const reverse_iterator& other) const FL_NOEXCEPT {
         return current > other.current;
     }
 
-    bool operator>(const reverse_iterator& other) const {
+    bool operator>(const reverse_iterator& other) const FL_NOEXCEPT {
         return current < other.current;
     }
 
-    bool operator<=(const reverse_iterator& other) const {
+    bool operator<=(const reverse_iterator& other) const FL_NOEXCEPT {
         return current >= other.current;
     }
 
-    bool operator>=(const reverse_iterator& other) const {
+    bool operator>=(const reverse_iterator& other) const FL_NOEXCEPT {
         return current <= other.current;
     }
 
     // For comparing with different iterator types
     template <typename U>
-    bool operator==(const reverse_iterator<U>& other) const {
+    bool operator==(const reverse_iterator<U>& other) const FL_NOEXCEPT {
         return current == other.base();
     }
 
     template <typename U>
-    bool operator!=(const reverse_iterator<U>& other) const {
+    bool operator!=(const reverse_iterator<U>& other) const FL_NOEXCEPT {
         return current != other.base();
     }
 };

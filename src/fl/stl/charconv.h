@@ -11,6 +11,7 @@
 
 #include "fl/stl/stdint.h"  // For u64, uint8_t
 #include "fl/stl/cstddef.h" // For fl::size_t
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 
@@ -32,7 +33,7 @@ class string;
 /// fl::string hex_neg = fl::to_hex(-16, false);          // "-10"
 /// @endcode
 template<typename T>
-fl::string to_hex(T value, bool uppercase = false, bool pad_to_width = false);
+fl::string to_hex(T value, bool uppercase = false, bool pad_to_width = false) FL_NOEXCEPT;
 
 namespace detail {
 
@@ -55,32 +56,32 @@ fl::string hex(u64 value, HexIntWidth width, bool is_negative, bool uppercase, b
 
 /// @brief Compile-time integer width determination (default - triggers error)
 template<size_t Size>
-constexpr HexIntWidth get_hex_int_width() {
+constexpr HexIntWidth get_hex_int_width() FL_NOEXCEPT {
     static_assert(Size == 0, "Unsupported type size for hex conversion");
     return HexIntWidth::Width8; // Unreachable, but needed for compilation
 }
 
 /// @brief Specialization for 1-byte types (int8_t, uint8_t, char, etc.)
 template<>
-constexpr HexIntWidth get_hex_int_width<1>() {
+constexpr HexIntWidth get_hex_int_width<1>() FL_NOEXCEPT {
     return HexIntWidth::Width8;
 }
 
 /// @brief Specialization for 2-byte types (int16_t, uint16_t, short, etc.)
 template<>
-constexpr HexIntWidth get_hex_int_width<2>() {
+constexpr HexIntWidth get_hex_int_width<2>() FL_NOEXCEPT {
     return HexIntWidth::Width16;
 }
 
 /// @brief Specialization for 4-byte types (int32_t, uint32_t, int, etc.)
 template<>
-constexpr HexIntWidth get_hex_int_width<4>() {
+constexpr HexIntWidth get_hex_int_width<4>() FL_NOEXCEPT {
     return HexIntWidth::Width32;
 }
 
 /// @brief Specialization for 8-byte types (i64, u64, long long, etc.)
 template<>
-constexpr HexIntWidth get_hex_int_width<8>() {
+constexpr HexIntWidth get_hex_int_width<8>() FL_NOEXCEPT {
     return HexIntWidth::Width64;
 }
 

@@ -9,6 +9,7 @@
 #include "fl/stl/vector.h"
 #include "fl/stl/allocator.h"
 #include "platforms/assert_defs.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 
@@ -53,16 +54,16 @@ class flat_map {
 
   public:
     // Constructors
-    flat_map() = default;
+    flat_map() FL_NOEXCEPT = default;
 
-    explicit flat_map(const Less& less, const Allocator& alloc = Allocator())
+    explicit flat_map(const Less& less, const Allocator& alloc = Allocator()) FL_NOEXCEPT
         : mData(alloc), mLess(less) {}
 
-    explicit flat_map(const Allocator& alloc)
+    explicit flat_map(const Allocator& alloc) FL_NOEXCEPT
         : mData(alloc), mLess(Less()) {}
 
-    flat_map(const flat_map& other) = default;
-    flat_map& operator=(const flat_map& other) = default;
+    flat_map(const flat_map& other) FL_NOEXCEPT = default;
+    flat_map& operator=(const flat_map& other) FL_NOEXCEPT = default;
 
     flat_map(flat_map&& other) noexcept
         : mData(fl::move(other.mData)), mLess(fl::move(other.mLess)) {}
@@ -76,29 +77,29 @@ class flat_map {
     }
 
     // Iterators
-    iterator begin() { return mData.begin(); }
-    iterator end() { return mData.end(); }
-    const_iterator begin() const { return mData.begin(); }
-    const_iterator end() const { return mData.end(); }
-    const_iterator cbegin() const { return mData.begin(); }
-    const_iterator cend() const { return mData.end(); }
+    iterator begin() FL_NOEXCEPT { return mData.begin(); }
+    iterator end() FL_NOEXCEPT { return mData.end(); }
+    const_iterator begin() const FL_NOEXCEPT { return mData.begin(); }
+    const_iterator end() const FL_NOEXCEPT { return mData.end(); }
+    const_iterator cbegin() const FL_NOEXCEPT { return mData.begin(); }
+    const_iterator cend() const FL_NOEXCEPT { return mData.end(); }
 
-    reverse_iterator rbegin() { return mData.rbegin(); }
-    reverse_iterator rend() { return mData.rend(); }
-    const_reverse_iterator rbegin() const { return mData.rbegin(); }
-    const_reverse_iterator rend() const { return mData.rend(); }
+    reverse_iterator rbegin() FL_NOEXCEPT { return mData.rbegin(); }
+    reverse_iterator rend() FL_NOEXCEPT { return mData.rend(); }
+    const_reverse_iterator rbegin() const FL_NOEXCEPT { return mData.rbegin(); }
+    const_reverse_iterator rend() const FL_NOEXCEPT { return mData.rend(); }
 
     // Capacity
-    size_type size() const { return mData.size(); }
-    bool empty() const { return mData.empty(); }
-    size_type capacity() const { return mData.capacity(); }
-    size_type max_size() const { return mData.max_size(); }
-    bool full() const { return size() >= capacity(); }
+    size_type size() const FL_NOEXCEPT { return mData.size(); }
+    bool empty() const FL_NOEXCEPT { return mData.empty(); }
+    size_type capacity() const FL_NOEXCEPT { return mData.capacity(); }
+    size_type max_size() const FL_NOEXCEPT { return mData.max_size(); }
+    bool full() const FL_NOEXCEPT { return size() >= capacity(); }
 
-    allocator_type get_allocator() const { return mData.get_allocator(); }
+    allocator_type get_allocator() const FL_NOEXCEPT { return mData.get_allocator(); }
 
     // Element access - check keys are equal (not less than in either direction)
-    Value& operator[](const Key& key) {
+    Value& operator[](const Key& key) FL_NOEXCEPT {
         auto it = lower_bound(key);
         if (it != end() && !mLess(key, it->first) && !mLess(it->first, key)) {
             return it->second;
@@ -111,7 +112,7 @@ class flat_map {
         return it->second;
     }
 
-    Value& at(const Key& key) {
+    Value& at(const Key& key) FL_NOEXCEPT {
         auto it = lower_bound(key);
         if (it != end() && !mLess(key, it->first) && !mLess(it->first, key)) {
             return it->second;
@@ -121,7 +122,7 @@ class flat_map {
         return mData.front().second;  // unreachable
     }
 
-    const Value& at(const Key& key) const {
+    const Value& at(const Key& key) const FL_NOEXCEPT {
         auto it = lower_bound(key);
         if (it != end() && !mLess(key, it->first) && !mLess(it->first, key)) {
             return it->second;
@@ -131,7 +132,7 @@ class flat_map {
     }
 
     // Lookup
-    iterator find(const Key& key) {
+    iterator find(const Key& key) FL_NOEXCEPT {
         auto it = lower_bound(key);
         if (it != end() && !mLess(key, it->first) && !mLess(it->first, key)) {
             return it;
@@ -139,7 +140,7 @@ class flat_map {
         return end();
     }
 
-    const_iterator find(const Key& key) const {
+    const_iterator find(const Key& key) const FL_NOEXCEPT {
         auto it = lower_bound(key);
         if (it != end() && !mLess(key, it->first) && !mLess(it->first, key)) {
             return it;
@@ -147,21 +148,21 @@ class flat_map {
         return end();
     }
 
-    size_type count(const Key& key) const {
+    size_type count(const Key& key) const FL_NOEXCEPT {
         return find(key) != end() ? 1 : 0;
     }
 
-    bool contains(const Key& key) const {
+    bool contains(const Key& key) const FL_NOEXCEPT {
         return find(key) != end();
     }
 
     // Alias for contains (FastLED compatibility)
-    bool has(const Key& key) const {
+    bool has(const Key& key) const FL_NOEXCEPT {
         return contains(key);
     }
 
     // Bounds - binary search using pointer arithmetic
-    iterator lower_bound(const Key& key) {
+    iterator lower_bound(const Key& key) FL_NOEXCEPT {
         // Binary search: find first element where !(element < key)
         iterator first = mData.begin();
         size_type count = mData.size();
@@ -179,7 +180,7 @@ class flat_map {
         return first;
     }
 
-    const_iterator lower_bound(const Key& key) const {
+    const_iterator lower_bound(const Key& key) const FL_NOEXCEPT {
         // Binary search: find first element where !(element < key)
         const_iterator first = mData.begin();
         size_type count = mData.size();
@@ -197,7 +198,7 @@ class flat_map {
         return first;
     }
 
-    iterator upper_bound(const Key& key) {
+    iterator upper_bound(const Key& key) FL_NOEXCEPT {
         // Binary search: find first element where key < element
         iterator first = mData.begin();
         size_type count = mData.size();
@@ -215,7 +216,7 @@ class flat_map {
         return first;
     }
 
-    const_iterator upper_bound(const Key& key) const {
+    const_iterator upper_bound(const Key& key) const FL_NOEXCEPT {
         // Binary search: find first element where key < element
         const_iterator first = mData.begin();
         size_type count = mData.size();
@@ -233,20 +234,20 @@ class flat_map {
         return first;
     }
 
-    fl::pair<iterator, iterator> equal_range(const Key& key) {
+    fl::pair<iterator, iterator> equal_range(const Key& key) FL_NOEXCEPT {
         auto lower = lower_bound(key);
         auto upper = upper_bound(key);
         return fl::pair<iterator, iterator>(lower, upper);
     }
 
-    fl::pair<const_iterator, const_iterator> equal_range(const Key& key) const {
+    fl::pair<const_iterator, const_iterator> equal_range(const Key& key) const FL_NOEXCEPT {
         auto lower = lower_bound(key);
         auto upper = upper_bound(key);
         return fl::pair<const_iterator, const_iterator>(lower, upper);
     }
 
     // Insertion
-    fl::pair<iterator, bool> insert(const value_type& value) {
+    fl::pair<iterator, bool> insert(const value_type& value) FL_NOEXCEPT {
         auto it = lower_bound(value.first);
         if (it != end() && !mLess(value.first, it->first) && !mLess(it->first, value.first)) {
             return fl::pair<iterator, bool>(it, false);  // Already exists
@@ -260,7 +261,7 @@ class flat_map {
         return fl::pair<iterator, bool>(end(), false);
     }
 
-    fl::pair<iterator, bool> insert(value_type&& value) {
+    fl::pair<iterator, bool> insert(value_type&& value) FL_NOEXCEPT {
         auto key = value.first;
         auto it = lower_bound(key);
         if (it != end() && !mLess(key, it->first) && !mLess(it->first, key)) {
@@ -276,15 +277,15 @@ class flat_map {
     }
 
     // Insert with hint (optimization hint, may be ignored)
-    iterator insert(const_iterator, const value_type& value) {
+    iterator insert(const_iterator, const value_type& value) FL_NOEXCEPT {
         return insert(value).first;
     }
 
-    iterator insert(const_iterator, value_type&& value) {
+    iterator insert(const_iterator, value_type&& value) FL_NOEXCEPT {
         return insert(fl::move(value)).first;
     }
 
-    bool insert(const Key& key, const Value& value, insert_result* result = nullptr) {
+    bool insert(const Key& key, const Value& value, insert_result* result = nullptr) FL_NOEXCEPT {
         auto it = lower_bound(key);
         if (it != end() && !mLess(key, it->first) && !mLess(it->first, key)) {
             if (result) *result = exists;
@@ -299,7 +300,7 @@ class flat_map {
         return false;
     }
 
-    bool insert(Key&& key, Value&& value, insert_result* result = nullptr) {
+    bool insert(Key&& key, Value&& value, insert_result* result = nullptr) FL_NOEXCEPT {
         auto key_copy = key;
         auto it = lower_bound(key_copy);
         if (it != end() && !mLess(key_copy, it->first) && !mLess(it->first, key_copy)) {
@@ -317,19 +318,19 @@ class flat_map {
 
     // Emplace
     template <typename... Args>
-    fl::pair<iterator, bool> emplace(Args&&... args) {
+    fl::pair<iterator, bool> emplace(Args&&... args) FL_NOEXCEPT {
         value_type value(fl::forward<Args>(args)...);
         return insert(value);
     }
 
     template <typename... Args>
-    iterator emplace_hint(const_iterator hint, Args&&... args) {
+    iterator emplace_hint(const_iterator hint, Args&&... args) FL_NOEXCEPT {
         value_type value(fl::forward<Args>(args)...);
         return insert(hint, fl::move(value));
     }
 
     // Deletion
-    iterator erase(iterator pos) {
+    iterator erase(iterator pos) FL_NOEXCEPT {
         // Vector erase() returns iterator in some versions, bool in others
         // To be safe, erase and return the next element
         iterator next = pos + 1;
@@ -337,7 +338,7 @@ class flat_map {
         return next;
     }
 
-    iterator erase(const_iterator pos) {
+    iterator erase(const_iterator pos) FL_NOEXCEPT {
         // Convert const_iterator to iterator and erase
         iterator it = const_cast<iterator>(pos);
         iterator next = it + 1;
@@ -345,7 +346,7 @@ class flat_map {
         return next;
     }
 
-    iterator erase(const_iterator first, const_iterator last) {
+    iterator erase(const_iterator first, const_iterator last) FL_NOEXCEPT {
         // Erase range [first, last) by repeatedly erasing the element at first
         fl::size count = last - first;
         iterator pos = const_cast<iterator>(first);
@@ -359,7 +360,7 @@ class flat_map {
         return pos;
     }
 
-    size_type erase(const Key& key) {
+    size_type erase(const Key& key) FL_NOEXCEPT {
         auto it = find(key);
         if (it != end()) {
             erase(it);
@@ -369,7 +370,7 @@ class flat_map {
     }
 
     // Clear
-    void clear() {
+    void clear() FL_NOEXCEPT {
         mData.clear();
     }
 
@@ -380,27 +381,27 @@ class flat_map {
     }
 
     // Comparison
-    key_compare key_comp() const {
+    key_compare key_comp() const FL_NOEXCEPT {
         return mLess;
     }
 
     // Element access
-    value_type& front() {
+    value_type& front() FL_NOEXCEPT {
         FASTLED_ASSERT(!empty(), "flat_map::front() on empty map");
         return mData.front();
     }
 
-    const value_type& front() const {
+    const value_type& front() const FL_NOEXCEPT {
         FASTLED_ASSERT(!empty(), "flat_map::front() on empty map");
         return mData.front();
     }
 
-    value_type& back() {
+    value_type& back() FL_NOEXCEPT {
         FASTLED_ASSERT(!empty(), "flat_map::back() on empty map");
         return mData.back();
     }
 
-    const value_type& back() const {
+    const value_type& back() const FL_NOEXCEPT {
         FASTLED_ASSERT(!empty(), "flat_map::back() on empty map");
         return mData.back();
     }
@@ -408,7 +409,7 @@ class flat_map {
     // FastLED-specific methods
 
     // Get value with default return if not found
-    Value get(const Key& key, const Value& defaultValue) const {
+    Value get(const Key& key, const Value& defaultValue) const FL_NOEXCEPT {
         auto it = find(key);
         if (it != end()) {
             return it->second;
@@ -417,7 +418,7 @@ class flat_map {
     }
 
     // Get value with out parameter
-    bool get(const Key& key, Value* out_value) const {
+    bool get(const Key& key, Value* out_value) const FL_NOEXCEPT {
         auto it = find(key);
         if (it != end()) {
             *out_value = it->second;
@@ -427,7 +428,7 @@ class flat_map {
     }
 
     // Insert or update (returns whether it was inserted)
-    fl::pair<iterator, bool> insert_or_update(const Key& key, const Value& value) {
+    fl::pair<iterator, bool> insert_or_update(const Key& key, const Value& value) FL_NOEXCEPT {
         iterator it = find(key);
         if (it != end()) {
             it->second = value;
@@ -437,7 +438,7 @@ class flat_map {
     }
 
     // FastLED-style update: insert if missing, update if exists
-    bool update(const Key& key, const Value& value) {
+    bool update(const Key& key, const Value& value) FL_NOEXCEPT {
         iterator it = find(key);
         if (it != end()) {
             it->second = value;
@@ -449,7 +450,7 @@ class flat_map {
     }
 
     // Move version of update
-    bool update(const Key& key, Value&& value) {
+    bool update(const Key& key, Value&& value) FL_NOEXCEPT {
         iterator it = find(key);
         if (it != end()) {
             it->second = fl::move(value);
@@ -461,7 +462,7 @@ class flat_map {
     }
 
     // Navigate to next element by key (FastLED compatibility)
-    bool next(const Key& key, Key* next_key, bool allow_rollover = false) const {
+    bool next(const Key& key, Key* next_key, bool allow_rollover = false) const FL_NOEXCEPT {
         auto it = find(key);
         if (it != end()) {
             ++it;
@@ -477,7 +478,7 @@ class flat_map {
     }
 
     // Navigate to previous element by key (FastLED compatibility)
-    bool prev(const Key& key, Key* prev_key, bool allow_rollover = false) const {
+    bool prev(const Key& key, Key* prev_key, bool allow_rollover = false) const FL_NOEXCEPT {
         auto it = find(key);
         if (it != end()) {
             if (it != begin()) {
@@ -493,12 +494,12 @@ class flat_map {
     }
 
     // Allows pre-allocating space
-    void reserve(size_type n) {
+    void reserve(size_type n) FL_NOEXCEPT {
         mData.reserve(n);
     }
 
     // Shrink capacity to fit size
-    void shrink_to_fit() {
+    void shrink_to_fit() FL_NOEXCEPT {
         mData.shrink_to_fit();
     }
 };

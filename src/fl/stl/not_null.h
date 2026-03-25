@@ -47,6 +47,7 @@
 
 #include "fl/stl/type_traits.h"
 #include "fl/stl/cstddef.h"
+#include "fl/stl/noexcept.h"
 
 // Forward declarations to break circular dependency with assert.h
 // not_null needs assertions, but assert.h might need not_null in the future
@@ -162,46 +163,46 @@ public:
     ///////////////////////////////////////////////////////////////////////////
 
     // Deleted default constructor - not_null must always be initialized
-    not_null() = delete;
+    not_null() FL_NOEXCEPT = delete;
 
     // Primary constructor - accepts non-null pointer
     // Asserts non-null in debug builds, undefined behavior if null in release
     // Note: Not explicit to allow implicit conversion from T (matching GSL behavior)
     // Note: Not constexpr in C++11 due to FL_NOT_NULL_ASSERT limitation
-    not_null(T ptr) : mPtr(ptr) {
+    not_null(T ptr) FL_NOEXCEPT : mPtr(ptr) {
         if (mPtr == nullptr) {
             detail::not_null_assert_failed("not_null constructed with nullptr");
         }
     }
 
     // Copy constructor (defaulted)
-    constexpr not_null(const not_null& other) = default;
+    constexpr not_null(const not_null& other) FL_NOEXCEPT = default;
 
     // Move constructor (defaulted)
-    constexpr not_null(not_null&& other) = default;
+    constexpr not_null(not_null&& other) FL_NOEXCEPT = default;
 
     // Converting constructor - allows construction from compatible pointer types
     // Example: not_null<Base*> from not_null<Derived*>
     template<typename U>
-    not_null(const not_null<U>& other) : mPtr(other.get()) {
+    not_null(const not_null<U>& other) FL_NOEXCEPT : mPtr(other.get()) {
         // No assertion needed - other already guarantees non-null
     }
 
     // Deleted nullptr constructor - prevents construction with nullptr at compile-time
-    not_null(fl::nullptr_t) = delete;
+    not_null(fl::nullptr_t) FL_NOEXCEPT = delete;
 
     ///////////////////////////////////////////////////////////////////////////
     // Assignment
     ///////////////////////////////////////////////////////////////////////////
 
     // Copy assignment (defaulted)
-    not_null& operator=(const not_null& other) = default;
+    not_null& operator=(const not_null& other) FL_NOEXCEPT = default;
 
     // Move assignment (defaulted)
-    not_null& operator=(not_null&& other) = default;
+    not_null& operator=(not_null&& other) FL_NOEXCEPT = default;
 
     // Assignment from raw pointer - asserts non-null in debug builds
-    not_null& operator=(T ptr) {
+    not_null& operator=(T ptr) FL_NOEXCEPT {
         if (ptr == nullptr) {
             detail::not_null_assert_failed("not_null assigned nullptr");
         }
@@ -210,7 +211,7 @@ public:
     }
 
     // Deleted nullptr assignment - prevents assignment of nullptr at compile-time
-    not_null& operator=(fl::nullptr_t) = delete;
+    not_null& operator=(fl::nullptr_t) FL_NOEXCEPT = delete;
 
     ///////////////////////////////////////////////////////////////////////////
     // Access operators
@@ -239,7 +240,7 @@ public:
 
     // Array subscript operator - for pointer-to-array types
     template<typename U = T>
-    constexpr auto operator[](fl::size_t index) const
+    constexpr auto operator[](fl::size_t index) const FL_NOEXCEPT
         -> decltype(fl::declval<U>()[index]) {
         return mPtr[index];
     }
@@ -250,49 +251,49 @@ public:
 
     // Equality comparison with another not_null
     template<typename U>
-    constexpr bool operator==(const not_null<U>& other) const {
+    constexpr bool operator==(const not_null<U>& other) const FL_NOEXCEPT {
         return mPtr == other.get();
     }
 
     // Inequality comparison with another not_null
     template<typename U>
-    constexpr bool operator!=(const not_null<U>& other) const {
+    constexpr bool operator!=(const not_null<U>& other) const FL_NOEXCEPT {
         return mPtr != other.get();
     }
 
     // Equality comparison with raw pointer
     template<typename U>
-    constexpr bool operator==(U other) const {
+    constexpr bool operator==(U other) const FL_NOEXCEPT {
         return mPtr == other;
     }
 
     // Inequality comparison with raw pointer
     template<typename U>
-    constexpr bool operator!=(U other) const {
+    constexpr bool operator!=(U other) const FL_NOEXCEPT {
         return mPtr != other;
     }
 
     // Less-than comparison (for use in ordered containers)
     template<typename U>
-    constexpr bool operator<(const not_null<U>& other) const {
+    constexpr bool operator<(const not_null<U>& other) const FL_NOEXCEPT {
         return mPtr < other.get();
     }
 
     // Less-than-or-equal comparison
     template<typename U>
-    constexpr bool operator<=(const not_null<U>& other) const {
+    constexpr bool operator<=(const not_null<U>& other) const FL_NOEXCEPT {
         return mPtr <= other.get();
     }
 
     // Greater-than comparison
     template<typename U>
-    constexpr bool operator>(const not_null<U>& other) const {
+    constexpr bool operator>(const not_null<U>& other) const FL_NOEXCEPT {
         return mPtr > other.get();
     }
 
     // Greater-than-or-equal comparison
     template<typename U>
-    constexpr bool operator>=(const not_null<U>& other) const {
+    constexpr bool operator>=(const not_null<U>& other) const FL_NOEXCEPT {
         return mPtr >= other.get();
     }
 };
@@ -303,13 +304,13 @@ public:
 
 // Allow comparison: raw_ptr == not_null
 template<typename T, typename U>
-constexpr bool operator==(T lhs, const not_null<U>& rhs) {
+constexpr bool operator==(T lhs, const not_null<U>& rhs) FL_NOEXCEPT {
     return lhs == rhs.get();
 }
 
 // Allow comparison: raw_ptr != not_null
 template<typename T, typename U>
-constexpr bool operator!=(T lhs, const not_null<U>& rhs) {
+constexpr bool operator!=(T lhs, const not_null<U>& rhs) FL_NOEXCEPT {
     return lhs != rhs.get();
 }
 

@@ -354,6 +354,7 @@
     // Emscripten: Use EMSCRIPTEN_KEEPALIVE to export symbols to JavaScript
     // IWYU pragma: begin_keep
 #include <emscripten.h>
+#include "fl/stl/noexcept.h"
 // IWYU pragma: end_keep
     #define FL_KEEP_ALIVE EMSCRIPTEN_KEEPALIVE
   #elif defined(FL_IS_GCC) || defined(FL_IS_CLANG)
@@ -786,9 +787,9 @@ FL_DISABLE_WARNING_POP
 // The void* parameters naturally suppress -Wclass-memaccess by erasing the
 // source type at the call site.
 #if defined(FL_IS_GCC) || defined(FL_IS_CLANG)
-__attribute__((always_inline))
+__attribute__((always_inline)) FL_NOEXCEPT
 static inline void *_fl_builtin_memcpy(void *dest, const void *src,
-                                       __SIZE_TYPE__ n) {
+                                       __SIZE_TYPE__ n) FL_NOEXCEPT {
     return __builtin_memcpy(dest, src, n);
 }
 #define FL_BUILTIN_MEMCPY(dest, src, n) _fl_builtin_memcpy(dest, src, n)
@@ -804,8 +805,8 @@ static inline void *_fl_builtin_memcpy(void *dest, const void *src,
 // on GCC. This is safe when the type is trivially copyable / POD-like, which
 // CRGB and CRGB16 are in practice.
 #if defined(FL_IS_GCC) || defined(FL_IS_CLANG)
-__attribute__((always_inline))
-static inline void *_fl_builtin_memset(void *dest, int val, __SIZE_TYPE__ n) {
+__attribute__((always_inline)) FL_NOEXCEPT
+static inline void *_fl_builtin_memset(void *dest, int val, __SIZE_TYPE__ n) FL_NOEXCEPT {
     return __builtin_memset(dest, val, n);
 }
 #define FL_BUILTIN_MEMSET(dest, val, n) _fl_builtin_memset(dest, val, n)

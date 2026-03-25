@@ -4,6 +4,7 @@
 #if FASTLED_USE_THREAD_LOCAL
 // IWYU pragma: begin_keep
 #include <pthread.h>  // ok include
+#include "fl/stl/noexcept.h"
 // IWYU pragma: end_keep
 #endif
 
@@ -188,26 +189,26 @@ template <typename T> class ThreadLocalReal {
 template <typename T> class ThreadLocalFake {
   public:
     // Default: each thread's object is default-constructed
-    ThreadLocalFake() : mValue() {}
+    ThreadLocalFake() FL_NOEXCEPT : mValue() {}
 
     // With default: each thread's object is copy-constructed from defaultVal
     template <typename U>
-    explicit ThreadLocalFake(const U &defaultVal) : mValue(defaultVal) {}
+    explicit ThreadLocalFake(const U &defaultVal) FL_NOEXCEPT : mValue(defaultVal) {}
 
     // Access the thread-local instance (not actually thread-local in fake version)
-    T &access() { return mValue; }
-    const T &access() const { return mValue; }
+    T &access() FL_NOEXCEPT { return mValue; }
+    const T &access() const FL_NOEXCEPT { return mValue; }
 
     // Set the value (globally shared in fake version)
-    void set(const T& value) {
+    void set(const T& value) FL_NOEXCEPT {
         mValue = value;
     }
 
     // Convenience operators for "ThreadLocal<T> = x;"
-    operator T &() { return access(); }
-    operator const T &() const { return access(); }
+    operator T &() FL_NOEXCEPT { return access(); }
+    operator const T &() const FL_NOEXCEPT { return access(); }
 
-    ThreadLocalFake &operator=(const T &v) {
+    ThreadLocalFake &operator=(const T &v) FL_NOEXCEPT {
         set(v);
         return *this;
     }

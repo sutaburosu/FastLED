@@ -64,10 +64,10 @@ struct TransportState {
 // ---------------------------------------------------------------------------
 
 static int fl_ble_gatt_access_cb(u16 conn_handle, u16 attr_handle,
-                                  struct ble_gatt_access_ctxt *ctxt, void *arg);
-static int fl_ble_gap_event_cb(struct ble_gap_event *event, void *arg);
-static void fl_ble_on_sync(void);
-static void fl_ble_host_task(void *param);
+                                  struct ble_gatt_access_ctxt *ctxt, void *arg); // ok no noexcept
+static int fl_ble_gap_event_cb(struct ble_gap_event *event, void *arg); // ok no noexcept
+static void fl_ble_on_sync(void); // ok no noexcept
+static void fl_ble_host_task(void *param); // ok no noexcept
 
 // ---------------------------------------------------------------------------
 // Static state pointer — set in createTransport, used by on_sync callback
@@ -148,7 +148,7 @@ static void fl_ble_patch_gatt_table(TransportState *state) FL_NOEXCEPT {
 // GATT access callback — handles RX writes and TX reads
 // ---------------------------------------------------------------------------
 
-static int fl_ble_gatt_access_cb(u16 conn_handle, u16 attr_handle,
+static int fl_ble_gatt_access_cb(u16 conn_handle, u16 attr_handle, // ok no noexcept
                                   struct ble_gatt_access_ctxt *ctxt, void *arg) {
     auto *state = static_cast<TransportState *>(arg);
     if (!state) {
@@ -208,7 +208,7 @@ static int fl_ble_gatt_access_cb(u16 conn_handle, u16 attr_handle,
 
 static void fl_ble_start_advertise(TransportState *state) FL_NOEXCEPT;
 
-static int fl_ble_gap_event_cb(struct ble_gap_event *event, void *arg) {
+static int fl_ble_gap_event_cb(struct ble_gap_event *event, void *arg) { // ok no noexcept
     auto *state = static_cast<TransportState *>(arg);
 
     switch (event->type) {
@@ -310,7 +310,7 @@ static void fl_ble_start_advertise(TransportState *state) FL_NOEXCEPT {
 // NimBLE host sync callback — called when NimBLE stack is ready
 // ---------------------------------------------------------------------------
 
-static void fl_ble_on_sync(void) {
+static void fl_ble_on_sync(void) { // ok no noexcept
     // Use best available address
     int rc = ble_hs_util_ensure_addr(0);
     if (rc != 0) {
@@ -327,7 +327,7 @@ static void fl_ble_on_sync(void) {
 // NimBLE host task — runs the NimBLE event loop on a FreeRTOS task
 // ---------------------------------------------------------------------------
 
-static void fl_ble_host_task(void *param) {
+static void fl_ble_host_task(void *param) { // ok no noexcept
     (void)param;
     nimble_port_run(); // Blocks until nimble_port_stop() is called
     nimble_port_freertos_deinit();
@@ -392,7 +392,7 @@ TransportState* createTransport(const char* deviceName) FL_NOEXCEPT {
 
 void destroyTransport(TransportState* state) FL_NOEXCEPT {
     if (!state) return;
-    fl::unique_ptr<TransportState> guard(state);
+    fl::unique_ptr<TransportState> guard(state); // ok no noexcept
 
     // Stop advertising
     ble_gap_adv_stop();
@@ -459,7 +459,7 @@ getTransportCallbacks(TransportState* state) FL_NOEXCEPT {
             return fl::nullopt;
         }
 
-        fl::string input(view);
+        fl::string input(view); // ok no noexcept
         auto parsed = fl::json::parse(input);
         if (parsed.has_value()) {
             FL_WARN("[BLE SRC] parsed OK");

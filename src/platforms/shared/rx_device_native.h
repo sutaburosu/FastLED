@@ -20,6 +20,7 @@
 #include "fl/rx_device.h"
 #include "fl/stl/shared_ptr.h"
 #include "fl/stl/vector.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 
@@ -78,7 +79,7 @@ public:
 
 private:
     template<typename T, typename... Args>
-    friend fl::shared_ptr<T> fl::make_shared(Args&&... args);
+    friend fl::shared_ptr<T> fl::make_shared(Args&&... args) FL_NOEXCEPT;
 
     explicit NativeRxDevice(int pin);
 

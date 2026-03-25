@@ -2,6 +2,7 @@
 
 #include "fl/stl/shared_ptr.h"
 #include "fl/stl/type_traits.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 
@@ -55,7 +56,7 @@ public:
     }
     
     // Destructor
-    ~weak_ptr() {
+    ~weak_ptr() FL_NOEXCEPT {
         release();
     }
     
@@ -180,7 +181,7 @@ public:
     }
 
 private:
-    void release() {
+    void release() FL_NOEXCEPT {
         if (mControlBlock) {
             if (--mControlBlock->weak_count == 0 && mControlBlock->shared_count == 0) {
                 mControlBlock->destroy_control_block();

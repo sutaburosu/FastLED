@@ -6,6 +6,7 @@
 
 #include "fl/stl/compiler_control.h"
 #include "fl/stl/move.h"
+#include "fl/stl/noexcept.h"
 
 FL_DISABLE_WARNING_PUSH
 FL_DISABLE_WARNING(double-promotion)
@@ -28,12 +29,12 @@ using bitset = bitset_inlined<N>; // inlined but can go bigger.
 
 // TODO: move this to fl/math.h
 template<typename IntType>
-inline fl::u8 popcount(IntType value) {
+inline fl::u8 popcount(IntType value) FL_NOEXCEPT {
     return static_cast<fl::u8>(__builtin_popcount(value));
 }
 
 template<typename IntType>
-inline fl::u8 countr_zero(IntType value) {
+inline fl::u8 countr_zero(IntType value) FL_NOEXCEPT {
     return static_cast<fl::u8>(__builtin_ctz(value));
 }
 
@@ -54,22 +55,22 @@ template <fl::u32 N> class bitset_fixed {
         bitset_fixed &_bitset;
         fl::u32 _pos;
 
-        Proxy(bitset_fixed &bitset, fl::u32 pos) : _bitset(bitset), _pos(pos) {}
+        Proxy(bitset_fixed &bitset, fl::u32 pos) FL_NOEXCEPT : _bitset(bitset), _pos(pos) {}
 
-        Proxy &operator=(bool value) {
+        Proxy &operator=(bool value) FL_NOEXCEPT {
             _bitset.set(_pos, value);
             return *this;
         }
 
-        operator bool() const { return _bitset.test(_pos); }
+        operator bool() const FL_NOEXCEPT { return _bitset.test(_pos); }
     };
 
-    Proxy operator[](fl::u32 pos) { return Proxy(*this, pos); }
+    Proxy operator[](fl::u32 pos) FL_NOEXCEPT { return Proxy(*this, pos); }
 
     /// Constructs a bitset_fixed with all bits reset.
     constexpr bitset_fixed() noexcept : _blocks{} {}
 
-    void to_string(string* dst) const {
+    void to_string(string* dst) const FL_NOEXCEPT {
         detail::to_string(_blocks, N, dst);
     }
 
@@ -81,7 +82,7 @@ template <fl::u32 N> class bitset_fixed {
     }
 
     /// Sets or clears the bit at position pos.
-    bitset_fixed &set(fl::u32 pos, bool value = true) {
+    bitset_fixed &set(fl::u32 pos, bool value = true) FL_NOEXCEPT {
         if (pos < N) {
             const fl::u32 idx = pos / bits_per_block;
             const fl::u32 off = pos % bits_per_block;
@@ -94,7 +95,7 @@ template <fl::u32 N> class bitset_fixed {
         return *this;
     }
 
-    void assign(fl::size n, bool value) {
+    void assign(fl::size n, bool value) FL_NOEXCEPT {
         if (n > N) {
             n = N;
         }
@@ -104,10 +105,10 @@ template <fl::u32 N> class bitset_fixed {
     }
 
     /// Clears the bit at position pos.
-    bitset_fixed &reset(fl::u32 pos) { return set(pos, false); }
+    bitset_fixed &reset(fl::u32 pos) FL_NOEXCEPT { return set(pos, false); }
 
     /// Flips (toggles) the bit at position pos.
-    bitset_fixed &flip(fl::u32 pos) {
+    bitset_fixed &flip(fl::u32 pos) FL_NOEXCEPT {
         if (pos < N) {
             const fl::u32 idx = pos / bits_per_block;
             const fl::u32 off = pos % bits_per_block;
@@ -377,30 +378,30 @@ class bitset_inlined {
         bitset_inlined &_bitset;
         fl::u32 _pos;
 
-        Proxy(bitset_inlined &bitset, fl::u32 pos)
+        Proxy(bitset_inlined &bitset, fl::u32 pos) FL_NOEXCEPT
             : _bitset(bitset), _pos(pos) {}
 
-        Proxy &operator=(bool value) {
+        Proxy &operator=(bool value) FL_NOEXCEPT {
             _bitset.set(_pos, value);
             return *this;
         }
 
-        operator bool() const { return _bitset.test(_pos); }
+        operator bool() const FL_NOEXCEPT { return _bitset.test(_pos); }
     };
 
-    Proxy operator[](fl::u32 pos) { return Proxy(*this, pos); }
+    Proxy operator[](fl::u32 pos) FL_NOEXCEPT { return Proxy(*this, pos); }
 
     /// Constructs a Bitset with all bits reset.
-    bitset_inlined() : _storage(fixed_bitset()) {}
-    bitset_inlined(fl::size size) : _storage(fixed_bitset()) {
+    bitset_inlined() FL_NOEXCEPT : _storage(fixed_bitset()) {}
+    bitset_inlined(fl::size size) FL_NOEXCEPT : _storage(fixed_bitset()) {
         if (size > N) {
             _storage = bitset_dynamic(size);
         }
     }
-    bitset_inlined(const bitset_inlined &other) : _storage(other._storage) {}
+    bitset_inlined(const bitset_inlined &other) FL_NOEXCEPT : _storage(other._storage) {}
     bitset_inlined(bitset_inlined &&other) noexcept
         : _storage(fl::move(other._storage)) {}
-    bitset_inlined &operator=(const bitset_inlined &other) {
+    bitset_inlined &operator=(const bitset_inlined &other) FL_NOEXCEPT {
         if (this != &other) {
             _storage = other._storage;
         }
@@ -422,7 +423,7 @@ class bitset_inlined {
         }
     }
 
-    void assign(fl::size n, bool value) {
+    void assign(fl::size n, bool value) FL_NOEXCEPT {
         resize(n);
         if (_storage.template is<fixed_bitset>()) {
             _storage.template ptr<fixed_bitset>()->assign(n, value);
@@ -434,7 +435,7 @@ class bitset_inlined {
 
 
     /// Resizes the Bitset if needed
-    void resize(fl::u32 new_size) {
+    void resize(fl::u32 new_size) FL_NOEXCEPT {
         if (new_size <= N) {
             // If we're already using the fixed Bitset, nothing to do
             if (_storage.template is<bitset_dynamic>()) {
@@ -475,7 +476,7 @@ class bitset_inlined {
     }
 
     /// Sets or clears the bit at position pos.
-    bitset_inlined &set(fl::u32 pos, bool value = true) {
+    bitset_inlined &set(fl::u32 pos, bool value = true) FL_NOEXCEPT {
         if (pos >= N && _storage.template is<fixed_bitset>()) {
             resize(pos + 1);
         }
@@ -494,10 +495,10 @@ class bitset_inlined {
     }
 
     /// Clears the bit at position pos.
-    bitset_inlined &reset(fl::u32 pos) { return set(pos, false); }
+    bitset_inlined &reset(fl::u32 pos) FL_NOEXCEPT { return set(pos, false); }
 
     /// Flips (toggles) the bit at position pos.
-    bitset_inlined &flip(fl::u32 pos) {
+    bitset_inlined &flip(fl::u32 pos) FL_NOEXCEPT {
         if (pos >= N && _storage.template is<fixed_bitset>()) {
             resize(pos + 1);
         }
@@ -526,19 +527,19 @@ class bitset_inlined {
     }
 
     /// Add a bit to the end (initialized to 0)
-    void push_back() {
+    void push_back() FL_NOEXCEPT {
         fl::u32 new_size = size() + 1;
         resize(new_size);
     }
 
     /// Emplace back - for consistency with other containers
     template<typename... Args>
-    void emplace_back(Args&&...) {
+    void emplace_back(Args&&...) FL_NOEXCEPT {
         push_back();  // bitset bits are bool, just expand
     }
 
     /// Remove the last bit
-    void pop_back() {
+    void pop_back() FL_NOEXCEPT {
         if (size() > 0) {
             resize(size() - 1);
         }
@@ -601,7 +602,7 @@ class bitset_inlined {
     }
 
     /// Convert bitset to string representation
-    void to_string(string* dst) const {
+    void to_string(string* dst) const FL_NOEXCEPT {
         if (_storage.template is<fixed_bitset>()) {
             _storage.template ptr<fixed_bitset>()->to_string(dst);
         } else {
