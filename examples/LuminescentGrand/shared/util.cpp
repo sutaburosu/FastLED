@@ -4,6 +4,7 @@
 #include "./util.h"
 
 #include "ApproximatingFunction.h"
+#include "fl/math/math.h"
 #include "settings.h"
 
 /*

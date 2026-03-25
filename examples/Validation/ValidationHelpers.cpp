@@ -4,11 +4,8 @@
 #include "fl/stl/sstream.h"
 #include "fl/system/pin.h"  // Platform-independent pin API
 #include "fl/channels/detail/validation/rx_test.h"
-#include "fl/channels/detail/validation/rx_test.cpp.hpp"
 #include "fl/channels/detail/validation/platform.h"
-#include "fl/channels/detail/validation/platform.cpp.hpp"
 #include "fl/channels/detail/validation/result_formatter.h"
-#include "fl/channels/detail/validation/result_formatter.cpp.hpp"
 
 bool testRxChannel(
     fl::shared_ptr<fl::RxDevice> rx_channel,
