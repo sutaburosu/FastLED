@@ -9,6 +9,7 @@
 #include "fl/stl/pair.h"
 #include "fl/stl/vector.h"
 #include "fl/stl/algorithm.h"  // for fl::sort
+#include "fl/stl/noexcept.h"
 
 #ifndef FASTLED_INLINE_LAMBDA_SIZE
 #define FASTLED_INLINE_LAMBDA_SIZE 64
@@ -254,7 +255,7 @@ public:
     function(const function& other) FL_NOEXCEPT : mStorage(other.mStorage) {}
     
     // Move constructor - properly handle variant alignment  
-    function(function&& other) noexcept : mStorage(fl::move(other.mStorage)) {}
+    function(function&& other) FL_NOEXCEPT : mStorage(fl::move(other.mStorage)) {}
     
     // Copy assignment
     function& operator=(const function& other) FL_NOEXCEPT {
@@ -265,7 +266,7 @@ public:
     }
     
     // Move assignment
-    function& operator=(function&& other) noexcept {
+    function& operator=(function&& other) FL_NOEXCEPT {
         if (this != &other) {
             mStorage = fl::move(other.mStorage);
         }

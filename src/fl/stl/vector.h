@@ -517,7 +517,7 @@ class FL_ALIGN vector : public vector_basic {
     }
 
     // Move constructor
-    vector(vector &&other) noexcept
+    vector(vector &&other) FL_NOEXCEPT
         : vector_basic(sizeof(T), other.mResource,
                         vector_element_ops_for<T>()) {
         move_from(other);
@@ -574,7 +574,7 @@ class FL_ALIGN vector : public vector_basic {
         return *this;
     }
 
-    vector &operator=(vector &&other) noexcept {
+    vector &operator=(vector &&other) FL_NOEXCEPT {
         if (this != &other) {
             move_assign(other);
         }
@@ -879,7 +879,7 @@ class FL_ALIGN VectorN : public vector<T> {
         this->copy_from(other);
     }
 
-    VectorN(VectorN&& other) noexcept
+    VectorN(VectorN&& other) FL_NOEXCEPT
         : vector<T>(mInlineBuffer, INLINED_SIZE) {
         this->move_from(other);
     }
@@ -899,7 +899,7 @@ class FL_ALIGN VectorN : public vector<T> {
         return *this;
     }
 
-    VectorN& operator=(VectorN&& other) noexcept {
+    VectorN& operator=(VectorN&& other) FL_NOEXCEPT {
         if (this != &other) {
             this->move_assign(other);
         }
@@ -943,7 +943,7 @@ class vector_psram : public vector<T> {
         this->copy_from(other);
     }
 
-    vector_psram(vector_psram&& other) noexcept
+    vector_psram(vector_psram&& other) FL_NOEXCEPT
         : vector<T>(psram_memory_resource()) {
         this->move_from(other);
     }
@@ -955,7 +955,7 @@ class vector_psram : public vector<T> {
         return *this;
     }
 
-    vector_psram& operator=(vector_psram&& other) noexcept {
+    vector_psram& operator=(vector_psram&& other) FL_NOEXCEPT {
         if (this != &other) {
             this->move_assign(other);
         }
@@ -992,7 +992,7 @@ class FL_ALIGN SortedHeapVector {
     SortedHeapVector& operator=(const SortedHeapVector& other) FL_NOEXCEPT = default;
 
     // Move constructor
-    SortedHeapVector(SortedHeapVector&& other) noexcept
+    SortedHeapVector(SortedHeapVector&& other) FL_NOEXCEPT
         : mArray(fl::move(other.mArray))
         , mLess(fl::move(other.mLess))
         , mMaxSize(other.mMaxSize) {
@@ -1000,7 +1000,7 @@ class FL_ALIGN SortedHeapVector {
     }
 
     // Move assignment operator
-    SortedHeapVector& operator=(SortedHeapVector&& other) noexcept {
+    SortedHeapVector& operator=(SortedHeapVector&& other) FL_NOEXCEPT {
         if (this != &other) {
             mArray = fl::move(other.mArray);
             mLess = fl::move(other.mLess);

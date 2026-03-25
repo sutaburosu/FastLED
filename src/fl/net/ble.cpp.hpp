@@ -10,6 +10,7 @@
 
 #include "fl/net/ble.h"
 #include "fl/system/log.h"
+#include "fl/stl/noexcept.h"
 
 #if !FL_BLE_AVAILABLE
 

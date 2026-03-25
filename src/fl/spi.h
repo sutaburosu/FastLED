@@ -20,6 +20,7 @@
 #include "fl/spi/multi_lane_device.h"  // IWYU pragma: export
 // IWYU pragma: begin_keep
 #include "platforms/shared/spi_types.h"  // ok platform headers
+#include "fl/stl/noexcept.h"
 // IWYU pragma: end_keep  // ok platform headers
 
 namespace fl {
@@ -68,10 +69,10 @@ public:
     explicit Spi(const SpiConfig& config);
 
     /// @brief Move constructor
-    Spi(Spi&& other) noexcept;
+    Spi(Spi&& other) FL_NOEXCEPT;
 
     /// @brief Move assignment
-    Spi& operator=(Spi&& other) noexcept;
+    Spi& operator=(Spi&& other) FL_NOEXCEPT;
 
     /// @brief Destructor (defined out-of-line in spi.cpp.hpp to keep
     ///        MultiLaneDevice destructor out of callers' compilation units)

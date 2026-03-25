@@ -11,6 +11,7 @@
 /// Functions execute synchronously in the constructor, and thread operations are no-ops.
 
 #include "fl/stl/functional.h"
+#include "fl/stl/noexcept.h"
 
 // FASTLED_MULTITHREADED is defined by fl/stl/thread_config.h
 // This file provides the no-op thread implementation for single-threaded platforms
@@ -71,13 +72,13 @@ class ThreadFake {
     ThreadFake& operator=(const ThreadFake&) = delete;
 
     // Movable
-    ThreadFake(ThreadFake&& other) noexcept
+    ThreadFake(ThreadFake&& other) FL_NOEXCEPT
         : mJoinable(other.mJoinable), mThreadId(other.mThreadId) {
         other.mJoinable = false;
         other.mThreadId = 0;
     }
 
-    ThreadFake& operator=(ThreadFake&& other) noexcept {
+    ThreadFake& operator=(ThreadFake&& other) FL_NOEXCEPT {
         if (this != &other) {
             mJoinable = other.mJoinable;
             mThreadId = other.mThreadId;
@@ -105,19 +106,19 @@ class ThreadFake {
 
     /// @brief Check if thread is joinable
     /// @return true if joinable, false otherwise
-    bool joinable() const noexcept {
+    bool joinable() const FL_NOEXCEPT {
         return mJoinable;
     }
 
     /// @brief Get thread ID
     /// @return Thread ID
-    id get_id() const noexcept {
+    id get_id() const FL_NOEXCEPT {
         return id(mThreadId);
     }
 
     /// @brief Swap with another thread
     /// @param other Thread to swap with
-    void swap(ThreadFake& other) noexcept {
+    void swap(ThreadFake& other) FL_NOEXCEPT {
         bool temp_joinable = mJoinable;
         int temp_id = mThreadId;
         mJoinable = other.mJoinable;
@@ -128,7 +129,7 @@ class ThreadFake {
 
     /// @brief Get hardware concurrency
     /// @return Always returns 1 in single-threaded mode
-    static unsigned int hardware_concurrency() noexcept {
+    static unsigned int hardware_concurrency() FL_NOEXCEPT {
         return 1;
     }
 
@@ -157,12 +158,12 @@ namespace this_thread {
     /// symbol conflicts when static locals are used in header files. Since this
     /// is single-threaded mode and thread_id() always returns the same value
     /// (mId=0), we just return a fresh default-constructed thread_id each time.
-    inline thread_id get_id() noexcept {
+    inline thread_id get_id() FL_NOEXCEPT {
         return thread_id();
     }
 
     /// @brief Yield (no-op in single-threaded mode)
-    inline void yield() noexcept {
+    inline void yield() FL_NOEXCEPT {
         // No-op
     }
 

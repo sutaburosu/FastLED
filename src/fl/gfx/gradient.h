@@ -4,6 +4,7 @@
 #include "fl/stl/function.h"
 #include "fl/stl/span.h"
 #include "fl/stl/variant.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 
@@ -22,7 +23,7 @@ class Gradient {
     Gradient(const Gradient &other);
     Gradient &operator=(const Gradient &other);
 
-    Gradient(Gradient &&other) noexcept;
+    Gradient(Gradient &&other) FL_NOEXCEPT;
 
     // non template allows carefull control of what can be set.
     void set(const CRGBPalette16 *palette);

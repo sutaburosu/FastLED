@@ -132,6 +132,38 @@ def _compute_src_fingerprint() -> str:
     return _cached_fingerprint
 
 
+def _compute_src_file_list_hash() -> str:
+    """Hash of sorted source file paths only (not content/mtimes).
+
+    Detects file additions, removals, and renames — changes that require
+    meson reconfiguration to update the build graph.  Content-only changes
+    are handled by Ninja's dependency tracking and don't need this.
+    """
+    h = hashlib.md5(usedforsecurity=False)
+    src_dir = str(PROJECT_ROOT / "src")
+    _EXTS = (".cpp", ".h", ".hpp", ".c")
+
+    def _scan(path: str) -> list[str]:
+        paths: list[str] = []
+        try:
+            entries = os.scandir(path)
+        except OSError:
+            return paths
+        subdirs: list[str] = []
+        for entry in entries:
+            if entry.is_dir(follow_symlinks=False):
+                subdirs.append(entry.path)
+            elif entry.is_file(follow_symlinks=False) and entry.name.endswith(_EXTS):
+                paths.append(entry.path)
+        for d in sorted(subdirs):
+            paths.extend(_scan(d))
+        return paths
+
+    for p in sorted(_scan(src_dir)):
+        h.update(p.encode())
+    return h.hexdigest()
+
+
 def _library_is_fresh(build_dir: Path) -> bool:
     """Check if libfastled.a is up-to-date based on source fingerprint."""
     library_archive = build_dir / "ci" / "meson" / "wasm" / "libfastled.a"
@@ -164,6 +196,8 @@ _STALE_BUILD_PATTERNS = [
     "file not found",
     "does not exist",
     "has been modified since the precompiled header",
+    "function signature mismatch",
+    "undefined symbol",
 ]
 
 
@@ -207,6 +241,7 @@ def _recover_stale_wasm_build(build_dir: Path) -> bool:
         for name in [
             "src_metadata.cache",
             ".source_files_hash",
+            ".src_file_list_hash",
             "library_src_fingerprint",
         ]:
             cache_file = build_dir / name
@@ -254,8 +289,48 @@ def ensure_meson_configured(build_dir: Path, mode: str, force: bool = False) -> 
 
     Returns True if configuration succeeded.
     """
+    file_list_marker = build_dir / ".src_file_list_hash"
+
     if build_dir.exists() and (build_dir / "build.ninja").exists() and not force:
-        # Already configured - meson will auto-reconfigure if needed
+        # Check if source file list changed since last configure
+        current_hash = _compute_src_file_list_hash()
+        stored_hash = ""
+        if file_list_marker.exists():
+            try:
+                stored_hash = file_list_marker.read_text(encoding="utf-8").strip()
+            except OSError:
+                pass
+        if stored_hash == current_hash:
+            return True  # No file list changes, skip reconfigure
+
+        # Source file list changed — need reconfigure
+        print("[WASM] Source file list changed, forcing reconfiguration...")
+        for cache_name in ["src_metadata.cache", "library_src_fingerprint"]:
+            cache_file = build_dir / cache_name
+            if cache_file.exists():
+                try:
+                    cache_file.unlink()
+                except OSError:
+                    pass
+        cmd = [
+            get_meson_executable(),
+            "setup",
+            "--reconfigure",
+            "--cross-file",
+            str(CROSS_FILE),
+            str(build_dir),
+            f"-Dbuild_mode={mode}",
+        ]
+        print(f"[WASM] Reconfiguring meson (mode: {mode})...")
+        result = subprocess.run(cmd, cwd=PROJECT_ROOT)
+        if result.returncode != 0:
+            print(f"[WASM] Meson reconfiguration failed (rc {result.returncode})")
+            return False
+        try:
+            file_list_marker.write_text(current_hash, encoding="utf-8")
+        except OSError:
+            pass
+        print("[WASM] Meson reconfiguration successful")
         return True
 
     build_dir.mkdir(parents=True, exist_ok=True)
@@ -279,6 +354,11 @@ def ensure_meson_configured(build_dir: Path, mode: str, force: bool = False) -> 
         print(f"[WASM] Meson setup failed with return code {result.returncode}")
         return False
 
+    # Write file list hash marker for future staleness detection
+    try:
+        file_list_marker.write_text(_compute_src_file_list_hash(), encoding="utf-8")
+    except OSError:
+        pass
     print("[WASM] Meson setup successful")
     return True
 
@@ -1289,7 +1369,44 @@ def build(
         if not link_wasm(
             sketch_obj, build_dir, sketch_cache_dir, output_js, mode, verbose
         ):
-            return 1
+            # Self-healing: link failures from signature mismatches or
+            # undefined symbols usually mean stale object files.  Nuke
+            # caches and retry the full build pipeline once.
+            print("[WASM] Link failed, attempting self-healing rebuild...")
+            if _recover_stale_wasm_build(build_dir):
+                # Also invalidate sketch cache so it gets recompiled
+                sketch_o = sketch_cache_dir / "sketch.o"
+                if sketch_o.exists():
+                    sketch_o.unlink(missing_ok=True)
+                # Retry: library → PCH → sketch → link
+                lib_ok2, _ = build_library(build_dir, verbose)
+                if lib_ok2:
+                    sketch_pch2 = build_sketch_pch(
+                        build_dir, mode, lib_was_rebuilt=True, verbose=verbose
+                    )
+                    if sketch_pch2 is None:
+                        print("[WASM] WARNING: PCH rebuild failed during recovery")
+                    sketch_obj2 = compile_sketch(
+                        wrapper, build_dir, sketch_cache_dir, mode, verbose
+                    )
+                    if sketch_obj2 is not None and link_wasm(
+                        sketch_obj2,
+                        build_dir,
+                        sketch_cache_dir,
+                        output_js,
+                        mode,
+                        verbose,
+                    ):
+                        link_time = time.time() - link_start
+                        print("[WASM] Self-healing link succeeded")
+                    else:
+                        print("[WASM] Self-healing link failed")
+                        return 1
+                else:
+                    print("[WASM] Self-healing library rebuild failed")
+                    return 1
+            else:
+                return 1
         link_time = time.time() - link_start
 
         # Step 5: Copy templates and generate manifest

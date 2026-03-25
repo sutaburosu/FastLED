@@ -2,6 +2,7 @@
 
 #include "fl/stl/int.h"
 #include "fl/math/ease.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 
@@ -17,8 +18,8 @@ struct HSV16 {
     // Rule of 5 for POD data
     HSV16(const HSV16 &other) = default;
     HSV16 &operator=(const HSV16 &other) = default;
-    HSV16(HSV16 &&other) noexcept = default;
-    HSV16 &operator=(HSV16 &&other) noexcept = default;
+    HSV16(HSV16 &&other) FL_NOEXCEPT = default;
+    HSV16 &operator=(HSV16 &&other) FL_NOEXCEPT = default;
     
     CRGB ToRGB() const;
     

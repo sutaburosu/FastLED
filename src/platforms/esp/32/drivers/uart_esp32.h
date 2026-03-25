@@ -362,8 +362,8 @@ public:
     UartEsp32& operator=(const UartEsp32&) = delete;
 
     // Enable move
-    UartEsp32(UartEsp32&& other) noexcept;
-    UartEsp32& operator=(UartEsp32&& other) noexcept;
+    UartEsp32(UartEsp32&& other) FL_NOEXCEPT;
+    UartEsp32& operator=(UartEsp32&& other) FL_NOEXCEPT;
 
     /**
      * @brief Write string to UART

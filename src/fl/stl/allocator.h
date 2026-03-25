@@ -147,14 +147,14 @@ template <typename T> class allocator {
     };
 
     // Default constructor
-    allocator() noexcept {}
+    allocator() FL_NOEXCEPT {}
 
     // Copy constructor
     template <typename U>
-    allocator(const allocator<U>&) noexcept {}
+    allocator(const allocator<U>&) FL_NOEXCEPT {}
 
     // Destructor
-    ~allocator() noexcept {}
+    ~allocator() FL_NOEXCEPT {}
 
     // Optional: allocate_at_least() for optimized resizing
     // Allows allocator to return more memory than requested to reduce reallocations
@@ -292,14 +292,14 @@ public:
     };
 
     // Default constructor
-    allocator_realloc() noexcept {}
+    allocator_realloc() FL_NOEXCEPT {}
 
     // Copy constructor
     template <typename U>
-    allocator_realloc(const allocator_realloc<U>&) noexcept {}
+    allocator_realloc(const allocator_realloc<U>&) FL_NOEXCEPT {}
 
     // Destructor
-    ~allocator_realloc() noexcept {}
+    ~allocator_realloc() FL_NOEXCEPT {}
 
     // Standard allocate() - allocates new memory
     T* allocate(fl::size n) FL_NOEXCEPT {
@@ -401,14 +401,14 @@ template <typename T> class allocator_psram {
         };
 
         // Default constructor
-        allocator_psram() noexcept {}
+        allocator_psram() FL_NOEXCEPT {}
 
         // Copy constructor
         template <typename U>
-        allocator_psram(const allocator_psram<U>&) noexcept {}
+        allocator_psram(const allocator_psram<U>&) FL_NOEXCEPT {}
 
         // Destructor
-        ~allocator_psram() noexcept {}
+        ~allocator_psram() FL_NOEXCEPT {}
 
         // Allocate memory for n objects of type T
         T* allocate(fl::size n) FL_NOEXCEPT {
@@ -597,14 +597,14 @@ public:
     SlabAllocator& operator=(const SlabAllocator&) FL_NOEXCEPT = delete;
     
     // Movable
-    SlabAllocator(SlabAllocator&& other) noexcept 
+    SlabAllocator(SlabAllocator&& other) FL_NOEXCEPT 
         : mSlabs(other.mSlabs), mTotalAllocated(other.mTotalAllocated), mTotalDeallocated(other.mTotalDeallocated) {
         other.mSlabs = nullptr;
         other.mTotalAllocated = 0;
         other.mTotalDeallocated = 0;
     }
     
-    SlabAllocator& operator=(SlabAllocator&& other) noexcept {
+    SlabAllocator& operator=(SlabAllocator&& other) FL_NOEXCEPT {
         if (this != &other) {
             cleanup();
             mSlabs = other.mSlabs;
@@ -713,27 +713,27 @@ public:
     };
 
     // Default constructor
-    allocator_slab() noexcept {}
+    allocator_slab() FL_NOEXCEPT {}
 
     // Copy constructor
-    allocator_slab(const allocator_slab& other) noexcept {
+    allocator_slab(const allocator_slab& other) FL_NOEXCEPT {
         FASTLED_UNUSED(other);
     }
 
     // Copy assignment
-    allocator_slab& operator=(const allocator_slab& other) noexcept {
+    allocator_slab& operator=(const allocator_slab& other) FL_NOEXCEPT {
         FASTLED_UNUSED(other);
         return *this;
     }
 
     // Template copy constructor
     template <typename U>
-    allocator_slab(const allocator_slab<U, SLAB_SIZE>& other) noexcept {
+    allocator_slab(const allocator_slab<U, SLAB_SIZE>& other) FL_NOEXCEPT {
         FASTLED_UNUSED(other);
     }
 
     // Destructor
-    ~allocator_slab() noexcept {}
+    ~allocator_slab() FL_NOEXCEPT {}
 
 private:
     // Get the shared process-wide allocator instance.
@@ -788,12 +788,12 @@ public:
     }
 
     // Equality comparison
-    bool operator==(const allocator_slab& other) const noexcept {
+    bool operator==(const allocator_slab& other) const FL_NOEXCEPT {
         FASTLED_UNUSED(other);
         return true; // All instances are equivalent
     }
 
-    bool operator!=(const allocator_slab& other) const noexcept {
+    bool operator!=(const allocator_slab& other) const FL_NOEXCEPT {
         return !(*this == other);
     }
 };
@@ -836,10 +836,10 @@ public:
     };
 
     // Default constructor
-    allocator_inlined() noexcept = default;
+    allocator_inlined() FL_NOEXCEPT = default;
 
     // Copy constructor
-    allocator_inlined(const allocator_inlined& other) noexcept {
+    allocator_inlined(const allocator_inlined& other) FL_NOEXCEPT {
         // Copy inlined data
         mInlinedUsed = other.mInlinedUsed;
         for (fl::size i = 0; i < mInlinedUsed; ++i) {
@@ -856,7 +856,7 @@ public:
     }
 
     // Copy assignment
-    allocator_inlined& operator=(const allocator_inlined& other) noexcept {
+    allocator_inlined& operator=(const allocator_inlined& other) FL_NOEXCEPT {
         if (this != &other) {
             clear();
             
@@ -879,12 +879,12 @@ public:
 
     // Template copy constructor
     template <typename U>
-    allocator_inlined(const allocator_inlined<U, N, typename BaseAllocator::template rebind<U>::other>& other) noexcept {
+    allocator_inlined(const allocator_inlined<U, N, typename BaseAllocator::template rebind<U>::other>& other) FL_NOEXCEPT {
         FASTLED_UNUSED(other);
     }
 
     // Destructor
-    ~allocator_inlined() noexcept {
+    ~allocator_inlined() FL_NOEXCEPT {
         clear();
     }
 
@@ -1028,12 +1028,12 @@ private:
     }
     
     // Equality comparison
-    bool operator==(const allocator_inlined& other) const noexcept {
+    bool operator==(const allocator_inlined& other) const FL_NOEXCEPT {
         FASTLED_UNUSED(other);
         return true; // All instances are equivalent for now
     }
 
-    bool operator!=(const allocator_inlined& other) const noexcept {
+    bool operator!=(const allocator_inlined& other) const FL_NOEXCEPT {
         return !(*this == other);
     }
 };

@@ -47,7 +47,7 @@ class bitset_dynamic {
     }
 
     // Move constructor
-    bitset_dynamic(bitset_dynamic &&other) noexcept
+    bitset_dynamic(bitset_dynamic &&other) FL_NOEXCEPT
         : _blocks(fl::move(other._blocks)), _block_count(other._block_count),
           _size(other._size) {
         other._block_count = 0;
@@ -69,7 +69,7 @@ class bitset_dynamic {
     }
 
     // Move assignment
-    bitset_dynamic &operator=(bitset_dynamic &&other) noexcept {
+    bitset_dynamic &operator=(bitset_dynamic &&other) FL_NOEXCEPT {
         if (this != &other) {
             _blocks = fl::move(other._blocks);
             _block_count = other._block_count;
@@ -168,7 +168,7 @@ class bitset_dynamic {
     // Reset all bits to 0
     FL_DISABLE_WARNING_PUSH
     FL_DISABLE_WARNING_NULL_DEREFERENCE
-    void reset() noexcept {
+    void reset() FL_NOEXCEPT {
         if (_blocks && _block_count > 0) {
             fl::memset(_blocks.get(), 0, _block_count * sizeof(block_type));
         }
@@ -178,7 +178,7 @@ class bitset_dynamic {
     // Reset a specific bit to 0
     FL_DISABLE_WARNING_PUSH
     FL_DISABLE_WARNING_NULL_DEREFERENCE
-    void reset(fl::u32 pos) noexcept {
+    void reset(fl::u32 pos) FL_NOEXCEPT {
         if (_blocks && pos < _size) {
             const fl::u32 idx = pos / bits_per_block;
             const fl::u32 off = pos % bits_per_block;
@@ -190,7 +190,7 @@ class bitset_dynamic {
     // Set a specific bit to 1
     FL_DISABLE_WARNING_PUSH
     FL_DISABLE_WARNING_NULL_DEREFERENCE
-    void set(fl::u32 pos) noexcept {
+    void set(fl::u32 pos) FL_NOEXCEPT {
         if (_blocks && pos < _size) {
             const fl::u32 idx = pos / bits_per_block;
             const fl::u32 off = pos % bits_per_block;
@@ -200,7 +200,7 @@ class bitset_dynamic {
     FL_DISABLE_WARNING_POP
 
     // Set a specific bit to a given value
-    void set(fl::u32 pos, bool value) noexcept {
+    void set(fl::u32 pos, bool value) FL_NOEXCEPT {
         if (value) {
             set(pos);
         } else {
@@ -211,7 +211,7 @@ class bitset_dynamic {
     // Flip a specific bit
     FL_DISABLE_WARNING_PUSH
     FL_DISABLE_WARNING_NULL_DEREFERENCE
-    void flip(fl::u32 pos) noexcept {
+    void flip(fl::u32 pos) FL_NOEXCEPT {
         if (_blocks && pos < _size) {
             const fl::u32 idx = pos / bits_per_block;
             const fl::u32 off = pos % bits_per_block;
@@ -221,7 +221,7 @@ class bitset_dynamic {
     FL_DISABLE_WARNING_POP
 
     // Flip all bits
-    void flip() noexcept {
+    void flip() FL_NOEXCEPT {
         if (!_blocks) return;
 
         for (fl::u32 i = 0; i < _block_count; ++i) {
@@ -241,7 +241,7 @@ class bitset_dynamic {
     // Test if a bit is set
     FL_DISABLE_WARNING_PUSH
     FL_DISABLE_WARNING_NULL_DEREFERENCE
-    bool test(fl::u32 pos) const noexcept {
+    bool test(fl::u32 pos) const FL_NOEXCEPT {
         if (_blocks && pos < _size) {
             const fl::u32 idx = pos / bits_per_block;
             const fl::u32 off = pos % bits_per_block;
@@ -252,7 +252,7 @@ class bitset_dynamic {
     FL_DISABLE_WARNING_POP
 
     // Count the number of set bits
-    fl::u32 count() const noexcept {
+    fl::u32 count() const FL_NOEXCEPT {
         if (!_blocks) return 0;
 
         fl::u32 result = 0;
@@ -263,7 +263,7 @@ class bitset_dynamic {
     }
 
     // Check if any bit is set
-    bool any() const noexcept {
+    bool any() const FL_NOEXCEPT {
         if (!_blocks) return false;
 
         for (fl::u32 i = 0; i < _block_count; ++i) {
@@ -274,10 +274,10 @@ class bitset_dynamic {
     }
 
     // Check if no bit is set
-    bool none() const noexcept { return !any(); }
+    bool none() const FL_NOEXCEPT { return !any(); }
 
     // Check if all bits are set
-    bool all() const noexcept {
+    bool all() const FL_NOEXCEPT {
         if (_size == 0)
             return true;
 
@@ -302,7 +302,7 @@ class bitset_dynamic {
     // Get the size of the bitset
     FL_DISABLE_WARNING_PUSH
     FL_DISABLE_WARNING_NULL_DEREFERENCE
-    fl::u32 size() const noexcept {
+    fl::u32 size() const FL_NOEXCEPT {
         // Note: _size is a member variable, not a pointer, so this should be safe
         // but we add this comment to clarify for static analysis
         return _size;
@@ -313,13 +313,13 @@ class bitset_dynamic {
     void to_string(string* dst) const;
 
     // Access operator
-    bool operator[](fl::u32 pos) const noexcept { return test(pos); }
+    bool operator[](fl::u32 pos) const FL_NOEXCEPT { return test(pos); }
 
     /// Finds the first bit that matches the test value.
     /// Returns the index of the first matching bit, or -1 if none found.
     /// @param test_value The value to search for (true or false)
     /// @param offset Starting position to search from (default: 0)
-    fl::i32 find_first(bool test_value, fl::u32 offset = 0) const noexcept {
+    fl::i32 find_first(bool test_value, fl::u32 offset = 0) const FL_NOEXCEPT {
         // If offset is beyond our size, no match possible
         if (offset >= _size) {
             return -1;

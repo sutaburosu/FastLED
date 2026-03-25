@@ -6,6 +6,7 @@
 /// Used by vector_basic to decouple allocation strategy from container type.
 
 #include "fl/stl/int.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 
@@ -37,7 +38,7 @@ class memory_resource {
         return do_reallocate(p, old_bytes, new_bytes);
     }
 
-    bool is_equal(const memory_resource& other) const noexcept {
+    bool is_equal(const memory_resource& other) const FL_NOEXCEPT {
         return do_is_equal(other);
     }
 
@@ -48,7 +49,7 @@ class memory_resource {
     /// Default: returns nullptr (not supported). Override for realloc-capable resources.
     virtual void* do_reallocate(void* p, fl::size old_bytes, fl::size new_bytes);
 
-    virtual bool do_is_equal(const memory_resource& other) const noexcept {
+    virtual bool do_is_equal(const memory_resource& other) const FL_NOEXCEPT {
         return this == &other;
     }
 };

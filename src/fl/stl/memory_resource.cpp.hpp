@@ -4,6 +4,7 @@
 #include "fl/stl/allocator.h"  // fl::Malloc, fl::Free, PSRamAllocate, PSRamDeallocate
 #include "fl/stl/malloc.h"     // fl::realloc
 #include "fl/stl/cstring.h"    // fl::memset
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 
@@ -43,7 +44,7 @@ class DefaultMemoryResource : public memory_resource {
         return result;
     }
 
-    bool do_is_equal(const memory_resource& other) const noexcept override {
+    bool do_is_equal(const memory_resource& other) const FL_NOEXCEPT override {
         return this == &other;
     }
 };
@@ -62,7 +63,7 @@ class PSRamMemoryResource : public memory_resource {
     // PSRAM does not support realloc — returns nullptr to trigger alloc-copy-free path
     // do_reallocate uses the base default (returns nullptr)
 
-    bool do_is_equal(const memory_resource& other) const noexcept override {
+    bool do_is_equal(const memory_resource& other) const FL_NOEXCEPT override {
         return this == &other;
     }
 };

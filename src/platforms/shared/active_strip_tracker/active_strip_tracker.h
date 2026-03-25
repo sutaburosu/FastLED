@@ -8,6 +8,7 @@
 #include "fl/stl/bit_cast.h"
 #include "crgb.h"
 #include "platforms/shared/active_strip_data/active_strip_data.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 
@@ -68,7 +69,7 @@ public:
     }
 
     /// @brief Move constructor - transfers ID to new address
-    ActiveStripTracker(ActiveStripTracker&& other) noexcept {
+    ActiveStripTracker(ActiveStripTracker&& other) FL_NOEXCEPT {
         mId = other.mId;
         uintptr_t old_addr = fl::ptr_to_int(&other);
         uintptr_t new_addr = fl::ptr_to_int(this);
@@ -77,7 +78,7 @@ public:
     }
 
     /// @brief Move assignment - transfers ID to new address
-    ActiveStripTracker& operator=(ActiveStripTracker&& other) noexcept {
+    ActiveStripTracker& operator=(ActiveStripTracker&& other) FL_NOEXCEPT {
         if (this != &other) {
             uintptr_t old_this = fl::ptr_to_int(this);
             uintptr_t old_other = fl::ptr_to_int(&other);

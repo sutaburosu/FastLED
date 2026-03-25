@@ -39,14 +39,14 @@ template <typename T1, typename T2> struct pair {
     // Rule of 5: copy constructor, copy assignment, move constructor, move assignment, destructor
     pair(const pair &other) FL_NOEXCEPT = default;
     pair &operator=(const pair &other) FL_NOEXCEPT = default;
-    pair(pair &&other) noexcept : first(fl::move(other.first)), second(fl::move(other.second)) {}
+    pair(pair &&other) FL_NOEXCEPT : first(fl::move(other.first)), second(fl::move(other.second)) {}
     pair &operator=(pair &&other) FL_NOEXCEPT = default;
     
     // Note: Template assignment operators removed to avoid issues with const members
     // The default copy and move assignment operators will handle same-type assignments
     
     // Swap member function
-    void swap(pair &other) noexcept {
+    void swap(pair &other) FL_NOEXCEPT {
         fl::swap(first, other.first);
         fl::swap(second, other.second);
     }
@@ -85,7 +85,7 @@ bool operator>=(const pair<T1, T2> &lhs, const pair<U1, U2> &rhs) FL_NOEXCEPT {
 
 // Non-member swap function
 template <typename T1, typename T2>
-void swap(pair<T1, T2> &lhs, pair<T1, T2> &rhs) noexcept {
+void swap(pair<T1, T2> &lhs, pair<T1, T2> &rhs) FL_NOEXCEPT {
     lhs.swap(rhs);
 }
 
@@ -111,7 +111,7 @@ struct pair_element<1, T1, T2> {
 
 // get function overloads for tuple-like access by index
 template <fl::size I, typename T1, typename T2>
-typename pair_element<I, T1, T2>::type& get(pair<T1, T2> &p) noexcept {
+typename pair_element<I, T1, T2>::type& get(pair<T1, T2> &p) FL_NOEXCEPT {
     static_assert(I < 2, "Index out of bounds for pair");
     if (I == 0) {
         return p.first;
@@ -121,7 +121,7 @@ typename pair_element<I, T1, T2>::type& get(pair<T1, T2> &p) noexcept {
 }
 
 template <fl::size I, typename T1, typename T2>
-const typename pair_element<I, T1, T2>::type& get(const pair<T1, T2> &p) noexcept {
+const typename pair_element<I, T1, T2>::type& get(const pair<T1, T2> &p) FL_NOEXCEPT {
     static_assert(I < 2, "Index out of bounds for pair");
     if (I == 0) {
         return p.first;
@@ -131,7 +131,7 @@ const typename pair_element<I, T1, T2>::type& get(const pair<T1, T2> &p) noexcep
 }
 
 template <fl::size I, typename T1, typename T2>
-typename pair_element<I, T1, T2>::type&& get(pair<T1, T2> &&p) noexcept {
+typename pair_element<I, T1, T2>::type&& get(pair<T1, T2> &&p) FL_NOEXCEPT {
     static_assert(I < 2, "Index out of bounds for pair");
     if (I == 0) {
         return fl::move(p.first);
@@ -142,7 +142,7 @@ typename pair_element<I, T1, T2>::type&& get(pair<T1, T2> &&p) noexcept {
 
 // get by type overloads (when T1 and T2 are different types)
 template <typename T, typename T1, typename T2>
-T& get(pair<T1, T2> &p) noexcept {
+T& get(pair<T1, T2> &p) FL_NOEXCEPT {
     static_assert(fl::is_same<T, T1>::value || fl::is_same<T, T2>::value, 
                   "Type T must be one of the pair's element types");
     static_assert(!(fl::is_same<T, T1>::value && fl::is_same<T, T2>::value), 
@@ -155,7 +155,7 @@ T& get(pair<T1, T2> &p) noexcept {
 }
 
 template <typename T, typename T1, typename T2>
-const T& get(const pair<T1, T2> &p) noexcept {
+const T& get(const pair<T1, T2> &p) FL_NOEXCEPT {
     static_assert(fl::is_same<T, T1>::value || fl::is_same<T, T2>::value, 
                   "Type T must be one of the pair's element types");
     static_assert(!(fl::is_same<T, T1>::value && fl::is_same<T, T2>::value), 
@@ -168,7 +168,7 @@ const T& get(const pair<T1, T2> &p) noexcept {
 }
 
 template <typename T, typename T1, typename T2>
-T&& get(pair<T1, T2> &&p) noexcept {
+T&& get(pair<T1, T2> &&p) FL_NOEXCEPT {
     static_assert(fl::is_same<T, T1>::value || fl::is_same<T, T2>::value, 
                   "Type T must be one of the pair's element types");
     static_assert(!(fl::is_same<T, T1>::value && fl::is_same<T, T2>::value), 

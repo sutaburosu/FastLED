@@ -30,6 +30,7 @@
 #include "fl/stl/shared_ptr.h"
 #include "fl/stl/move.h"
 #include "fl/stl/atomic.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 namespace task {
@@ -95,13 +96,13 @@ public:
     Promise(const Promise& other) = default;
 
     /// Move constructor
-    Promise(Promise&& other) noexcept = default;
+    Promise(Promise&& other) FL_NOEXCEPT = default;
 
     /// Copy assignment operator
     Promise& operator=(const Promise& other) = default;
 
     /// Move assignment operator
-    Promise& operator=(Promise&& other) noexcept = default;
+    Promise& operator=(Promise&& other) FL_NOEXCEPT = default;
 
     /// Check if Promise is valid
     bool valid() const {

@@ -21,6 +21,7 @@
 #include "fl/stl/unique_ptr.h"
 #include "fl/stl/vector.h"
 #include "fl/stl/strstream.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 
@@ -31,8 +32,8 @@ struct DrawItem {
     // Rule of 5 for POD data
     DrawItem(const DrawItem &other) = default;
     DrawItem &operator=(const DrawItem &other) = default;
-    DrawItem(DrawItem &&other) noexcept = default;
-    DrawItem &operator=(DrawItem &&other) noexcept = default;
+    DrawItem(DrawItem &&other) FL_NOEXCEPT = default;
+    DrawItem &operator=(DrawItem &&other) FL_NOEXCEPT = default;
     
     u8 mPin = 0;
     u32 mNumBytes = 0;

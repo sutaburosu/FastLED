@@ -7,6 +7,7 @@
 #include "fl/stl/compiler_control.h"
 #include "fl/math/xymap.h"
 #include "fl/stl/move.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 
@@ -19,9 +20,9 @@ struct XYDrawComposited {
     XYDrawComposited &operator=(const XYDrawComposited &other) = delete;
 
     // Move constructor (assignment deleted due to const members)
-    XYDrawComposited(XYDrawComposited &&other) noexcept
+    XYDrawComposited(XYDrawComposited &&other) FL_NOEXCEPT
         : mColor(fl::move(other.mColor)), mXYMap(fl::move(other.mXYMap)), mOut(other.mOut) {}
-    XYDrawComposited &operator=(XYDrawComposited &&other) noexcept = delete;
+    XYDrawComposited &operator=(XYDrawComposited &&other) FL_NOEXCEPT = delete;
 
     void draw(const vec2<fl::u16> &pt, fl::u32 index, fl::u8 value);
     const CRGB mColor;
@@ -37,9 +38,9 @@ struct XYDrawGradient {
     XYDrawGradient &operator=(const XYDrawGradient &other) = delete;
 
     // Move constructor (assignment deleted due to const members)
-    XYDrawGradient(XYDrawGradient &&other) noexcept
+    XYDrawGradient(XYDrawGradient &&other) FL_NOEXCEPT
         : mGradient(fl::move(other.mGradient)), mXYMap(fl::move(other.mXYMap)), mOut(other.mOut) {}
-    XYDrawGradient &operator=(XYDrawGradient &&other) noexcept = delete;
+    XYDrawGradient &operator=(XYDrawGradient &&other) FL_NOEXCEPT = delete;
 
     void draw(const vec2<fl::u16> &pt, fl::u32 index, fl::u8 value);
     const Gradient mGradient;

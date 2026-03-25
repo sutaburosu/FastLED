@@ -38,6 +38,7 @@
 #include "fl/stl/variant.h"
 #include "fl/stl/span.h"
 #include "fl/stl/int.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 
@@ -71,8 +72,8 @@ struct Gap {
     // Rule of 5 for POD data
     Gap(const Gap &other) = default;
     Gap &operator=(const Gap &other) = default;
-    Gap(Gap &&other) noexcept = default;
-    Gap &operator=(Gap &&other) noexcept = default;
+    Gap(Gap &&other) FL_NOEXCEPT = default;
+    Gap &operator=(Gap &&other) FL_NOEXCEPT = default;
 };
 
 // Maps a Corkscrew defined by the input to a cylindrical mapping for rendering

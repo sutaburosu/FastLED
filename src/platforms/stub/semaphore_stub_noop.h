@@ -11,6 +11,7 @@
 /// The semaphore operations are simplified since there's no actual threading.
 
 #include "fl/stl/cstddef.h"
+#include "fl/stl/noexcept.h"
 
 // Forward declare std::chrono types to avoid including <chrono> in header
 namespace std {
@@ -77,7 +78,7 @@ public:
         return try_acquire();
     }
 
-    static constexpr ptrdiff_t max() noexcept {
+    static constexpr ptrdiff_t max() FL_NOEXCEPT {
         return LeastMaxValue;
     }
 };

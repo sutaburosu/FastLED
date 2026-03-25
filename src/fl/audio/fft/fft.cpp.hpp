@@ -7,6 +7,7 @@
 #include "fl/stl/shared_ptr.h"  // For shared_ptr
 #include "fl/stl/singleton.h"
 #include "fl/stl/mutex.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 namespace audio {
@@ -185,7 +186,7 @@ Bins::~Bins() {
 
 // Hash specialization must be in fl:: namespace where Hash is defined
 template <> struct Hash<audio::fft::Args> {
-    fl::u32 operator()(const audio::fft::Args &key) const noexcept {
+    fl::u32 operator()(const audio::fft::Args &key) const FL_NOEXCEPT {
         // Hash fields individually to avoid padding-byte issues
         fl::u32 h = 0;
         h ^= MurmurHash3_x86_32(&key.samples, sizeof(key.samples));

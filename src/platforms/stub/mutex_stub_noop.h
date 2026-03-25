@@ -12,6 +12,7 @@
 
 #include "fl/stl/assert.h"
 #include "fl/stl/utility.h"  // for fl::swap
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 namespace platforms {
@@ -103,7 +104,7 @@ public:
     using mutex_type = Mutex;
 
     explicit lock_guard(Mutex& m) : mMutex(m) { mMutex.lock(); }
-    lock_guard(Mutex& m, adopt_lock_t) noexcept : mMutex(m) {}
+    lock_guard(Mutex& m, adopt_lock_t) FL_NOEXCEPT : mMutex(m) {}
 
     ~lock_guard() { mMutex.unlock(); }
 
@@ -126,18 +127,18 @@ private:
 
 public:
     // Constructors
-    unique_lock() noexcept : mMutex(nullptr), mOwns(false) {}
+    unique_lock() FL_NOEXCEPT : mMutex(nullptr), mOwns(false) {}
 
     explicit unique_lock(Mutex& m) : mMutex(&m), mOwns(false) {
         lock();
         mOwns = true;
     }
 
-    unique_lock(Mutex& m, defer_lock_t) noexcept : mMutex(&m), mOwns(false) {}
+    unique_lock(Mutex& m, defer_lock_t) FL_NOEXCEPT : mMutex(&m), mOwns(false) {}
 
     unique_lock(Mutex& m, try_to_lock_t) : mMutex(&m), mOwns(m.try_lock()) {}
 
-    unique_lock(Mutex& m, adopt_lock_t) noexcept : mMutex(&m), mOwns(true) {}
+    unique_lock(Mutex& m, adopt_lock_t) FL_NOEXCEPT : mMutex(&m), mOwns(true) {}
 
     // Destructor
     ~unique_lock() {
@@ -151,13 +152,13 @@ public:
     unique_lock& operator=(const unique_lock&) = delete;
 
     // Move constructor
-    unique_lock(unique_lock&& u) noexcept : mMutex(u.mMutex), mOwns(u.mOwns) {
+    unique_lock(unique_lock&& u) FL_NOEXCEPT : mMutex(u.mMutex), mOwns(u.mOwns) {
         u.mMutex = nullptr;
         u.mOwns = false;
     }
 
     // Move assignment
-    unique_lock& operator=(unique_lock&& u) noexcept {
+    unique_lock& operator=(unique_lock&& u) FL_NOEXCEPT {
         if (mOwns) {
             unlock();
         }
@@ -208,13 +209,13 @@ public:
     }
 
     // Modifiers
-    void swap(unique_lock& u) noexcept {
+    void swap(unique_lock& u) FL_NOEXCEPT {
         using fl::swap;
         swap(mMutex, u.mMutex);
         swap(mOwns, u.mOwns);
     }
 
-    Mutex* release() noexcept {
+    Mutex* release() FL_NOEXCEPT {
         Mutex* ret = mMutex;
         mMutex = nullptr;
         mOwns = false;
@@ -222,13 +223,13 @@ public:
     }
 
     // Observers
-    bool owns_lock() const noexcept { return mOwns; }
-    explicit operator bool() const noexcept { return mOwns; }
-    Mutex* mutex() const noexcept { return mMutex; }
+    bool owns_lock() const FL_NOEXCEPT { return mOwns; }
+    explicit operator bool() const FL_NOEXCEPT { return mOwns; }
+    Mutex* mutex() const FL_NOEXCEPT { return mMutex; }
 };
 
 template<typename Mutex>
-void swap(unique_lock<Mutex>& lhs, unique_lock<Mutex>& rhs) noexcept {
+void swap(unique_lock<Mutex>& lhs, unique_lock<Mutex>& rhs) FL_NOEXCEPT {
     lhs.swap(rhs);
 }
 

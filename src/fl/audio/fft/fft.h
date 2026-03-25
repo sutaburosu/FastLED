@@ -3,6 +3,7 @@
 #include "fl/stl/span.h"
 #include "fl/stl/vector.h"
 #include "fl/math/math.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 namespace audio {
@@ -49,8 +50,8 @@ class Bins {
 
     Bins(const Bins &) = default;
     Bins &operator=(const Bins &) = default;
-    Bins(Bins &&) noexcept = default;
-    Bins &operator=(Bins &&) noexcept = default;
+    Bins(Bins &&) FL_NOEXCEPT = default;
+    Bins &operator=(Bins &&) FL_NOEXCEPT = default;
 
     void clear();
 

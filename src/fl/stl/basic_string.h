@@ -223,7 +223,7 @@ class basic_string {
     basic_string& assign(const basic_string& str);
     basic_string& assign(const basic_string& str, fl::size pos, fl::size count = npos);
     basic_string& assign(fl::size count, char c);
-    basic_string& assign(basic_string&& str) noexcept;
+    basic_string& assign(basic_string&& str) FL_NOEXCEPT;
 
     // Assign from iterator range
     template <typename InputIt>
@@ -447,8 +447,8 @@ class basic_string {
     basic_string& operator=(basic_string&&) FL_NOEXCEPT = delete;
 
     // ======= CONTENT POPULATION (for StrN<N> constructors) =======
-    void moveFrom(basic_string&& other) noexcept;
-    void moveAssign(basic_string&& other) noexcept;
+    void moveFrom(basic_string&& other) FL_NOEXCEPT;
+    void moveAssign(basic_string&& other) FL_NOEXCEPT;
     void swapWith(basic_string& other);
 
     // Factory helpers

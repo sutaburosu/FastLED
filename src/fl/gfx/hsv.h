@@ -5,6 +5,7 @@
 
 #include "fl/stl/int.h"
 #include "fl/stl/compiler_control.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 
@@ -73,7 +74,7 @@ struct hsv8 {
     }
 
     /// Allow copy construction
-    constexpr hsv8(const hsv8& rhs) noexcept : h(rhs.h), s(rhs.s), v(rhs.v) { }
+    constexpr hsv8(const hsv8& rhs) FL_NOEXCEPT : h(rhs.h), s(rhs.s), v(rhs.v) { }
 
     /// Allow copy construction
     hsv8& operator= (const hsv8& rhs) = default;

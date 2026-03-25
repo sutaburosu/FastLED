@@ -10,6 +10,7 @@
 #include "fl/stl/cstring.h"
 #include "fl/stl/compiler_control.h"
 #include "fl/stl/memory_resource.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 
@@ -121,10 +122,10 @@ class vector_basic {
     void copy_from(const vector_basic& other);
 
     /// Move-steal contents from another vector_basic.
-    void move_from(vector_basic& other) noexcept;
+    void move_from(vector_basic& other) FL_NOEXCEPT;
 
     /// Move-assign from another vector_basic (clears this first).
-    void move_assign(vector_basic& other) noexcept;
+    void move_assign(vector_basic& other) FL_NOEXCEPT;
 
     // ======= DATA MEMBERS =======
     void* mArray = nullptr;

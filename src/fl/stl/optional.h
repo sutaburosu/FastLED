@@ -23,7 +23,7 @@ template <typename T> class Optional {
     Optional() FL_NOEXCEPT : mValue(Empty()) {}
     Optional(nullopt_t) FL_NOEXCEPT : mValue(Empty()) {}
     Optional(const Optional &other) FL_NOEXCEPT : mValue(other.mValue) {}
-    Optional(Optional &&other) noexcept : mValue(fl::move(other.mValue)) {}
+    Optional(Optional &&other) FL_NOEXCEPT : mValue(fl::move(other.mValue)) {}
     
     Optional(const T &value) FL_NOEXCEPT : mValue(value) {}
     Optional(T &&value) FL_NOEXCEPT : mValue(fl::move(value)) {}
@@ -52,7 +52,7 @@ template <typename T> class Optional {
         return *this;
     }
 
-    Optional &operator=(Optional &&other) noexcept {
+    Optional &operator=(Optional &&other) FL_NOEXCEPT {
         if (this != &other) {
             mValue = fl::move(other.mValue);
         }
@@ -161,7 +161,7 @@ template <typename T> class Optional<T&&> {
     Optional(const Optional&) FL_NOEXCEPT = delete;
 
     // Move constructor - transfers the reference
-    Optional(Optional&& other) noexcept : mPtr(other.mPtr) {
+    Optional(Optional&& other) FL_NOEXCEPT : mPtr(other.mPtr) {
         other.mPtr = nullptr;
     }
 
@@ -178,7 +178,7 @@ template <typename T> class Optional<T&&> {
     Optional& operator=(const Optional&) FL_NOEXCEPT = delete;
 
     // Move assignment
-    Optional& operator=(Optional&& other) noexcept {
+    Optional& operator=(Optional&& other) FL_NOEXCEPT {
         if (this != &other) {
             mPtr = other.mPtr;
             other.mPtr = nullptr;

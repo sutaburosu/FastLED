@@ -19,6 +19,7 @@
 // mutex detection on platforms like WASM without pthreads.
 #if FASTLED_MULTITHREADED
     #include <condition_variable>  // ok include
+#include "fl/stl/noexcept.h"
     #define FASTLED_STUB_HAS_CONDITION_VARIABLE 1
 #else
     #define FASTLED_STUB_HAS_CONDITION_VARIABLE 0
@@ -73,11 +74,11 @@ public:
     ConditionVariableFake& operator=(ConditionVariableFake&&) = delete;
 
     /// @brief Notify operations are no-ops in single-threaded mode
-    void notify_one() noexcept {
+    void notify_one() FL_NOEXCEPT {
         // No-op in single-threaded mode
     }
 
-    void notify_all() noexcept {
+    void notify_all() FL_NOEXCEPT {
         // No-op in single-threaded mode
     }
 

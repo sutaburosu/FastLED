@@ -16,6 +16,7 @@
 // mutex_esp32.h includes <mutex> which defines types in global std:: namespace
 // IWYU pragma: begin_keep
 #include "platforms/esp/32/mutex_esp32.h"
+#include "fl/stl/noexcept.h"
 // IWYU pragma: end_keep
 
 namespace fl {
@@ -62,10 +63,10 @@ public:
     ConditionVariableESP32& operator=(ConditionVariableESP32&&) = delete;
 
     /// @brief Notify one waiting thread
-    void notify_one() noexcept;
+    void notify_one() FL_NOEXCEPT;
 
     /// @brief Notify all waiting threads
-    void notify_all() noexcept;
+    void notify_all() FL_NOEXCEPT;
 
     /// @brief Wait on the condition variable
     /// @tparam Mutex The mutex type (must be compatible with fl::platforms::mutex)

@@ -122,10 +122,10 @@ public:
     expected() FL_NOEXCEPT : mData(ErrorInfo<E>(E{}, nullptr)) {}
 
     /// @brief Move constructor (defaulted - variant handles it)
-    expected(expected&& other) noexcept = default;
+    expected(expected&& other) FL_NOEXCEPT = default;
 
     /// @brief Move assignment (defaulted - variant handles it)
-    expected& operator=(expected&& other) noexcept = default;
+    expected& operator=(expected&& other) FL_NOEXCEPT = default;
 
     /// @brief Destructor (defaulted - variant handles cleanup)
     ~expected() FL_NOEXCEPT = default;
@@ -177,10 +177,10 @@ public:
     expected() FL_NOEXCEPT : mData(ErrorInfo<E>(E{}, nullptr)) {}
 
     /// @brief Move constructor (defaulted - variant handles it)
-    expected(expected&& other) noexcept = default;
+    expected(expected&& other) FL_NOEXCEPT = default;
 
     /// @brief Move assignment (defaulted - variant handles it)
-    expected& operator=(expected&& other) noexcept = default;
+    expected& operator=(expected&& other) FL_NOEXCEPT = default;
 
     /// @brief Copy constructor (needed for some use cases like Impl initialization)
     expected(const expected& other) FL_NOEXCEPT : mData() {

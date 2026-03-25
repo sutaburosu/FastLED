@@ -2,6 +2,7 @@
 #include "fl/gfx/gradient.h"
 #include "fl/stl/assert.h"
 #include "fl/gfx/colorutils.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 
@@ -96,7 +97,7 @@ template <typename T> Gradient::Gradient(T *palette) { set(palette); }
 
 Gradient::Gradient(const Gradient &other) : mVariant(other.mVariant) {}
 
-Gradient::Gradient(Gradient &&other) noexcept
+Gradient::Gradient(Gradient &&other) FL_NOEXCEPT
     : mVariant(move(other.mVariant)) {}
 
 void Gradient::set(const CRGBPalette32 *palette) { mVariant = palette; }

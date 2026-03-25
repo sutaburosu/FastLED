@@ -49,7 +49,7 @@ namespace detail {
 
     template<typename T>
     struct integer_min_helper<T, true> {  // Signed
-        static constexpr T value() noexcept {
+        static constexpr T value() FL_NOEXCEPT {
             // For signed: -(2^(bits-1))
             // Use the pattern: -MAX - 1 to avoid overflow
             return sizeof(T) == 1 ? T(-128) :
@@ -61,7 +61,7 @@ namespace detail {
 
     template<typename T>
     struct integer_min_helper<T, false> {  // Unsigned
-        static constexpr T value() noexcept { return T(0); }
+        static constexpr T value() FL_NOEXCEPT { return T(0); }
     };
 
     // Compute maximum value based on signedness and size
@@ -70,7 +70,7 @@ namespace detail {
 
     template<typename T>
     struct integer_max_helper<T, true> {  // Signed
-        static constexpr T value() noexcept {
+        static constexpr T value() FL_NOEXCEPT {
             // For signed: 2^(bits-1) - 1
             return sizeof(T) == 1 ? T(127) :
                    sizeof(T) == 2 ? T(32767) :
@@ -81,7 +81,7 @@ namespace detail {
 
     template<typename T>
     struct integer_max_helper<T, false> {  // Unsigned
-        static constexpr T value() noexcept {
+        static constexpr T value() FL_NOEXCEPT {
             // For unsigned: 2^bits - 1
             return sizeof(T) == 1 ? T(255) :
                    sizeof(T) == 2 ? T(65535) :
@@ -104,15 +104,15 @@ struct numeric_limits {
     enum : int { digits = 0 };
     enum : int { digits10 = 0 };
 
-    static constexpr T (min)() noexcept { return T(); }
-    static constexpr T (max)() noexcept { return T(); }
-    static constexpr T (lowest)() noexcept { return T(); }
-    static constexpr T epsilon() noexcept { return T(); }
-    static constexpr T round_error() noexcept { return T(); }
-    static constexpr T infinity() noexcept { return T(); }
-    static constexpr T quiet_NaN() noexcept { return T(); }
-    static constexpr T signaling_NaN() noexcept { return T(); }
-    static constexpr T denorm_min() noexcept { return T(); }
+    static constexpr T (min)() FL_NOEXCEPT { return T(); }
+    static constexpr T (max)() FL_NOEXCEPT { return T(); }
+    static constexpr T (lowest)() FL_NOEXCEPT { return T(); }
+    static constexpr T epsilon() FL_NOEXCEPT { return T(); }
+    static constexpr T round_error() FL_NOEXCEPT { return T(); }
+    static constexpr T infinity() FL_NOEXCEPT { return T(); }
+    static constexpr T quiet_NaN() FL_NOEXCEPT { return T(); }
+    static constexpr T signaling_NaN() FL_NOEXCEPT { return T(); }
+    static constexpr T denorm_min() FL_NOEXCEPT { return T(); }
 };
 
 // Specialization for bool
@@ -128,11 +128,11 @@ struct numeric_limits<bool> {
     enum : int { digits = 1 };
     enum : int { digits10 = 0 };
 
-    static constexpr bool (min)() noexcept { return false; }
-    static constexpr bool (max)() noexcept { return true; }
-    static constexpr bool (lowest)() noexcept { return false; }
-    static constexpr bool epsilon() noexcept { return false; }
-    static constexpr bool round_error() noexcept { return false; }
+    static constexpr bool (min)() FL_NOEXCEPT { return false; }
+    static constexpr bool (max)() FL_NOEXCEPT { return true; }
+    static constexpr bool (lowest)() FL_NOEXCEPT { return false; }
+    static constexpr bool epsilon() FL_NOEXCEPT { return false; }
+    static constexpr bool round_error() FL_NOEXCEPT { return false; }
 };
 
 // Specialization for char
@@ -148,11 +148,11 @@ struct numeric_limits<char> {
     static constexpr int digits = detail::integer_digits_helper<char>::value;
     static constexpr int digits10 = detail::integer_digits10_helper<char>::value;
 
-    static constexpr char (min)() noexcept { return detail::integer_min_helper<char>::value(); }
-    static constexpr char (max)() noexcept { return detail::integer_max_helper<char>::value(); }
-    static constexpr char (lowest)() noexcept { return (min)(); }
-    static constexpr char epsilon() noexcept { return 0; }
-    static constexpr char round_error() noexcept { return 0; }
+    static constexpr char (min)() FL_NOEXCEPT { return detail::integer_min_helper<char>::value(); }
+    static constexpr char (max)() FL_NOEXCEPT { return detail::integer_max_helper<char>::value(); }
+    static constexpr char (lowest)() FL_NOEXCEPT { return (min)(); }
+    static constexpr char epsilon() FL_NOEXCEPT { return 0; }
+    static constexpr char round_error() FL_NOEXCEPT { return 0; }
 };
 
 // Specialization for signed char (i8)
@@ -168,11 +168,11 @@ struct numeric_limits<signed char> {
     static constexpr int digits = detail::integer_digits_helper<signed char>::value;
     static constexpr int digits10 = detail::integer_digits10_helper<signed char>::value;
 
-    static constexpr signed char (min)() noexcept { return detail::integer_min_helper<signed char>::value(); }
-    static constexpr signed char (max)() noexcept { return detail::integer_max_helper<signed char>::value(); }
-    static constexpr signed char (lowest)() noexcept { return (min)(); }
-    static constexpr signed char epsilon() noexcept { return 0; }
-    static constexpr signed char round_error() noexcept { return 0; }
+    static constexpr signed char (min)() FL_NOEXCEPT { return detail::integer_min_helper<signed char>::value(); }
+    static constexpr signed char (max)() FL_NOEXCEPT { return detail::integer_max_helper<signed char>::value(); }
+    static constexpr signed char (lowest)() FL_NOEXCEPT { return (min)(); }
+    static constexpr signed char epsilon() FL_NOEXCEPT { return 0; }
+    static constexpr signed char round_error() FL_NOEXCEPT { return 0; }
 };
 
 // Specialization for unsigned char (u8)
@@ -188,11 +188,11 @@ struct numeric_limits<unsigned char> {
     static constexpr int digits = detail::integer_digits_helper<unsigned char>::value;
     static constexpr int digits10 = detail::integer_digits10_helper<unsigned char>::value;
 
-    static constexpr unsigned char (min)() noexcept { return detail::integer_min_helper<unsigned char>::value(); }
-    static constexpr unsigned char (max)() noexcept { return detail::integer_max_helper<unsigned char>::value(); }
-    static constexpr unsigned char (lowest)() noexcept { return 0; }
-    static constexpr unsigned char epsilon() noexcept { return 0; }
-    static constexpr unsigned char round_error() noexcept { return 0; }
+    static constexpr unsigned char (min)() FL_NOEXCEPT { return detail::integer_min_helper<unsigned char>::value(); }
+    static constexpr unsigned char (max)() FL_NOEXCEPT { return detail::integer_max_helper<unsigned char>::value(); }
+    static constexpr unsigned char (lowest)() FL_NOEXCEPT { return 0; }
+    static constexpr unsigned char epsilon() FL_NOEXCEPT { return 0; }
+    static constexpr unsigned char round_error() FL_NOEXCEPT { return 0; }
 };
 
 } // namespace fl
@@ -221,11 +221,11 @@ struct numeric_limits<short> {
     static constexpr int digits = detail::integer_digits_helper<short>::value;
     static constexpr int digits10 = detail::integer_digits10_helper<short>::value;
 
-    static constexpr short min() noexcept { return detail::integer_min_helper<short>::value(); }
-    static constexpr short max() noexcept { return detail::integer_max_helper<short>::value(); }
-    static constexpr short lowest() noexcept { return min(); }
-    static constexpr short epsilon() noexcept { return 0; }
-    static constexpr short round_error() noexcept { return 0; }
+    static constexpr short min() FL_NOEXCEPT { return detail::integer_min_helper<short>::value(); }
+    static constexpr short max() FL_NOEXCEPT { return detail::integer_max_helper<short>::value(); }
+    static constexpr short lowest() FL_NOEXCEPT { return min(); }
+    static constexpr short epsilon() FL_NOEXCEPT { return 0; }
+    static constexpr short round_error() FL_NOEXCEPT { return 0; }
 };
 
 // Specialization for unsigned short (u16)
@@ -241,11 +241,11 @@ struct numeric_limits<unsigned short> {
     static constexpr int digits = detail::integer_digits_helper<unsigned short>::value;
     static constexpr int digits10 = detail::integer_digits10_helper<unsigned short>::value;
 
-    static constexpr unsigned short min() noexcept { return detail::integer_min_helper<unsigned short>::value(); }
-    static constexpr unsigned short max() noexcept { return detail::integer_max_helper<unsigned short>::value(); }
-    static constexpr unsigned short lowest() noexcept { return 0; }
-    static constexpr unsigned short epsilon() noexcept { return 0; }
-    static constexpr unsigned short round_error() noexcept { return 0; }
+    static constexpr unsigned short min() FL_NOEXCEPT { return detail::integer_min_helper<unsigned short>::value(); }
+    static constexpr unsigned short max() FL_NOEXCEPT { return detail::integer_max_helper<unsigned short>::value(); }
+    static constexpr unsigned short lowest() FL_NOEXCEPT { return 0; }
+    static constexpr unsigned short epsilon() FL_NOEXCEPT { return 0; }
+    static constexpr unsigned short round_error() FL_NOEXCEPT { return 0; }
 };
 
 // Specialization for int
@@ -262,15 +262,15 @@ struct numeric_limits<int> {
     static constexpr int digits = detail::integer_digits_helper<int>::value;
     static constexpr int digits10 = detail::integer_digits10_helper<int>::value;
 
-    static constexpr int min() noexcept {
+    static constexpr int min() FL_NOEXCEPT {
         return detail::integer_min_helper<int>::value();
     }
-    static constexpr int max() noexcept {
+    static constexpr int max() FL_NOEXCEPT {
         return detail::integer_max_helper<int>::value();
     }
-    static constexpr int lowest() noexcept { return min(); }
-    static constexpr int epsilon() noexcept { return 0; }
-    static constexpr int round_error() noexcept { return 0; }
+    static constexpr int lowest() FL_NOEXCEPT { return min(); }
+    static constexpr int epsilon() FL_NOEXCEPT { return 0; }
+    static constexpr int round_error() FL_NOEXCEPT { return 0; }
 };
 
 // Specialization for unsigned int
@@ -287,15 +287,15 @@ struct numeric_limits<unsigned int> {
     static constexpr int digits = detail::integer_digits_helper<unsigned int>::value;
     static constexpr int digits10 = detail::integer_digits10_helper<unsigned int>::value;
 
-    static constexpr unsigned int min() noexcept {
+    static constexpr unsigned int min() FL_NOEXCEPT {
         return detail::integer_min_helper<unsigned int>::value();
     }
-    static constexpr unsigned int max() noexcept {
+    static constexpr unsigned int max() FL_NOEXCEPT {
         return detail::integer_max_helper<unsigned int>::value();
     }
-    static constexpr unsigned int lowest() noexcept { return 0; }
-    static constexpr unsigned int epsilon() noexcept { return 0; }
-    static constexpr unsigned int round_error() noexcept { return 0; }
+    static constexpr unsigned int lowest() FL_NOEXCEPT { return 0; }
+    static constexpr unsigned int epsilon() FL_NOEXCEPT { return 0; }
+    static constexpr unsigned int round_error() FL_NOEXCEPT { return 0; }
 };
 
 // Specialization for long
@@ -312,15 +312,15 @@ struct numeric_limits<long> {
     static constexpr int digits = detail::integer_digits_helper<long>::value;
     static constexpr int digits10 = detail::integer_digits10_helper<long>::value;
 
-    static constexpr long min() noexcept {
+    static constexpr long min() FL_NOEXCEPT {
         return detail::integer_min_helper<long>::value();
     }
-    static constexpr long max() noexcept {
+    static constexpr long max() FL_NOEXCEPT {
         return detail::integer_max_helper<long>::value();
     }
-    static constexpr long lowest() noexcept { return min(); }
-    static constexpr long epsilon() noexcept { return 0; }
-    static constexpr long round_error() noexcept { return 0; }
+    static constexpr long lowest() FL_NOEXCEPT { return min(); }
+    static constexpr long epsilon() FL_NOEXCEPT { return 0; }
+    static constexpr long round_error() FL_NOEXCEPT { return 0; }
 };
 
 // Specialization for unsigned long
@@ -337,15 +337,15 @@ struct numeric_limits<unsigned long> {
     static constexpr int digits = detail::integer_digits_helper<unsigned long>::value;
     static constexpr int digits10 = detail::integer_digits10_helper<unsigned long>::value;
 
-    static constexpr unsigned long min() noexcept {
+    static constexpr unsigned long min() FL_NOEXCEPT {
         return detail::integer_min_helper<unsigned long>::value();
     }
-    static constexpr unsigned long max() noexcept {
+    static constexpr unsigned long max() FL_NOEXCEPT {
         return detail::integer_max_helper<unsigned long>::value();
     }
-    static constexpr unsigned long lowest() noexcept { return 0; }
-    static constexpr unsigned long epsilon() noexcept { return 0; }
-    static constexpr unsigned long round_error() noexcept { return 0; }
+    static constexpr unsigned long lowest() FL_NOEXCEPT { return 0; }
+    static constexpr unsigned long epsilon() FL_NOEXCEPT { return 0; }
+    static constexpr unsigned long round_error() FL_NOEXCEPT { return 0; }
 };
 
 // Specialization for long long (i64)
@@ -361,11 +361,11 @@ struct numeric_limits<long long> {
     static constexpr int digits = detail::integer_digits_helper<long long>::value;
     static constexpr int digits10 = detail::integer_digits10_helper<long long>::value;
 
-    static constexpr long long min() noexcept { return detail::integer_min_helper<long long>::value(); }
-    static constexpr long long max() noexcept { return detail::integer_max_helper<long long>::value(); }
-    static constexpr long long lowest() noexcept { return min(); }
-    static constexpr long long epsilon() noexcept { return 0; }
-    static constexpr long long round_error() noexcept { return 0; }
+    static constexpr long long min() FL_NOEXCEPT { return detail::integer_min_helper<long long>::value(); }
+    static constexpr long long max() FL_NOEXCEPT { return detail::integer_max_helper<long long>::value(); }
+    static constexpr long long lowest() FL_NOEXCEPT { return min(); }
+    static constexpr long long epsilon() FL_NOEXCEPT { return 0; }
+    static constexpr long long round_error() FL_NOEXCEPT { return 0; }
 };
 
 // Specialization for unsigned long long (u64)
@@ -381,11 +381,11 @@ struct numeric_limits<unsigned long long> {
     static constexpr int digits = detail::integer_digits_helper<unsigned long long>::value;
     static constexpr int digits10 = detail::integer_digits10_helper<unsigned long long>::value;
 
-    static constexpr unsigned long long min() noexcept { return detail::integer_min_helper<unsigned long long>::value(); }
-    static constexpr unsigned long long max() noexcept { return detail::integer_max_helper<unsigned long long>::value(); }
-    static constexpr unsigned long long lowest() noexcept { return 0; }
-    static constexpr unsigned long long epsilon() noexcept { return 0; }
-    static constexpr unsigned long long round_error() noexcept { return 0; }
+    static constexpr unsigned long long min() FL_NOEXCEPT { return detail::integer_min_helper<unsigned long long>::value(); }
+    static constexpr unsigned long long max() FL_NOEXCEPT { return detail::integer_max_helper<unsigned long long>::value(); }
+    static constexpr unsigned long long lowest() FL_NOEXCEPT { return 0; }
+    static constexpr unsigned long long epsilon() FL_NOEXCEPT { return 0; }
+    static constexpr unsigned long long round_error() FL_NOEXCEPT { return 0; }
 };
 
 // Specialization for float
@@ -407,23 +407,23 @@ struct numeric_limits<float> {
     static constexpr int min_exponent10 = -37; // __FLT_MIN_10_EXP__ is typically -37
 
     // Use compiler built-in constants (GCC/Clang) instead of hardcoded literals
-    static constexpr float min() noexcept { return __FLT_MIN__; }
-    static constexpr float max() noexcept { return __FLT_MAX__; }
-    static constexpr float lowest() noexcept { return -__FLT_MAX__; }
-    static constexpr float epsilon() noexcept { return __FLT_EPSILON__; }
-    static constexpr float round_error() noexcept { return 0.5F; }
+    static constexpr float min() FL_NOEXCEPT { return __FLT_MIN__; }
+    static constexpr float max() FL_NOEXCEPT { return __FLT_MAX__; }
+    static constexpr float lowest() FL_NOEXCEPT { return -__FLT_MAX__; }
+    static constexpr float epsilon() FL_NOEXCEPT { return __FLT_EPSILON__; }
+    static constexpr float round_error() FL_NOEXCEPT { return 0.5F; }
 
-    static constexpr float infinity() noexcept {
+    static constexpr float infinity() FL_NOEXCEPT {
         return __builtin_huge_valf();
     }
-    static constexpr float quiet_NaN() noexcept {
+    static constexpr float quiet_NaN() FL_NOEXCEPT {
         return __builtin_nanf("");
     }
-    static constexpr float signaling_NaN() noexcept {
+    static constexpr float signaling_NaN() FL_NOEXCEPT {
         return __builtin_nansf("");
     }
     // Use compiler built-in for denormalized minimum (platform-specific)
-    static constexpr float denorm_min() noexcept {
+    static constexpr float denorm_min() FL_NOEXCEPT {
         return __FLT_DENORM_MIN__;
     }
 };
@@ -448,23 +448,23 @@ struct numeric_limits<double> {
 
     // Use compiler built-in constants (GCC/Clang) instead of hardcoded literals
     // This avoids overflow warnings on platforms with strict compile-time float handling
-    static constexpr double min() noexcept { return __DBL_MIN__; }
-    static constexpr double max() noexcept { return __DBL_MAX__; }
-    static constexpr double lowest() noexcept { return -__DBL_MAX__; }
-    static constexpr double epsilon() noexcept { return __DBL_EPSILON__; }
-    static constexpr double round_error() noexcept { return 0.5; }
+    static constexpr double min() FL_NOEXCEPT { return __DBL_MIN__; }
+    static constexpr double max() FL_NOEXCEPT { return __DBL_MAX__; }
+    static constexpr double lowest() FL_NOEXCEPT { return -__DBL_MAX__; }
+    static constexpr double epsilon() FL_NOEXCEPT { return __DBL_EPSILON__; }
+    static constexpr double round_error() FL_NOEXCEPT { return 0.5; }
 
-    static constexpr double infinity() noexcept {
+    static constexpr double infinity() FL_NOEXCEPT {
         return __builtin_huge_val();
     }
-    static constexpr double quiet_NaN() noexcept {
+    static constexpr double quiet_NaN() FL_NOEXCEPT {
         return __builtin_nan("");
     }
-    static constexpr double signaling_NaN() noexcept {
+    static constexpr double signaling_NaN() FL_NOEXCEPT {
         return __builtin_nans("");
     }
     // Use compiler built-in for denormalized minimum (platform-specific)
-    static constexpr double denorm_min() noexcept {
+    static constexpr double denorm_min() FL_NOEXCEPT {
         return __DBL_DENORM_MIN__;
     }
 };

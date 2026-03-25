@@ -5,6 +5,7 @@
 #include "fl/stl/comparators.h"
 #include "fl/stl/vector.h"
 #include "fl/stl/memory_resource.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 
@@ -59,10 +60,10 @@ class flat_set {
     flat_set(const flat_set& other) = default;
     flat_set& operator=(const flat_set& other) = default;
 
-    flat_set(flat_set&& other) noexcept
+    flat_set(flat_set&& other) FL_NOEXCEPT
         : mData(fl::move(other.mData)), mLess(fl::move(other.mLess)) {}
 
-    flat_set& operator=(flat_set&& other) noexcept {
+    flat_set& operator=(flat_set&& other) FL_NOEXCEPT {
         if (this != &other) {
             mData = fl::move(other.mData);
             mLess = fl::move(other.mLess);
@@ -298,7 +299,7 @@ class flat_set {
     }
 
     // Swap
-    void swap(flat_set& other) noexcept {
+    void swap(flat_set& other) FL_NOEXCEPT {
         mData.swap(other.mData);
         fl::swap(mLess, other.mLess);
     }
@@ -362,7 +363,7 @@ bool operator>=(const flat_set<Key, Less>& lhs,
 // Swap
 template <typename Key, typename Less>
 void swap(flat_set<Key, Less>& lhs,
-          flat_set<Key, Less>& rhs) noexcept {
+          flat_set<Key, Less>& rhs) FL_NOEXCEPT {
     lhs.swap(rhs);
 }
 

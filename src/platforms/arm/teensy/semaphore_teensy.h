@@ -24,6 +24,7 @@
 #include "fl/stl/assert.h"
 #include "fl/stl/chrono.h"
 #include "fl/stl/cstddef.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 namespace platforms {
@@ -99,7 +100,7 @@ public:
 
     /// @brief Get the maximum value the semaphore can hold
     /// @return LeastMaxValue
-    static constexpr ptrdiff_t max() noexcept {
+    static constexpr ptrdiff_t max() FL_NOEXCEPT {
         return LeastMaxValue;
     }
 };

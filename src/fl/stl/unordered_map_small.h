@@ -208,14 +208,14 @@ class unordered_map_small {
         return *this;
     }
 
-    unordered_map_small(unordered_map_small&& other) noexcept
+    unordered_map_small(unordered_map_small&& other) FL_NOEXCEPT
         : mData(fl::move(other.mData)), mOccupied(fl::move(other.mOccupied)),
           mSize(other.mSize), mEqual(fl::move(other.mEqual)),
           mResource(other.mResource) {
         other.mSize = 0;
     }
 
-    unordered_map_small& operator=(unordered_map_small&& other) noexcept {
+    unordered_map_small& operator=(unordered_map_small&& other) FL_NOEXCEPT {
         if (this != &other) {
             mData = fl::move(other.mData);
             mOccupied = fl::move(other.mOccupied);
@@ -370,7 +370,7 @@ class unordered_map_small {
     }
 
     // Swap
-    void swap(unordered_map_small& other) noexcept {
+    void swap(unordered_map_small& other) FL_NOEXCEPT {
         mData.swap(other.mData);
         fl::swap(mOccupied, other.mOccupied);
         fl::swap(mSize, other.mSize);
@@ -472,7 +472,7 @@ class unordered_map_small {
 
 template <typename Key, typename Value, typename Equal>
 void swap(unordered_map_small<Key, Value, Equal>& lhs,
-          unordered_map_small<Key, Value, Equal>& rhs) noexcept {
+          unordered_map_small<Key, Value, Equal>& rhs) FL_NOEXCEPT {
     lhs.swap(rhs);
 }
 

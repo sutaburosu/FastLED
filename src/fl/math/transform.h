@@ -13,6 +13,7 @@ expensive trig functions are needed. Same with scale and offset.
 #include "fl/math/math.h"
 #include "fl/stl/shared_ptr.h"         // For FASTLED_SHARED_PTR macros
 #include "fl/stl/int.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 
@@ -40,8 +41,8 @@ struct Transform16 {
     Transform16() = default;
     
     // Use default move constructor and assignment operator for POD data
-    Transform16(Transform16 &&other) noexcept = default;
-    Transform16 &operator=(Transform16 &&other) noexcept = default;
+    Transform16(Transform16 &&other) FL_NOEXCEPT = default;
+    Transform16 &operator=(Transform16 &&other) FL_NOEXCEPT = default;
     
     alpha16 scale_x = 0xffff;
     alpha16 scale_y = 0xffff;
@@ -77,8 +78,8 @@ struct Matrix3x3f {
     Matrix3x3f() = default;
     Matrix3x3f(const Matrix3x3f &) = default;
     Matrix3x3f &operator=(const Matrix3x3f &) = default;
-    Matrix3x3f(Matrix3x3f &&) noexcept = default;
-    Matrix3x3f &operator=(Matrix3x3f &&) noexcept = default;
+    Matrix3x3f(Matrix3x3f &&) FL_NOEXCEPT = default;
+    Matrix3x3f &operator=(Matrix3x3f &&) FL_NOEXCEPT = default;
     
     static Matrix3x3f Identity() {
         Matrix3x3f m;

@@ -67,29 +67,29 @@ template <typename T, fl::size N> class array {
 
     const T &back() const FL_NOEXCEPT { return mData[N - 1]; }
 
-    pointer data() noexcept { return mData; }
+    pointer data() FL_NOEXCEPT { return mData; }
 
-    const_pointer data() const noexcept { return mData; }
+    const_pointer data() const FL_NOEXCEPT { return mData; }
 
     // Iterators
-    iterator begin() noexcept { return mData; }
+    iterator begin() FL_NOEXCEPT { return mData; }
 
-    const_iterator begin() const noexcept { return mData; }
+    const_iterator begin() const FL_NOEXCEPT { return mData; }
 
-    const_iterator cbegin() const noexcept { return mData; }
+    const_iterator cbegin() const FL_NOEXCEPT { return mData; }
 
-    iterator end() noexcept { return mData + N; }
+    iterator end() FL_NOEXCEPT { return mData + N; }
 
-    const_iterator end() const noexcept { return mData + N; }
+    const_iterator end() const FL_NOEXCEPT { return mData + N; }
 
-    const_iterator cend() const noexcept { return mData + N; }
+    const_iterator cend() const FL_NOEXCEPT { return mData + N; }
 
     // Capacity
-    bool empty() const noexcept { return N == 0; }
+    bool empty() const FL_NOEXCEPT { return N == 0; }
 
-    fl::size size() const noexcept { return N; }
+    fl::size size() const FL_NOEXCEPT { return N; }
 
-    fl::size max_size() const noexcept { return N; }
+    fl::size max_size() const FL_NOEXCEPT { return N; }
 
     // Operations
     void fill(const T &value) FL_NOEXCEPT {

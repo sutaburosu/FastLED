@@ -68,14 +68,14 @@ template <fl::u32 N> class bitset_fixed {
     Proxy operator[](fl::u32 pos) FL_NOEXCEPT { return Proxy(*this, pos); }
 
     /// Constructs a bitset_fixed with all bits reset.
-    constexpr bitset_fixed() noexcept : _blocks{} {}
+    constexpr bitset_fixed() FL_NOEXCEPT : _blocks{} {}
 
     void to_string(string* dst) const FL_NOEXCEPT {
         detail::to_string(_blocks, N, dst);
     }
 
     /// Resets all bits to zero.
-    void reset() noexcept {
+    void reset() FL_NOEXCEPT {
         for (fl::u32 i = 0; i < block_count; ++i) {
             _blocks[i] = 0;
         }
@@ -118,7 +118,7 @@ template <fl::u32 N> class bitset_fixed {
     }
 
     /// Flips all bits.
-    bitset_fixed &flip() noexcept {
+    bitset_fixed &flip() FL_NOEXCEPT {
         for (fl::u32 i = 0; i < block_count; ++i) {
             _blocks[i] = ~_blocks[i];
         }
@@ -131,7 +131,7 @@ template <fl::u32 N> class bitset_fixed {
     }
 
     /// Tests whether the bit at position pos is set.
-    bool test(fl::u32 pos) const noexcept {
+    bool test(fl::u32 pos) const FL_NOEXCEPT {
         if (pos < N) {
             const fl::u32 idx = pos / bits_per_block;
             const fl::u32 off = pos % bits_per_block;
@@ -141,10 +141,10 @@ template <fl::u32 N> class bitset_fixed {
     }
 
     /// Returns the value of the bit at position pos.
-    bool operator[](fl::u32 pos) const noexcept { return test(pos); }
+    bool operator[](fl::u32 pos) const FL_NOEXCEPT { return test(pos); }
 
     /// Returns the number of set bits.
-    fl::u32 count() const noexcept {
+    fl::u32 count() const FL_NOEXCEPT {
         fl::u32 cnt = 0;
         // Count bits in all complete blocks
         for (fl::u32 i = 0; i < block_count - 1; ++i) {
@@ -172,9 +172,9 @@ template <fl::u32 N> class bitset_fixed {
     }
 
     /// Queries.
-    bool any() const noexcept { return count() > 0; }
-    bool none() const noexcept { return count() == 0; }
-    bool all() const noexcept {
+    bool any() const FL_NOEXCEPT { return count() > 0; }
+    bool none() const FL_NOEXCEPT { return count() == 0; }
+    bool all() const FL_NOEXCEPT {
         if (N == 0)
             return true;
 
@@ -204,21 +204,21 @@ template <fl::u32 N> class bitset_fixed {
     }
 
     /// Bitwise AND
-    bitset_fixed &operator&=(const bitset_fixed &other) noexcept {
+    bitset_fixed &operator&=(const bitset_fixed &other) FL_NOEXCEPT {
         for (fl::u32 i = 0; i < block_count; ++i) {
             _blocks[i] &= other._blocks[i];
         }
         return *this;
     }
     /// Bitwise OR
-    bitset_fixed &operator|=(const bitset_fixed &other) noexcept {
+    bitset_fixed &operator|=(const bitset_fixed &other) FL_NOEXCEPT {
         for (fl::u32 i = 0; i < block_count; ++i) {
             _blocks[i] |= other._blocks[i];
         }
         return *this;
     }
     /// Bitwise XOR
-    bitset_fixed &operator^=(const bitset_fixed &other) noexcept {
+    bitset_fixed &operator^=(const bitset_fixed &other) FL_NOEXCEPT {
         for (fl::u32 i = 0; i < block_count; ++i) {
             _blocks[i] ^= other._blocks[i];
         }
@@ -226,13 +226,13 @@ template <fl::u32 N> class bitset_fixed {
     }
 
     /// Size of the bitset_fixed (number of bits).
-    constexpr fl::u32 size() const noexcept { return N; }
+    constexpr fl::u32 size() const FL_NOEXCEPT { return N; }
 
     /// Finds the first bit that matches the test value.
     /// Returns the index of the first matching bit, or -1 if none found.
     /// @param test_value The value to search for (true or false)
     /// @param offset Starting position to search from (default: 0)
-    fl::i32 find_first(bool test_value, fl::u32 offset = 0) const noexcept {
+    fl::i32 find_first(bool test_value, fl::u32 offset = 0) const FL_NOEXCEPT {
         // If offset is beyond our size, no match possible
         if (offset >= N) {
             return -1;
@@ -285,7 +285,7 @@ template <fl::u32 N> class bitset_fixed {
     /// @param test_value The value to search for (true or false)
     /// @param min_length Minimum length of the run (default: 1)
     /// @param offset Starting position to search from (default: 0)
-    fl::i32 find_run(bool test_value, fl::u32 min_length, fl::u32 offset = 0) const noexcept {
+    fl::i32 find_run(bool test_value, fl::u32 min_length, fl::u32 offset = 0) const FL_NOEXCEPT {
         fl::u32 run_start = offset;
         fl::u32 run_length = 0;
         
@@ -309,7 +309,7 @@ template <fl::u32 N> class bitset_fixed {
     }
 
     /// Equality comparison
-    bool operator==(const bitset_fixed &other) const noexcept {
+    bool operator==(const bitset_fixed &other) const FL_NOEXCEPT {
         for (fl::u32 i = 0; i < block_count; ++i) {
             if (_blocks[i] != other._blocks[i]) {
                 return false;
@@ -318,12 +318,12 @@ template <fl::u32 N> class bitset_fixed {
         return true;
     }
 
-    bool operator!=(const bitset_fixed &other) const noexcept {
+    bool operator!=(const bitset_fixed &other) const FL_NOEXCEPT {
         return !(*this == other);
     }
 
     /// Lexicographic comparison
-    bool operator<(const bitset_fixed &other) const noexcept {
+    bool operator<(const bitset_fixed &other) const FL_NOEXCEPT {
         for (fl::i32 i = static_cast<fl::i32>(block_count) - 1; i >= 0; --i) {
             if (_blocks[i] < other._blocks[i]) {
                 return true;
@@ -335,32 +335,32 @@ template <fl::u32 N> class bitset_fixed {
         return false;
     }
 
-    bool operator<=(const bitset_fixed &other) const noexcept {
+    bool operator<=(const bitset_fixed &other) const FL_NOEXCEPT {
         return *this < other || *this == other;
     }
 
-    bool operator>(const bitset_fixed &other) const noexcept {
+    bool operator>(const bitset_fixed &other) const FL_NOEXCEPT {
         return other < *this;
     }
 
-    bool operator>=(const bitset_fixed &other) const noexcept {
+    bool operator>=(const bitset_fixed &other) const FL_NOEXCEPT {
         return other <= *this;
     }
 
     /// Friend operators for convenience.
     friend bitset_fixed operator&(bitset_fixed lhs,
-                                 const bitset_fixed &rhs) noexcept {
+                                 const bitset_fixed &rhs) FL_NOEXCEPT {
         return lhs &= rhs;
     }
     friend bitset_fixed operator|(bitset_fixed lhs,
-                                 const bitset_fixed &rhs) noexcept {
+                                 const bitset_fixed &rhs) FL_NOEXCEPT {
         return lhs |= rhs;
     }
     friend bitset_fixed operator^(bitset_fixed lhs,
-                                 const bitset_fixed &rhs) noexcept {
+                                 const bitset_fixed &rhs) FL_NOEXCEPT {
         return lhs ^= rhs;
     }
-    friend bitset_fixed operator~(bitset_fixed bs) noexcept { return bs.flip(); }
+    friend bitset_fixed operator~(bitset_fixed bs) FL_NOEXCEPT { return bs.flip(); }
 };
 
 /// A Bitset implementation with inline storage that can grow if needed.
@@ -399,7 +399,7 @@ class bitset_inlined {
         }
     }
     bitset_inlined(const bitset_inlined &other) FL_NOEXCEPT : _storage(other._storage) {}
-    bitset_inlined(bitset_inlined &&other) noexcept
+    bitset_inlined(bitset_inlined &&other) FL_NOEXCEPT
         : _storage(fl::move(other._storage)) {}
     bitset_inlined &operator=(const bitset_inlined &other) FL_NOEXCEPT {
         if (this != &other) {
@@ -407,7 +407,7 @@ class bitset_inlined {
         }
         return *this;
     }
-    bitset_inlined &operator=(bitset_inlined &&other) noexcept {
+    bitset_inlined &operator=(bitset_inlined &&other) FL_NOEXCEPT {
         if (this != &other) {
             _storage = fl::move(other._storage);
         }
@@ -415,7 +415,7 @@ class bitset_inlined {
     }
 
     /// Resets all bits to zero.
-    void reset() noexcept {
+    void reset() FL_NOEXCEPT {
         if (_storage.template is<fixed_bitset>()) {
             _storage.template ptr<fixed_bitset>()->reset();
         } else {
@@ -517,7 +517,7 @@ class bitset_inlined {
     }
 
     /// Flips all bits.
-    bitset_inlined &flip() noexcept {
+    bitset_inlined &flip() FL_NOEXCEPT {
         if (_storage.template is<fixed_bitset>()) {
             _storage.template ptr<fixed_bitset>()->flip();
         } else {
@@ -546,7 +546,7 @@ class bitset_inlined {
     }
 
     /// Tests whether the bit at position pos is set.
-    bool test(fl::u32 pos) const noexcept {
+    bool test(fl::u32 pos) const FL_NOEXCEPT {
         if (_storage.template is<fixed_bitset>()) {
             return pos < N ? _storage.template ptr<fixed_bitset>()->test(pos)
                            : false;
@@ -556,10 +556,10 @@ class bitset_inlined {
     }
 
     /// Returns the value of the bit at position pos.
-    bool operator[](fl::u32 pos) const noexcept { return test(pos); }
+    bool operator[](fl::u32 pos) const FL_NOEXCEPT { return test(pos); }
 
     /// Returns the number of set bits.
-    fl::u32 count() const noexcept {
+    fl::u32 count() const FL_NOEXCEPT {
         if (_storage.template is<fixed_bitset>()) {
             return _storage.template ptr<fixed_bitset>()->count();
         } else {
@@ -568,7 +568,7 @@ class bitset_inlined {
     }
 
     /// Queries.
-    bool any() const noexcept {
+    bool any() const FL_NOEXCEPT {
         if (_storage.template is<fixed_bitset>()) {
             return _storage.template ptr<fixed_bitset>()->any();
         } else {
@@ -576,7 +576,7 @@ class bitset_inlined {
         }
     }
 
-    bool none() const noexcept {
+    bool none() const FL_NOEXCEPT {
         if (_storage.template is<fixed_bitset>()) {
             return _storage.template ptr<fixed_bitset>()->none();
         } else {
@@ -584,7 +584,7 @@ class bitset_inlined {
         }
     }
 
-    bool all() const noexcept {
+    bool all() const FL_NOEXCEPT {
         if (_storage.template is<fixed_bitset>()) {
             return _storage.template ptr<fixed_bitset>()->all();
         } else {
@@ -593,7 +593,7 @@ class bitset_inlined {
     }
 
     /// Size of the Bitset (number of bits).
-    fl::u32 size() const noexcept {
+    fl::u32 size() const FL_NOEXCEPT {
         if (_storage.template is<fixed_bitset>()) {
             return N;
         } else {
@@ -614,7 +614,7 @@ class bitset_inlined {
     /// Returns the index of the first matching bit, or -1 if none found.
     /// @param test_value The value to search for (true or false)
     /// @param offset Starting position to search from (default: 0)
-    fl::i32 find_first(bool test_value, fl::u32 offset = 0) const noexcept {
+    fl::i32 find_first(bool test_value, fl::u32 offset = 0) const FL_NOEXCEPT {
         if (_storage.template is<fixed_bitset>()) {
             return _storage.template ptr<fixed_bitset>()->find_first(test_value, offset);
         } else {
@@ -623,14 +623,14 @@ class bitset_inlined {
     }
 
     /// Bitwise operators
-    friend bitset_inlined operator~(const bitset_inlined &bs) noexcept {
+    friend bitset_inlined operator~(const bitset_inlined &bs) FL_NOEXCEPT {
         bitset_inlined result = bs;
         result.flip();
         return result;
     }
 
     friend bitset_inlined operator&(const bitset_inlined &lhs,
-                                   const bitset_inlined &rhs) noexcept {
+                                   const bitset_inlined &rhs) FL_NOEXCEPT {
         bitset_inlined result = lhs;
 
         if (result._storage.template is<fixed_bitset>() &&
@@ -655,7 +655,7 @@ class bitset_inlined {
     }
 
     friend bitset_inlined operator|(const bitset_inlined &lhs,
-                                   const bitset_inlined &rhs) noexcept {
+                                   const bitset_inlined &rhs) FL_NOEXCEPT {
         bitset_inlined result = lhs;
 
         if (result._storage.template is<fixed_bitset>() &&
@@ -685,7 +685,7 @@ class bitset_inlined {
     }
 
     friend bitset_inlined operator^(const bitset_inlined &lhs,
-                                   const bitset_inlined &rhs) noexcept {
+                                   const bitset_inlined &rhs) FL_NOEXCEPT {
         bitset_inlined result = lhs;
 
         if (result._storage.template is<fixed_bitset>() &&
@@ -713,7 +713,7 @@ class bitset_inlined {
     }
 
     /// Equality comparison
-    bool operator==(const bitset_inlined &other) const noexcept {
+    bool operator==(const bitset_inlined &other) const FL_NOEXCEPT {
         if (size() != other.size()) {
             return false;
         }
@@ -725,12 +725,12 @@ class bitset_inlined {
         return true;
     }
 
-    bool operator!=(const bitset_inlined &other) const noexcept {
+    bool operator!=(const bitset_inlined &other) const FL_NOEXCEPT {
         return !(*this == other);
     }
 
     /// Lexicographic comparison
-    bool operator<(const bitset_inlined &other) const noexcept {
+    bool operator<(const bitset_inlined &other) const FL_NOEXCEPT {
         fl::u32 min_size = size() < other.size() ? size() : other.size();
         for (fl::u32 i = min_size; i > 0; --i) {
             bool this_bit = test(i - 1);
@@ -743,15 +743,15 @@ class bitset_inlined {
         return size() < other.size();
     }
 
-    bool operator<=(const bitset_inlined &other) const noexcept {
+    bool operator<=(const bitset_inlined &other) const FL_NOEXCEPT {
         return *this < other || *this == other;
     }
 
-    bool operator>(const bitset_inlined &other) const noexcept {
+    bool operator>(const bitset_inlined &other) const FL_NOEXCEPT {
         return other < *this;
     }
 
-    bool operator>=(const bitset_inlined &other) const noexcept {
+    bool operator>=(const bitset_inlined &other) const FL_NOEXCEPT {
         return other <= *this;
     }
 };

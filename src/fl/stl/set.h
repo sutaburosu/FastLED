@@ -11,6 +11,7 @@
 #include "fl/stl/utility.h"
 #include "fl/stl/algorithm.h"
 #include "fl/stl/int.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 
@@ -214,7 +215,7 @@ template <typename Key> class VectorSet {
     VectorSet(const VectorSet &other) : data(other.data) {}
 
     // Move constructor
-    VectorSet(VectorSet &&other) noexcept
+    VectorSet(VectorSet &&other) FL_NOEXCEPT
         : data(fl::move(other.data)) {}
 
     // Copy assignment operator
@@ -226,7 +227,7 @@ template <typename Key> class VectorSet {
     }
 
     // Move assignment operator
-    VectorSet &operator=(VectorSet &&other) noexcept {
+    VectorSet &operator=(VectorSet &&other) FL_NOEXCEPT {
         if (this != &other) {
             data = fl::move(other.data);
         }

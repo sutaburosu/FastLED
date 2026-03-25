@@ -12,6 +12,7 @@
 // IWYU pragma: end_keep
 #else
 #include "platforms/stub/time_stub.h"  // For fl::micros() on host tests
+#include "fl/stl/noexcept.h"
 #endif
 
 namespace fl {

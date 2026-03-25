@@ -672,16 +672,16 @@ struct json_value {
     variant_t data;
 
     // Constructors
-    json_value() noexcept : data(nullptr) {}
-    json_value(fl::nullptr_t) noexcept : data(nullptr) {}
-    json_value(bool b) noexcept : data(b) {}
-    json_value(i64 i) noexcept : data(i) {}
+    json_value() FL_NOEXCEPT : data(nullptr) {}
+    json_value(fl::nullptr_t) FL_NOEXCEPT : data(nullptr) {}
+    json_value(bool b) FL_NOEXCEPT : data(b) {}
+    json_value(i64 i) FL_NOEXCEPT : data(i) {}
     // Explicit int/unsigned constructors to prevent ambiguity on platforms where
     // int != i64 (e.g., 32-bit ARM with GCC). Without these, int is equally
     // convertible to bool, i64, and float.
-    json_value(int i) noexcept : data(static_cast<i64>(i)) {}
-    json_value(unsigned int i) noexcept : data(static_cast<i64>(i)) {}
-    json_value(float f) noexcept : data(f) {}  // Changed from double to float
+    json_value(int i) FL_NOEXCEPT : data(static_cast<i64>(i)) {}
+    json_value(unsigned int i) FL_NOEXCEPT : data(static_cast<i64>(i)) {}
+    json_value(float f) FL_NOEXCEPT : data(f) {}  // Changed from double to float
     json_value(const fl::string& s) FL_NOEXCEPT : data(s) {
     }
     json_value(const json_array& a) FL_NOEXCEPT : data(a) {
@@ -801,30 +801,30 @@ struct json_value {
     }
 
     // Type queries - using is<T>() instead of index() for fl::variant
-    bool is_null() const noexcept { 
+    bool is_null() const FL_NOEXCEPT { 
         //FASTLED_WARN("is_null called, tag=" << data.tag());
         return data.is<fl::nullptr_t>(); 
     }
-    bool is_bool() const noexcept { 
+    bool is_bool() const FL_NOEXCEPT { 
         //FASTLED_WARN("is_bool called, tag=" << data.tag());
         return data.is<bool>(); 
     }
-    bool is_int() const noexcept {
+    bool is_int() const FL_NOEXCEPT {
         //FASTLED_WARN("is_int called, tag=" << data.tag());
         return data.is<i64>();
     }
-    bool is_double() const noexcept { 
+    bool is_double() const FL_NOEXCEPT { 
         //FASTLED_WARN("is_double called, tag=" << data.tag());
         return data.is<float>(); 
     }
-    bool is_float() const noexcept {
+    bool is_float() const FL_NOEXCEPT {
         return data.is<float>();
     }
     // is_number() returns true if the value is any numeric type (int or float)
-    bool is_number() const noexcept {
+    bool is_number() const FL_NOEXCEPT {
         return is_int() || is_float();
     }
-    bool is_string() const noexcept { 
+    bool is_string() const FL_NOEXCEPT { 
         //FASTLED_WARN("is_string called, tag=" << data.tag());
         return data.is<fl::string>(); 
     }
@@ -863,7 +863,7 @@ struct json_value {
         }
     };
     
-    bool is_array() const noexcept { 
+    bool is_array() const FL_NOEXCEPT { 
         //FASTLED_WARN("is_array called, tag=" << data.tag());
         IsArrayVisitor visitor;
         data.visit(visitor);
@@ -871,23 +871,23 @@ struct json_value {
     }
     
     // Returns true only for json_array (not specialized array types)
-    bool is_generic_array() const noexcept {
+    bool is_generic_array() const FL_NOEXCEPT {
         return data.is<json_array>();
     }
     
-    bool is_object() const noexcept { 
+    bool is_object() const FL_NOEXCEPT { 
         //FASTLED_WARN("is_object called, tag=" << data.tag());
         return data.is<json_object>(); 
     }
-    bool is_audio() const noexcept {
+    bool is_audio() const FL_NOEXCEPT {
         //FASTLED_WARN("is_audio called, tag=" << data.tag());
         return data.is<fl::vector<i16>>();
     }
-    bool is_bytes() const noexcept {
+    bool is_bytes() const FL_NOEXCEPT {
         //FASTLED_WARN("is_bytes called, tag=" << data.tag());
         return data.is<fl::vector<u8>>();
     }
-    bool is_floats() const noexcept {
+    bool is_floats() const FL_NOEXCEPT {
         //FASTLED_WARN("is_floats called, tag=" << data.tag());
         return data.is<fl::vector<float>>();
     }

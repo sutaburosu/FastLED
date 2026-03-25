@@ -3,6 +3,7 @@
 #include "fl/spi/multi_lane_device.h"
 #include "fl/system/log.h"
 #include "fl/system/log.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 
@@ -58,14 +59,14 @@ Spi::Spi(const SpiConfig& config)
     is_ok = true;
 }
 
-Spi::Spi(Spi&& other) noexcept
+Spi::Spi(Spi&& other) FL_NOEXCEPT
     : device(fl::move(other.device))
     , is_ok(other.is_ok)
     , error_code(other.error_code) {
     other.is_ok = false;
 }
 
-Spi& Spi::operator=(Spi&& other) noexcept {
+Spi& Spi::operator=(Spi&& other) FL_NOEXCEPT {
     if (this != &other) {
         device = fl::move(other.device);
         is_ok = other.is_ok;

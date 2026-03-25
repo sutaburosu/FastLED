@@ -4,6 +4,7 @@
 #include "fl/math/math.h"
 #include "fl/math/math.h"
 #include "fl/stl/compiler_control.h"
+#include "fl/stl/noexcept.h"
 
 
 FL_DISABLE_WARNING_PUSH
@@ -26,8 +27,8 @@ template <typename T> struct vec3 {
     explicit constexpr vec3(U xyz) : x(xyz), y(xyz), z(xyz) {}
 
     constexpr vec3(const vec3 &p) = default;
-    constexpr vec3(vec3 &&p) noexcept = default;
-    vec3 &operator=(vec3 &&p) noexcept = default;
+    constexpr vec3(vec3 &&p) FL_NOEXCEPT = default;
+    vec3 &operator=(vec3 &&p) FL_NOEXCEPT = default;
     
     vec3 &operator*=(const float &f) {
         x *= f;
@@ -194,8 +195,8 @@ template <typename T> struct vec2 {
     template <typename U> explicit constexpr vec2(U xy) : x(xy), y(xy) {}
 
     constexpr vec2(const vec2 &p) = default;
-    constexpr vec2(vec2 &&p) noexcept = default;
-    vec2 &operator=(vec2 &&p) noexcept = default;
+    constexpr vec2(vec2 &&p) FL_NOEXCEPT = default;
+    vec2 &operator=(vec2 &&p) FL_NOEXCEPT = default;
     
     vec2 &operator*=(const float &f) {
         x *= f;

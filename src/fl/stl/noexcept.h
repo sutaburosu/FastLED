@@ -6,7 +6,7 @@
 #include "platforms/is_platform.h" // IWYU pragma: keep
 
 #ifndef FL_NOEXCEPT
-#if defined(FL_IS_ESP32) && defined(__cplusplus)
+#ifdef __cplusplus
 #define FL_NOEXCEPT noexcept
 #else
 #define FL_NOEXCEPT

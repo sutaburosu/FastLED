@@ -191,8 +191,8 @@ public:
     using weak_type = weak_ptr<T>;
     
     // Default constructor
-    shared_ptr() noexcept : mPtr(nullptr), mControlBlock(nullptr) {}
-    shared_ptr(fl::nullptr_t) noexcept : mPtr(nullptr), mControlBlock(nullptr) {}
+    shared_ptr() FL_NOEXCEPT : mPtr(nullptr), mControlBlock(nullptr) {}
+    shared_ptr(fl::nullptr_t) FL_NOEXCEPT : mPtr(nullptr), mControlBlock(nullptr) {}
     
 
     
@@ -208,14 +208,14 @@ public:
     }
     
     // Move constructor
-    shared_ptr(shared_ptr&& other) noexcept : mPtr(other.mPtr), mControlBlock(other.mControlBlock) {
+    shared_ptr(shared_ptr&& other) FL_NOEXCEPT : mPtr(other.mPtr), mControlBlock(other.mControlBlock) {
         other.mPtr = nullptr;
         other.mControlBlock = nullptr;
     }
     
     // Converting move constructor (allows upcasting: shared_ptr<Derived> → shared_ptr<Base>)
     template<typename Y, typename = typename fl::enable_if<fl::is_base_of<T, Y>::value>::type>
-    shared_ptr(shared_ptr<Y>&& other) noexcept : mPtr(static_cast<T*>(other.mPtr)), mControlBlock(other.mControlBlock) {
+    shared_ptr(shared_ptr<Y>&& other) FL_NOEXCEPT : mPtr(static_cast<T*>(other.mPtr)), mControlBlock(other.mControlBlock) {
         other.mPtr = nullptr;
         other.mControlBlock = nullptr;
     }
@@ -228,7 +228,7 @@ public:
     // Shares ownership with 'other' but stores 'ptr'
     // Used by pointer cast functions (static_pointer_cast, etc.)
     template<typename Y>
-    shared_ptr(const shared_ptr<Y>& other, T* ptr) noexcept
+    shared_ptr(const shared_ptr<Y>& other, T* ptr) FL_NOEXCEPT
         : mPtr(ptr), mControlBlock(other.mControlBlock) {
         acquire();
     }
@@ -261,7 +261,7 @@ public:
         return *this;
     }
     
-    shared_ptr& operator=(shared_ptr&& other) noexcept {
+    shared_ptr& operator=(shared_ptr&& other) FL_NOEXCEPT {
         if (this != &other) {
             this->swap(other);
             other.reset();
@@ -271,7 +271,7 @@ public:
     
     // Converting move assignment (allows upcasting: shared_ptr<Derived> → shared_ptr<Base>)
     template<typename Y, typename = typename fl::enable_if<fl::is_base_of<T, Y>::value>::type>
-    shared_ptr& operator=(shared_ptr<Y>&& other) noexcept {
+    shared_ptr& operator=(shared_ptr<Y>&& other) FL_NOEXCEPT {
         if (static_cast<void*>(this) != static_cast<void*>(&other)) {
             reset();
             mPtr = static_cast<T*>(other.mPtr);
@@ -283,7 +283,7 @@ public:
     }
     
     // Modifiers
-    void reset() noexcept {
+    void reset() FL_NOEXCEPT {
         //FASTLED_WARN("shared_ptr::reset() called: mPtr=" << mPtr 
         //          << ", mControlBlock=" << mControlBlock);
         if (mControlBlock) {
@@ -301,17 +301,17 @@ public:
         mControlBlock = nullptr;
     }
 
-    void reset(shared_ptr&& other) noexcept {
+    void reset(shared_ptr&& other) FL_NOEXCEPT {
         this->swap(other);
         other.reset();
     }
 
-    void swap(shared_ptr& other) noexcept {
+    void swap(shared_ptr& other) FL_NOEXCEPT {
         fl::swap(mPtr, other.mPtr);
         fl::swap(mControlBlock, other.mControlBlock);
     }
 
-    void swap(shared_ptr&& other) noexcept {
+    void swap(shared_ptr&& other) FL_NOEXCEPT {
         fl::swap(mPtr, other.mPtr);
         fl::swap(mControlBlock, other.mControlBlock);
     }
@@ -331,15 +331,15 @@ public:
 
     
     // Observers
-    T* get() const noexcept { return mPtr; }
+    T* get() const FL_NOEXCEPT { return mPtr; }
     
-    T& operator*() const noexcept { return *mPtr; }
-    T* operator->() const noexcept { return mPtr; }
+    T& operator*() const FL_NOEXCEPT { return *mPtr; }
+    T* operator->() const FL_NOEXCEPT { return mPtr; }
     
     T& operator[](ptrdiff_t idx) const FL_NOEXCEPT { return mPtr[idx]; }
     
     // NEW: use_count returns 0 for no-tracking shared_ptrs
-    long use_count() const noexcept {
+    long use_count() const FL_NOEXCEPT {
         if (!mControlBlock) return 0;
         if (mControlBlock->shared_count == detail::ControlBlockBase::NO_TRACKING_VALUE) {
             return 0;
@@ -347,22 +347,22 @@ public:
         return static_cast<long>(mControlBlock->shared_count);
     }
     
-    bool unique() const noexcept { return use_count() == 1; }
+    bool unique() const FL_NOEXCEPT { return use_count() == 1; }
     
-    explicit operator bool() const noexcept { return mPtr != nullptr; }
+    explicit operator bool() const FL_NOEXCEPT { return mPtr != nullptr; }
     
     // NEW: Check if this is a no-tracking shared_ptr
-    bool is_no_tracking() const noexcept {
+    bool is_no_tracking() const FL_NOEXCEPT {
         return mControlBlock && mControlBlock->is_no_tracking();
     }
     
     // Comparison operators for nullptr only (to avoid ambiguity with non-member operators)
     
-    bool operator==(fl::nullptr_t) const noexcept {
+    bool operator==(fl::nullptr_t) const FL_NOEXCEPT {
         return mPtr == nullptr;
     }
     
-    bool operator!=(fl::nullptr_t) const noexcept {
+    bool operator!=(fl::nullptr_t) const FL_NOEXCEPT {
         return mPtr != nullptr;
     }
 
@@ -454,74 +454,74 @@ shared_ptr<T> allocate_shared(const A& /* alloc */, Args&&... args) FL_NOEXCEPT 
 
 // Non-member comparison operators
 template<typename T, typename Y>
-bool operator==(const shared_ptr<T>& lhs, const shared_ptr<Y>& rhs) noexcept {
+bool operator==(const shared_ptr<T>& lhs, const shared_ptr<Y>& rhs) FL_NOEXCEPT {
     return lhs.get() == rhs.get();
 }
 
 template<typename T, typename Y>
-bool operator!=(const shared_ptr<T>& lhs, const shared_ptr<Y>& rhs) noexcept {
+bool operator!=(const shared_ptr<T>& lhs, const shared_ptr<Y>& rhs) FL_NOEXCEPT {
     return lhs.get() != rhs.get();
 }
 
 template<typename T, typename Y>
-bool operator<(const shared_ptr<T>& lhs, const shared_ptr<Y>& rhs) noexcept {
+bool operator<(const shared_ptr<T>& lhs, const shared_ptr<Y>& rhs) FL_NOEXCEPT {
     return lhs.get() < rhs.get();
 }
 
 template<typename T, typename Y>
-bool operator<=(const shared_ptr<T>& lhs, const shared_ptr<Y>& rhs) noexcept {
+bool operator<=(const shared_ptr<T>& lhs, const shared_ptr<Y>& rhs) FL_NOEXCEPT {
     return lhs.get() <= rhs.get();
 }
 
 template<typename T, typename Y>
-bool operator>(const shared_ptr<T>& lhs, const shared_ptr<Y>& rhs) noexcept {
+bool operator>(const shared_ptr<T>& lhs, const shared_ptr<Y>& rhs) FL_NOEXCEPT {
     return lhs.get() > rhs.get();
 }
 
 template<typename T, typename Y>
-bool operator>=(const shared_ptr<T>& lhs, const shared_ptr<Y>& rhs) noexcept {
+bool operator>=(const shared_ptr<T>& lhs, const shared_ptr<Y>& rhs) FL_NOEXCEPT {
     return lhs.get() >= rhs.get();
 }
 
 template<typename T>
-bool operator==(const shared_ptr<T>& lhs, fl::nullptr_t) noexcept {
+bool operator==(const shared_ptr<T>& lhs, fl::nullptr_t) FL_NOEXCEPT {
     return lhs.get() == nullptr;
 }
 
 template<typename T>
-bool operator==(fl::nullptr_t, const shared_ptr<T>& rhs) noexcept {
+bool operator==(fl::nullptr_t, const shared_ptr<T>& rhs) FL_NOEXCEPT {
     return nullptr == rhs.get();
 }
 
 template<typename T>
-bool operator!=(const shared_ptr<T>& lhs, fl::nullptr_t) noexcept {
+bool operator!=(const shared_ptr<T>& lhs, fl::nullptr_t) FL_NOEXCEPT {
     return lhs.get() != nullptr;
 }
 
 template<typename T>
-bool operator!=(fl::nullptr_t, const shared_ptr<T>& rhs) noexcept {
+bool operator!=(fl::nullptr_t, const shared_ptr<T>& rhs) FL_NOEXCEPT {
     return nullptr != rhs.get();
 }
 
 // Utility functions
 template<typename T>
-void swap(shared_ptr<T>& lhs, shared_ptr<T>& rhs) noexcept {
+void swap(shared_ptr<T>& lhs, shared_ptr<T>& rhs) FL_NOEXCEPT {
     lhs.swap(rhs);
 }
 
 // Casts - using aliasing constructor (matches std::shared_ptr behavior)
 template<typename T, typename Y>
-shared_ptr<T> static_pointer_cast(const shared_ptr<Y>& other) noexcept {
+shared_ptr<T> static_pointer_cast(const shared_ptr<Y>& other) FL_NOEXCEPT {
     return shared_ptr<T>(other, static_cast<T*>(other.get()));
 }
 
 template<typename T, typename Y>
-shared_ptr<T> const_pointer_cast(const shared_ptr<Y>& other) noexcept {
+shared_ptr<T> const_pointer_cast(const shared_ptr<Y>& other) FL_NOEXCEPT {
     return shared_ptr<T>(other, const_cast<T*>(other.get()));
 }
 
 template<typename T, typename Y>
-shared_ptr<T> reinterpret_pointer_cast(const shared_ptr<Y>& other) noexcept {
+shared_ptr<T> reinterpret_pointer_cast(const shared_ptr<Y>& other) FL_NOEXCEPT {
     return shared_ptr<T>(other, fl::bit_cast<T*>(other.get()));
 }
 

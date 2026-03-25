@@ -10,6 +10,7 @@
 // Include color.h for LEDColorCorrection and ColorTemperature enums
 // These are needed for constexpr constructors and can't be forward-declared
 #include "color.h"
+#include "fl/stl/noexcept.h"
 
 // Forward declarations
 namespace fl {
@@ -118,19 +119,19 @@ struct CRGB {
     /// @param ir input red value
     /// @param ig input green value
     /// @param ib input blue value
-    constexpr CRGB(u8 ir, u8 ig, u8 ib) noexcept
+    constexpr CRGB(u8 ir, u8 ig, u8 ib) FL_NOEXCEPT
         : r(ir), g(ig), b(ib)
     {
     }
 
     /// Allow construction from 32-bit (really 24-bit) bit 0xRRGGBB color code
     /// @param colorcode a packed 24 bit color code
-    constexpr CRGB(u32 colorcode) noexcept
+    constexpr CRGB(u32 colorcode) FL_NOEXCEPT
     : r((colorcode >> 16) & 0xFF), g((colorcode >> 8) & 0xFF), b((colorcode >> 0) & 0xFF)
     {
     }
 
-    constexpr u32 as_uint32_t() const noexcept {
+    constexpr u32 as_uint32_t() const FL_NOEXCEPT {
         return u32(0xff000000) |
                (u32{r} << 16) |
                (u32{g} << 8) |
@@ -139,14 +140,14 @@ struct CRGB {
 
     /// Allow construction from a LEDColorCorrection enum
     /// @param colorcode an LEDColorCorrect enumeration value
-    constexpr CRGB(LEDColorCorrection colorcode) noexcept
+    constexpr CRGB(LEDColorCorrection colorcode) FL_NOEXCEPT
     : r((colorcode >> 16) & 0xFF), g((colorcode >> 8) & 0xFF), b((colorcode >> 0) & 0xFF)
     {
     }
 
     /// Allow construction from a ColorTemperature enum
     /// @param colorcode an ColorTemperature enumeration value
-    constexpr CRGB(ColorTemperature colorcode) noexcept
+    constexpr CRGB(ColorTemperature colorcode) FL_NOEXCEPT
     : r((colorcode >> 16) & 0xFF), g((colorcode >> 8) & 0xFF), b((colorcode >> 0) & 0xFF)
     {
     }

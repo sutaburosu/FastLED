@@ -16,6 +16,7 @@
 // CRITICAL: Include <chrono> BEFORE opening namespace to avoid polluting std::
 // IWYU pragma: begin_keep
 #include <chrono>  // ok include
+#include "fl/stl/noexcept.h"
 // IWYU pragma: end_keep
 
 namespace fl {
@@ -84,7 +85,7 @@ public:
 
     /// @brief Get the maximum value the semaphore can hold
     /// @return LeastMaxValue
-    static constexpr ptrdiff_t max() noexcept {
+    static constexpr ptrdiff_t max() FL_NOEXCEPT {
         return LeastMaxValue;
     }
 };

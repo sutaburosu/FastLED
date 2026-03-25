@@ -14,6 +14,7 @@
 
 #ifdef FASTLED_TESTING
 #include "fl/stl/cstring.h"  // For fl::strerror
+#include "fl/stl/noexcept.h"
 #endif
 
 namespace fl {
@@ -78,7 +79,7 @@ public:
     ifstream& operator=(const ifstream&) = delete;
 
     // Moveable
-    ifstream(ifstream&& other) noexcept
+    ifstream(ifstream&& other) FL_NOEXCEPT
         : mHandle(other.mHandle), mLastRead(other.mLastRead),
           mGood(other.mGood), mEof(other.mEof), mFail(other.mFail) {
         other.mHandle.reset();
@@ -88,7 +89,7 @@ public:
         other.mFail = true;
     }
 
-    ifstream& operator=(ifstream&& other) noexcept {
+    ifstream& operator=(ifstream&& other) FL_NOEXCEPT {
         if (this != &other) {
             close();
             mHandle = other.mHandle;
@@ -237,7 +238,7 @@ public:
     ofstream& operator=(const ofstream&) = delete;
 
     // Moveable
-    ofstream(ofstream&& other) noexcept
+    ofstream(ofstream&& other) FL_NOEXCEPT
         : mHandle(other.mHandle), mGood(other.mGood), mEof(other.mEof),
           mFail(other.mFail), mLocalError(other.mLocalError) {
         other.mHandle.reset();
@@ -247,7 +248,7 @@ public:
         other.mLocalError = 0;
     }
 
-    ofstream& operator=(ofstream&& other) noexcept {
+    ofstream& operator=(ofstream&& other) FL_NOEXCEPT {
         if (this != &other) {
             close();
             mHandle = other.mHandle;
@@ -330,7 +331,7 @@ public:
     fstream& operator=(const fstream&) = delete;
 
     // Moveable
-    fstream(fstream&& other) noexcept
+    fstream(fstream&& other) FL_NOEXCEPT
         : mHandle(other.mHandle), mLastRead(other.mLastRead),
           mGood(other.mGood), mEof(other.mEof), mFail(other.mFail),
           mLocalError(other.mLocalError) {
@@ -342,7 +343,7 @@ public:
         other.mLocalError = 0;
     }
 
-    fstream& operator=(fstream&& other) noexcept {
+    fstream& operator=(fstream&& other) FL_NOEXCEPT {
         if (this != &other) {
             close();
             mHandle = other.mHandle;

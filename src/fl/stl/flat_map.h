@@ -67,10 +67,10 @@ class flat_map {
     flat_map(const flat_map& other) FL_NOEXCEPT = default;
     flat_map& operator=(const flat_map& other) FL_NOEXCEPT = default;
 
-    flat_map(flat_map&& other) noexcept
+    flat_map(flat_map&& other) FL_NOEXCEPT
         : mData(fl::move(other.mData)), mLess(fl::move(other.mLess)) {}
 
-    flat_map& operator=(flat_map&& other) noexcept {
+    flat_map& operator=(flat_map&& other) FL_NOEXCEPT {
         if (this != &other) {
             mData = fl::move(other.mData);
             mLess = fl::move(other.mLess);
@@ -375,7 +375,7 @@ class flat_map {
     }
 
     // Swap
-    void swap(flat_map& other) noexcept {
+    void swap(flat_map& other) FL_NOEXCEPT {
         mData.swap(other.mData);
         fl::swap(mLess, other.mLess);
     }
@@ -548,7 +548,7 @@ bool operator>=(const flat_map<Key, Value, Less>& lhs,
 // Swap
 template <typename Key, typename Value, typename Less>
 void swap(flat_map<Key, Value, Less>& lhs,
-          flat_map<Key, Value, Less>& rhs) noexcept {
+          flat_map<Key, Value, Less>& rhs) FL_NOEXCEPT {
     lhs.swap(rhs);
 }
 

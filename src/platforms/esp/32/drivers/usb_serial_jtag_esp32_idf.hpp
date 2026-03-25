@@ -64,7 +64,7 @@ UsbSerialJtagEsp32::~UsbSerialJtagEsp32() {
 #endif
 }
 
-UsbSerialJtagEsp32::UsbSerialJtagEsp32(UsbSerialJtagEsp32&& other) noexcept
+UsbSerialJtagEsp32::UsbSerialJtagEsp32(UsbSerialJtagEsp32&& other) FL_NOEXCEPT
     : mConfig(other.mConfig)
     , mBuffered(other.mBuffered)
     , mInstalledDriver(other.mInstalledDriver) {
@@ -73,7 +73,7 @@ UsbSerialJtagEsp32::UsbSerialJtagEsp32(UsbSerialJtagEsp32&& other) noexcept
     other.mInstalledDriver = false;
 }
 
-UsbSerialJtagEsp32& UsbSerialJtagEsp32::operator=(UsbSerialJtagEsp32&& other) noexcept {
+UsbSerialJtagEsp32& UsbSerialJtagEsp32::operator=(UsbSerialJtagEsp32&& other) FL_NOEXCEPT {
     if (this != &other) {
 #ifdef FL_HAS_USB_SERIAL_JTAG
         // Uninstall our current driver if we own it

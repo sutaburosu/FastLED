@@ -8,6 +8,7 @@
 #include "platforms/shared/spi_hw_1.h" // ok platform headers
 #include "platforms/shared/spi_hw_2.h" // ok platform headers
 #include "platforms/shared/spi_hw_4.h" // ok platform headers
+#include "fl/stl/noexcept.h"
 
 // IWYU pragma: end_keep
 namespace fl {
@@ -387,11 +388,11 @@ const Config& Device::getConfig() const {
 
 Transaction::Transaction() : pImpl(nullptr) {}
 
-Transaction::Transaction(Transaction&& other) noexcept
+Transaction::Transaction(Transaction&& other) FL_NOEXCEPT
     : pImpl(fl::move(other.pImpl)) {
 }
 
-Transaction& Transaction::operator=(Transaction&& other) noexcept {
+Transaction& Transaction::operator=(Transaction&& other) FL_NOEXCEPT {
     if (this != &other) {
         pImpl = fl::move(other.pImpl);
     }

@@ -12,6 +12,7 @@
 #include "fl/stl/result.h"
 #include "fl/stl/optional.h"
 #include "fl/task/promise.h"  // for fl::task::Error
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 
@@ -64,8 +65,8 @@ public:
     ~Transaction();
 
     // Move semantics
-    Transaction(Transaction&& other) noexcept;
-    Transaction& operator=(Transaction&& other) noexcept;
+    Transaction(Transaction&& other) FL_NOEXCEPT;
+    Transaction& operator=(Transaction&& other) FL_NOEXCEPT;
 
 private:
     friend class Device;

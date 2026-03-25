@@ -30,6 +30,7 @@ FL_EXTERN_C_END
 
 // IWYU pragma: begin_keep
 #include "fl/stl/chrono.h"  // ok include - for timing
+#include "fl/stl/noexcept.h"
 // IWYU pragma: end_keep
 
 namespace fl {
@@ -82,7 +83,7 @@ ConditionVariableESP32::~ConditionVariableESP32() {
     }
 }
 
-void ConditionVariableESP32::notify_one() noexcept {
+void ConditionVariableESP32::notify_one() FL_NOEXCEPT {
     if (mMutex == nullptr || mWaitQueue == nullptr) {
         return;
     }
@@ -105,7 +106,7 @@ void ConditionVariableESP32::notify_one() noexcept {
     xSemaphoreGive(mutex);
 }
 
-void ConditionVariableESP32::notify_all() noexcept {
+void ConditionVariableESP32::notify_all() FL_NOEXCEPT {
     if (mMutex == nullptr || mWaitQueue == nullptr) {
         return;
     }

@@ -7,6 +7,7 @@
 ///          provided for C++11 compatibility (no CTAD).
 
 #include "fl/stl/type_traits.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 
@@ -34,7 +35,7 @@ public:
         }
     }
 
-    void release() noexcept { mActive = false; }
+    void release() FL_NOEXCEPT { mActive = false; }
 
 private:
     EF mExitFunction;

@@ -1,5 +1,6 @@
 #include "fl/stl/basic_string.h"
 #include "fl/stl/cstring.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 
@@ -444,7 +445,7 @@ basic_string& basic_string::assign(fl::size count, char c) {
     return *this;
 }
 
-basic_string& basic_string::assign(basic_string&& str) noexcept {
+basic_string& basic_string::assign(basic_string&& str) FL_NOEXCEPT {
     moveAssign(fl::move(str));
     return *this;
 }
@@ -1180,7 +1181,7 @@ int basic_string::compare(fl::size pos1, fl::size count1, const char* s, fl::siz
 
 // ======= PROTECTED: MOVE / SWAP / FACTORY HELPERS =======
 
-void basic_string::moveFrom(basic_string&& other) noexcept {
+void basic_string::moveFrom(basic_string&& other) FL_NOEXCEPT {
     if (other.isInline()) {
         mLength = other.mLength;
         fl::memcpy(inlineBufferPtr(), other.inlineBufferPtr(), other.mLength + 1);
@@ -1194,7 +1195,7 @@ void basic_string::moveFrom(basic_string&& other) noexcept {
     other.inlineBufferPtr()[0] = '\0';
 }
 
-void basic_string::moveAssign(basic_string&& other) noexcept {
+void basic_string::moveAssign(basic_string&& other) FL_NOEXCEPT {
     if (this == &other) return;
     if (other.isInline()) {
         mLength = other.mLength;

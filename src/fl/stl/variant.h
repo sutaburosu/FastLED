@@ -21,7 +21,7 @@ class FL_ALIGN_AS_T(max_align<Types...>::value) variant {
 
     // –– ctors/dtors/assign as before …
 
-    variant() noexcept : _tag(Empty) {}
+    variant() FL_NOEXCEPT : _tag(Empty) {}
 
     template <typename T, typename = typename fl::enable_if<
                               contains_type<T, Types...>::value>::type>
@@ -41,7 +41,7 @@ class FL_ALIGN_AS_T(max_align<Types...>::value) variant {
         }
     }
 
-    variant(variant &&other) noexcept : _tag(Empty) {
+    variant(variant &&other) FL_NOEXCEPT : _tag(Empty) {
         if (!other.empty()) {
             move_construct_from(other);
             // After moving, mark other as empty to prevent destructor calls on moved-from objects
@@ -61,7 +61,7 @@ class FL_ALIGN_AS_T(max_align<Types...>::value) variant {
         return *this;
     }
 
-    variant &operator=(variant &&other) noexcept {
+    variant &operator=(variant &&other) FL_NOEXCEPT {
         if (this != &other) {
             reset();
             if (!other.empty()) {
@@ -102,17 +102,17 @@ class FL_ALIGN_AS_T(max_align<Types...>::value) variant {
         return ptr<T>();
     }
 
-    void reset() noexcept {
+    void reset() FL_NOEXCEPT {
         if (!empty()) {
             destroy_current();
             _tag = Empty;
         }
     }
 
-    Tag tag() const noexcept { return _tag; }
-    bool empty() const noexcept { return _tag == Empty; }
+    Tag tag() const FL_NOEXCEPT { return _tag; }
+    bool empty() const FL_NOEXCEPT { return _tag == Empty; }
 
-    template <typename T> bool is() const noexcept {
+    template <typename T> bool is() const FL_NOEXCEPT {
         return _tag == type_to_tag<T>();
     }
 
@@ -219,7 +219,7 @@ class FL_ALIGN_AS_T(max_align<Types...>::value) variant {
     }
 
     // –– destroy via table
-    void destroy_current() noexcept {
+    void destroy_current() FL_NOEXCEPT {
         using Fn = void (*)(void *);
         FL_DISABLE_WARNING_PUSH
         FL_DISABLE_WARNING(array-bounds)
@@ -257,7 +257,7 @@ class FL_ALIGN_AS_T(max_align<Types...>::value) variant {
     }
 
     // –– move‐construct via table
-    void move_construct_from(variant &other) noexcept {
+    void move_construct_from(variant &other) FL_NOEXCEPT {
         using Fn = void (*)(void *, variant &);
         FL_DISABLE_WARNING_PUSH
         FL_DISABLE_WARNING(array-bounds)

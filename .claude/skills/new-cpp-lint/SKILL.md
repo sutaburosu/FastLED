@@ -18,7 +18,9 @@ $ARGUMENTS
 
 1. **Parse the rule description** from the input
 2. **Research the codebase**: Grep for existing patterns, violations, and edge cases
-3. **Choose detection strategy**: regex (for text patterns) or clang-query (for AST analysis)
+3. **Choose detection strategy** — **prefer the simplest approach that works**:
+   - **Regex (Python)**: Use when the pattern is a **keyword, token, or textual pattern** that can be reliably detected with word-boundary regex. Examples: banning `noexcept` keyword, detecting `std::` namespace usage, finding `#pragma` directives, flagging raw `new`/`delete`. Most lint rules fall here. This is fast, simple, and easy to maintain.
+   - **clang-query (AST)**: Use **only** when the rule requires **semantic understanding** that regex cannot provide — e.g., type-aware checks, matching function signatures, detecting inheritance patterns, or analyzing template instantiations. AST parsing is heavy and slow; don't use it when regex suffices.
 4. **Define scope**: Which directories should be checked (src/fl/, platforms/, examples/, tests/)
 5. **Identify exemptions**: Comments, macros, templates, platform-guarded code that should be allowed
 

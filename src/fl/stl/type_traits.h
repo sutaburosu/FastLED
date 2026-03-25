@@ -18,8 +18,8 @@ struct integral_constant {
     enum : T { value = v };
     using value_type = T;
     using type = integral_constant;
-    constexpr operator value_type() const noexcept { return value; }
-    constexpr value_type operator()() const noexcept { return value; }
+    constexpr operator value_type() const FL_NOEXCEPT { return value; }
+    constexpr value_type operator()() const FL_NOEXCEPT { return value; }
 };
 
 // Define true_type and false_type
@@ -46,7 +46,7 @@ template <typename T> struct add_rvalue_reference<T&> {
 
 // Define declval for use in SFINAE expressions
 template <typename T>
-typename add_rvalue_reference<T>::type declval() noexcept;
+typename add_rvalue_reference<T>::type declval() FL_NOEXCEPT;
 
 // Define enable_if for SFINAE
 template <bool Condition, typename T = void> struct enable_if {};
@@ -230,13 +230,13 @@ template <> struct is_void<void> {
 
 // Implementation of forward
 template <typename T>
-constexpr T &&forward(typename remove_reference<T>::type &t) noexcept {
+constexpr T &&forward(typename remove_reference<T>::type &t) FL_NOEXCEPT {
     return static_cast<T &&>(t);
 }
 
 // Overload for rvalue references
 template <typename T>
-constexpr T &&forward(typename remove_reference<T>::type &&t) noexcept {
+constexpr T &&forward(typename remove_reference<T>::type &&t) FL_NOEXCEPT {
     static_assert(!is_lvalue_reference<T>::value,
                   "Cannot forward an rvalue as an lvalue");
     return static_cast<T &&>(t);

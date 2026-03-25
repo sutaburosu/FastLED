@@ -42,8 +42,8 @@ struct tuple_size< tuple<Ts...> > {
     enum : size_t { value = sizeof...(Ts) };
     using value_type = size_t;
     using type = tuple_size;
-    constexpr operator value_type() const noexcept { return value; }
-    constexpr value_type operator()() const noexcept { return value; }
+    constexpr operator value_type() const FL_NOEXCEPT { return value; }
+    constexpr value_type operator()() const FL_NOEXCEPT { return value; }
 };
 
 // tuple_element

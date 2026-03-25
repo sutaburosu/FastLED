@@ -4,6 +4,7 @@
 #include "fl/stl/detail/file_io.h"  // For fl::FILE* and fl::fopen/fclose/etc.
 #include "fl/stl/span.h"
 #include "fl/stl/string.h"
+#include "fl/stl/noexcept.h"
 
 // Unified file buffer abstraction (streambuf-style backend)
 // This provides a platform-agnostic interface for file I/O operations.
@@ -102,9 +103,9 @@ public:
     posix_filebuf& operator=(const posix_filebuf&) = delete;
 
     // Moveable
-    posix_filebuf(posix_filebuf&& other) noexcept;
+    posix_filebuf(posix_filebuf&& other) FL_NOEXCEPT;
 
-    posix_filebuf& operator=(posix_filebuf&& other) noexcept;
+    posix_filebuf& operator=(posix_filebuf&& other) FL_NOEXCEPT;
 
     bool is_open() const override;
 

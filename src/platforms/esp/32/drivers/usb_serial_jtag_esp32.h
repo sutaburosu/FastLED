@@ -88,8 +88,8 @@ public:
     UsbSerialJtagEsp32& operator=(const UsbSerialJtagEsp32&) = delete;
 
     // Enable move
-    UsbSerialJtagEsp32(UsbSerialJtagEsp32&& other) noexcept;
-    UsbSerialJtagEsp32& operator=(UsbSerialJtagEsp32&& other) noexcept;
+    UsbSerialJtagEsp32(UsbSerialJtagEsp32&& other) FL_NOEXCEPT;
+    UsbSerialJtagEsp32& operator=(UsbSerialJtagEsp32&& other) FL_NOEXCEPT;
 
     /**
      * @brief Write string to USB-Serial JTAG

@@ -115,7 +115,7 @@ template <fl::size SIZE = FASTLED_STR_INLINED_SIZE> class StrN : public basic_st
         copy(static_cast<const basic_string&>(other));
     }
 
-    StrN(StrN&& other) noexcept : basic_string(mInlineBuffer, SIZE) {
+    StrN(StrN&& other) FL_NOEXCEPT : basic_string(mInlineBuffer, SIZE) {
         moveFrom(fl::move(other));
     }
 
@@ -150,7 +150,7 @@ template <fl::size SIZE = FASTLED_STR_INLINED_SIZE> class StrN : public basic_st
         return *this;
     }
 
-    StrN& operator=(StrN&& other) noexcept {
+    StrN& operator=(StrN&& other) FL_NOEXCEPT {
         moveAssign(fl::move(other));
         return *this;
     }
@@ -258,7 +258,7 @@ class string : public StrN<FASTLED_STR_INLINED_SIZE> {
         resize(len, c);
     }
     string(const string& other) FL_NOEXCEPT : StrN<FASTLED_STR_INLINED_SIZE>(other) {}
-    string(string&& other) noexcept : StrN<FASTLED_STR_INLINED_SIZE>(fl::move(other)) {}
+    string(string&& other) FL_NOEXCEPT : StrN<FASTLED_STR_INLINED_SIZE>(fl::move(other)) {}
     template <fl::size M>
     string(const StrN<M>& other) FL_NOEXCEPT : StrN<FASTLED_STR_INLINED_SIZE>(other) {}
     string(const basic_string& other) FL_NOEXCEPT : StrN<FASTLED_STR_INLINED_SIZE>() {
@@ -278,7 +278,7 @@ class string : public StrN<FASTLED_STR_INLINED_SIZE> {
         copy(static_cast<const basic_string&>(other));
         return *this;
     }
-    string& operator=(string&& other) noexcept {
+    string& operator=(string&& other) FL_NOEXCEPT {
         moveAssign(fl::move(other));
         return *this;
     }

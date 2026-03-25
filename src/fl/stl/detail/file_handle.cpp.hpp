@@ -3,6 +3,7 @@
 
 #include "fl/stl/detail/file_handle.h"
 #include "fl/stl/move.h"
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 
@@ -40,14 +41,14 @@ posix_filebuf::~posix_filebuf() {
     close();
 }
 
-posix_filebuf::posix_filebuf(posix_filebuf&& other) noexcept
+posix_filebuf::posix_filebuf(posix_filebuf&& other) FL_NOEXCEPT
     : mFile(other.mFile), mLastError(other.mLastError),
       mPath(fl::move(other.mPath)) {
     other.mFile = nullptr;
     other.mLastError = 0;
 }
 
-posix_filebuf& posix_filebuf::operator=(posix_filebuf&& other) noexcept {
+posix_filebuf& posix_filebuf::operator=(posix_filebuf&& other) FL_NOEXCEPT {
     if (this != &other) {
         close();
         mFile = other.mFile;

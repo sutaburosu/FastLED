@@ -79,7 +79,7 @@ public:
     ScopedLogDisable& operator=(const ScopedLogDisable&) FL_NOEXCEPT = delete;
 
     // Move-only (allow transfer of ownership)
-    ScopedLogDisable(ScopedLogDisable&& other) noexcept
+    ScopedLogDisable(ScopedLogDisable&& other) FL_NOEXCEPT
         : mPreviousLevel(other.mPreviousLevel) {
         // Mark other as "moved-from" by setting to current level (no-op restore)
         other.mPreviousLevel = static_cast<u8>(LogLevel::FL_LOG_LEVEL_NONE);

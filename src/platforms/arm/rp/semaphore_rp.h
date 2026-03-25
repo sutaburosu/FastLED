@@ -12,6 +12,7 @@
 
 #include "fl/stl/assert.h"
 #include "fl/stl/cstddef.h"
+#include "fl/stl/noexcept.h"
 
 // Forward declare std::chrono types to avoid including <chrono> in header
 namespace std {
@@ -90,7 +91,7 @@ public:
 
     /// @brief Get the maximum value the semaphore can hold
     /// @return LeastMaxValue
-    static constexpr ptrdiff_t max() noexcept {
+    static constexpr ptrdiff_t max() FL_NOEXCEPT {
         return LeastMaxValue;
     }
 };

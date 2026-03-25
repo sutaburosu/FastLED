@@ -203,7 +203,7 @@ UartEsp32::~UartEsp32() {
     }
 }
 
-UartEsp32::UartEsp32(UartEsp32&& other) noexcept
+UartEsp32::UartEsp32(UartEsp32&& other) FL_NOEXCEPT
     : mConfig(other.mConfig)
     , mPortInt(other.mPortInt)
     , mBuffered(other.mBuffered)
@@ -213,7 +213,7 @@ UartEsp32::UartEsp32(UartEsp32&& other) noexcept
     other.mEventQueue = nullptr;
 }
 
-UartEsp32& UartEsp32::operator=(UartEsp32&& other) noexcept {
+UartEsp32& UartEsp32::operator=(UartEsp32&& other) FL_NOEXCEPT {
     if (this != &other) {
         // Deallocate our current UART
         if (mPortInt >= 0) {

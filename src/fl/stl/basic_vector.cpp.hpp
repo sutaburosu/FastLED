@@ -7,6 +7,7 @@
 #include "fl/stl/basic_vector.h"
 #include "fl/stl/cstring.h"  // fl::memcpy, fl::memmove, fl::memset
 #include "platforms/assert_defs.h"  // FASTLED_ASSERT
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 
@@ -470,7 +471,7 @@ void vector_basic::copy_from(const vector_basic& other) {
     mSize = other.mSize;
 }
 
-void vector_basic::move_from(vector_basic& other) noexcept {
+void vector_basic::move_from(vector_basic& other) FL_NOEXCEPT {
     if (other.isInline()) {
         // Can't steal inline buffer — must move elements
         reserve_impl(other.mSize);
@@ -503,7 +504,7 @@ void vector_basic::move_from(vector_basic& other) noexcept {
     }
 }
 
-void vector_basic::move_assign(vector_basic& other) noexcept {
+void vector_basic::move_assign(vector_basic& other) FL_NOEXCEPT {
     if (this == &other) return;
     clear_impl();
     if (!isInline() && mArray) {

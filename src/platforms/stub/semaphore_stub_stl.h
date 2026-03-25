@@ -20,6 +20,7 @@
 #else
     #include "fl/stl/mutex.h"
     #include "fl/stl/condition_variable.h"
+#include "fl/stl/noexcept.h"
     #define FL_HAS_STD_SEMAPHORE 0
 #endif
 
@@ -111,7 +112,7 @@ namespace platforms {
             return false;
         }
 
-        static constexpr ptrdiff_t max() noexcept {
+        static constexpr ptrdiff_t max() FL_NOEXCEPT {
             return LeastMaxValue;
         }
     };
