@@ -338,7 +338,6 @@ struct CrashHandlerState {
     }
 
     void print_stacktrace_windows() {
-        HANDLE process = GetCurrentProcess();
         init_symbols();
 
         void* stack[100];

@@ -326,6 +326,21 @@ class basic_string {
     basic_string& append(const double& val);
     basic_string& append(const basic_string& str);
 
+    // SFINAE catch-all for integer types not covered by explicit overloads
+    // (e.g. unsigned long on Windows, which is distinct from both u32 and u64).
+    // Casts to the appropriate fl:: type via cast_target.
+    template<typename T>
+    typename fl::enable_if<fl::is_multi_byte_integer<T>::value
+        && !fl::is_same<T, i8>::value  && !fl::is_same<T, u8>::value
+        && !fl::is_same<T, i16>::value && !fl::is_same<T, u16>::value
+        && !fl::is_same<T, i32>::value && !fl::is_same<T, u32>::value
+        && !fl::is_same<T, i64>::value && !fl::is_same<T, u64>::value,
+        basic_string&>::type
+    append(T val) {
+        using target_t = typename int_cast_detail::cast_target<T>::type;
+        return append(static_cast<target_t>(val));
+    }
+
     // ======= HEX/OCT APPEND =======
     basic_string& appendHex(i32 val);
     basic_string& appendHex(u32 val);

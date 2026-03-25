@@ -260,6 +260,9 @@ class string : public StrN<FASTLED_STR_INLINED_SIZE> {
     string(string&& other) noexcept : StrN<FASTLED_STR_INLINED_SIZE>(fl::move(other)) {}
     template <fl::size M>
     string(const StrN<M>& other) : StrN<FASTLED_STR_INLINED_SIZE>(other) {}
+    string(const basic_string& other) : StrN<FASTLED_STR_INLINED_SIZE>() {
+        copy(other);
+    }
     string(const string_view& sv) : StrN<FASTLED_STR_INLINED_SIZE>(sv) {}
     string(const fl::span<const char>& s) : StrN<FASTLED_STR_INLINED_SIZE>() {
         copy(s.data(), s.size());

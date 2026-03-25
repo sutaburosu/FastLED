@@ -62,30 +62,15 @@ public:
         return *this;
     }
 
-    // Unified handler for fl:: namespace size-like unsigned integer types to avoid conflicts
-    // This handles fl::size and fl::u16 from the fl:: namespace only
+    // Generic integer handler using SFINAE - handles all multi-byte integer types
+    // (including unsigned long on Windows) by casting to the appropriate fl:: type.
+    // Mirrors the pattern used by sstream.
     template<typename T>
-    typename fl::enable_if<
-        fl::is_same<T, fl::size>::value ||
-        fl::is_same<T, fl::u16>::value,
-        ostream&
-    >::type operator<<(T n) {
+    typename fl::enable_if<fl::is_multi_byte_integer<T>::value, ostream&>::type
+    operator<<(T val) {
+        using target_t = typename int_cast_detail::cast_target<T>::type;
         string temp;
-        temp.append(fl::u32(n));
-        print(temp.c_str());
-        return *this;
-    }
-
-    // Generic template for other types that have string append support
-    // Note: This must come after the specific SFINAE template to avoid conflicts
-    template<typename T>
-    typename fl::enable_if<
-        !fl::is_same<T, fl::size>::value &&
-        !fl::is_same<T, fl::u16>::value,
-        ostream&
-    >::type operator<<(const T& value) {
-        string temp;
-        temp.append(value);
+        temp.append(static_cast<target_t>(val));
         print(temp.c_str());
         return *this;
     }
