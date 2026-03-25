@@ -48,6 +48,12 @@
             "type": "command",
             "command": "ROOT=$(git rev-parse --show-superproject-working-tree 2>/dev/null); cd \"${ROOT:-$(git rev-parse --show-toplevel)}\" && uv run python ci/hooks/auto_test_suggest.py",
             "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "ROOT=$(git rev-parse --show-superproject-working-tree 2>/dev/null); cd \"${ROOT:-$(git rev-parse --show-toplevel)}\" && uv run python ci/hooks/compile_example.py",
+            "timeout": 300,
+            "statusMessage": "Compiling example..."
           }
         ]
       }
