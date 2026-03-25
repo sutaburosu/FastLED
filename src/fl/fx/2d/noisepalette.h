@@ -35,7 +35,7 @@ class NoisePalette : public Fx2d {
     }
 
     string fxName() const override { return "NoisePalette"; }
-    void mapNoiseToLEDsUsingPalette(CRGB *leds);
+    void mapNoiseToLEDsUsingPalette(fl::span<CRGB> leds);
 
     u8 changeToRandomPalette();
 

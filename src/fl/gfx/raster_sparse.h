@@ -137,10 +137,10 @@ class XYRasterU8Sparse {
     u16 width() const { return bounds().width(); }
     u16 height() const { return bounds().height(); }
 
-    void draw(const CRGB &color, const XYMap &xymap, CRGB *out);
+    void draw(const CRGB &color, const XYMap &xymap, fl::span<CRGB> out);
     void draw(const CRGB &color, Leds *leds);
 
-    void drawGradient(const Gradient &gradient, const XYMap &xymap, CRGB *out);
+    void drawGradient(const Gradient &gradient, const XYMap &xymap, fl::span<CRGB> out);
     void drawGradient(const Gradient &gradient, Leds *leds);
 
     // Inlined, yet customizable drawing access. This will only send you
@@ -317,7 +317,7 @@ class XYRasterSparse_RGB8 {
     u16 width() const { return bounds().width(); }
     u16 height() const { return bounds().height(); }
 
-    void draw(const XYMap &xymap, CRGB *out);
+    void draw(const XYMap &xymap, fl::span<CRGB> out);
     void draw(Leds *leds);
 
     // Inlined, yet customizable drawing access. This will only send you

@@ -62,7 +62,7 @@ void Luminova::resetParticle(Particle &p, fl::u32 tt) {
     p.alive = true;
 }
 
-void Luminova::plotDot(CRGB *leds, int x, int y, u8 v) const {
+void Luminova::plotDot(fl::span<CRGB> leds, int x, int y, u8 v) const {
     if (!mXyMap.has(x, y)) {
         return;
     }
@@ -70,7 +70,7 @@ void Luminova::plotDot(CRGB *leds, int x, int y, u8 v) const {
     leds[idx] += CHSV(0, 0, scale8(v, mParams.point_gain));
 }
 
-void Luminova::plotSoftDot(CRGB *leds, float fx, float fy, float s) const {
+void Luminova::plotSoftDot(fl::span<CRGB> leds, float fx, float fy, float s) const {
     // Map s (decays from ~3) to a pixel radius 1..3
     float r = fl::clamp<float>(s * 0.5f, 1.0f, 3.0f);
     int R = static_cast<int>(fl::ceil(r));
@@ -95,7 +95,7 @@ void Luminova::plotSoftDot(CRGB *leds, float fx, float fy, float s) const {
 
 void Luminova::draw(DrawContext context) {
     // Fade + blur trails each frame
-    fadeToBlackBy(context.leds, getNumLeds(), mParams.fade_amount);
+    fadeToBlackBy(context.leds, mParams.fade_amount);
     blur2d(context.leds, static_cast<fl::u8>(getWidth()), static_cast<fl::u8>(getHeight()),
            mParams.blur_amount, mXyMap);
 

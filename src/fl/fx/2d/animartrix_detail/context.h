@@ -5,6 +5,7 @@
 
 #include "crgb.h"
 #include "fl/stl/optional.h"
+#include "fl/stl/span.h"
 #include "fl/stl/unique_ptr.h"
 #include "fl/stl/stdint.h"
 
@@ -25,7 +26,7 @@ struct Context {
     int num_y = 0;
 
     // Output target
-    CRGB *leds = nullptr;
+    fl::span<CRGB> leds;
     XYMapCallback xyMapFn = nullptr;
     void *xyMapUserData = nullptr;
 

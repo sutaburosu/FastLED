@@ -28,7 +28,7 @@ void FxLayer::draw(fl::u32 now) {
         fx->resume(now);
         running = true;
     }
-    Fx::DrawContext context = {now, frame->rgb().data()};
+    Fx::DrawContext context = {now, frame->rgb()};
     fx->draw(context);
 }
 
@@ -48,8 +48,8 @@ fl::shared_ptr<Fx> FxLayer::getFx() {
     return fx; 
 }
 
-CRGB* FxLayer::getSurface() {
-    return frame->rgb().data();
+fl::span<CRGB> FxLayer::getSurface() {
+    return frame->rgb();
 }
 
 }

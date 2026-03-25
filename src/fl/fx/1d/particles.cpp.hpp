@@ -16,7 +16,7 @@ Particles1d::Particles1d(u16 num_leds, u8 max_particles, u8 fade_rate)
 Particles1d::~Particles1d() = default;
 
 void Particles1d::draw(DrawContext context) {
-    if (context.leds == nullptr || mNumLeds == 0) return;
+    if (context.leds.empty() || mNumLeds == 0) return;
 
     u32 now = context.now;
 
@@ -35,7 +35,7 @@ void Particles1d::draw(DrawContext context) {
     }
 
     // Soften composite with blur
-    blur1d(context.leds, mNumLeds, 64);
+    blur1d(context.leds, 64);
 }
 
 void Particles1d::spawnRandomParticle() {
@@ -133,7 +133,7 @@ void Particles1d::Particle::update(u32 now, u16 numLeds, float speedMultiplier, 
     }
 }
 
-void Particles1d::Particle::draw(CRGB* leds, u32 now, u16 numLeds) {
+void Particles1d::Particle::draw(fl::span<CRGB> leds, u32 now, u16 numLeds) {
     if (!active) return;
     float power = getPower(now);
     if (power <= 0.0f) return;

@@ -191,13 +191,13 @@ FL_TEST_CASE("TestCorkscrewBufferFunctionality") {
     // Fill the buffer with a simple pattern
     corkscrew.fillInputSurface(CRGB::Red);
     for (size_t i = 0; i < surface.size(); ++i) {
-        FL_REQUIRE(surface.data()[i] == CRGB::Red);
+        FL_REQUIRE(surface.span()[i] == CRGB::Red);
     }
     
     // Clear the buffer
     corkscrew.clear();
     for (size_t i = 0; i < surface.size(); ++i) {
-        FL_REQUIRE(surface.data()[i] == CRGB::Black);
+        FL_REQUIRE(surface.span()[i] == CRGB::Black);
     }
     
     // Create a source fl::Grid<CRGB> object with a checkerboard pattern
@@ -231,8 +231,8 @@ FL_TEST_CASE("TestCorkscrewBufferFunctionality") {
     bool found_green = false;
     int non_black_count = 0;
     
-    CRGB* led_data = corkscrew.rawData();
-    for (size_t i = 0; i < corkscrew.size(); ++i) {
+    fl::span<CRGB> led_data = corkscrew.data();
+    for (size_t i = 0; i < led_data.size(); ++i) {
         if (led_data[i] == CRGB::Blue) found_blue = true;
         if (led_data[i] == CRGB::Green) found_green = true;
         if (led_data[i] != CRGB::Black) non_black_count++;
@@ -286,8 +286,8 @@ FL_TEST_CASE("Corkscrew readFrom with bilinear interpolation") {
     bool found_blue_component = false;
     int non_black_count = 0;
     
-    CRGB* led_data = corkscrew.rawData();
-    for (size_t i = 0; i < corkscrew.size(); ++i) {
+    fl::span<CRGB> led_data = corkscrew.data();
+    for (size_t i = 0; i < led_data.size(); ++i) {
         const CRGB& color = led_data[i];
         if (color.r > 0 || color.g > 0 || color.b > 0) {
             non_black_count++;
@@ -318,15 +318,15 @@ FL_TEST_CASE("Corkscrew readFrom with bilinear interpolation") {
     FL_REQUIRE(pos5.y >= 0.0f);
 }
 
-FL_TEST_CASE("Corkscrew CRGB* data access") {
+FL_TEST_CASE("Corkscrew span data access") {
     // Create a corkscrew with LED buffer
     fl::vector<CRGB> led_buffer(6);
     fl::span<CRGB> led_span(led_buffer);
     fl::Corkscrew corkscrew(1.0f, led_span, false, fl::Gap());
-    
-    // Get raw CRGB* access - this should trigger lazy allocation
-    CRGB* data_ptr = corkscrew.rawData();
-    FL_REQUIRE(data_ptr != nullptr);
+
+    // Get span access - this should trigger lazy allocation
+    fl::span<CRGB> data_ptr = corkscrew.data();
+    FL_REQUIRE(!data_ptr.empty());
     
     // Verify buffer was allocated with correct size
     size_t expected_size = static_cast<size_t>(corkscrew.cylinderWidth()) * static_cast<size_t>(corkscrew.cylinderHeight());
@@ -351,9 +351,9 @@ FL_TEST_CASE("Corkscrew CRGB* data access") {
         
         // Surface should remain separate from LED data
         const auto& surface = corkscrew.surface();
-        FL_REQUIRE_EQ(surface.data()[0].r, 0); // Surface should still be black
-        FL_REQUIRE_EQ(surface.data()[0].g, 0);
-        FL_REQUIRE_EQ(surface.data()[0].b, 0);
+        FL_REQUIRE_EQ(surface.span()[0].r, 0); // Surface should still be black
+        FL_REQUIRE_EQ(surface.span()[0].g, 0);
+        FL_REQUIRE_EQ(surface.span()[0].b, 0);
     }
 }
 

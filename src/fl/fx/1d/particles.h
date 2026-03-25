@@ -1,6 +1,7 @@
 #pragma once
 
 #include "fl/stl/vector.h"
+#include "fl/stl/span.h"
 #include "fl/fx/fx1d.h"
 
 namespace fl {
@@ -124,7 +125,7 @@ class Particles1d : public Fx1d {
         void update(u32 now, u16 numLeds, float speedMultiplier, bool cyclical);
 
         /// @brief Render particle with sub-pixel accuracy and power-modulated color
-        void draw(CRGB* leds, u32 now, u16 numLeds);
+        void draw(fl::span<CRGB> leds, u32 now, u16 numLeds);
     };
 
     u8 mFadeRate;                    ///< Fade amount per frame (0-255, higher = shorter trails)

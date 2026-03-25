@@ -20,7 +20,7 @@ void Fx2dTo1d::setFx2d(Fx2dPtr fx2d) {
 
 void Fx2dTo1d::draw(DrawContext context) {
     // Step 1: Render 2D effect to internal grid
-    DrawContext grid_context(context.now, mGrid.get(), mFx2d->getNumLeds());
+    DrawContext grid_context(context.now, fl::span<CRGB>(mGrid.get(), mFx2d->getNumLeds()));
     mFx2d->draw(grid_context);
 
     // Step 2: Sample from grid to 1D output using fl::sample

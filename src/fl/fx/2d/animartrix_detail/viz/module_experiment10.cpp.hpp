@@ -183,7 +183,7 @@ void Module_Experiment10_FP::draw(Context &ctx) {
     const fl::i32 oy3_raw = FP(-5.0f * r_factor * e->move.linear[2]).raw();
     const fl::i32 ox3_raw = FP(1000.0f).raw();
 
-    CRGB *leds = e->mCtx->leds;
+    fl::span<CRGB> leds = e->mCtx->leds;
 
     for (int i = 0; i < total_pixels; i++) {
         const fl::i32 theta_raw = mState.polar_theta_raw[i];

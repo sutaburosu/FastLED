@@ -2,6 +2,7 @@
 
 #include "fl/gfx/colorutils_misc.h"
 #include "fl/stl/int.h"
+#include "fl/stl/span.h"
 
 #include "fl/stl/compiler_control.h"
 
@@ -34,6 +35,11 @@ void fill_solid(CRGB *targetArray, int numToFill,
                 const CRGB &color);
 
 /// @copydoc fill_solid()
+inline void fill_solid(fl::span<CRGB> leds, const CRGB &color) {
+    fill_solid(leds.data(), static_cast<int>(leds.size()), color);
+}
+
+/// @copydoc fill_solid()
 void fill_solid(CHSV *targetArray, int numToFill,
                 const CHSV &color);
 
@@ -46,6 +52,12 @@ void fill_solid(CHSV *targetArray, int numToFill,
 /// @param deltahue how many hue values to advance for each LED
 void fill_rainbow(CRGB *targetArray, int numToFill, fl::u8 initialhue,
                   fl::u8 deltahue = 5);
+
+/// @copydoc fill_rainbow()
+inline void fill_rainbow(fl::span<CRGB> leds, fl::u8 initialhue,
+                         fl::u8 deltahue = 5) {
+    fill_rainbow(leds.data(), static_cast<int>(leds.size()), initialhue, deltahue);
+}
 
 /// @copydoc fill_rainbow()
 void fill_rainbow(CHSV *targetArray, int numToFill, fl::u8 initialhue,
@@ -61,6 +73,13 @@ void fill_rainbow(CHSV *targetArray, int numToFill, fl::u8 initialhue,
 /// @param reversed whether to progress through the rainbow hues backwards
 void fill_rainbow_circular(CRGB *targetArray, int numToFill,
                            fl::u8 initialhue, bool reversed = false);
+
+/// @copydoc fill_rainbow_circular()
+inline void fill_rainbow_circular(fl::span<CRGB> leds, fl::u8 initialhue,
+                                  bool reversed = false) {
+    fill_rainbow_circular(leds.data(), static_cast<int>(leds.size()),
+                          initialhue, reversed);
+}
 
 /// @copydoc fill_rainbow_circular()
 void fill_rainbow_circular(CHSV *targetArray, int numToFill,
@@ -283,6 +302,26 @@ void fill_gradient_RGB(CRGB *leds, u16 numLeds, const CRGB &c1,
 /// @param c4 the end color for the gradient
 void fill_gradient_RGB(CRGB *leds, u16 numLeds, const CRGB &c1,
                        const CRGB &c2, const CRGB &c3, const CRGB &c4);
+
+/// @copydoc fill_gradient_RGB()
+inline void fill_gradient_RGB(fl::span<CRGB> leds, const CRGB &c1,
+                               const CRGB &c2) {
+    fill_gradient_RGB(leds.data(), static_cast<u16>(leds.size()), c1, c2);
+}
+
+/// @copydoc fill_gradient_RGB()
+inline void fill_gradient_RGB(fl::span<CRGB> leds, const CRGB &c1,
+                               const CRGB &c2, const CRGB &c3) {
+    fill_gradient_RGB(leds.data(), static_cast<u16>(leds.size()), c1, c2, c3);
+}
+
+/// @copydoc fill_gradient_RGB()
+inline void fill_gradient_RGB(fl::span<CRGB> leds, const CRGB &c1,
+                               const CRGB &c2, const CRGB &c3,
+                               const CRGB &c4) {
+    fill_gradient_RGB(leds.data(), static_cast<u16>(leds.size()), c1, c2, c3,
+                      c4);
+}
 
 } // namespace fl
 

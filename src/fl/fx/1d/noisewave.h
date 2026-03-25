@@ -14,7 +14,7 @@ class NoiseWave : public Fx1d {
           noiseGeneratorBlue(500, 10) {}
 
     void draw(DrawContext context) override {
-        if (context.leds == nullptr || mNumLeds == 0) {
+        if (context.leds.empty() || mNumLeds == 0) {
             return;
         }
         if (start_time == 0) {

@@ -30,7 +30,7 @@ class Pride2015 : public Fx1d {
 // This function draws rainbows with an ever-changing,
 // widely-varying set of parameters.
 void Pride2015::draw(Fx::DrawContext ctx) {
-    if (ctx.leds == nullptr || mNumLeds == 0) {
+    if (ctx.leds.empty() || mNumLeds == 0) {
         return;
     }
 

@@ -7,7 +7,7 @@
 
 namespace fl {
 
-Leds::Leds(CRGB *leds, const XYMap &xymap) : mXyMap(xymap), mLeds(leds) {}
+Leds::Leds(CRGB *leds, const XYMap &xymap) : mXyMap(xymap), mLeds(leds, xymap.getTotal()) {}
 
 CRGB &Leds::operator()(int x, int y) {
     if (!mXyMap.has(x, y)) {

@@ -93,9 +93,9 @@ u16 xyMapCb(u16 x, u16 y, void *userData) {
 }
 
 // Render a viz into dst[] using Context-based init/setTime/draw.
-void renderViz(IAnimartrix2Viz *viz, CRGB *dst, int N, XYMap &xy,
+void renderViz(IAnimartrix2Viz *viz, fl::span<CRGB> dst, XYMap &xy,
                uint16_t W, uint16_t H, uint32_t t) {
-    for (int i = 0; i < N; i++) dst[i] = CRGB::Black;
+    for (fl::size i = 0; i < dst.size(); i++) dst[i] = CRGB::Black;
     Context ctx;
     ctx.leds = dst;
     ctx.xyMapFn = xyMapCb;
@@ -111,8 +111,9 @@ struct CompareResult {
 };
 
 // Compare two LED buffers and return max/avg error.
-CompareResult compareBuffers(const CRGB *a, const CRGB *b, int count) {
+CompareResult compareBuffers(fl::span<const CRGB> a, fl::span<const CRGB> b) {
     CompareResult r = {0, 0.0};
+    int count = static_cast<int>(a.size());
     int error_pixels = 0;
     for (int i = 0; i < count; i++) {
         int re = abs(static_cast<int>(a[i].r) - static_cast<int>(b[i].r));
@@ -140,8 +141,10 @@ FL_TEST_CASE("animartrix_fp - float vs fixed-point all vizs") {
     const uint32_t t = 1000;
 
     XYMap xy = XYMap::constructRectangularGrid(W, H);
-    CRGB float_leds[N];
-    CRGB fp_leds[N];
+    CRGB float_leds_arr[N];
+    CRGB fp_leds_arr[N];
+    fl::span<CRGB> float_leds(float_leds_arr, N);
+    fl::span<CRGB> fp_leds(fp_leds_arr, N);
 
     // Thresholds: generous to accommodate varying FP accuracy across vizs.
     // Tight thresholds are enforced per-viz in dedicated tests (e.g. chasing_spirals.cpp).
@@ -162,10 +165,10 @@ FL_TEST_CASE("animartrix_fp - float vs fixed-point all vizs") {
         auto flt = e.float_factory();
         auto fp = e.fp_factory();
 
-        renderViz(flt.get(), float_leds, N, xy, W, H, t);
-        renderViz(fp.get(), fp_leds, N, xy, W, H, t);
+        renderViz(flt.get(), float_leds, xy, W, H, t);
+        renderViz(fp.get(), fp_leds, xy, W, H, t);
 
-        CompareResult cr = compareBuffers(float_leds, fp_leds, N);
+        CompareResult cr = compareBuffers(float_leds, fp_leds);
 
         const char *status = "OK";
         if (cr.max_error > MAX_ERROR_LIMIT || cr.avg_error > AVG_ERROR_LIMIT) {

@@ -113,7 +113,7 @@ void SpiralMatrix4_FP::draw(Context &ctx) {
     const fl::i32 oy1_raw = FP(-20.0f * e->move.linear[0]).raw();
     const fl::i32 oy2_raw = FP(-40.0f * e->move.linear[0]).raw();
 
-    CRGB *leds = e->mCtx->leds;
+    fl::span<CRGB> leds = e->mCtx->leds;
 
     for (int i = 0; i < total_pixels; i++) {
         const fl::i32 theta_raw = mState.polar_theta_raw[i];

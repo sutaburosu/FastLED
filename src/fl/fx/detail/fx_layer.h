@@ -3,6 +3,7 @@
 #include "fl/stl/stdint.h"
 #include "fl/stl/shared_ptr.h"         // For FASTLED_SHARED_PTR macros
 #include "fl/stl/shared_ptr.h"  // For shared_ptr
+#include "fl/stl/span.h"
 
 // Forward declarations to avoid including heavy headers
 namespace fl {
@@ -22,7 +23,7 @@ class FxLayer {
 
     fl::shared_ptr<Fx> getFx();
 
-    CRGB *getSurface();
+    fl::span<CRGB> getSurface();
 
   private:
     fl::shared_ptr<Frame> frame;

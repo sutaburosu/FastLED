@@ -52,7 +52,7 @@ struct FrameSetup {
     fl::i32 rad0_raw;
     fl::i32 rad1_raw;
     fl::i32 rad2_raw;
-    CRGB *leds;
+    fl::span<CRGB> leds;
 };
 
 // Convert s16x16 angle (radians) to A24 format for sincos32
@@ -96,7 +96,7 @@ FASTLED_FORCE_INLINE simd::simd_u32x4 loadAligned(const i32 *arr, int i) {
 }
 
 // Write one pixel from per-channel SIMD registers at the given lane.
-FASTLED_FORCE_INLINE void scatterPixel(CRGB *leds, u16 idx,
+FASTLED_FORCE_INLINE void scatterPixel(fl::span<CRGB> leds, u16 idx,
     simd::simd_u32x4 r, simd::simd_u32x4 g, simd::simd_u32x4 b, int lane) {
     leds[idx] = CRGB(static_cast<u8>(simd::extract_u32_4(r, lane)),
                      static_cast<u8>(simd::extract_u32_4(g, lane)),
@@ -372,7 +372,7 @@ void Chasing_Spirals_Q31::draw(Context &ctx) {
     const i32  rad0_raw     = setup.rad0_raw;
     const i32  rad1_raw     = setup.rad1_raw;
     const i32  rad2_raw     = setup.rad2_raw;
-    CRGB      *leds         = setup.leds;
+    fl::span<CRGB> leds     = setup.leds;
 
     // Compute one noise channel from a batched SinCos32_simd result.
     auto noise_channel = [&](const SinCos32_simd &sc, int lane,
@@ -432,7 +432,7 @@ void Chasing_Spirals_Q31_SIMD::draw(Context &ctx) {
     const i32   rad0_raw      = setup.rad0_raw;
     const i32   rad1_raw      = setup.rad1_raw;
     const i32   rad2_raw      = setup.rad2_raw;
-    CRGB       *leds          = setup.leds;
+    fl::span<CRGB> leds       = setup.leds;
 
     // SIMD pixel pipeline: process 4 pixels per iteration
     int i = 0;

@@ -239,7 +239,7 @@ class Animartrix : public Fx2d {
             }
         }
 
-        mCtx.leds = nullptr;
+        mCtx.leds = fl::span<CRGB>();
     }
 
     int fxNum() const { return static_cast<int>(AnimartrixAnim::NUM_ANIMATIONS); }

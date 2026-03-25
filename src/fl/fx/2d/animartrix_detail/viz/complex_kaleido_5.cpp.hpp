@@ -110,7 +110,7 @@ void Complex_Kaleido_5_FP::draw(Context &ctx) {
     p.low_limit_raw = FP(-0.5f).raw();
     p.high_limit_raw = FP_ONE;
 
-    CRGB *leds = e->mCtx->leds;
+    fl::span<CRGB> leds = e->mCtx->leds;
 
     for (int i = 0; i < total_pixels; i++) {
         const fl::i32 dist_raw = mState.distance_raw[i];

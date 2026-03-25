@@ -4,6 +4,7 @@
 #include "fl/math/geometry.h"
 #include "fl/stl/vector.h"
 #include "fl/stl/int.h"
+#include "fl/stl/span.h"
 
 namespace fl {
 
@@ -59,8 +60,8 @@ template <typename T> class Grid {
     u32 width() const { return mWidth; }
     u32 height() const { return mHeight; }
 
-    T* data() { return mData.data(); }
-    const T* data() const { return mData.data(); }
+    fl::span<T> span() { return fl::span<T>(mData); }
+    fl::span<const T> span() const { return fl::span<const T>(mData); }
 
     fl::size size() const { return mData.size(); }
 

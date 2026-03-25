@@ -1,6 +1,7 @@
 #pragma once
 
 #include "fl/stl/stdint.h"
+#include "fl/stl/span.h"
 
 namespace fl {
 
@@ -8,10 +9,10 @@ namespace fl {
 
 struct _DrawContext {
     fl::u32 now;
-    CRGB *leds;
+    fl::span<CRGB> leds;
     u16 frame_time = 0;
     float speed = 1.0f;
-    _DrawContext(fl::u32 now, CRGB *leds, u16 frame_time = 0,
+    _DrawContext(fl::u32 now, fl::span<CRGB> leds, u16 frame_time = 0,
                  float speed = 1.0f)
         : now(now), leds(leds), frame_time(frame_time), speed(speed) {}
 };

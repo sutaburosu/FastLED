@@ -43,7 +43,7 @@ void ScaleUp::draw(DrawContext context) {
         mSurface.resize(mDelegate->getNumLeds());
     }
     DrawContext delegateContext = context;
-    delegateContext.leds = mSurface.data();
+    delegateContext.leds = fl::span<CRGB>(mSurface);
     mDelegate->draw(delegateContext);
 
     u16 in_w = mDelegate->getWidth();
@@ -52,28 +52,28 @@ void ScaleUp::draw(DrawContext context) {
     u16 out_h = getHeight();
     ;
     if (in_w == out_w && in_h == out_h) {
-        noExpand(mSurface.data(), context.leds, in_w, in_h);
+        noExpand(fl::span<const CRGB>(mSurface), context.leds, in_w, in_h);
     } else {
-        expand(mSurface.data(), context.leds, in_w, in_h, mXyMap);
+        expand(fl::span<const CRGB>(mSurface), context.leds, in_w, in_h, mXyMap);
     }
 }
 
-void ScaleUp::expand(const CRGB *input, CRGB *output, u16 width,
+void ScaleUp::expand(fl::span<const CRGB> input, fl::span<CRGB> output, u16 width,
                      u16 height, const XYMap& mXyMap) {
 #if FASTLED_SCALE_UP == FASTLED_SCALE_UP_ALWAYS_POWER_OF_2
-    fl::upscalePowerOf2(input, output, static_cast<u8>(width), static_cast<u8>(height), mXyMap);
+    fl::upscalePowerOf2(input.data(), output.data(), static_cast<u8>(width), static_cast<u8>(height), mXyMap);
 #elif FASTLED_SCALE_UP == FASTLED_SCALE_UP_HIGH_PRECISION
-    fl::upscaleArbitrary(input, output, width, height, mXyMap);
+    fl::upscaleArbitrary(input.data(), output.data(), width, height, mXyMap);
 #elif FASTLED_SCALE_UP == FASTLED_SCALE_UP_DECIDE_AT_RUNTIME
-    fl::upscale(input, output, width, height, mXyMap);
+    fl::upscale(input.data(), output.data(), width, height, mXyMap);
 #elif FASTLED_SCALE_UP == FASTLED_SCALE_UP_FORCE_FLOATING_POINT
-    fl::upscaleFloat(input, output, static_cast<u8>(width), static_cast<u8>(height), mXyMap);
+    fl::upscaleFloat(input.data(), output.data(), static_cast<u8>(width), static_cast<u8>(height), mXyMap);
 #else
 #error "Invalid FASTLED_SCALE_UP"
 #endif
 }
 
-void ScaleUp::noExpand(const CRGB *input, CRGB *output, u16 width,
+void ScaleUp::noExpand(fl::span<const CRGB> input, fl::span<CRGB> output, u16 width,
                        u16 height) {
     u16 n = mXyMap.getTotal();
     for (u16 w = 0; w < width; w++) {

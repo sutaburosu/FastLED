@@ -122,7 +122,7 @@ class TwinkleFox : public Fx1d {
         EVERY_N_MILLISECONDS(10) {
             nblendPaletteTowardPalette(currentPalette, targetPalette, 12);
         }
-        drawTwinkleFox(context.leds);
+        drawTwinkleFox(context.leds.data());
     }
 
     void chooseNextColorPalette(CRGBPalette16 &pal);
@@ -135,7 +135,7 @@ class TwinkleFox : public Fx1d {
     bool coolLikeIncandescent;
     bool autoSelectBackgroundColor;
 
-    void drawTwinkleFox(CRGB *leds) {
+    void drawTwinkleFox(fl::span<CRGB> leds) {
         // "PRNG16" is the pseudorandom number generator
         // It MUST be reset to the same starting value each time
         // this function is called, so that the sequence of 'random'

@@ -7,7 +7,7 @@
 
 namespace fl {
 
-void XYRasterU8Sparse::draw(const CRGB &color, const XYMap &xymap, CRGB *out) {
+void XYRasterU8Sparse::draw(const CRGB &color, const XYMap &xymap, fl::span<CRGB> out) {
     XYDrawComposited visitor(color, xymap, out);
     draw(xymap, visitor);
 }
@@ -17,7 +17,7 @@ void XYRasterU8Sparse::draw(const CRGB &color, Leds *leds) {
 }
 
 void XYRasterU8Sparse::drawGradient(const Gradient &gradient,
-                                    const XYMap &xymap, CRGB *out) {
+                                    const XYMap &xymap, fl::span<CRGB> out) {
     XYDrawGradient visitor(gradient, xymap, out);
     draw(xymap, visitor);
 }
@@ -67,7 +67,7 @@ void XYRasterU8Sparse::rasterize_internal(const Tile2x2_u8 &tile,
 } // namespace fl
 
 // XYRasterSparse_RGB8 implementation
-void fl::XYRasterSparse_RGB8::draw(const XYMap &xymap, CRGB *out) {
+void fl::XYRasterSparse_RGB8::draw(const XYMap &xymap, fl::span<CRGB> out) {
     for (const auto &it : mSparseGrid) {
         auto pt = it.first;
         if (!xymap.has(pt.x, pt.y)) {

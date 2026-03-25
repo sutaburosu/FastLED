@@ -15,11 +15,11 @@ class Cylon : public Fx1d {
         : Fx1d(num_leds), delay_ms(delay_ms), fade_amount(fade_amount) {}
 
     void draw(DrawContext context) override {
-        if (context.leds == nullptr || mNumLeds == 0) {
+        if (context.leds.empty() || mNumLeds == 0) {
             return;
         }
 
-        CRGB *leds = context.leds;
+        fl::span<CRGB> leds = context.leds;
 
         // Set the current LED to the current hue
         leds[position] = CHSV(hue++, 255, 255);

@@ -339,7 +339,7 @@ class FlowFieldFloat : public FlowField {
                     float t, float colorShift);
     void emitLissajousLine(float t);
 
-    void drawFlowVectors(CRGB *leds);
+    void drawFlowVectors(fl::span<CRGB> leds);
 
     // Float-precision RGB grids (main + temp for advection).
     fl::vector<float> mR, mG, mB;
@@ -388,7 +388,7 @@ class FlowFieldFP : public FlowField {
                     s16x16 t, s16x16 colorShift);
     void emitLissajousLine(s16x16 t);
 
-    void drawFlowVectors(CRGB *leds);
+    void drawFlowVectors(fl::span<CRGB> leds);
 
     // Convert float params to cached s16x16 values.
     void syncParams();

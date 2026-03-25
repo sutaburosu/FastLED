@@ -80,7 +80,7 @@ class FxEngine {
      * @param now The current time in milliseconds.
      * @param outputBuffer The buffer to render the effect into.
      */
-    bool draw(fl::u32 now, CRGB *outputBuffer);
+    bool draw(fl::u32 now, fl::span<CRGB> outputBuffer);
 
     /**
      * @brief Transitions to the next effect in the sequence.

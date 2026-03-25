@@ -215,10 +215,10 @@ FL_TEST_CASE("test_fixed_fps") {
     fl::FxEngine driver(1, interpolate);
     int id = driver.addFx(fake);
     FL_CHECK_EQ(0, id);
-    driver.draw(0, &leds[0]);
+    driver.draw(0, leds);
     FL_CHECK_EQ(1, fake.mFrameCounter);
     FL_CHECK_EQ(leds[0], CRGB(0, 0, 0));
-    driver.draw(500, &leds[0]);
+    driver.draw(500, leds);
     FL_CHECK_EQ(2, fake.mFrameCounter);
     FL_CHECK_EQ(leds[0], CRGB(127, 0, 0));
 }

@@ -19,7 +19,7 @@ struct BatchDraw {
     /// @brief Construct batch drawer
     /// @param leds LED array to write colors to
     /// @param grad Gradient to use for color mapping
-    BatchDraw(CRGB *leds, WaveCrgbGradientMap::Gradient *grad)
+    BatchDraw(fl::span<CRGB> leds, WaveCrgbGradientMap::Gradient *grad)
         : mLeds(leds), mGradient(grad) {
         mIndices.reserve(kMaxBatchSize); // Should be a no op for FixedVector.
         mAlphas.reserve(kMaxBatchSize);
@@ -63,13 +63,13 @@ struct BatchDraw {
     using ArrayAlphas = fl::FixedVector<u8, kMaxBatchSize>;
     ArrayIndices mIndices;   ///< LED indices in current batch
     ArrayAlphas mAlphas;     ///< Wave amplitudes in current batch
-    CRGB *mLeds = nullptr;   ///< Target LED array
+    fl::span<CRGB> mLeds;   ///< Target LED array
     WaveCrgbGradientMap::Gradient *mGradient = nullptr;  ///< Gradient for color mapping
 };
 } // namespace
 
 void WaveCrgbGradientMap::mapWaveToLEDs(const XYMap &xymap,
-                                        WaveSimulation2D &waveSim, CRGB *leds) {
+                                        WaveSimulation2D &waveSim, fl::span<CRGB> leds) {
     BatchDraw batch(leds, &mGradient);
     const fl::u32 width = waveSim.getWidth();
     const fl::u32 height = waveSim.getHeight();

@@ -52,8 +52,8 @@ class Luminova : public Fx2d {
     };
 
     void resetParticle(Particle &p, fl::u32 tick);
-    void plotDot(CRGB *leds, int x, int y, u8 v) const;
-    void plotSoftDot(CRGB *leds, float fx, float fy, float s) const;
+    void plotDot(fl::span<CRGB> leds, int x, int y, u8 v) const;
+    void plotSoftDot(fl::span<CRGB> leds, float fx, float fy, float s) const;
 
     Params mParams;
     fl::u32 mTick = 0;

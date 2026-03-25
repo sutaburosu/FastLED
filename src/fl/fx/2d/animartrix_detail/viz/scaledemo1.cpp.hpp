@@ -123,7 +123,7 @@ void Scaledemo1_FP::draw(Context &ctx) {
     p.low_limit_raw = 0;
     p.high_limit_raw = FP_ONE;
 
-    CRGB *leds = e->mCtx->leds;
+    fl::span<CRGB> leds = e->mCtx->leds;
 
     for (int i = 0; i < total_pixels; i++) {
         const fl::i32 raw_dist = mState.distance_raw[i];

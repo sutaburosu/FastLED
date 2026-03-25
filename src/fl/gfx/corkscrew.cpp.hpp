@@ -228,7 +228,7 @@ CRGB* Corkscrew::rawData() {
     
     // Fall back to input surface data
     auto surface = getOrCreateInputSurface();
-    return surface->data();
+    return surface->span().data();
 }
 
 fl::span<CRGB> Corkscrew::data() {
@@ -241,10 +241,10 @@ fl::span<CRGB> Corkscrew::data() {
             return vec;
         }
     }
-    
+
     // Fall back to input surface data as span
     auto surface = getOrCreateInputSurface();
-    return fl::span<CRGB>(surface->data(), surface->size());
+    return surface->span();
 }
 
 
@@ -279,7 +279,7 @@ void Corkscrew::readFrom(const fl::Grid<CRGB>& source_grid, bool use_multi_sampl
         
         // Store the sampled color directly in the target surface
         if (led_idx < target_surface->size()) {
-            target_surface->data()[led_idx] = sampled_color;
+            target_surface->span()[led_idx] = sampled_color;
         }
     }
 }
@@ -311,7 +311,7 @@ void Corkscrew::clear() {
 void Corkscrew::fillInputSurface(const CRGB& color) {
     auto target_surface = getOrCreateInputSurface();
     for (fl::size i = 0; i < target_surface->size(); ++i) {
-        target_surface->data()[i] = color;
+        target_surface->span()[i] = color;
     }
 }
 
@@ -444,7 +444,7 @@ void Corkscrew::readFromMulti(const fl::Grid<CRGB>& source_grid) const {
         // Store the result in the target surface at the LED index position
         auto target_surface = const_cast<Corkscrew*>(this)->getOrCreateInputSurface();
         if (led_idx < target_surface->size()) {
-            target_surface->data()[led_idx] = final_color;
+            target_surface->span()[led_idx] = final_color;
         }
     }
 }

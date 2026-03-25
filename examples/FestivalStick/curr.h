@@ -728,7 +728,7 @@ void drawWave(uint32_t now) {
     
     // Draw the wave effect directly to the frame buffer
     // Create a DrawContext for the wave renderer
-    fl::Fx::DrawContext waveContext(now, frameBufferPtr->data());
+    fl::Fx::DrawContext waveContext(now, frameBufferPtr->span());
     waveBlend->draw(waveContext);
 }
 
@@ -744,8 +744,7 @@ void drawAnimartrix(uint32_t now) {
     }
     
     // Draw the animartrix effect directly to the frame buffer
-    fl::CRGB* dst = corkscrew.rawData();
-    fxEngine->draw(now, dst);
+    fxEngine->draw(now, corkscrew.data());
 }
 
 void loop() {

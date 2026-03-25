@@ -34,7 +34,7 @@ class WaveCrgbMap {
     /// @param waveSim Wave simulation containing amplitude values
     /// @param leds Output LED array to write colors to
     virtual void mapWaveToLEDs(const XYMap &xymap, WaveSimulation2D &waveSim,
-                               CRGB *leds) = 0;
+                               fl::span<CRGB> leds) = 0;
 };
 
 /// @brief Default wave-to-color mapper producing grayscale output
@@ -50,7 +50,7 @@ class WaveCrgbMapDefault : public WaveCrgbMap {
     /// @param waveSim Wave simulation containing amplitude values
     /// @param leds Output LED array to write colors to
     void mapWaveToLEDs(const XYMap &xymap, WaveSimulation2D &waveSim,
-                       CRGB *leds) override {
+                       fl::span<CRGB> leds) override {
         const fl::u32 width = waveSim.getWidth();
         const fl::u32 height = waveSim.getHeight();
         for (fl::u32 y = 0; y < height; y++) {
@@ -84,7 +84,7 @@ class WaveCrgbGradientMap : public WaveCrgbMap {
     /// @param waveSim Wave simulation containing amplitude values
     /// @param leds Output LED array to write colors to
     void mapWaveToLEDs(const XYMap &xymap, WaveSimulation2D &waveSim,
-                       CRGB *leds) override;
+                       fl::span<CRGB> leds) override;
 
     /// @brief Set or update the color gradient
     /// @param gradient New gradient to use for color mapping

@@ -6,6 +6,7 @@
 // #include "FastLED.h"
 
 #include "fl/stl/int.h"
+#include "fl/stl/span.h"
 #include "crgb.h"  // IWYU pragma: keep
 #include "fastled_progmem.h"
 #include "fl/gfx/blur.h"  // IWYU pragma: keep
@@ -53,7 +54,17 @@ namespace fl {
 void fadeLightBy(CRGB *leds, fl::u16 num_leds, fl::u8 fadeBy);
 
 /// @copydoc fadeLightBy()
+inline void fadeLightBy(fl::span<CRGB> leds, fl::u8 fadeBy) {
+    fadeLightBy(leds.data(), static_cast<fl::u16>(leds.size()), fadeBy);
+}
+
+/// @copydoc fadeLightBy()
 void fade_video(CRGB *leds, fl::u16 num_leds, fl::u8 fadeBy);
+
+/// @copydoc fadeLightBy()
+inline void fade_video(fl::span<CRGB> leds, fl::u8 fadeBy) {
+    fade_video(leds.data(), static_cast<fl::u16>(leds.size()), fadeBy);
+}
 
 /// Scale the brightness of an array of pixels all at once.
 /// Guaranteed to never fade all the way to black.
@@ -61,6 +72,11 @@ void fade_video(CRGB *leds, fl::u16 num_leds, fl::u8 fadeBy);
 /// @param num_leds the number of LEDs to scale
 /// @param scale how much to scale each LED
 void nscale8_video(CRGB *leds, fl::u16 num_leds, fl::u8 scale);
+
+/// @copydoc nscale8_video()
+inline void nscale8_video(fl::span<CRGB> leds, fl::u8 scale) {
+    nscale8_video(leds.data(), static_cast<fl::u16>(leds.size()), scale);
+}
 
 /// Reduce the brightness of an array of pixels all at once.
 /// This function will eventually fade all the way to black.
@@ -70,7 +86,17 @@ void nscale8_video(CRGB *leds, fl::u16 num_leds, fl::u8 scale);
 void fadeToBlackBy(CRGB *leds, fl::u16 num_leds, fl::u8 fadeBy);
 
 /// @copydoc fadeToBlackBy()
+inline void fadeToBlackBy(fl::span<CRGB> leds, fl::u8 fadeBy) {
+    fadeToBlackBy(leds.data(), static_cast<fl::u16>(leds.size()), fadeBy);
+}
+
+/// @copydoc fadeToBlackBy()
 void fade_raw(CRGB *leds, fl::u16 num_leds, fl::u8 fadeBy);
+
+/// @copydoc fade_raw()
+inline void fade_raw(fl::span<CRGB> leds, fl::u8 fadeBy) {
+    fade_raw(leds.data(), static_cast<fl::u16>(leds.size()), fadeBy);
+}
 
 /// Scale the brightness of an array of pixels all at once.
 /// This function will eventually fade all the way to black, even
@@ -79,6 +105,11 @@ void fade_raw(CRGB *leds, fl::u16 num_leds, fl::u8 fadeBy);
 /// @param num_leds the number of LEDs to scale
 /// @param scale how much to scale each LED
 void nscale8(CRGB *leds, fl::u16 num_leds, fl::u8 scale);
+
+/// @copydoc nscale8()
+inline void nscale8(fl::span<CRGB> leds, fl::u8 scale) {
+    nscale8(leds.data(), static_cast<fl::u16>(leds.size()), scale);
+}
 
 /// Reduce the brightness of an array of pixels as thought it were seen through
 /// a transparent filter with the specified color.
@@ -92,6 +123,11 @@ void nscale8(CRGB *leds, fl::u16 num_leds, fl::u8 scale);
 /// @param numLeds the number of LEDs to fade
 /// @param colormask the color mask to fade with
 void fadeUsingColor(CRGB *leds, fl::u16 numLeds, const CRGB &colormask);
+
+/// @copydoc fadeUsingColor()
+inline void fadeUsingColor(fl::span<CRGB> leds, const CRGB &colormask) {
+    fadeUsingColor(leds.data(), static_cast<fl::u16>(leds.size()), colormask);
+}
 
 /// @} ColorFades
 
@@ -123,6 +159,13 @@ CRGB *blend(const CRGB *src1, const CRGB *src2, CRGB *dest, fl::u16 count,
             fract8 amountOfsrc2);
 
 /// @copydoc blend(const CRGB*, const CRGB*, CRGB*, fl::u16, fract8)
+inline void blend(fl::span<const CRGB> src1, fl::span<const CRGB> src2,
+                  fl::span<CRGB> dest, fract8 amountOfsrc2) {
+    blend(src1.data(), src2.data(), dest.data(),
+          static_cast<fl::u16>(dest.size()), amountOfsrc2);
+}
+
+/// @copydoc blend(const CRGB*, const CRGB*, CRGB*, fl::u16, fract8)
 /// @param directionCode the direction to travel around the color wheel
 CHSV *blend(const CHSV *src1, const CHSV *src2, CHSV *dest, fl::u16 count,
             fract8 amountOfsrc2,
@@ -148,6 +191,13 @@ CHSV &nblend(CHSV &existing, const CHSV &overlay, fract8 amountOfOverlay,
 /// @param amountOfOverlay the fraction of overlay to blend into existing
 void nblend(CRGB *existing, const CRGB *overlay, fl::u16 count,
             fract8 amountOfOverlay);
+
+/// @copydoc nblend(CRGB*, const CRGB*, fl::u16, fract8)
+inline void nblend(fl::span<CRGB> existing, fl::span<const CRGB> overlay,
+                   fract8 amountOfOverlay) {
+    nblend(existing.data(), overlay.data(),
+           static_cast<fl::u16>(existing.size()), amountOfOverlay);
+}
 
 /// @copydoc nblend(CRGB*, const CRGB*, fl::u16, fract8)
 /// @param directionCode the direction to travel around the color wheel
@@ -1770,6 +1820,15 @@ void fill_palette(CRGB *L, fl::u16 N, fl::u8 startIndex, fl::u8 incIndex,
     }
 }
 
+/// @copydoc fill_palette()
+template <typename PALETTE>
+inline void fill_palette(fl::span<CRGB> L, fl::u8 startIndex, fl::u8 incIndex,
+                         const PALETTE &pal, fl::u8 brightness = 255,
+                         TBlendType blendType = LINEARBLEND) {
+    fill_palette(L.data(), static_cast<fl::u16>(L.size()), startIndex, incIndex,
+                 pal, brightness, blendType);
+}
+
 /// Fill a range of LEDs with a sequence of entries from a palette, so that
 /// the entire palette smoothly covers the range of LEDs.
 /// @tparam PALETTE the type of the palette used (auto-deduced)
@@ -1801,6 +1860,16 @@ void fill_palette_circular(CRGB *L, fl::u16 N, fl::u8 startIndex,
         else
             colorIndex += colorChange;
     }
+}
+
+/// @copydoc fill_palette_circular()
+template <typename PALETTE>
+inline void fill_palette_circular(fl::span<CRGB> L, fl::u8 startIndex,
+                                  const PALETTE &pal, fl::u8 brightness = 255,
+                                  TBlendType blendType = LINEARBLEND,
+                                  bool reversed = false) {
+    fill_palette_circular(L.data(), static_cast<fl::u16>(L.size()), startIndex,
+                          pal, brightness, blendType, reversed);
 }
 
 /// Maps an array of palette color indexes into an array of LED colors.
@@ -1838,6 +1907,17 @@ void map_data_into_colors_through_palette(
             targetColorArray[i] += rgb;
         }
     }
+}
+
+/// @copydoc map_data_into_colors_through_palette()
+template <typename PALETTE>
+inline void map_data_into_colors_through_palette(
+    fl::span<fl::u8> dataArray, fl::span<CRGB> targetColorArray,
+    const PALETTE &pal, fl::u8 brightness = 255, fl::u8 opacity = 255,
+    TBlendType blendType = LINEARBLEND) {
+    map_data_into_colors_through_palette(
+        dataArray.data(), static_cast<fl::u16>(dataArray.size()),
+        targetColorArray.data(), pal, brightness, opacity, blendType);
 }
 
 /// Alter one palette by making it slightly more like a "target palette".
@@ -1958,6 +2038,12 @@ CRGB &napplyGamma_video(CRGB &rgb, float gammaR, float gammaG, float gammaB);
 /// @param gamma the gamma value to apply
 void napplyGamma_video(CRGB *rgbarray, fl::u16 count, float gamma);
 
+/// @copydoc napplyGamma_video(CRGB*, fl::u16, float)
+inline void napplyGamma_video(fl::span<CRGB> rgbarray, float gamma) {
+    napplyGamma_video(rgbarray.data(), static_cast<fl::u16>(rgbarray.size()),
+                      gamma);
+}
+
 /// Destructively applies a gamma adjustment to a color array
 /// @param rgbarray pointer to an LED array to apply an adjustment to (modified
 /// in place)
@@ -1967,6 +2053,13 @@ void napplyGamma_video(CRGB *rgbarray, fl::u16 count, float gamma);
 /// @param gammaB the gamma value to apply to the CRGB::blue channel
 void napplyGamma_video(CRGB *rgbarray, fl::u16 count, float gammaR,
                        float gammaG, float gammaB);
+
+/// @copydoc napplyGamma_video(CRGB*, fl::u16, float, float, float)
+inline void napplyGamma_video(fl::span<CRGB> rgbarray, float gammaR,
+                              float gammaG, float gammaB) {
+    napplyGamma_video(rgbarray.data(), static_cast<fl::u16>(rgbarray.size()),
+                      gammaR, gammaG, gammaB);
+}
 
 /// @} GammaFuncs
 

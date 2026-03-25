@@ -96,7 +96,7 @@ void Module_Experiment3_FP::draw(Context &ctx) {
     p.low_limit_raw = 0;
     p.high_limit_raw = FP_ONE;
 
-    CRGB *leds = e->mCtx->leds;
+    fl::span<CRGB> leds = e->mCtx->leds;
 
     for (int i = 0; i < total_pixels; i++) {
         p.dist_raw = mState.distance_raw[i] - dist_offset_raw;

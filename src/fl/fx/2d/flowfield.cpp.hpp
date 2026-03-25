@@ -354,7 +354,7 @@ void FlowFieldFloat::flowAdvect(float dt) {
     }
 }
 
-void FlowFieldFloat::drawFlowVectors(CRGB *leds) {
+void FlowFieldFloat::drawFlowVectors(fl::span<CRGB> leds) {
     int w = (int)getWidth();
     int h = (int)getHeight();
 
@@ -459,9 +459,9 @@ void FlowFieldFloat::drawImpl(DrawContext context, u32 dt_ms, u32 t_ms) {
         for (int x = 0; x < w; x++) {
             int ledIdx = mXyMap.mapToIndex(x, y);
             int i = idx(y, x);
-            context.leds[ledIdx].r = f2u8(mR[i]);
-            context.leds[ledIdx].g = f2u8(mG[i]);
-            context.leds[ledIdx].b = f2u8(mB[i]);
+            context.leds.data()[ledIdx].r = f2u8(mR[i]);
+            context.leds.data()[ledIdx].g = f2u8(mG[i]);
+            context.leds.data()[ledIdx].b = f2u8(mB[i]);
         }
     }
 
@@ -900,7 +900,7 @@ void FlowFieldFP::flowAdvect(i32 dt_raw) {
 //  Flow vector overlay — fixed-point version
 // ---------------------------------------------------------------------------
 
-void FlowFieldFP::drawFlowVectors(CRGB *leds) {
+void FlowFieldFP::drawFlowVectors(fl::span<CRGB> leds) {
     int w = mState.width;
     int h = mState.height;
 
@@ -1012,7 +1012,7 @@ void FlowFieldFP::drawImpl(DrawContext context, u32 dt_ms, u32 t_ms) {
     const i32 *rp = mState.r.data();
     const i32 *gp = mState.g.data();
     const i32 *bp = mState.b.data();
-    CRGB *out = context.leds;
+    fl::span<CRGB> out = context.leds;
     for (int y = 0; y < h; y++) {
         int row_base = y * w;
         for (int x = 0; x < w; x++) {

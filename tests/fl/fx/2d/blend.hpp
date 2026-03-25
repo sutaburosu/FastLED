@@ -79,7 +79,7 @@ FL_TEST_CASE("Test FX2d Layered Blending") {
     CRGB led;
 
     // Draw the layered effect
-    fl::Fx::DrawContext context(0, &led);
+    fl::Fx::DrawContext context(0, fl::span<CRGB>(&led, 1));
     context.now = 0;
     blendFx.draw(context);
 

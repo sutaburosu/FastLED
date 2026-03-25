@@ -72,7 +72,7 @@ void Video::draw(DrawContext context) {
         FASTLED_WARN_IF(!mError.empty(), mError.c_str());
         return;
     }
-    mImpl->draw(context.now, fl::span<CRGB>(context.leds, mImpl->pixelsPerFrame()));
+    mImpl->draw(context.now, context.leds);
 }
 
 i32 Video::durationMicros() const {
@@ -157,10 +157,10 @@ void VideoFxWrapper::draw(DrawContext context) {
     if (mVideo->needsFrame(context.now)) {
         mFx->draw(context); // use the leds in the context as a tmp buffer.
         mByteStream->writeCRGB(
-            context.leds,
+            context.leds.data(),
             mFx->getNumLeds()); // now write the leds to the byte stream.
     }
-    bool ok = mVideo->draw(context.now, fl::span<CRGB>(context.leds, mFx->getNumLeds()));
+    bool ok = mVideo->draw(context.now, context.leds);
     if (!ok) {
         FASTLED_WARN("VideoFxWrapper: draw failed.");
     }

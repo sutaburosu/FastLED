@@ -81,7 +81,7 @@ FxPtr FxEngine::getFx(int id) {
     return FxPtr();
 }
 
-bool FxEngine::draw(fl::u32 now, CRGB *finalBuffer) {
+bool FxEngine::draw(fl::u32 now, fl::span<CRGB> finalBuffer) {
     mTimeFunction.update(now);
     fl::u32 warpedTime = mTimeFunction.time();
 

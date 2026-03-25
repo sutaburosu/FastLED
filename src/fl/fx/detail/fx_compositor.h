@@ -2,6 +2,7 @@
 
 #include "fl/stl/stdint.h"
 #include "fl/stl/cstring.h"
+#include "fl/stl/span.h"
 
 #include "crgb.h"  // IWYU pragma: keep
 #include "fl/stl/shared_ptr.h"  // For shared_ptr
@@ -41,7 +42,7 @@ class FxCompositor {
         mTransition.end();
     }
 
-    void draw(fl::u32 now, fl::u32 warpedTime, CRGB *finalBuffer);
+    void draw(fl::u32 now, fl::u32 warpedTime, fl::span<CRGB> finalBuffer);
 
   private:
     void swapLayers() {
@@ -56,19 +57,20 @@ class FxCompositor {
 };
 
 inline void FxCompositor::draw(fl::u32 now, fl::u32 warpedTime,
-                               CRGB *finalBuffer) {
+                               fl::span<CRGB> finalBuffer) {
     if (!mLayers[0]->getFx()) {
         return;
     }
     mLayers[0]->draw(warpedTime);
     u8 progress = mTransition.getProgress(now);
     if (!progress) {
-        fl::memcpy(finalBuffer, mLayers[0]->getSurface(), sizeof(CRGB) * mNumLeds);
+        fl::span<CRGB> surface0 = mLayers[0]->getSurface();
+        fl::memcpy(finalBuffer.data(), surface0.data(), sizeof(CRGB) * mNumLeds);
         return;
     }
     mLayers[1]->draw(warpedTime);
-    const CRGB *surface0 = mLayers[0]->getSurface();
-    const CRGB *surface1 = mLayers[1]->getSurface();
+    fl::span<CRGB> surface0 = mLayers[0]->getSurface();
+    fl::span<CRGB> surface1 = mLayers[1]->getSurface();
 
     for (fl::u32 i = 0; i < mNumLeds; i++) {
         const CRGB &p0 = surface0[i];

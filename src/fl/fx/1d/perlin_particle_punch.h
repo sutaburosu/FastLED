@@ -123,7 +123,7 @@ class PerlinParticlePunch : public Fx1d {
     static s16x16 mapf(s16x16 x, s16x16 in_min, s16x16 in_max, s16x16 out_min,
                         s16x16 out_max);
     s16x16 circleNoiseGen(u32 now, s16x16 theta) const;
-    void noiseCircleDraw(u32 now, CRGB *dst);
+    void noiseCircleDraw(u32 now, fl::span<CRGB> dst);
 
     // Particle helpers
     AmbientParticle *tryAllocateAmbient();

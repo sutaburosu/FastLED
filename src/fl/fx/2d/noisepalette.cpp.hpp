@@ -105,7 +105,7 @@ void NoisePalette::setPalettePreset(int paletteIndex) {
     }
 }
 
-void NoisePalette::mapNoiseToLEDsUsingPalette(CRGB *leds) {
+void NoisePalette::mapNoiseToLEDsUsingPalette(fl::span<CRGB> leds) {
     static u8 ihue = 0; // okay static in header
 
     for (u16 i = 0; i < width; i++) {

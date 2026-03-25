@@ -34,16 +34,16 @@ class Pacifica : public Fx1d {
                                         0x000E39, 0x001040, 0x001450, 0x001860,
                                         0x001C70, 0x002080, 0x1040BF, 0x2060FF};
 
-    void pacifica_one_layer(CRGB *leds, CRGBPalette16 &p, u16 cistart,
+    void pacifica_one_layer(fl::span<CRGB> leds, CRGBPalette16 &p, u16 cistart,
                             u16 wavescale, u8 bri, u16 ioff);
-    void pacifica_add_whitecaps(CRGB *leds);
-    void pacifica_deepen_colors(CRGB *leds);
+    void pacifica_add_whitecaps(fl::span<CRGB> leds);
+    void pacifica_deepen_colors(fl::span<CRGB> leds);
 };
 
 void Pacifica::draw(DrawContext ctx) {
-    CRGB *leds = ctx.leds;
+    fl::span<CRGB> leds = ctx.leds;
     fl::u32 now = ctx.now;
-    if (leds == nullptr || mNumLeds == 0) {
+    if (leds.empty() || mNumLeds == 0) {
         return;
     }
 
@@ -62,7 +62,7 @@ void Pacifica::draw(DrawContext ctx) {
     sCIStart4 -= (deltams2 * beatsin88(257, 4, 6));
 
     // Clear out the LED array to a dim background blue-green
-    fill_solid(leds, mNumLeds, CRGB(2, 6, 10));
+    fill_solid(leds, CRGB(2, 6, 10));
 
     // Render each of four layers, with different scales and speeds, that vary
     // over time
@@ -85,7 +85,7 @@ void Pacifica::draw(DrawContext ctx) {
 }
 
 // Add one layer of waves into the led array
-void Pacifica::pacifica_one_layer(CRGB *leds, CRGBPalette16 &p,
+void Pacifica::pacifica_one_layer(fl::span<CRGB> leds, CRGBPalette16 &p,
                                   u16 cistart, u16 wavescale,
                                   u8 bri, u16 ioff) {
     u16 ci = cistart;
@@ -105,7 +105,7 @@ void Pacifica::pacifica_one_layer(CRGB *leds, CRGBPalette16 &p,
 
 // Add extra 'white' to areas where the four layers of light have lined up
 // brightly
-void Pacifica::pacifica_add_whitecaps(CRGB *leds) {
+void Pacifica::pacifica_add_whitecaps(fl::span<CRGB> leds) {
     u8 basethreshold = beatsin8(9, 55, 65);
     u8 wave = beat8(7);
 
@@ -122,7 +122,7 @@ void Pacifica::pacifica_add_whitecaps(CRGB *leds) {
 }
 
 // Deepen the blues and greens
-void Pacifica::pacifica_deepen_colors(CRGB *leds) {
+void Pacifica::pacifica_deepen_colors(fl::span<CRGB> leds) {
     for (u16 i = 0; i < mNumLeds; i++) {
         leds[i].blue = scale8(leds[i].blue, 145);
         leds[i].green = scale8(leds[i].green, 200);

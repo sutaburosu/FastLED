@@ -238,7 +238,7 @@ s16x16 PerlinParticlePunch::circleNoiseGen(u32 now, s16x16 theta) const {
     return tmp;
 }
 
-void PerlinParticlePunch::noiseCircleDraw(u32 now, CRGB *dst) {
+void PerlinParticlePunch::noiseCircleDraw(u32 now, fl::span<CRGB> dst) {
     // Apply time-warp to rotation speed — this is the visible acceleration
     u32 warped_now = u32(float(now) * mTimeMultiplier);
     s16x16 time_factor = s16x16::from_raw(static_cast<i32>(warped_now * 32u));
@@ -400,8 +400,8 @@ void PerlinParticlePunch::spawnDebrisFromMeteor(MeteorParticle &m, u32) {
 // ---------------------------------------------------------------------------
 
 void PerlinParticlePunch::draw(DrawContext context) {
-    CRGB *leds = context.leds;
-    if (leds == nullptr || mNumLeds == 0) {
+    fl::span<CRGB> leds = context.leds;
+    if (leds.empty() || mNumLeds == 0) {
         return;
     }
     u32 now = context.now;

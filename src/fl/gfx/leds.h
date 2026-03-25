@@ -2,6 +2,7 @@
 
 #include "crgb.h"  // IWYU pragma: keep
 #include "fl/math/xymap.h"
+#include "fl/stl/span.h"
 
 namespace fl {
 
@@ -33,13 +34,13 @@ class Leds {
     CRGB *operator[](int x);
     const CRGB *operator[](int x) const;
     // Raw data access.
-    CRGB *rgb() { return mLeds; }
-    const CRGB *rgb() const { return mLeds; }
+    fl::span<CRGB> rgb() { return mLeds; }
+    fl::span<const CRGB> rgb() const { return mLeds; }
 
     const XYMap &xymap() const { return mXyMap; }
 
-    operator CRGB *() { return mLeds; }
-    operator const CRGB *() const { return mLeds; }
+    operator CRGB *() { return mLeds.data(); }
+    operator const CRGB *() const { return mLeds.data(); }
 
     void fill(const CRGB &color) {
         for (fl::size i = 0; i < mXyMap.getTotal(); ++i) {
@@ -52,7 +53,7 @@ class Leds {
   protected:
     static CRGB &empty(); // Allows safe out of bounds access.
     XYMap mXyMap;
-    CRGB *mLeds;
+    fl::span<CRGB> mLeds;
 };
 
 template <fl::size W, fl::size H> class LedsXY : public Leds {

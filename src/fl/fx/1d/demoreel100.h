@@ -20,8 +20,8 @@ class DemoReel100 : public Fx1d {
     DemoReel100(u16 num_leds) : Fx1d(num_leds) {}
 
     void draw(DrawContext context) override {
-        CRGB *leds = context.leds;
-        if (leds == nullptr || mNumLeds == 0) {
+        fl::span<CRGB> leds = context.leds;
+        if (leds.empty() || mNumLeds == 0) {
             return;
         }
         if (start_time == 0) {
@@ -51,7 +51,7 @@ class DemoReel100 : public Fx1d {
             (current_pattern_number + 1) % 6; // 6 is the number of patterns
     }
 
-    void runPattern(CRGB *leds) {
+    void runPattern(fl::span<CRGB> leds) {
         switch (current_pattern_number) {
         case 0:
             rainbow(leds);
@@ -74,38 +74,38 @@ class DemoReel100 : public Fx1d {
         }
     }
 
-    void rainbow(CRGB *leds) {
+    void rainbow(fl::span<CRGB> leds) {
         // FastLED's built-in rainbow generator
-        fill_rainbow(leds, mNumLeds, hue, 7);
+        fill_rainbow(leds, hue, 7);
     }
 
-    void rainbowWithGlitter(CRGB *leds) {
+    void rainbowWithGlitter(fl::span<CRGB> leds) {
         // built-in FastLED rainbow, plus some random sparkly glitter
         rainbow(leds);
         addGlitter(80, leds);
     }
 
-    void addGlitter(fract8 chanceOfGlitter, CRGB *leds) {
+    void addGlitter(fract8 chanceOfGlitter, fl::span<CRGB> leds) {
         if (random8() < chanceOfGlitter) {
             leds[random16(mNumLeds)] += CRGB::White;
         }
     }
 
-    void confetti(CRGB *leds) {
+    void confetti(fl::span<CRGB> leds) {
         // random colored speckles that blink in and fade smoothly
-        fadeToBlackBy(leds, mNumLeds, 10);
+        fadeToBlackBy(leds, 10);
         int pos = random16(mNumLeds);
         leds[pos] += CHSV(hue + random8(64), 200, 255);
     }
 
-    void sinelon(CRGB *leds) {
+    void sinelon(fl::span<CRGB> leds) {
         // a colored dot sweeping back and forth, with fading trails
-        fadeToBlackBy(leds, mNumLeds, 20);
+        fadeToBlackBy(leds, 20);
         int pos = beatsin16(13, 0, mNumLeds - 1);
         leds[pos] += CHSV(hue, 255, 192);
     }
 
-    void bpm(CRGB *leds) {
+    void bpm(fl::span<CRGB> leds) {
         // colored stripes pulsing at a defined Beats-Per-Minute (BPM)
         u8 BeatsPerMinute = 62;
         CRGBPalette16 palette = PartyColors_p;
@@ -116,9 +116,9 @@ class DemoReel100 : public Fx1d {
         }
     }
 
-    void juggle(CRGB *leds) {
+    void juggle(fl::span<CRGB> leds) {
         // eight colored dots, weaving in and out of sync with each other
-        fadeToBlackBy(leds, mNumLeds, 20);
+        fadeToBlackBy(leds, 20);
         u8 dothue = 0;
         for (u16 i = 0; i < 8; i++) {
             leds[beatsin16(i + 7, 0, mNumLeds - 1)] |= CHSV(dothue, 200, 255);

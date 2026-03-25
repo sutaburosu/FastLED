@@ -108,11 +108,10 @@ void setup() {
     frameBuffer.reset(width, height);
     fl::XYMap xyMap = fl::XYMap::constructRectangularGrid(width, height, 0);
 
-    fl::CRGB *leds = frameBuffer.data();
-    size_t num_leds = frameBuffer.size();
+    fl::span<CRGB> leds = frameBuffer.span();
 
     CLEDController *controller =
-        &FastLED.addLeds<WS2812, 3, BGR>(leds, num_leds);
+        &FastLED.addLeds<WS2812, 3, BGR>(leds.data(), leds.size());
 
     // NEW: Create ScreenMap directly from Corkscrew using toScreenMap()
     // This maps each LED index to its exact position on the cylindrical surface
@@ -147,7 +146,7 @@ void loop() {
 
     if (allWhite) {
         for (size_t i = 0; i < frameBuffer.size(); ++i) {
-            frameBuffer.data()[i] = CRGB(8, 8, 8);
+            frameBuffer.span()[i] = CRGB(8, 8, 8);
         }
     }
 

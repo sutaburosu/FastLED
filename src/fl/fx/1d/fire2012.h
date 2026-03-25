@@ -57,8 +57,8 @@ class Fire2012 : public Fx1d {
     ~Fire2012() {}
 
     void draw(DrawContext context) override {
-        CRGB *leds = context.leds;
-        if (leds == nullptr) {
+        fl::span<CRGB> leds = context.leds;
+        if (leds.empty()) {
             return;
         }
 
