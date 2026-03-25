@@ -13,10 +13,9 @@
 #include "fl/stl/int.h"
 #include "fl/math/math.h"
 #include "fl/stl/weak_ptr.h"
-#include "fl/stl/unordered_map.h"
+#include "fl/stl/flat_map.h"
 #include "fl/stl/align.h"
 #include "fl/math/fixed_point.h"
-#include "fl/stl/hash.h"
 
 namespace fl {
 
@@ -351,14 +350,6 @@ u16 easeInOutSine16(u16 i) {
 // Fixed-point key for gamma cache: unsigned 4.12 (range [0, 15.999], 1/4096 resolution).
 using GammaKey = fl::ufixed_point<4, 12>;
 
-// Hash specialization so GammaKey works as an unordered_map key.
-template <> struct Hash<GammaKey> {
-    u32 operator()(const GammaKey &key) const noexcept {
-        u16 raw = key.raw();
-        return MurmurHash3_x86_32(&raw, sizeof(raw));
-    }
-};
-
 class Gamma8Impl : public Gamma8 {
 public:
     explicit Gamma8Impl(float gamma) {
@@ -414,11 +405,11 @@ private:
 fl::shared_ptr<const Gamma8> Gamma8::getOrCreate(float gamma) {
     GammaKey key(gamma);
 
-    static fl::unordered_map<GammaKey, fl::weak_ptr<const Gamma8>> sCache;
+    static fl::flat_map<GammaKey, fl::weak_ptr<const Gamma8>> sCache;
 
-    auto* wp = sCache.find_value(key);
-    if (wp) {
-        fl::shared_ptr<const Gamma8> existing = wp->lock();
+    auto it = sCache.find(key);
+    if (it != sCache.end()) {
+        fl::shared_ptr<const Gamma8> existing = it->second.lock();
         if (existing) {
             return existing;
         }
