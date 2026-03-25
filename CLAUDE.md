@@ -26,7 +26,8 @@
 
 - `bash test` / `bash test --cpp` / `bash test TestName` — Run tests
 - `bash lint` — Code formatting/linting
-- `bash compile uno --examples Blink` — Compile for platform
+- `bash compile wasm --examples Blink` — Compile example (WASM is default target)
+- `bash compile <platform> --examples Blink` — Compile for specific hardware (only when explicitly requested)
 - `bash validate --parlio` — Live device testing (must specify driver)
 - `bash profile <function>` — Performance profiling
 
