@@ -32,7 +32,7 @@ void loop() {}
 // ---------------------------------------------------------------------------
 CRGB leds[NUM_LEDS];
 fl::UIAudio audio_ui("Audio Input");
-fl::UICheckbox enableAmbient("Ambient Particles", false);
+fl::UICheckbox enableAmbient("Ambient Particles", true);
 fl::UICheckbox enableMeteors("Beat Meteors", true);
 fl::UICheckbox enableTimeWarp("Noise Time-Warp", false);
 // Vibe bass is self-normalizing: ~1.0 = song average.
