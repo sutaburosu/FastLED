@@ -323,7 +323,7 @@ FL_TEST_CASE("fl::allocator_realloc") {
     }
 
     FL_SUBCASE("Vector with allocator_realloc resizing") {
-        fl::vector<int, allocator_realloc<int>> vec;
+        fl::vector<int> vec;
 
         // Push back elements to trigger multiple reallocations
         for (int i = 0; i < 100; ++i) {
@@ -338,7 +338,7 @@ FL_TEST_CASE("fl::allocator_realloc") {
     }
 
     FL_SUBCASE("Vector with POD types benefits from realloc") {
-        fl::vector<float, allocator_realloc<float>> vec;
+        fl::vector<float> vec;
 
         for (float i = 0.0f; i < 50.0f; ++i) {
             vec.push_back(i * 1.5f);
@@ -351,7 +351,7 @@ FL_TEST_CASE("fl::allocator_realloc") {
     }
 
     FL_SUBCASE("Vector reserve and access") {
-        fl::vector<int, allocator_realloc<int>> vec;
+        fl::vector<int> vec;
 
         vec.reserve(100);
         FL_REQUIRE(vec.capacity() >= 100);
@@ -368,13 +368,13 @@ FL_TEST_CASE("fl::allocator_realloc") {
 
     FL_SUBCASE("Comparison: allocator_realloc vs standard allocator") {
         // Standard allocator
-        fl::vector<int, allocator<int>> vec_standard;
+        fl::vector<int> vec_standard;
         for (int i = 0; i < 100; ++i) {
             vec_standard.push_back(i);
         }
 
         // Realloc allocator
-        fl::vector<int, allocator_realloc<int>> vec_realloc;
+        fl::vector<int> vec_realloc;
         for (int i = 0; i < 100; ++i) {
             vec_realloc.push_back(i);
         }
@@ -1164,7 +1164,7 @@ FL_TEST_CASE("fl::allocator_inlined_slab") {
 // Integration test with fl::vector
 FL_TEST_CASE("fl::allocator integration with vector") {
     FL_SUBCASE("vector with default allocator") {
-        fl::vector<int, allocator<int>> vec;
+        fl::vector<int> vec;
         vec.push_back(1);
         vec.push_back(2);
         vec.push_back(3);
@@ -1176,7 +1176,7 @@ FL_TEST_CASE("fl::allocator integration with vector") {
     }
 
     FL_SUBCASE("vector with realloc allocator") {
-        fl::vector<int, allocator_realloc<int>> vec;
+        fl::vector<int> vec;
         vec.push_back(1);
         vec.push_back(2);
         vec.push_back(3);
@@ -1188,7 +1188,7 @@ FL_TEST_CASE("fl::allocator integration with vector") {
     }
 
     FL_SUBCASE("vector with slab allocator") {
-        fl::vector<int, allocator_slab<int, 8>> vec;
+        fl::vector<int> vec;
         vec.push_back(1);
         vec.push_back(2);
         vec.push_back(3);
@@ -1200,7 +1200,7 @@ FL_TEST_CASE("fl::allocator integration with vector") {
     }
 
     FL_SUBCASE("vector with inlined allocator") {
-        fl::vector<int, allocator_inlined<int, 4>> vec;
+        fl::vector<int> vec;
 
         // Add elements within inlined capacity
         vec.push_back(1);

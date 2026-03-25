@@ -714,11 +714,11 @@ FL_TEST_CASE("Automatic realloc optimization for trivially copyable types") {
     }
 }
 
-// BACKWARDS COMPATIBILITY: allocator_realloc still works but is now redundant
-FL_TEST_CASE("allocator_realloc backwards compatibility") {
-    FL_SUBCASE("allocator_realloc still works (now redundant)") {
-        // This still compiles and works, but provides no benefit over default allocator
-        fl::vector<int, fl::allocator_realloc<int>> vec;
+// Trivially copyable types use fast memcpy paths automatically (PMR allocator)
+FL_TEST_CASE("trivially copyable vector optimization") {
+    FL_SUBCASE("trivially copyable int uses fast path") {
+        // Default vector<int> auto-optimizes via vector_basic trivial path
+        fl::vector<int> vec;
 
         vec.push_back(10);
         vec.push_back(20);

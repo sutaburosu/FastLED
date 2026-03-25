@@ -5,6 +5,7 @@
 // begin current directory includes
 #include "fl/stl/allocator.cpp.hpp"
 #include "fl/stl/basic_string.cpp.hpp"
+#include "fl/stl/basic_vector.cpp.hpp"
 #include "fl/stl/bitset.cpp.hpp"
 #include "fl/stl/charconv.cpp.hpp"
 #include "fl/stl/chrono.cpp.hpp"
@@ -16,6 +17,7 @@
 #include "fl/stl/istream.cpp.hpp"
 #include "fl/stl/json.cpp.hpp"
 #include "fl/stl/malloc.cpp.hpp"
+#include "fl/stl/memory_resource.cpp.hpp"
 #include "fl/stl/not_null.cpp.hpp"
 #include "fl/stl/ostream.cpp.hpp"
 #include "fl/stl/shared_ptr.cpp.hpp"

@@ -17,6 +17,7 @@
 #include "fl/stl/move.h"
 #include "fl/stl/align.h"
 #include "fl/stl/compiler_control.h"
+#include "fl/stl/basic_vector.h"
 #include "fl/stl/noexcept.h"
 
 namespace fl {
@@ -80,7 +81,7 @@ struct FL_ALIGNAS(alignof(T) > alignof(fl::uptr) ? alignof(T) : alignof(fl::uptr
 // Because of this limitation, this vector is not a drop in replacement for
 // std::vector. However it used for vector_inlined<T, N> which allows spill over
 // to a heap vector when size > N.
-template <typename T, fl::size N> 
+template <typename T, fl::size N>
 class FL_ALIGN FixedVector {
   private:
     InlinedMemoryBlock<T, N> mMemoryBlock;
@@ -437,22 +438,18 @@ class FL_ALIGN FixedVector {
     fl::size current_size = 0;
 };
 
-// vector implementation - inlined directly in this file
-// Forward declaration for span already provided above (line 22)
+///////////////////////////////////////////////////////////////////////////////
+// vector<T> — Thin template wrapper around vector_basic.
+// All memory management and element operations are in vector_basic (compiled once).
+// This class provides type safety, typed iterators, and sets up the ops table.
+///////////////////////////////////////////////////////////////////////////////
 
-template <typename T, typename Allocator = fl::allocator<T>>
-class FL_ALIGN vector {
-  private:
-    T* mArray = nullptr;
-    fl::size mCapacity = 0;
-    fl::size mSize = 0;
-    Allocator mAlloc;
-
+template <typename T>
+class FL_ALIGN vector : public vector_basic {
   public:
     typedef T value_type;
     typedef T *iterator;
     typedef const T *const_iterator;
-    typedef Allocator allocator_type;
 
     struct reverse_iterator {
         iterator it;
@@ -488,436 +485,235 @@ class FL_ALIGN vector {
         }
     };
 
-    // Default constructor
-    vector() FL_NOEXCEPT : mArray(nullptr),mCapacity(0), mSize(0) {
-    }
+    // ======= CONSTRUCTORS =======
 
-    // Constructor with allocator
-    explicit vector(const Allocator& alloc) FL_NOEXCEPT : mArray(nullptr), mCapacity(0), mSize(0), mAlloc(alloc) {
-    }
+    // Default constructor
+    vector()
+        : vector_basic(sizeof(T), default_memory_resource(),
+                        vector_element_ops_for<T>()) {}
+
+    // Constructor with memory resource
+    explicit vector(memory_resource* resource)
+        : vector_basic(sizeof(T), resource, vector_element_ops_for<T>()) {}
 
     // Constructor with size and value
-    vector(fl::size size, const T &value = T()) FL_NOEXCEPT : mCapacity(size), mSize(size) {
-        if (size > 0) {
-            // mArray.reset(size);
-            mArray = mAlloc.allocate(size);
-            for (fl::size i = 0; i < size; ++i) {
-                mAlloc.construct(&mArray[i], value);
-            }
+    vector(fl::size count, const T &value = T())
+        : vector_basic(sizeof(T), default_memory_resource(),
+                        vector_element_ops_for<T>()) {
+        resize_value_impl(count, &value);
+    }
+
+    // Constructor with size, value, and memory resource
+    vector(fl::size count, const T &value, memory_resource* resource)
+        : vector_basic(sizeof(T), resource, vector_element_ops_for<T>()) {
+        resize_value_impl(count, &value);
+    }
+
+    // Copy constructor
+    vector(const vector &other)
+        : vector_basic(sizeof(T), other.mResource,
+                        vector_element_ops_for<T>()) {
+        copy_from(other);
+    }
+
+    // Move constructor
+    vector(vector &&other) noexcept
+        : vector_basic(sizeof(T), other.mResource,
+                        vector_element_ops_for<T>()) {
+        move_from(other);
+    }
+
+    // Array constructor
+    template <fl::size N> vector(T (&values)[N]) FL_NOEXCEPT
+        : vector_basic(sizeof(T), default_memory_resource(),
+                        vector_element_ops_for<T>()) {
+        reserve_impl(N);
+        for (fl::size i = 0; i < N; ++i) {
+            push_back(values[i]);
         }
     }
-    vector(const vector<T, Allocator> &other) FL_NOEXCEPT {
-        reserve(other.size());
-        assign(other.begin(), other.end());
-    }
-    // Move constructor - directly transfer ownership to maintain invariants
-    vector(vector<T, Allocator> &&other) noexcept
-        : mArray(other.mArray)
-        , mCapacity(other.mCapacity)
-        , mSize(other.mSize)
-        , mAlloc(fl::move(other.mAlloc)) {
-        // Leave other in valid empty state (maintains invariant)
-        other.mArray = nullptr;
-        other.mSize = 0;
-        other.mCapacity = 0;
-    }
-    vector &operator=(
-        const vector<T, Allocator> &other) { // cppcheck-suppress operatorEqVarError
-        if (this != &other) {
-            mAlloc = other.mAlloc;
-            assign(other.begin(), other.end());
-        }
-        return *this;
-    }
 
-    // Move assignment operator - explicitly defined to maintain invariants
-    vector &operator=(vector<T, Allocator> &&other) noexcept {
-        if (this != &other) {
-            // Clean up our own resources first
-            clear();
-            if (mArray) {
-                mAlloc.deallocate(mArray, mCapacity);
-            }
-
-            // Transfer ownership from other
-            mArray = other.mArray;
-            mSize = other.mSize;
-            mCapacity = other.mCapacity;
-            mAlloc = fl::move(other.mAlloc);
-
-            // Leave other in valid empty state (maintains invariant)
-            other.mArray = nullptr;
-            other.mSize = 0;
-            other.mCapacity = 0;
-        }
-        return *this;
-    }
-
-    template <fl::size N> vector(T (&values)[N]) FL_NOEXCEPT {
-        T *begin = &values[0];
-        T *end = &values[N];
-        assign(begin, end);
-    }
-
-    // emplace back
-    template <typename... Args>
-    void emplace_back(Args&&... args) FL_NOEXCEPT {
-        push_back(T(fl::forward<Args>(args)...));
-    }
-
-    // Initializer list constructor (C++11 and later) - uses fl::initializer_list
-    vector(fl::initializer_list<T> init) FL_NOEXCEPT {
-        reserve(init.size());
+    // Initializer list constructor
+    vector(fl::initializer_list<T> init) FL_NOEXCEPT
+        : vector_basic(sizeof(T), default_memory_resource(),
+                        vector_element_ops_for<T>()) {
+        reserve_impl(init.size());
         for (const auto& value : init) {
             push_back(value);
         }
     }
 
-    // Iterator-based constructor
-    template <typename InputIterator>
-    vector(InputIterator first, InputIterator last) FL_NOEXCEPT {
-        assign(first, last);
-    }
-
-    // Implicit copy constructor from span
-    // Note: dynamic_extent is defined as fl::size(-1) in fl/stl/span.h
-    vector(span<const T, fl::size(-1)> s) FL_NOEXCEPT {
-        reserve(s.size());
-        assign(s.begin(), s.end());
-    }
-
-    // Destructor
-    ~vector() FL_NOEXCEPT {
-        clear();  // Destroys all elements and sets mSize = 0
-        if (mArray) {
-            mAlloc.deallocate(mArray, mCapacity);
-            mArray = nullptr;
+    // Iterator-based constructor (SFINAE: exclude integral types to avoid
+    // ambiguity with vector(size, value) when called as vector(int, int))
+    template <typename InputIterator,
+              typename = fl::enable_if_t<!fl::is_integral<InputIterator>::value>>
+    vector(InputIterator first, InputIterator last) FL_NOEXCEPT
+        : vector_basic(sizeof(T), default_memory_resource(),
+                        vector_element_ops_for<T>()) {
+        for (auto it = first; it != last; ++it) {
+            push_back(*it);
         }
     }
 
-    void ensure_size(fl::size n) FL_NOEXCEPT {
-        if (n > mCapacity) {
-            fl::size new_capacity = (3 * mCapacity) / 2;
-            if (new_capacity < n) {
-                new_capacity = n;
-            }
-            ensure_size_impl(n, new_capacity);
+    // Span constructor
+    vector(span<const T, fl::size(-1)> s) FL_NOEXCEPT
+        : vector_basic(sizeof(T), default_memory_resource(),
+                        vector_element_ops_for<T>()) {
+        reserve_impl(s.size());
+        for (fl::size i = 0; i < s.size(); ++i) {
+            push_back(s[i]);
         }
     }
 
-private:
-    // SFINAE helper: Try reallocate() path if allocator supports it
-    template <typename A = Allocator>
-    typename fl::enable_if<fl::allocator_traits<A>::has_reallocate_v, bool>::type
-    try_reallocate(fl::size new_capacity) {
-        T* reallocated = mAlloc.reallocate(mArray, mCapacity, new_capacity);
-        if (reallocated) {
-            mArray = reallocated;
-            mCapacity = new_capacity;
-            return true;  // Success!
+    // ======= ASSIGNMENT =======
+
+    vector &operator=(const vector &other) {
+        if (this != &other) {
+            copy_from(other);
         }
-        return false;  // Not supported or failed
+        return *this;
     }
 
-    // Fallback: reallocate() not supported
-    template <typename A = Allocator>
-    typename fl::enable_if<!fl::allocator_traits<A>::has_reallocate_v, bool>::type
-    try_reallocate(fl::size new_capacity) {
-        FASTLED_UNUSED(new_capacity);
-        return false;
+    vector &operator=(vector &&other) noexcept {
+        if (this != &other) {
+            move_assign(other);
+        }
+        return *this;
     }
 
-    // SFINAE helper: Try allocate_at_least() path if allocator supports it
-    template <typename A = Allocator>
-    typename fl::enable_if<fl::allocator_traits<A>::has_allocate_at_least_v, T*>::type
-    allocate_new(fl::size new_capacity, fl::size& actual_capacity) {
-        auto result = mAlloc.allocate_at_least(new_capacity);
-        actual_capacity = result.count;
-        return result.ptr;
+    // ======= DESTRUCTOR =======
+    // Base class ~vector_basic() handles cleanup via mOps
+
+    // ======= CAPACITY =======
+    // size(), empty(), capacity(), full() inherited from vector_basic
+
+    void reserve(fl::size n) FL_NOEXCEPT { reserve_impl(n); }
+
+    void resize(fl::size n) FL_NOEXCEPT { resize_impl(n); }
+
+    void resize(fl::size n, const T &value) FL_NOEXCEPT { resize_value_impl(n, &value); }
+
+    void shrink_to_fit() FL_NOEXCEPT { shrink_to_fit_impl(); }
+
+    void ensure_size(fl::size n) FL_NOEXCEPT { reserve_impl(n); }
+
+    memory_resource* get_resource() const FL_NOEXCEPT { return mResource; }
+
+    // ======= ELEMENT ACCESS =======
+
+    T &operator[](fl::size index) FL_NOEXCEPT {
+        return static_cast<T*>(mArray)[index];
     }
 
-    // Fallback: Use standard allocate()
-    template <typename A = Allocator>
-    typename fl::enable_if<!fl::allocator_traits<A>::has_allocate_at_least_v, T*>::type
-    allocate_new(fl::size new_capacity, fl::size& actual_capacity) {
-        actual_capacity = new_capacity;
-        return mAlloc.allocate(new_capacity);
+    const T &operator[](fl::size index) const FL_NOEXCEPT {
+        return static_cast<const T*>(mArray)[index];
     }
 
-    // Implementation: Try optimized paths, fall back to standard if needed
-    void ensure_size_impl(fl::size n, fl::size new_capacity) FL_NOEXCEPT {
-        FASTLED_UNUSED(n);
-        // PATH 1: Try optimized reallocate() if allocator supports it
-        // This avoids copying for POD types and moves memory in-place
-        if (try_reallocate<Allocator>(new_capacity)) {
-            return;  // Success! No need for copy
-        }
+    T &front() FL_NOEXCEPT { return static_cast<T*>(mArray)[0]; }
+    const T &front() const FL_NOEXCEPT { return static_cast<const T*>(mArray)[0]; }
 
-        // PATH 2: Try allocate_at_least() or standard allocate()
-        // Allocator can return MORE than requested to reduce future reallocations
-        fl::size actual_capacity = new_capacity;
-        T* new_array = allocate_new<Allocator>(new_capacity, actual_capacity);
+    T &back() FL_NOEXCEPT { return static_cast<T*>(mArray)[mSize - 1]; }
+    const T &back() const FL_NOEXCEPT { return static_cast<const T*>(mArray)[mSize - 1]; }
 
-        if (!new_array) {
-            return;  // Allocation failed
-        }
+    T *data() FL_NOEXCEPT { return static_cast<T*>(mArray); }
+    const T *data() const FL_NOEXCEPT { return static_cast<const T*>(mArray); }
 
-        // Move existing elements to new array
-        for (fl::size i = 0; i < mSize; ++i) {
-            mAlloc.construct(&new_array[i], fl::move(mArray[i]));
-        }
+    // ======= MODIFIERS =======
 
-        // Clean up old array
-        if (mArray) {
-            for (fl::size i = 0; i < mSize; ++i) {
-                mAlloc.destroy(&mArray[i]);
-            }
-            mAlloc.deallocate(mArray, mCapacity);
-        }
+    void push_back(const T &value) FL_NOEXCEPT { push_back_copy_impl(&value); }
+    void push_back(T &&value) FL_NOEXCEPT { push_back_move_impl(&value); }
 
-        mArray = new_array;
-        mCapacity = actual_capacity;  // Use actual allocated count
+    template <typename... Args>
+    void emplace_back(Args&&... args) FL_NOEXCEPT {
+        T tmp(fl::forward<Args>(args)...);
+        push_back_move_impl(&tmp);
     }
 
-public:
-
-    void reserve(fl::size n) FL_NOEXCEPT {
-        if (n > mCapacity) {
-            ensure_size(n);
-        }
-    }
-
-    void resize(fl::size n) FL_NOEXCEPT {
-        if (mSize == n) {
-            return;
-        }
-        if (n > mCapacity) {
-            ensure_size(n);
-        }
-        while (mSize < n) {
-            push_back(T());
-        }
-        while (mSize > n) {
-            pop_back();
-        }
-    }
-
-    void resize(fl::size n, const T &value) FL_NOEXCEPT {
-        if (n > mCapacity) {
-            // Need to allocate more space
-            T* new_array = mAlloc.allocate(n);
-
-            // Move existing elements
-            for (fl::size i = 0; i < mSize; ++i) {
-                mAlloc.construct(&new_array[i], fl::move(mArray[i]));
-            }
-
-            // Initialize new elements with value
-            for (fl::size i = mSize; i < n; ++i) {
-                mAlloc.construct(&new_array[i], value);
-            }
-
-            // Clean up old array
-            if (mArray) {
-                for (fl::size i = 0; i < mSize; ++i) {
-                    mAlloc.destroy(&mArray[i]);
-                }
-                mAlloc.deallocate(mArray, mCapacity);
-            }
-
-            mArray = new_array;
-            mCapacity = n;
-            mSize = n;
-        } else if (n > mSize) {
-            // Just need to add more elements
-            for (fl::size i = mSize; i < n; ++i) {
-                mAlloc.construct(&mArray[i], value);
-            }
-            mSize = n;
-        } else if (n < mSize) {
-            // Need to remove elements
-            for (fl::size i = n; i < mSize; ++i) {
-                mAlloc.destroy(&mArray[i]);
-            }
-            mSize = n;
-        }
-    }
-
-    void shrink_to_fit() FL_NOEXCEPT {
-        if (mCapacity > mSize && mSize > 0) {
-            T* new_array = mAlloc.allocate(mSize);
-            for (fl::size i = 0; i < mSize; ++i) {
-                mAlloc.construct(&new_array[i], fl::move(mArray[i]));
-            }
-            mAlloc.deallocate(mArray, mCapacity);
-            mArray = new_array;
-            mCapacity = mSize;
-        } else if (mSize == 0 && mCapacity > 0) {
-            mAlloc.deallocate(mArray, mCapacity);
-            mArray = nullptr;
-            mCapacity = 0;
-        }
-    }
+    void pop_back() FL_NOEXCEPT { pop_back_impl(); }
+    void clear() FL_NOEXCEPT { clear_impl(); }
 
     template <typename InputIt,
               typename = fl::enable_if_t<!fl::is_integral<InputIt>::value>>
-    void assign(InputIt begin, InputIt end) FL_NOEXCEPT {
+    void assign(InputIt first, InputIt last) FL_NOEXCEPT {
         clear();
-        // Don't try to compute distance for non-random-access iterators
-        // Just push_back each element - reserve will grow as needed
-        for (InputIt it = begin; it != end; ++it) {
+        for (auto it = first; it != last; ++it) {
             push_back(*it);
         }
     }
 
     void assign(fl::size new_cap, const T &value) FL_NOEXCEPT {
         clear();
-        reserve(new_cap);
-        while (size() < new_cap) {
+        reserve_impl(new_cap);
+        for (fl::size i = 0; i < new_cap; ++i) {
             push_back(value);
         }
     }
 
-    // Array access operators
-    T &operator[](fl::size index) FL_NOEXCEPT { return mArray[index]; }
+    // ======= ITERATORS =======
 
-    const T &operator[](fl::size index) const FL_NOEXCEPT { return mArray[index]; }
-
-    // Capacity and size methods
-    fl::size size() const FL_NOEXCEPT { return mSize; }
-
-    bool empty() const FL_NOEXCEPT { return mSize == 0; }
-
-    fl::size capacity() const FL_NOEXCEPT { return mCapacity; }
-
-    allocator_type get_allocator() const FL_NOEXCEPT { return mAlloc; }
-
-    // Element addition/removal
-    void push_back(const T &value) FL_NOEXCEPT {
-        ensure_size(mSize + 1);
-        if (mSize < mCapacity) {
-            mAlloc.construct(&mArray[mSize], value);
-            ++mSize;
-        }
-    }
-
-    // Move version of push_back
-    void push_back(T &&value) FL_NOEXCEPT {
-        ensure_size(mSize + 1);
-        if (mSize < mCapacity) {
-            mAlloc.construct(&mArray[mSize], fl::move(value));
-            ++mSize;
-        }
-    }
-
-    void pop_back() FL_NOEXCEPT {
-        if (mSize > 0) {
-            --mSize;
-            mAlloc.destroy(&mArray[mSize]);
-        }
-    }
-
-    void clear() FL_NOEXCEPT {
-        if (mArray) {  // Add null check before accessing array
-            for (fl::size i = 0; i < mSize; ++i) {
-                mAlloc.destroy(&mArray[i]);
-            }
-        }
-        mSize = 0;
-    }
-
-    // Iterator methods
     iterator begin() FL_NOEXCEPT {
-        return mArray ? &mArray[0] : nullptr;
+        return mArray ? static_cast<T*>(mArray) : nullptr;
     }
     const_iterator begin() const FL_NOEXCEPT {
-        return mArray ? &mArray[0] : nullptr;
+        return mArray ? static_cast<const T*>(mArray) : nullptr;
     }
     iterator end() FL_NOEXCEPT {
-        return mArray ? &mArray[mSize] : nullptr;
+        return mArray ? static_cast<T*>(mArray) + mSize : nullptr;
     }
     const_iterator end() const FL_NOEXCEPT {
-        return mArray ? &mArray[mSize] : nullptr;
+        return mArray ? static_cast<const T*>(mArray) + mSize : nullptr;
     }
 
     reverse_iterator rbegin() FL_NOEXCEPT { return reverse_iterator(end()); }
     const_reverse_iterator rbegin() const FL_NOEXCEPT { return const_reverse_iterator(end()); }
-
     reverse_iterator rend() FL_NOEXCEPT { return reverse_iterator(begin()); }
     const_reverse_iterator rend() const FL_NOEXCEPT { return const_reverse_iterator(begin()); }
 
     const_iterator cbegin() const FL_NOEXCEPT {
-        return mArray ? &mArray[0] : nullptr;
+        return mArray ? static_cast<const T*>(mArray) : nullptr;
     }
-
     const_iterator cend() const FL_NOEXCEPT {
-        return mArray ? &mArray[mSize] : nullptr;
+        return mArray ? static_cast<const T*>(mArray) + mSize : nullptr;
     }
 
-    // Element access
-    T &front() FL_NOEXCEPT { return mArray[0]; }
+    // ======= SEARCH =======
 
-    const T &front() const FL_NOEXCEPT { return mArray[0]; }
-
-    T &back() FL_NOEXCEPT { return mArray[mSize - 1]; }
-
-    const T &back() const FL_NOEXCEPT { return mArray[mSize - 1]; }
-
-    // Search and modification
     iterator find(const T &value) FL_NOEXCEPT {
         for (iterator it = begin(); it != end(); ++it) {
-            if (*it == value) {
-                return it;
-            }
+            if (*it == value) return it;
         }
         return end();
     }
 
     const_iterator find(const T &value) const FL_NOEXCEPT {
         for (const_iterator it = begin(); it != end(); ++it) {
-            if (*it == value) {
-                return it;
-            }
+            if (*it == value) return it;
         }
         return end();
     }
 
     template <typename Predicate> iterator find_if(Predicate pred) FL_NOEXCEPT {
         for (iterator it = begin(); it != end(); ++it) {
-            if (pred(*it)) {
-                return it;
-            }
+            if (pred(*it)) return it;
         }
         return end();
     }
 
     bool has(const T &value) const FL_NOEXCEPT { return find(value) != end(); }
 
+    // ======= ERASE =======
+
     // Standard STL-compatible erase that returns iterator to next element
     iterator erase(iterator pos) FL_NOEXCEPT {
-        if (pos == end() || empty()) {
-            return end();
-        }
-        // Save the position of the element to erase
-        iterator erase_pos = pos;
-        // Shift all elements after pos to the left
-        while (pos != end() - 1) {
-            *pos = fl::move(*(pos + 1));
-            ++pos;
-        }
-        // Destroy the last element
-        back().~T();
-        --mSize;
-        // Return iterator to the element that was after the erased one
-        // (which is now at the erase position)
-        return erase_pos;
+        if (pos == end() || empty()) return end();
+        fl::size index = pos - begin();
+        erase_impl(index);
+        return begin() + index;
     }
 
     // Extended erase with optional output parameter
     bool erase(iterator pos, T *out_value) FL_NOEXCEPT {
-        if (pos == end() || empty()) {
-            return false;
-        }
+        if (pos == end() || empty()) return false;
         if (out_value) {
             *out_value = fl::move(*pos);
         }
@@ -935,67 +731,25 @@ public:
     // Range erase: remove count elements starting at first
     void erase_range(iterator first, fl::size count) FL_NOEXCEPT {
         if (count == 0 || first >= end()) return;
-        if (first + count > end()) count = end() - first;
-        // Move remaining elements forward
-        iterator dst = first;
-        for (iterator src = first + count; src != end(); ++src, ++dst) {
-            *dst = fl::move(*src);
-        }
-        // Clear tail and update size
-        for (iterator it = end() - count; it != end(); ++it) {
-            *it = T();
-        }
-        mSize -= count;
+        fl::size index = first - begin();
+        if (index + count > mSize) count = mSize - index;
+        erase_range_impl(index, count);
     }
 
-    void swap(vector<T> &other) FL_NOEXCEPT {
-        fl::swap(mArray, other.mArray);
-        fl::swap(mSize, other.mSize);
-        fl::swap(mCapacity, other.mCapacity);
-        fl::swap(mAlloc, other.mAlloc);
-    }
-
-    void swap(vector<T> &&other) FL_NOEXCEPT {
-        fl::swap(mArray, other.mArray);
-        fl::swap(mSize, other.mSize);
-        fl::swap(mCapacity, other.mCapacity);
-        fl::swap(mAlloc, other.mAlloc);
-    }
-
-    void swap(iterator a, iterator b) FL_NOEXCEPT {
-        fl::swap(*a, *b);
-    }
-
-    bool full() const FL_NOEXCEPT { return mSize >= mCapacity; }
+    // ======= INSERT =======
 
     bool insert(iterator pos, const T &value) FL_NOEXCEPT {
-        // TODO: Introduce mMaxSize (and move it from SortedVector to here)
-        // push back and swap into place.
-        fl::size target_idx = pos - begin();
-        push_back(value);
-        auto last = end() - 1;
-        for (fl::size curr_idx = last - begin(); curr_idx > target_idx;
-             --curr_idx) {
-            auto first = begin() + curr_idx - 1;
-            auto second = begin() + curr_idx;
-            swap(first, second);
-        }
-        return true;
+        fl::size index = pos - begin();
+        fl::size old_size = mSize;
+        insert_copy_impl(index, &value);
+        return mSize > old_size;
     }
 
-    // Move version of insert
     bool insert(iterator pos, T &&value) FL_NOEXCEPT {
-        // push back and swap into place.
-        fl::size target_idx = pos - begin();
-        push_back(fl::move(value));
-        auto last = end() - 1;
-        for (fl::size curr_idx = last - begin(); curr_idx > target_idx;
-             --curr_idx) {
-            auto first = begin() + curr_idx - 1;
-            auto second = begin() + curr_idx;
-            swap(first, second);
-        }
-        return true;
+        fl::size index = pos - begin();
+        fl::size old_size = mSize;
+        insert_move_impl(index, &value);
+        return mSize > old_size;
     }
 
     // Range insert: insert elements from [first, last) before pos
@@ -1003,7 +757,6 @@ public:
     iterator insert(iterator pos, InputIt first, InputIt last) FL_NOEXCEPT {
         fl::size target_idx = pos - begin();
         fl::size count = 0;
-        // First, push all elements to the back
         for (InputIt it = first; it != last; ++it) {
             push_back(*it);
             ++count;
@@ -1011,81 +764,213 @@ public:
         if (count == 0) {
             return begin() + target_idx;
         }
-        // Now rotate them into place
-        // The new elements are at positions [size - count, size)
-        // We want them at [target_idx, target_idx + count)
+        // Rotate new elements into place via bubble swaps
         fl::size src_start = mSize - count;
-        // Rotate by swapping
         for (fl::size i = 0; i < count; ++i) {
             for (fl::size j = src_start + i; j > target_idx + i; --j) {
-                swap(begin() + j - 1, begin() + j);
+                fl::swap(static_cast<T*>(mArray)[j - 1],
+                         static_cast<T*>(mArray)[j]);
             }
         }
         return begin() + target_idx;
     }
 
-    // 2) the iterator‐range overload, only enabled when InputIt is *not*
-    // integral
-    // template <typename InputIt>
-    // void assign(InputIt begin, InputIt end) {
-    //     clear();
-    //     auto n = static_cast<std::fl::size>(end - begin);
-    //     reserve(n);
-    //     for (InputIt it = begin; it != end; ++it) {
-    //         push_back(*it);
-    //     }
-    // }
+    // ======= SWAP =======
 
-    T *data() FL_NOEXCEPT { return mArray; }
+    void swap(vector &other) FL_NOEXCEPT { swap_impl(other); }
+    void swap(vector &&other) FL_NOEXCEPT { swap_impl(other); }
 
-    const T *data() const FL_NOEXCEPT { return mArray; }
+    void swap(iterator a, iterator b) FL_NOEXCEPT {
+        fl::swap(*a, *b);
+    }
 
-    bool operator==(const vector<T> &other) const FL_NOEXCEPT {
-        if (size() != other.size()) {
-            return false;
-        }
+    // ======= COMPARISON =======
+
+    bool operator==(const vector &other) const FL_NOEXCEPT {
+        if (size() != other.size()) return false;
+        const T* a = static_cast<const T*>(mArray);
+        const T* b = static_cast<const T*>(other.mArray);
         for (fl::size i = 0; i < size(); ++i) {
-            if (mArray[i] != other.mArray[i]) {
-                return false;
-            }
+            if (a[i] != b[i]) return false;
         }
         return true;
     }
 
-    bool operator!=(const vector<T> &other) const FL_NOEXCEPT {
-        return !(*this == other);
-    }
+    bool operator!=(const vector &other) const FL_NOEXCEPT { return !(*this == other); }
 
-    bool operator<(const vector<T> &other) const FL_NOEXCEPT {
+    bool operator<(const vector &other) const FL_NOEXCEPT {
         fl::size min_size = mSize < other.mSize ? mSize : other.mSize;
+        const T* a = static_cast<const T*>(mArray);
+        const T* b = static_cast<const T*>(other.mArray);
         for (fl::size i = 0; i < min_size; ++i) {
-            if ((*this)[i] < other[i]) {
-                return true;
-            }
-            if ((*this)[i] > other[i]) {
-                return false;
-            }
+            if (a[i] < b[i]) return true;
+            if (a[i] > b[i]) return false;
         }
         return mSize < other.mSize;
     }
 
-    bool operator<=(const vector<T> &other) const FL_NOEXCEPT {
+    bool operator<=(const vector &other) const FL_NOEXCEPT {
         return *this < other || *this == other;
     }
 
-    bool operator>(const vector<T> &other) const FL_NOEXCEPT {
-        return other < *this;
+    bool operator>(const vector &other) const FL_NOEXCEPT { return other < *this; }
+
+    bool operator>=(const vector &other) const FL_NOEXCEPT {
+        return *this > other || *this == other;
     }
 
-    bool operator>=(const vector<T> &other) const FL_NOEXCEPT {
-        return *this > other || *this == other;
+  protected:
+    // For VectorN — constructor with inline buffer
+    vector(void* inlineBuffer, fl::size inlineCapacity)
+        : vector_basic(inlineBuffer, inlineCapacity, sizeof(T),
+                        default_memory_resource(), vector_element_ops_for<T>()) {}
+
+    vector(void* inlineBuffer, fl::size inlineCapacity, memory_resource* resource)
+        : vector_basic(inlineBuffer, inlineCapacity, sizeof(T),
+                        resource, vector_element_ops_for<T>()) {}
+};
+
+///////////////////////////////////////////////////////////////////////////////
+// VectorN<T, N> — Vector with inline buffer (replaces InlinedVector).
+// Like StrN<N> for basic_string: provides the inline buffer storage.
+// When size <= N, data lives inline. When size > N, spills to heap.
+// Uses the offset trick from basic_string for trivial relocatability.
+///////////////////////////////////////////////////////////////////////////////
+
+template <typename T, fl::size INLINED_SIZE>
+class FL_ALIGN VectorN : public vector<T> {
+  private:
+    // Raw aligned storage — address is valid even before initialization,
+    // same pattern as StrN<N>::mInlineBuffer in basic_string.
+    FL_ALIGNAS(alignof(T) > alignof(fl::uptr) ? alignof(T) : alignof(fl::uptr))
+    char mInlineBuffer[INLINED_SIZE * sizeof(T)] = {};
+
+    T* inline_memory() { return fl::bit_cast<T*>(mInlineBuffer); }
+
+  public:
+    using typename vector<T>::iterator;
+    using typename vector<T>::const_iterator;
+    using typename vector<T>::value_type;
+
+    VectorN()
+        : vector<T>(mInlineBuffer, INLINED_SIZE) {}
+
+    explicit VectorN(memory_resource* resource)
+        : vector<T>(mInlineBuffer, INLINED_SIZE, resource) {}
+
+    VectorN(fl::size count, const T& value = T())
+        : vector<T>(mInlineBuffer, INLINED_SIZE) {
+        this->resize_value_impl(count, &value);
+    }
+
+    VectorN(const VectorN& other)
+        : vector<T>(mInlineBuffer, INLINED_SIZE) {
+        this->copy_from(other);
+    }
+
+    template <fl::size M>
+    VectorN(const VectorN<T, M>& other)
+        : vector<T>(mInlineBuffer, INLINED_SIZE) {
+        this->copy_from(other);
+    }
+
+    VectorN(const vector<T>& other)
+        : vector<T>(mInlineBuffer, INLINED_SIZE) {
+        this->copy_from(other);
+    }
+
+    VectorN(VectorN&& other) noexcept
+        : vector<T>(mInlineBuffer, INLINED_SIZE) {
+        this->move_from(other);
+    }
+
+    VectorN(fl::initializer_list<T> init)
+        : vector<T>(mInlineBuffer, INLINED_SIZE) {
+        this->reserve_impl(init.size());
+        for (const auto& value : init) {
+            this->push_back(value);
+        }
+    }
+
+    VectorN& operator=(const VectorN& other) {
+        if (this != &other) {
+            this->copy_from(other);
+        }
+        return *this;
+    }
+
+    VectorN& operator=(VectorN&& other) noexcept {
+        if (this != &other) {
+            this->move_assign(other);
+        }
+        return *this;
     }
 };
 
-template <typename T, typename LessThan = fl::less<T>, typename Allocator = fl::allocator<T>>
+///////////////////////////////////////////////////////////////////////////////
+// vector_psram<T> — Vector that allocates from PSRAM by default.
+///////////////////////////////////////////////////////////////////////////////
+
+template <typename T>
+class vector_psram : public vector<T> {
+  public:
+    vector_psram()
+        : vector<T>(psram_memory_resource()) {}
+
+    vector_psram(fl::size count, const T& value = T())
+        : vector<T>(count, value, psram_memory_resource()) {}
+
+    vector_psram(fl::initializer_list<T> init)
+        : vector<T>(psram_memory_resource()) {
+        this->reserve_impl(init.size());
+        for (const auto& value : init) {
+            this->push_back(value);
+        }
+    }
+
+    // Iterator-range constructor
+    template <typename InputIterator,
+              typename = fl::enable_if_t<!fl::is_integral<InputIterator>::value>>
+    vector_psram(InputIterator first, InputIterator last)
+        : vector<T>(psram_memory_resource()) {
+        for (auto it = first; it != last; ++it) {
+            this->push_back(*it);
+        }
+    }
+
+    vector_psram(const vector_psram& other)
+        : vector<T>(psram_memory_resource()) {
+        this->copy_from(other);
+    }
+
+    vector_psram(vector_psram&& other) noexcept
+        : vector<T>(psram_memory_resource()) {
+        this->move_from(other);
+    }
+
+    vector_psram& operator=(const vector_psram& other) {
+        if (this != &other) {
+            this->copy_from(other);
+        }
+        return *this;
+    }
+
+    vector_psram& operator=(vector_psram&& other) noexcept {
+        if (this != &other) {
+            this->move_assign(other);
+        }
+        return *this;
+    }
+};
+
+///////////////////////////////////////////////////////////////////////////////
+// SortedHeapVector — sorted wrapper around vector<T>
+///////////////////////////////////////////////////////////////////////////////
+
+template <typename T, typename LessThan = fl::less<T>>
 class FL_ALIGN SortedHeapVector {
   private:
-    vector<T, Allocator> mArray;
+    vector<T> mArray;
     LessThan mLess;
     fl::size mMaxSize = fl::size(-1);
 
@@ -1093,15 +978,12 @@ class FL_ALIGN SortedHeapVector {
     enum insert_result { inserted = 0, exists = 1, at_capacity = 2 };
 
     typedef T value_type;
-    typedef typename vector<T, Allocator>::iterator iterator;
-    typedef typename vector<T, Allocator>::const_iterator const_iterator;
-    typedef typename vector<T, Allocator>::reverse_iterator reverse_iterator;
-    typedef typename vector<T, Allocator>::const_reverse_iterator const_reverse_iterator;
-    typedef Allocator allocator_type;
+    typedef typename vector<T>::iterator iterator;
+    typedef typename vector<T>::const_iterator const_iterator;
+    typedef typename vector<T>::reverse_iterator reverse_iterator;
+    typedef typename vector<T>::const_reverse_iterator const_reverse_iterator;
 
     SortedHeapVector(LessThan less = LessThan()) FL_NOEXCEPT : mLess(less) {}
-
-    SortedHeapVector(LessThan less, const Allocator& alloc) FL_NOEXCEPT : mArray(alloc), mLess(less) {}
 
     // Copy constructor
     SortedHeapVector(const SortedHeapVector& other) FL_NOEXCEPT = default;
@@ -1114,7 +996,6 @@ class FL_ALIGN SortedHeapVector {
         : mArray(fl::move(other.mArray))
         , mLess(fl::move(other.mLess))
         , mMaxSize(other.mMaxSize) {
-        // Leave other in valid empty state
         other.mMaxSize = fl::size(-1);
     }
 
@@ -1124,16 +1005,13 @@ class FL_ALIGN SortedHeapVector {
             mArray = fl::move(other.mArray);
             mLess = fl::move(other.mLess);
             mMaxSize = other.mMaxSize;
-            // Leave other in valid empty state
             other.mMaxSize = fl::size(-1);
         }
         return *this;
     }
 
     void setMaxSize(fl::size n) FL_NOEXCEPT {
-        if (mMaxSize == n) {
-            return;
-        }
+        if (mMaxSize == n) return;
         mMaxSize = n;
         const bool needs_adjustment = mArray.size() > mMaxSize;
         if (needs_adjustment) {
@@ -1149,36 +1027,25 @@ class FL_ALIGN SortedHeapVector {
 
     // Insert while maintaining sort order
     bool insert(const T &value, insert_result *result = nullptr) FL_NOEXCEPT {
-        // Find insertion point using binary search
         iterator pos = lower_bound(value);
         if (pos != end() && !mLess(value, *pos) && !mLess(*pos, value)) {
-            if (result) {
-                *result = exists;
-            }
+            if (result) *result = exists;
             return false;
         }
         if (mArray.size() >= mMaxSize) {
-            if (result) {
-                *result = at_capacity;
-            }
+            if (result) *result = at_capacity;
             return false;
         }
         mArray.insert(pos, value);
-        if (result) {
-            *result = inserted;
-        }
+        if (result) *result = inserted;
         return true;
     }
 
-    // Find the first position where we should insert value to maintain sort
-    // order
     iterator lower_bound(const T &value) FL_NOEXCEPT {
         iterator first = mArray.begin();
         iterator last = mArray.end();
-
         while (first != last) {
             iterator mid = first + (last - first) / 2;
-
             if (mLess(*mid, value)) {
                 first = mid + 1;
             } else {
@@ -1192,7 +1059,6 @@ class FL_ALIGN SortedHeapVector {
         return const_cast<SortedHeapVector *>(this)->lower_bound(value);
     }
 
-    // Lookup operations
     iterator find(const T &value) FL_NOEXCEPT {
         iterator pos = lower_bound(value);
         if (pos != end() && !mLess(value, *pos) && !mLess(*pos, value)) {
@@ -1209,32 +1075,27 @@ class FL_ALIGN SortedHeapVector {
 
     bool has(const T &value) const FL_NOEXCEPT { return find(value) != end(); }
 
-    // Removal operations
     bool erase(const T &value) FL_NOEXCEPT {
         iterator it = find(value);
         if (it != end()) {
-            return mArray.erase(it);
+            mArray.erase(it);
+            return true;
         }
         return false;
     }
 
-    bool erase(iterator pos) FL_NOEXCEPT { return mArray.erase(pos); }
+    iterator erase(iterator pos) FL_NOEXCEPT { return mArray.erase(pos); }
 
-    // Basic container operations
     fl::size size() const FL_NOEXCEPT { return mArray.size(); }
     bool empty() const FL_NOEXCEPT { return mArray.empty(); }
     fl::size capacity() const FL_NOEXCEPT { return mArray.capacity(); }
-    allocator_type get_allocator() const FL_NOEXCEPT { return mArray.get_allocator(); }
 
     void clear() FL_NOEXCEPT { mArray.clear(); }
     bool full() const FL_NOEXCEPT {
-        if (mArray.size() >= mMaxSize) {
-            return true;
-        }
+        if (mArray.size() >= mMaxSize) return true;
         return mArray.full();
     }
 
-    // Element access
     T &operator[](fl::size index) FL_NOEXCEPT { return mArray[index]; }
     const T &operator[](fl::size index) const FL_NOEXCEPT { return mArray[index]; }
 
@@ -1244,13 +1105,11 @@ class FL_ALIGN SortedHeapVector {
     T &back() FL_NOEXCEPT { return mArray.back(); }
     const T &back() const FL_NOEXCEPT { return mArray.back(); }
 
-    // Iterators
     iterator begin() FL_NOEXCEPT { return mArray.begin(); }
     const_iterator begin() const FL_NOEXCEPT { return mArray.begin(); }
     iterator end() FL_NOEXCEPT { return mArray.end(); }
     const_iterator end() const FL_NOEXCEPT { return mArray.end(); }
 
-    // Reverse iterators
     reverse_iterator rbegin() FL_NOEXCEPT { return mArray.rbegin(); }
     const_reverse_iterator rbegin() const FL_NOEXCEPT { return mArray.rbegin(); }
     reverse_iterator rend() FL_NOEXCEPT { return mArray.rend(); }
@@ -1261,408 +1120,18 @@ class FL_ALIGN SortedHeapVector {
     const T *data() const FL_NOEXCEPT { return mArray.data(); }
 };
 
-template <typename T, fl::size INLINED_SIZE>
-class FL_ALIGN InlinedVector {
-  public:
-    typedef T value_type;
-    using iterator = typename FixedVector<T, INLINED_SIZE>::iterator;
-    using const_iterator =
-        typename FixedVector<T, INLINED_SIZE>::const_iterator;
-
-    InlinedVector() FL_NOEXCEPT = default;
-    InlinedVector(const InlinedVector &other) FL_NOEXCEPT {
-        if (other.mUsingHeap) {
-            mHeap = other.mHeap;
-            mUsingHeap = true;
-        } else {
-            mFixed = other.mFixed;
-            mUsingHeap = false;
-        }
-    }
-    InlinedVector(InlinedVector &&other) FL_NOEXCEPT {
-        // swap(*this, other);
-        fl::swap(*this, other);
-        other.clear();
-    }
-    InlinedVector(fl::size size) FL_NOEXCEPT : mUsingHeap(false) {
-        if (size > INLINED_SIZE) {
-            mHeap.resize(size);
-            mUsingHeap = true;
-        } else {
-            mFixed.resize(size);
-        }
-    }
-
-    // Initializer list constructor (C++11 and later) - uses fl::initializer_list
-    InlinedVector(fl::initializer_list<T> init) FL_NOEXCEPT : mUsingHeap(false) {
-        if (init.size() > INLINED_SIZE) {
-            mHeap.reserve(init.size());
-            for (const auto& value : init) {
-                mHeap.push_back(value);
-            }
-            mUsingHeap = true;
-        } else {
-            for (const auto& value : init) {
-                mFixed.push_back(value);
-            }
-        }
-    }
-
-    InlinedVector &operator=(const InlinedVector &other) FL_NOEXCEPT {
-        if (this != &other) {
-            assign(other.begin(), other.end());
-        }
-        return *this;
-    }
-
-    InlinedVector &operator=(InlinedVector &&other) FL_NOEXCEPT {
-        this->clear();
-        if (this != &other) {
-            if (other.mUsingHeap) {
-                mHeap.swap(other.mHeap);
-                mUsingHeap = true;
-            } else {
-                mFixed.swap(other.mFixed);
-                mUsingHeap = false;
-            }
-            other.clear();
-        }
-        return *this;
-    }
-
-    void reserve(fl::size size) FL_NOEXCEPT {
-        if (size > INLINED_SIZE) {
-            if (mUsingHeap) {
-                mHeap.reserve(size);
-            } else {
-                mHeap.reserve(size);
-                for (auto &v : mFixed) {
-                    mHeap.push_back(v);
-                }
-                mFixed.clear();
-                mUsingHeap = true;
-            }
-        } else {
-            // Don't transition from heap to fixed if current size exceeds inline capacity
-            // This would cause data loss as FixedVector silently fails when full
-            if (mUsingHeap && mHeap.size() > INLINED_SIZE) {
-                // Keep using heap - cannot fit in inline storage
-                mHeap.reserve(size);
-            } else if (mUsingHeap) {
-                // Safe to transition: current size fits in inline storage
-                mFixed.reserve(size);
-                for (auto &v : mHeap) {
-                    mFixed.push_back(v);
-                }
-                mHeap.clear();
-                mUsingHeap = false;
-            } else {
-                // Already using fixed storage
-                mFixed.reserve(size);
-            }
-        }
-    }
-
-    void resize(fl::size size) FL_NOEXCEPT {
-        if (size > INLINED_SIZE) {
-            if (mUsingHeap) {
-                mHeap.resize(size);
-            } else {
-                mHeap.resize(size);
-                for (auto &v : mFixed) {
-                    mHeap.push_back(v);
-                }
-                mFixed.clear();
-                mUsingHeap = true;
-            }
-        } else {
-            if (mUsingHeap) {
-                mFixed.resize(size);
-                for (auto &v : mHeap) {
-                    mFixed.push_back(v);
-                }
-                mHeap.clear();
-                mUsingHeap = false;
-            } else {
-                mFixed.resize(size);
-            }
-        }
-    }
-
-    // Get current size
-    fl::size size() const FL_NOEXCEPT { return mUsingHeap ? mHeap.size() : mFixed.size(); }
-    bool empty() const FL_NOEXCEPT { return size() == 0; }
-    T *data() FL_NOEXCEPT { return mUsingHeap ? mHeap.data() : mFixed.data(); }
-    const T *data() const FL_NOEXCEPT { return mUsingHeap ? mHeap.data() : mFixed.data(); }
-
-    void assign(fl::size new_cap, const T &value) FL_NOEXCEPT {
-        clear();
-        if (INLINED_SIZE > new_cap) {
-            // mFixed.assign(value);
-            while (size() < new_cap) {
-                mFixed.push_back(value);
-            }
-            return;
-        }
-        // mHeap.assign(value);
-        mHeap.reserve(new_cap);
-        mUsingHeap = true;
-        while (size() < new_cap) {
-            mHeap.push_back(value);
-        }
-    }
-
-    template <typename InputIt,
-              typename = fl::enable_if_t<!fl::is_integral<InputIt>::value>>
-    void assign(InputIt begin, InputIt end) FL_NOEXCEPT {
-        clear();
-        if (u32(end - begin) <= INLINED_SIZE) {
-            mFixed.assign(begin, end);
-            return;
-        }
-        mHeap.assign(begin, end);
-        mUsingHeap = true;
-    }
-
-    // void assign(const_iterator begin, const_iterator end) {
-    //     clear();
-    //     if (end - begin <= INLINED_SIZE) {
-    //         mFixed.assign(begin, end);
-    //         return;
-    //     }
-    //     mHeap.assign(begin, end);
-    //     mUsingHeap = true;
-    // }
-
-    // Element access
-    T &operator[](fl::size idx) FL_NOEXCEPT { return mUsingHeap ? mHeap[idx] : mFixed[idx]; }
-    const T &operator[](fl::size idx) const FL_NOEXCEPT {
-        return mUsingHeap ? mHeap[idx] : mFixed[idx];
-    }
-
-    bool full() const FL_NOEXCEPT { return INLINED_SIZE == size(); }
-
-    // Add an element
-    void push_back(const T &value) FL_NOEXCEPT {
-        if (mUsingHeap || mFixed.size() == INLINED_SIZE) {
-            if (!mUsingHeap && mFixed.size() == INLINED_SIZE) {
-                // transfer
-                mHeap.clear();
-                mHeap.reserve(INLINED_SIZE + 1);
-                for (auto &v : mFixed) {
-                    mHeap.push_back(fl::move(v));
-                }
-                mFixed.clear();
-                mUsingHeap = true;
-            }
-            mHeap.push_back(value);
-        } else {
-                mFixed.push_back(value);
-        }
-            }
-
-    // Move version of push_back
-    void push_back(T &&value) FL_NOEXCEPT {
-        if (mUsingHeap || mFixed.size() == INLINED_SIZE) {
-            if (!mUsingHeap && mFixed.size() == INLINED_SIZE) {
-                // transfer
-                mHeap.clear();
-                mHeap.reserve(INLINED_SIZE + 1);
-            for (auto &v : mFixed) {
-                    mHeap.push_back(fl::move(v));
-            }
-            mFixed.clear();
-            mUsingHeap = true;
-        }
-            mHeap.push_back(fl::move(value));
-        } else {
-            mFixed.push_back(fl::move(value));
-        }
-    }
-
-    // Emplace back - construct in place
-    template<typename... Args>
-    void emplace_back(Args&&... args) FL_NOEXCEPT {
-        if (mUsingHeap || mFixed.size() == INLINED_SIZE) {
-            if (!mUsingHeap && mFixed.size() == INLINED_SIZE) {
-                // Spill to heap
-                mHeap.clear();
-                mHeap.reserve(INLINED_SIZE + 1);
-                for (auto &v : mFixed) {
-                    mHeap.push_back(fl::move(v));
-                }
-                mFixed.clear();
-                mUsingHeap = true;
-            }
-            mHeap.emplace_back(fl::forward<Args>(args)...);
-        } else {
-            mFixed.emplace_back(fl::forward<Args>(args)...);
-        }
-    }
-
-    // Remove last element
-    void pop_back() FL_NOEXCEPT {
-        if (mUsingHeap) {
-            mHeap.pop_back();
-        } else {
-            mFixed.pop_back();
-        }
-    }
-
-    // Clear all elements
-    void clear() FL_NOEXCEPT {
-        if (mUsingHeap) {
-            mHeap.clear();
-            // mUsingHeap = false;
-        } else {
-            mFixed.clear();
-        }
-    }
-
-    template <typename Predicate> iterator find_if(Predicate pred) FL_NOEXCEPT {
-        for (iterator it = begin(); it != end(); ++it) {
-            if (pred(*it)) {
-                return it;
-            }
-        }
-        return end();
-    }
-
-    iterator find(const T& value) FL_NOEXCEPT {
-        for (iterator it = begin(); it != end(); ++it) {
-            if (*it == value) {
-                return it;
-            }
-        }
-        return end();
-    }
-
-    const_iterator find(const T& value) const FL_NOEXCEPT {
-        for (const_iterator it = begin(); it != end(); ++it) {
-            if (*it == value) {
-                return it;
-            }
-        }
-        return end();
-    }
-
-    iterator erase(iterator pos) FL_NOEXCEPT {
-        if (mUsingHeap) {
-            return mHeap.erase(pos);
-        } else {
-            return mFixed.erase(pos);
-        }
-    }
-
-    bool insert(iterator pos, const T &value) FL_NOEXCEPT {
-        if (mUsingHeap) {
-            // return insert(pos, value);
-            return mHeap.insert(pos, value);
-        }
-
-        if (mFixed.size() < INLINED_SIZE) {
-            return mFixed.insert(pos, value);
-        }
-
-        // fl::size diff = pos - mFixed.begin();
-        // make safe for data that grows down
-        fl::size idx = mFixed.end() - pos;
-
-        // overflow: move inline data into heap
-        mHeap.reserve(INLINED_SIZE * 2);
-        for (auto &v : mFixed) {
-            mHeap.push_back(fl::move(v));
-        }
-        mFixed.clear();
-        return mHeap.insert(mHeap.begin() + idx, value);
-    }
-
-    // Move version of insert
-    bool insert(iterator pos, T &&value) FL_NOEXCEPT {
-        if (mUsingHeap) {
-            // return insert(pos, value);
-            return mHeap.insert(pos, fl::move(value));
-        }
-
-        if (mFixed.size() < INLINED_SIZE) {
-            return mFixed.insert(pos, fl::move(value));
-        }
-
-        // fl::size diff = pos - mFixed.begin();
-        // make safe for data that grows down
-        fl::size idx = mFixed.end() - pos;
-
-        // overflow: move inline data into heap
-        mHeap.reserve(INLINED_SIZE * 2);
-        for (auto &v : mFixed) {
-            mHeap.push_back(fl::move(v));
-        }
-        mFixed.clear();
-        return mHeap.insert(mHeap.begin() + idx, fl::move(value));
-    }
-
-    // Iterators
-    iterator begin() FL_NOEXCEPT { return mUsingHeap ? mHeap.begin() : mFixed.begin(); }
-    iterator end() FL_NOEXCEPT { return mUsingHeap ? mHeap.end() : mFixed.end(); }
-    const_iterator begin() const FL_NOEXCEPT {
-        return mUsingHeap ? mHeap.begin() : mFixed.begin();
-    }
-    const_iterator end() const FL_NOEXCEPT {
-        return mUsingHeap ? mHeap.end() : mFixed.end();
-    }
-
-    // Reverse iterators (delegate to heap or fixed storage)
-    typename vector<T>::reverse_iterator rbegin() FL_NOEXCEPT {
-        return mUsingHeap ? mHeap.rbegin() : mFixed.rbegin();
-    }
-    typename vector<T>::reverse_iterator rend() FL_NOEXCEPT {
-        return mUsingHeap ? mHeap.rend() : mFixed.rend();
-    }
-    typename vector<T>::const_reverse_iterator rbegin() const FL_NOEXCEPT {
-        return mUsingHeap ? mHeap.rbegin() : mFixed.rbegin();
-    }
-    typename vector<T>::const_reverse_iterator rend() const FL_NOEXCEPT {
-        return mUsingHeap ? mHeap.rend() : mFixed.rend();
-    }
-
-    // Capacity management
-    fl::size capacity() const FL_NOEXCEPT { return mUsingHeap ? mHeap.capacity() : INLINED_SIZE; }
-
-    void shrink_to_fit() FL_NOEXCEPT {
-        if (mUsingHeap) {
-            mHeap.shrink_to_fit();
-        }
-    }
-
-    // back, front
-    T &front() FL_NOEXCEPT { return mUsingHeap ? mHeap.front() : mFixed.front(); }
-    const T &front() const FL_NOEXCEPT {
-        return mUsingHeap ? mHeap.front() : mFixed.front();
-    }
-
-    T &back() FL_NOEXCEPT { return mUsingHeap ? mHeap.back() : mFixed.back(); }
-    const T &back() const FL_NOEXCEPT { return mUsingHeap ? mHeap.back() : mFixed.back(); }
-
-    void swap(InlinedVector &other) FL_NOEXCEPT {
-        if (this != &other) {
-            fl::swap(mUsingHeap, other.mUsingHeap);
-            fl::swap(mFixed, other.mFixed);
-            fl::swap(mHeap, other.mHeap);
-        }
-    }
-
-  private:
-    bool mUsingHeap = false;
-    FixedVector<T, INLINED_SIZE> mFixed;
-    vector<T> mHeap;
-};
+///////////////////////////////////////////////////////////////////////////////
+// Type aliases
+///////////////////////////////////////////////////////////////////////////////
 
 template <typename T, fl::size INLINED_SIZE>
 using vector_fixed = FixedVector<T, INLINED_SIZE>;
 
 template <typename T, fl::size INLINED_SIZE = 64>
-using vector_inlined = InlinedVector<T, INLINED_SIZE>;
+using vector_inlined = VectorN<T, INLINED_SIZE>;
 
-template <typename T> using vector_psram = vector<T, fl::allocator_psram<T>>;
+// Backward compat: InlinedVector is now VectorN
+template <typename T, fl::size INLINED_SIZE>
+using InlinedVector = VectorN<T, INLINED_SIZE>;
 
 } // namespace fl

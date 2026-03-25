@@ -59,7 +59,7 @@ class NoisePalette : public Fx2d {
     u16 width, height;
     u16 speed = 0;
     u16 scale = 0;
-    fl::vector<u8, fl::allocator_psram<u8>> noise;
+    fl::vector_psram<u8> noise;
     CRGBPalette16 currentPalette;
     bool colorLoop = 0;
     int currentPaletteIndex = 0;

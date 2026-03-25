@@ -84,7 +84,7 @@ template <typename T> class Grid {
             return NullValue(); // safe.
         }
     }
-    fl::vector<T, fl::allocator_psram<T>> mData;
+    fl::vector_psram<T> mData;
     u32 mWidth = 0;
     u32 mHeight = 0;
     fl::MatrixSlice<T> mSlice;

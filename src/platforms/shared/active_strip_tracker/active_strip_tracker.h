@@ -113,8 +113,7 @@ public:
     }
 
     /// @brief Update from a fl::vector<u8> (resolves ambiguity with CRGB overload)
-    template <typename Alloc>
-    void update(const fl::vector<u8, Alloc>& container) {
+    void update(const fl::vector<u8>& container) {
         update(fl::span<const u8>(container.data(), container.size())); // ok span from pointer
     }
 

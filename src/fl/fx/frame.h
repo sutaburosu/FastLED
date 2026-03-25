@@ -61,7 +61,7 @@ class Frame {
 
   private:
     const size_t mPixelsCount;
-    fl::vector<CRGB, fl::allocator_psram<CRGB>> mRgb;
+    fl::vector_psram<CRGB> mRgb;
 
     // Codec-specific members
     fl::u16 mWidth = 0;

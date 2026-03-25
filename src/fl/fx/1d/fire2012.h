@@ -98,7 +98,7 @@ class Fire2012 : public Fx1d {
     fl::string fxName() const override { return "Fire2012"; }
 
   private:
-    fl::vector<u8, fl::allocator_psram<u8>> heat;
+    fl::vector_psram<u8> heat;
     u8 cooling;
     u8 sparking;
     bool reverse_direction;

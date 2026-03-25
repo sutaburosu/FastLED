@@ -18,7 +18,7 @@ template <typename Key, typename Allocator> class set;  // IWYU pragma: keep
 
 // VectorSet stores values in order of insertion.
 template <typename Key, size N> class VectorSetFixed;
-template <typename Key, typename Allocator> class VectorSet;  // IWYU pragma: keep
+template <typename Key> class VectorSet;  // IWYU pragma: keep
 
 template <typename Key, size N>
 using FixedSet = VectorSetFixed<Key, N>;  // Backwards compatibility
@@ -200,27 +200,25 @@ template <typename Key, size N> class VectorSetFixed {
     VectorType data;
 };
 
-template <typename Key, typename Allocator = fl::allocator<Key>> class VectorSet {
+template <typename Key> class VectorSet {
   public:
-    typedef fl::vector<Key, Allocator> VectorType;
+    typedef fl::vector<Key> VectorType;
     typedef typename VectorType::iterator iterator;
     typedef typename VectorType::const_iterator const_iterator;
     typedef typename VectorType::reverse_iterator reverse_iterator;
-    typedef Allocator allocator_type;
 
     // Constructor
     constexpr VectorSet() = default;
-    explicit VectorSet(const Allocator& alloc) : data(alloc) {}
 
     // Copy constructor
-    VectorSet(const VectorSet<Key, Allocator> &other) : data(other.data) {}
+    VectorSet(const VectorSet &other) : data(other.data) {}
 
     // Move constructor
-    VectorSet(VectorSet<Key, Allocator> &&other) noexcept
+    VectorSet(VectorSet &&other) noexcept
         : data(fl::move(other.data)) {}
 
     // Copy assignment operator
-    VectorSet &operator=(const VectorSet<Key, Allocator> &other) {
+    VectorSet &operator=(const VectorSet &other) {
         if (this != &other) {
             data = other.data;
         }
@@ -228,7 +226,7 @@ template <typename Key, typename Allocator = fl::allocator<Key>> class VectorSet
     }
 
     // Move assignment operator
-    VectorSet &operator=(VectorSet<Key, Allocator> &&other) noexcept {
+    VectorSet &operator=(VectorSet &&other) noexcept {
         if (this != &other) {
             data = fl::move(other.data);
         }
@@ -317,8 +315,6 @@ template <typename Key, typename Allocator = fl::allocator<Key>> class VectorSet
 
     // Get the capacity of the set
     constexpr fl::size capacity() const { return data.capacity(); }
-
-    allocator_type get_allocator() const { return data.get_allocator(); }
 
     // Clear the set
     void clear() { data.clear(); }

@@ -169,7 +169,7 @@ FL_TEST_CASE("vector - Allocator move constructor") {
         stats.reset();
 
         // Create vector with default allocator, then populate
-        fl::vector<int, TrackingAllocator<int>> vec2;
+        fl::vector<int> vec2;
         vec2.push_back(1);
         vec2.push_back(2);
         vec2.push_back(3);
@@ -178,7 +178,7 @@ FL_TEST_CASE("vector - Allocator move constructor") {
         stats.reset();
 
         // Move construct - should move the allocator
-        fl::vector<int, TrackingAllocator<int>> vec3(fl::move(vec2));
+        fl::vector<int> vec3(fl::move(vec2));
 
         // Verify move constructor was called
         // Note: The allocator may be moved or copied depending on implementation
@@ -203,11 +203,11 @@ FL_TEST_CASE("vector - Allocator move assignment") {
     FL_SUBCASE("Move assignment moves allocator") {
         stats.reset();
 
-        fl::vector<int, TrackingAllocator<int>> vec1;
+        fl::vector<int> vec1;
         vec1.push_back(10);
         vec1.push_back(20);
 
-        fl::vector<int, TrackingAllocator<int>> vec2;
+        fl::vector<int> vec2;
         vec2.push_back(1);
         vec2.push_back(2);
         vec2.push_back(3);
@@ -239,7 +239,7 @@ FL_TEST_CASE("VectorSet - Allocator move constructor") {
     FL_SUBCASE("Move constructor moves underlying vector allocator") {
         stats.reset();
 
-        fl::VectorSet<int, TrackingAllocator<int>> set1;
+        fl::VectorSet<int> set1;
         set1.insert(1);
         set1.insert(2);
         set1.insert(3);
@@ -248,7 +248,7 @@ FL_TEST_CASE("VectorSet - Allocator move constructor") {
         stats.reset();
 
         // Move construct - should move the allocator
-        fl::VectorSet<int, TrackingAllocator<int>> set2(fl::move(set1));
+        fl::VectorSet<int> set2(fl::move(set1));
 
         // Verify move constructor was called
         FL_CHECK((stats.move_constructs > 0 || stats.copy_constructs >= 0));
@@ -271,10 +271,10 @@ FL_TEST_CASE("VectorSet - Allocator move assignment") {
     FL_SUBCASE("Move assignment moves underlying vector allocator") {
         stats.reset();
 
-        fl::VectorSet<int, TrackingAllocator<int>> set1;
+        fl::VectorSet<int> set1;
         set1.insert(100);
 
-        fl::VectorSet<int, TrackingAllocator<int>> set2;
+        fl::VectorSet<int> set2;
         set2.insert(1);
         set2.insert(2);
         set2.insert(3);

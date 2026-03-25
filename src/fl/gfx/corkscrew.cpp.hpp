@@ -221,8 +221,8 @@ CRGB* Corkscrew::rawData() {
     if (!mPixelStorage.empty()) {
         if (mPixelStorage.template is<fl::span<CRGB>>()) {
             return mPixelStorage.template get<fl::span<CRGB>>().data();
-        } else if (mPixelStorage.template is<fl::vector<CRGB, fl::allocator_psram<CRGB>>>()) {
-            return mPixelStorage.template get<fl::vector<CRGB, fl::allocator_psram<CRGB>>>().data();
+        } else if (mPixelStorage.template is<fl::vector_psram<CRGB>>()) {
+            return mPixelStorage.template get<fl::vector_psram<CRGB>>().data();
         }
     }
     
@@ -236,8 +236,8 @@ fl::span<CRGB> Corkscrew::data() {
     if (!mPixelStorage.empty()) {
         if (mPixelStorage.template is<fl::span<CRGB>>()) {
             return mPixelStorage.template get<fl::span<CRGB>>();
-        } else if (mPixelStorage.template is<fl::vector<CRGB, fl::allocator_psram<CRGB>>>()) {
-            auto& vec = mPixelStorage.template get<fl::vector<CRGB, fl::allocator_psram<CRGB>>>();
+        } else if (mPixelStorage.template is<fl::vector_psram<CRGB>>()) {
+            auto& vec = mPixelStorage.template get<fl::vector_psram<CRGB>>();
             return vec;
         }
     }
@@ -294,8 +294,8 @@ void Corkscrew::clear() {
     
     // Clear pixel storage if we own it (vector variant)
     if (!mPixelStorage.empty()) {
-        if (mPixelStorage.template is<fl::vector<CRGB, fl::allocator_psram<CRGB>>>()) {
-            auto& vec = mPixelStorage.template get<fl::vector<CRGB, fl::allocator_psram<CRGB>>>();
+        if (mPixelStorage.template is<fl::vector_psram<CRGB>>()) {
+            auto& vec = mPixelStorage.template get<fl::vector_psram<CRGB>>();
             vec.clear();
             // Note: fl::vector doesn't have shrink_to_fit(), but clear() frees the memory
         }
@@ -489,8 +489,8 @@ fl::size Corkscrew::pixelCount() const {
     if (!mPixelStorage.empty()) {
         if (mPixelStorage.template is<fl::span<CRGB>>()) {
             return mPixelStorage.template get<fl::span<CRGB>>().size();
-        } else if (mPixelStorage.template is<fl::vector<CRGB, fl::allocator_psram<CRGB>>>()) {
-            return mPixelStorage.template get<fl::vector<CRGB, fl::allocator_psram<CRGB>>>().size();
+        } else if (mPixelStorage.template is<fl::vector_psram<CRGB>>()) {
+            return mPixelStorage.template get<fl::vector_psram<CRGB>>().size();
         }
     }
     

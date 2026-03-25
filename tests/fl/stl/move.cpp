@@ -1176,27 +1176,18 @@ FL_TEST_CASE("Smart pointer and wrapper move semantics") {
 // ============================================================================
 
 FL_TEST_CASE("Allocator propagation on move") {
-    FL_SUBCASE("fl::vector - allocator propagation") {
-        IDAllocator<int> alloc1(100);
-        IDAllocator<int> alloc2(200);
-
-        fl::vector<int, IDAllocator<int>> source(alloc1);
+    FL_SUBCASE("fl::vector - move propagation") {
+        fl::vector<int> source;
         source.push_back(1);
         source.push_back(2);
         source.push_back(3);
 
-        fl::vector<int, IDAllocator<int>> destination(alloc2);
+        fl::vector<int> destination;
         destination.push_back(99);
-
-        // Before move: containers have different allocators
-        FL_REQUIRE(source.get_allocator().id == 100);
-        FL_REQUIRE(destination.get_allocator().id == 200);
 
         // Move assignment
         destination = fl::move(source);
 
-        // After move: destination should have source's allocator
-        FL_CHECK(destination.get_allocator().id == 100);
         FL_CHECK(destination.size() == 3);
         FL_CHECK(source.size() == 0);
     }
@@ -1262,43 +1253,29 @@ FL_TEST_CASE("Allocator propagation on move") {
         FL_CHECK(source.size() == 0);
     }
 
-    FL_SUBCASE("fl::VectorSet - allocator propagation") {
-        IDAllocator<int> alloc1(100);
-        IDAllocator<int> alloc2(200);
-
-        fl::VectorSet<int, IDAllocator<int>> source(alloc1);
+    FL_SUBCASE("fl::VectorSet - move propagation") {
+        fl::VectorSet<int> source;
         source.insert(1);
         source.insert(2);
 
-        fl::VectorSet<int, IDAllocator<int>> destination(alloc2);
-
-        FL_REQUIRE(source.get_allocator().id == 100);
-        FL_REQUIRE(destination.get_allocator().id == 200);
+        fl::VectorSet<int> destination;
 
         destination = fl::move(source);
 
-        FL_CHECK(destination.get_allocator().id == 100);
         FL_CHECK(destination.size() == 2);
         FL_CHECK(source.size() == 0);
     }
 
-FL_SUBCASE("fl::SortedHeapVector - allocator propagation") {
-        IDAllocator<int> alloc1(100);
-        IDAllocator<int> alloc2(200);
-
-        fl::SortedHeapVector<int, fl::less<int>, IDAllocator<int>> source(fl::less<int>(), alloc1);
+FL_SUBCASE("fl::SortedHeapVector - move propagation") {
+        fl::SortedHeapVector<int, fl::less<int>> source;
         source.insert(3);
         source.insert(1);
         source.insert(2);
 
-        fl::SortedHeapVector<int, fl::less<int>, IDAllocator<int>> destination(fl::less<int>(), alloc2);
-
-        FL_REQUIRE(source.get_allocator().id == 100);
-        FL_REQUIRE(destination.get_allocator().id == 200);
+        fl::SortedHeapVector<int, fl::less<int>> destination;
 
         destination = fl::move(source);
 
-        FL_CHECK(destination.get_allocator().id == 100);
         FL_CHECK(destination.size() == 3);
         FL_CHECK(source.size() == 0);
     }

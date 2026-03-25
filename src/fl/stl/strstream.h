@@ -14,12 +14,12 @@ class Tile2x2_u8;
 class Tile2x2_u8_wrap;  // Forward declaration to support operator<< overload
 template <typename T> struct vec2;  // Forward declaration from fl/math/geometry.h
 template <typename T> struct rect;  // Forward declaration from fl/math/geometry.h
-template <typename T, typename Alloc> class vector;  // Forward declaration from fl/vector.h  // IWYU pragma: keep
+template <typename T> class vector;  // Forward declaration from fl/vector.h  // IWYU pragma: keep
 template <typename T> class Optional;  // Forward declaration from fl/stl/optional.h
 template <typename Key, typename Hash, typename KeyEqual> class unordered_set;  // Forward declaration from fl/stl/unordered_set.h
 template <typename Key, typename T, typename Hash, typename KeyEqual, int INLINED_COUNT> class unordered_map;  // Forward declaration from fl/stl/unordered_map.h
 template <typename Key, typename Value, fl::size N> class unsorted_map_fixed;  // Forward declaration from fl/stl/map.h
-template <typename Key, typename Value, typename Less, typename Allocator> class flat_map;  // Forward declaration from fl/stl/flat_map.h
+template <typename Key, typename Value, typename Less> class flat_map;  // Forward declaration from fl/stl/flat_map.h
 template <typename T, fl::size Extent> class span;  // Forward declaration from fl/stl/span.h (no default arg to avoid redefinition)  // IWYU pragma: keep
 template <typename T1, typename T2> struct pair;  // Forward declaration from fl/stl/pair.h
 namespace audio { namespace fft { class Bins; } }  // Forward declaration
@@ -93,9 +93,9 @@ class sstream {
         return *this;
     }
 
-    // vector<T, Alloc> support - format as [item1, item2, ...]
-    template<typename T, typename Alloc>
-    sstream &operator<<(const fl::vector<T, Alloc> &vec) FL_NOEXCEPT {
+    // vector<T> support - format as [item1, item2, ...]
+    template<typename T>
+    sstream &operator<<(const fl::vector<T> &vec) FL_NOEXCEPT {
         mStr.append("[");
         for (fl::size i = 0; i < vec.size(); ++i) {
             if (i > 0) {
@@ -159,9 +159,9 @@ class sstream {
         return *this;
     }
 
-    // flat_map<Key, Value, Less, Allocator> support - format as {key1: value1, key2: value2, ...}
-    template<typename Key, typename Value, typename Less, typename Allocator>
-    sstream &operator<<(const fl::flat_map<Key, Value, Less, Allocator> &map) FL_NOEXCEPT {
+    // flat_map<Key, Value, Less> support - format as {key1: value1, key2: value2, ...}
+    template<typename Key, typename Value, typename Less>
+    sstream &operator<<(const fl::flat_map<Key, Value, Less> &map) FL_NOEXCEPT {
         mStr.append("{");
         bool first = true;
         for (auto it = map.begin(); it != map.end(); ++it) {
@@ -442,8 +442,8 @@ class sstream_noop {
     sstream_noop &operator<<(const Optional<T> &) FL_NOEXCEPT { return *this; }
 
     // vector support
-    template<typename T, typename Alloc>
-    sstream_noop &operator<<(const fl::vector<T, Alloc> &) FL_NOEXCEPT { return *this; }
+    template<typename T>
+    sstream_noop &operator<<(const fl::vector<T> &) FL_NOEXCEPT { return *this; }
 
     // unordered_set support
     template<typename Key, typename Hash, typename KeyEqual>
@@ -458,8 +458,8 @@ class sstream_noop {
     sstream_noop &operator<<(const fl::unsorted_map_fixed<Key, Value, N> &) FL_NOEXCEPT { return *this; }
 
     // flat_map support
-    template<typename Key, typename Value, typename Less, typename Allocator>
-    sstream_noop &operator<<(const fl::flat_map<Key, Value, Less, Allocator> &) FL_NOEXCEPT { return *this; }
+    template<typename Key, typename Value, typename Less>
+    sstream_noop &operator<<(const fl::flat_map<Key, Value, Less> &) FL_NOEXCEPT { return *this; }
 
     // span support
     template<typename T, fl::size Extent>

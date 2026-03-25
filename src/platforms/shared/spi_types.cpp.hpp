@@ -10,7 +10,7 @@ namespace fl {
 
 // Define the internal data structure
 struct DMABufferInternalData {
-    fl::vector<u8, allocator_psram<u8>> buffer;
+    fl::vector_psram<u8> buffer;
 
     DMABufferInternalData() : buffer() {}
 

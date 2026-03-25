@@ -379,12 +379,10 @@ FL_TEST_CASE("flat_set: custom comparator") {
     }
 }
 
-FL_TEST_CASE("flat_set: allocator") {
-    fl::allocator<int> alloc;
-    fl::flat_set<int, fl::less<int>, fl::allocator<int>> s(alloc);
-
-    // Allocator is obtainable (we can't compare allocators, just verify it's callable)
-    auto result_alloc = s.get_allocator();
-    s.reserve(10);  // Use allocator via reserve
-    FL_CHECK_TRUE(true);
+FL_TEST_CASE("flat_set: pmr allocator") {
+    fl::flat_set<int> s;
+    s.reserve(10);
+    s.insert(42);
+    FL_CHECK_EQ(s.size(), 1);
+    FL_CHECK_TRUE(s.contains(42));
 }

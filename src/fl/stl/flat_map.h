@@ -24,8 +24,7 @@ namespace fl {
 //
 // The container maintains sorted order by key and uses binary search for lookups.
 template <typename Key, typename Value,
-          typename Less = fl::less<Key>,
-          typename Allocator = fl::allocator<fl::pair<Key, Value>>>
+          typename Less = fl::less<Key>>
 class flat_map {
   public:
     enum insert_result { inserted = 0, exists = 1, at_capacity = 2 };
@@ -36,13 +35,12 @@ class flat_map {
     using size_type = fl::size;
     using difference_type = ptrdiff_t;
     using key_compare = Less;
-    using allocator_type = Allocator;
     using reference = value_type&;
     using const_reference = const value_type&;
     using pointer = value_type*;
     using const_pointer = const value_type*;
 
-    using vector_type = fl::vector<value_type, Allocator>;
+    using vector_type = fl::vector<value_type>;
     using iterator = typename vector_type::iterator;
     using const_iterator = typename vector_type::const_iterator;
     using reverse_iterator = typename vector_type::reverse_iterator;
@@ -56,11 +54,8 @@ class flat_map {
     // Constructors
     flat_map() FL_NOEXCEPT = default;
 
-    explicit flat_map(const Less& less, const Allocator& alloc = Allocator()) FL_NOEXCEPT
-        : mData(alloc), mLess(less) {}
-
-    explicit flat_map(const Allocator& alloc) FL_NOEXCEPT
-        : mData(alloc), mLess(Less()) {}
+    explicit flat_map(const Less& less) FL_NOEXCEPT
+        : mLess(less) {}
 
     flat_map(const flat_map& other) FL_NOEXCEPT = default;
     flat_map& operator=(const flat_map& other) FL_NOEXCEPT = default;
@@ -95,8 +90,6 @@ class flat_map {
     size_type capacity() const FL_NOEXCEPT { return mData.capacity(); }
     size_type max_size() const FL_NOEXCEPT { return mData.max_size(); }
     bool full() const FL_NOEXCEPT { return size() >= capacity(); }
-
-    allocator_type get_allocator() const FL_NOEXCEPT { return mData.get_allocator(); }
 
     // Element access - check keys are equal (not less than in either direction)
     Value& operator[](const Key& key) FL_NOEXCEPT {
@@ -505,48 +498,48 @@ class flat_map {
 };
 
 // Comparison operators
-template <typename Key, typename Value, typename Less, typename Allocator>
-bool operator==(const flat_map<Key, Value, Less, Allocator>& lhs,
-                const flat_map<Key, Value, Less, Allocator>& rhs) {
+template <typename Key, typename Value, typename Less>
+bool operator==(const flat_map<Key, Value, Less>& lhs,
+                const flat_map<Key, Value, Less>& rhs) {
     return lhs.size() == rhs.size() &&
            fl::equal(lhs.begin(), lhs.end(), rhs.begin());
 }
 
-template <typename Key, typename Value, typename Less, typename Allocator>
-bool operator!=(const flat_map<Key, Value, Less, Allocator>& lhs,
-                const flat_map<Key, Value, Less, Allocator>& rhs) {
+template <typename Key, typename Value, typename Less>
+bool operator!=(const flat_map<Key, Value, Less>& lhs,
+                const flat_map<Key, Value, Less>& rhs) {
     return !(lhs == rhs);
 }
 
-template <typename Key, typename Value, typename Less, typename Allocator>
-bool operator<(const flat_map<Key, Value, Less, Allocator>& lhs,
-               const flat_map<Key, Value, Less, Allocator>& rhs) {
+template <typename Key, typename Value, typename Less>
+bool operator<(const flat_map<Key, Value, Less>& lhs,
+               const flat_map<Key, Value, Less>& rhs) {
     return fl::lexicographical_compare(lhs.begin(), lhs.end(),
                                        rhs.begin(), rhs.end());
 }
 
-template <typename Key, typename Value, typename Less, typename Allocator>
-bool operator<=(const flat_map<Key, Value, Less, Allocator>& lhs,
-                const flat_map<Key, Value, Less, Allocator>& rhs) {
+template <typename Key, typename Value, typename Less>
+bool operator<=(const flat_map<Key, Value, Less>& lhs,
+                const flat_map<Key, Value, Less>& rhs) {
     return !(rhs < lhs);
 }
 
-template <typename Key, typename Value, typename Less, typename Allocator>
-bool operator>(const flat_map<Key, Value, Less, Allocator>& lhs,
-               const flat_map<Key, Value, Less, Allocator>& rhs) {
+template <typename Key, typename Value, typename Less>
+bool operator>(const flat_map<Key, Value, Less>& lhs,
+               const flat_map<Key, Value, Less>& rhs) {
     return rhs < lhs;
 }
 
-template <typename Key, typename Value, typename Less, typename Allocator>
-bool operator>=(const flat_map<Key, Value, Less, Allocator>& lhs,
-                const flat_map<Key, Value, Less, Allocator>& rhs) {
+template <typename Key, typename Value, typename Less>
+bool operator>=(const flat_map<Key, Value, Less>& lhs,
+                const flat_map<Key, Value, Less>& rhs) {
     return !(lhs < rhs);
 }
 
 // Swap
-template <typename Key, typename Value, typename Less, typename Allocator>
-void swap(flat_map<Key, Value, Less, Allocator>& lhs,
-          flat_map<Key, Value, Less, Allocator>& rhs) noexcept {
+template <typename Key, typename Value, typename Less>
+void swap(flat_map<Key, Value, Less>& lhs,
+          flat_map<Key, Value, Less>& rhs) noexcept {
     lhs.swap(rhs);
 }
 

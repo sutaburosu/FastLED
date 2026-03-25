@@ -112,7 +112,7 @@ class ScaleUp : public Fx2d {
                   u16 height);
 
     Fx2dPtr mDelegate;  ///< The wrapped effect that renders at low resolution
-    fl::vector<CRGB, fl::allocator_psram<CRGB>> mSurface;  ///< Low-resolution render buffer
+    fl::vector_psram<CRGB> mSurface;  ///< Low-resolution render buffer
 };
 
 } // namespace fl

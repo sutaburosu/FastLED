@@ -4,7 +4,6 @@
 #include "fl/stl/algorithm.h"
 #include "fl/stl/comparators.h"
 #include "fl/stl/vector.h"
-#include "fl/stl/allocator.h"
 
 namespace fl {
 
@@ -19,8 +18,7 @@ namespace fl {
 //
 // The container maintains sorted order and uses binary search for lookups.
 template <typename Key,
-          typename Less = fl::less<Key>,
-          typename Allocator = fl::allocator<Key>>
+          typename Less = fl::less<Key>>
 class flat_set {
   public:
     using key_type = Key;
@@ -29,13 +27,12 @@ class flat_set {
     using difference_type = ptrdiff_t;
     using key_compare = Less;
     using value_compare = Less;
-    using allocator_type = Allocator;
     using reference = value_type&;
     using const_reference = const value_type&;
     using pointer = value_type*;
     using const_pointer = const value_type*;
 
-    using vector_type = fl::vector<value_type, Allocator>;
+    using vector_type = fl::vector<value_type>;
     using iterator = typename vector_type::iterator;
     using const_iterator = typename vector_type::const_iterator;
     using reverse_iterator = typename vector_type::reverse_iterator;
@@ -49,11 +46,8 @@ class flat_set {
     // Constructors
     flat_set() = default;
 
-    explicit flat_set(const Less& less, const Allocator& alloc = Allocator())
-        : mData(alloc), mLess(less) {}
-
-    explicit flat_set(const Allocator& alloc)
-        : mData(alloc), mLess(Less()) {}
+    explicit flat_set(const Less& less)
+        : mLess(less) {}
 
     flat_set(const flat_set& other) = default;
     flat_set& operator=(const flat_set& other) = default;
@@ -87,8 +81,6 @@ class flat_set {
     bool empty() const { return mData.empty(); }
     size_type capacity() const { return mData.capacity(); }
     size_type max_size() const { return mData.max_size(); }
-
-    allocator_type get_allocator() const { return mData.get_allocator(); }
 
     // Lookup
     iterator find(const Key& key) {
@@ -320,48 +312,48 @@ class flat_set {
 };
 
 // Comparison operators
-template <typename Key, typename Less, typename Allocator>
-bool operator==(const flat_set<Key, Less, Allocator>& lhs,
-                const flat_set<Key, Less, Allocator>& rhs) {
+template <typename Key, typename Less>
+bool operator==(const flat_set<Key, Less>& lhs,
+                const flat_set<Key, Less>& rhs) {
     return lhs.size() == rhs.size() &&
            fl::equal(lhs.begin(), lhs.end(), rhs.begin());
 }
 
-template <typename Key, typename Less, typename Allocator>
-bool operator!=(const flat_set<Key, Less, Allocator>& lhs,
-                const flat_set<Key, Less, Allocator>& rhs) {
+template <typename Key, typename Less>
+bool operator!=(const flat_set<Key, Less>& lhs,
+                const flat_set<Key, Less>& rhs) {
     return !(lhs == rhs);
 }
 
-template <typename Key, typename Less, typename Allocator>
-bool operator<(const flat_set<Key, Less, Allocator>& lhs,
-               const flat_set<Key, Less, Allocator>& rhs) {
+template <typename Key, typename Less>
+bool operator<(const flat_set<Key, Less>& lhs,
+               const flat_set<Key, Less>& rhs) {
     return fl::lexicographical_compare(lhs.begin(), lhs.end(),
                                        rhs.begin(), rhs.end());
 }
 
-template <typename Key, typename Less, typename Allocator>
-bool operator<=(const flat_set<Key, Less, Allocator>& lhs,
-                const flat_set<Key, Less, Allocator>& rhs) {
+template <typename Key, typename Less>
+bool operator<=(const flat_set<Key, Less>& lhs,
+                const flat_set<Key, Less>& rhs) {
     return !(rhs < lhs);
 }
 
-template <typename Key, typename Less, typename Allocator>
-bool operator>(const flat_set<Key, Less, Allocator>& lhs,
-               const flat_set<Key, Less, Allocator>& rhs) {
+template <typename Key, typename Less>
+bool operator>(const flat_set<Key, Less>& lhs,
+               const flat_set<Key, Less>& rhs) {
     return rhs < lhs;
 }
 
-template <typename Key, typename Less, typename Allocator>
-bool operator>=(const flat_set<Key, Less, Allocator>& lhs,
-                const flat_set<Key, Less, Allocator>& rhs) {
+template <typename Key, typename Less>
+bool operator>=(const flat_set<Key, Less>& lhs,
+                const flat_set<Key, Less>& rhs) {
     return !(lhs < rhs);
 }
 
 // Swap
-template <typename Key, typename Less, typename Allocator>
-void swap(flat_set<Key, Less, Allocator>& lhs,
-          flat_set<Key, Less, Allocator>& rhs) noexcept {
+template <typename Key, typename Less>
+void swap(flat_set<Key, Less>& lhs,
+          flat_set<Key, Less>& rhs) noexcept {
     lhs.swap(rhs);
 }
 

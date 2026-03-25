@@ -13,9 +13,12 @@ namespace fl {
 
 template <typename T, fl::size INLINED_SIZE> class FixedVector;
 
-template <typename T, typename Allocator> class vector;
+template <typename T> class vector;
 
-template <typename T, fl::size INLINED_SIZE> class InlinedVector;
+template <typename T, fl::size INLINED_SIZE> class VectorN;
+
+// Backward compat alias
+template <typename T, fl::size INLINED_SIZE> using InlinedVector = VectorN<T, INLINED_SIZE>;
 
 template <typename T, fl::size N> class array;
 
@@ -102,8 +105,7 @@ template <typename T> class span<T, dynamic_extent> {
 
     // ======= CONTAINER CONSTRUCTORS =======
     // Simple constructors that work for all cases
-    template<typename Alloc>
-    span(const fl::vector<T, Alloc> &vector) FL_NOEXCEPT
+    span(const fl::vector<T> &vector) FL_NOEXCEPT
         : mData(vector.data()), mSize(vector.size()) {}
 
     template <fl::size INLINED_SIZE>
@@ -111,12 +113,12 @@ template <typename T> class span<T, dynamic_extent> {
         : mData(vector.data()), mSize(vector.size()) {}
 
     template <fl::size INLINED_SIZE>
-    span(const InlinedVector<T, INLINED_SIZE> &vector) FL_NOEXCEPT
+    span(const VectorN<T, INLINED_SIZE> &vector) FL_NOEXCEPT
         : mData(vector.data()), mSize(vector.size()) {}
 
     // Additional constructors for const conversion (U -> const U)
-    template<typename U, typename Alloc>
-    span(const fl::vector<U, Alloc> &vector) FL_NOEXCEPT
+    template<typename U>
+    span(const fl::vector<U> &vector) FL_NOEXCEPT
         : mData(vector.data()), mSize(vector.size()) {}
 
     template<typename U, fl::size INLINED_SIZE>
@@ -124,13 +126,12 @@ template <typename T> class span<T, dynamic_extent> {
         : mData(vector.data()), mSize(vector.size()) {}
 
     template<typename U, fl::size INLINED_SIZE>
-    span(const InlinedVector<U, INLINED_SIZE> &vector) FL_NOEXCEPT
+    span(const VectorN<U, INLINED_SIZE> &vector) FL_NOEXCEPT
         : mData(vector.data()), mSize(vector.size()) {}
 
     // ======= NON-CONST CONTAINER CONVERSIONS =======
     // Non-const versions for mutable spans
-    template<typename Alloc>
-    span(fl::vector<T, Alloc> &vector) FL_NOEXCEPT
+    span(fl::vector<T> &vector) FL_NOEXCEPT
         : mData(vector.data()), mSize(vector.size()) {}
 
     template <fl::size INLINED_SIZE>
@@ -138,7 +139,7 @@ template <typename T> class span<T, dynamic_extent> {
         : mData(vector.data()), mSize(vector.size()) {}
 
     template <fl::size INLINED_SIZE>
-    span(InlinedVector<T, INLINED_SIZE> &vector) FL_NOEXCEPT
+    span(VectorN<T, INLINED_SIZE> &vector) FL_NOEXCEPT
         : mData(vector.data()), mSize(vector.size()) {}
 
     // ======= GENERIC CONTAINER CONSTRUCTOR =======
