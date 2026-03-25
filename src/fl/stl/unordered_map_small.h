@@ -7,6 +7,7 @@
 #include "fl/stl/vector.h"
 #include "fl/stl/allocator.h"
 #include "fl/stl/bitset_dynamic.h"
+#include "fl/stl/memory_resource.h"
 #include "fl/stl/move.h"
 #include "fl/stl/noexcept.h"
 #include "platforms/assert_defs.h"
@@ -27,8 +28,7 @@ template <typename T> struct SmallMapEqualTo {
 // Optimal for small collections (< ~32 elements) where hash overhead
 // isn't worth it. Minimal code size, excellent cache locality.
 template <typename Key, typename Value,
-          typename Equal = fl::SmallMapEqualTo<Key>,
-          typename Allocator = fl::allocator<fl::pair<Key, Value>>>
+          typename Equal = fl::SmallMapEqualTo<Key>>
 class unordered_map_small {
   public:
     enum insert_result { inserted = 0, exists = 1, at_capacity = 2 };
@@ -38,8 +38,7 @@ class unordered_map_small {
     using value_type = fl::pair<Key, Value>;
     using size_type = fl::size;
     using key_equal = Equal;
-    using allocator_type = Allocator;
-    using vector_type = fl::vector<value_type, Allocator>;
+    using vector_type = fl::vector<value_type>;
 
     // Forward iterator that skips unoccupied slots.
     struct iterator {
@@ -107,6 +106,7 @@ class unordered_map_small {
     bitset_dynamic mOccupied;
     size_type mSize = 0;
     Equal mEqual;
+    memory_resource* mResource = nullptr;
 
     // Linear scan for key among occupied slots. Returns slot index or npos().
     size_type find_index(const Key& key) const FL_NOEXCEPT {
@@ -183,15 +183,19 @@ class unordered_map_small {
     // Constructors
     unordered_map_small() FL_NOEXCEPT = default;
 
-    explicit unordered_map_small(const Equal& eq, const Allocator& alloc = Allocator()) FL_NOEXCEPT
-        : mData(alloc), mEqual(eq) {}
+    explicit unordered_map_small(memory_resource* resource) FL_NOEXCEPT
+        : mData(resource), mResource(resource) {}
 
-    explicit unordered_map_small(const Allocator& alloc) FL_NOEXCEPT
-        : mData(alloc), mEqual(Equal()) {}
+    explicit unordered_map_small(const Equal& eq,
+                                 memory_resource* resource = nullptr) FL_NOEXCEPT
+        : mData(resource ? resource : default_memory_resource()),
+          mEqual(eq),
+          mResource(resource) {}
 
     unordered_map_small(const unordered_map_small& other) FL_NOEXCEPT
         : mData(other.mData), mOccupied(other.mOccupied),
-          mSize(other.mSize), mEqual(other.mEqual) {}
+          mSize(other.mSize), mEqual(other.mEqual),
+          mResource(other.mResource) {}
 
     unordered_map_small& operator=(const unordered_map_small& other) FL_NOEXCEPT {
         if (this != &other) {
@@ -199,13 +203,15 @@ class unordered_map_small {
             mOccupied = other.mOccupied;
             mSize = other.mSize;
             mEqual = other.mEqual;
+            mResource = other.mResource;
         }
         return *this;
     }
 
     unordered_map_small(unordered_map_small&& other) noexcept
         : mData(fl::move(other.mData)), mOccupied(fl::move(other.mOccupied)),
-          mSize(other.mSize), mEqual(fl::move(other.mEqual)) {
+          mSize(other.mSize), mEqual(fl::move(other.mEqual)),
+          mResource(other.mResource) {
         other.mSize = 0;
     }
 
@@ -215,6 +221,7 @@ class unordered_map_small {
             mOccupied = fl::move(other.mOccupied);
             mSize = other.mSize;
             mEqual = fl::move(other.mEqual);
+            mResource = other.mResource;
             other.mSize = 0;
         }
         return *this;
@@ -234,7 +241,7 @@ class unordered_map_small {
     size_type capacity() const FL_NOEXCEPT { return mData.capacity(); }
     size_type max_size() const FL_NOEXCEPT { return mData.max_size(); }
 
-    allocator_type get_allocator() const FL_NOEXCEPT { return mData.get_allocator(); }
+
 
     // Element access
     Value& operator[](const Key& key) FL_NOEXCEPT {
@@ -368,9 +375,11 @@ class unordered_map_small {
         fl::swap(mOccupied, other.mOccupied);
         fl::swap(mSize, other.mSize);
         fl::swap(mEqual, other.mEqual);
+        fl::swap(mResource, other.mResource);
     }
 
     key_equal key_eq() const FL_NOEXCEPT { return mEqual; }
+    memory_resource* get_memory_resource() const FL_NOEXCEPT { return mResource; }
 
     void reserve(size_type n) FL_NOEXCEPT {
         mData.reserve(n);
@@ -461,9 +470,9 @@ class unordered_map_small {
     }
 };
 
-template <typename Key, typename Value, typename Equal, typename Allocator>
-void swap(unordered_map_small<Key, Value, Equal, Allocator>& lhs,
-          unordered_map_small<Key, Value, Equal, Allocator>& rhs) noexcept {
+template <typename Key, typename Value, typename Equal>
+void swap(unordered_map_small<Key, Value, Equal>& lhs,
+          unordered_map_small<Key, Value, Equal>& rhs) noexcept {
     lhs.swap(rhs);
 }
 
