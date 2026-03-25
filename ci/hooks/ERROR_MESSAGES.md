@@ -30,6 +30,7 @@ All error messages now include three parts:
 | `rm -rf .fbuild` | rm -rf .fbuild is forbidden - use 'bash compile --clean' instead. To override this check, use: FL_AGENT_ALLOW_ALL_CMDS=1 rm ... |
 | `--no-fingerprint` | --no-fingerprint is forbidden - makes builds 10-100x slower, use 'bash test --clean' instead. To override this check, use: FL_AGENT_ALLOW_ALL_CMDS=1 ... |
 | `uv run python test.py` | uv run python test.py is forbidden - use 'bash test' or 'uv run test.py' instead. To override this check, use: FL_AGENT_ALLOW_ALL_CMDS=1 ... |
+| `bash test --debug` | bash test --debug (full suite) is forbidden - debug builds with sanitizers are very slow. Either run a single test: 'bash test --debug TestName', or full suite in quick mode: 'bash test'. To override: FL_AGENT_ALLOW_ALL_CMDS=1 bash test --debug |
 
 ## Environment Variable Error Messages
 
@@ -62,6 +63,9 @@ All error messages now include three parts:
 ### Cache Management → `--clean` flags
 - `rm -rf .build` → Use `bash test --clean`
 - `rm -rf .fbuild` → Use `bash compile --clean`
+
+### Debug Builds → Single test or quick mode
+- `bash test --debug` → Use `bash test --debug TestName` (single test) or `bash test` (full suite, quick mode)
 
 ### Performance → Never disable
 - `--no-fingerprint` → Use `bash test --clean` (fingerprint cache is reliable)

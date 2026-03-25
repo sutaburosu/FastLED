@@ -76,6 +76,15 @@ FORBIDDEN_PATTERNS = [
         r"uv\s+run\s+python\s+test\.py",
         "uv run python test.py is forbidden - use 'bash test' or 'uv run test.py' instead",
     ),
+    # Debug mode without a specific test name (full suite debug is very slow due to sanitizers)
+    # Matches: bash test --debug, bash test --debug --cpp, bash test --cpp --debug
+    # Does NOT match: bash test --debug TestName (has a non-flag argument)
+    (
+        r"bash\s+test\s+(?:--\S+\s+)*--debug(?:\s+--\S+)*\s*$",
+        "bash test --debug (full suite) is forbidden - debug builds with sanitizers are very slow. "
+        "Either run a single test in debug mode: 'bash test --debug TestName', "
+        "or run the full suite in quick mode: 'bash test'",
+    ),
     # Build commands in the middle of command chains (e.g., cd foo && meson test)
     (
         r" meson ",
