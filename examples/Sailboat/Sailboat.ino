@@ -11,11 +11,8 @@
 
 #include <FastLED.h>
 
-#if !SKETCH_HAS_LOTS_OF_MEMORY
-void setup() {}
-void loop() {}
-#else
-
+#include "fl/channels/config.h"
+#include "fl/chipsets/chipset_timing_config.h"
 #include "fl/fx/1d/perlin_particle_punch.h"
 #include "fl/fx/fx_engine.h"
 #include "fl/ui.h"
@@ -26,8 +23,9 @@ void loop() {}
 // ---------------------------------------------------------------------------
 #define NUM_LEDS 200
 #define DATA_PIN 3
+
 #define BRIGHTNESS 255
-#define COLOR_ORDER BGR
+#define COLOR_ORDER RGB
 
 // I2S pins for INMP441 microphone (adjust for your board)
 #define I2S_WS  7
@@ -82,9 +80,14 @@ fl::ScreenMap screenMap =
 // ---------------------------------------------------------------------------
 void setup() {
     Serial.begin(115200);
-    FastLED.addLeds<WS2812, DATA_PIN, COLOR_ORDER>(leds, NUM_LEDS)
-        .setCorrection(TypicalLEDStrip)
-        .setScreenMap(screenMap);
+    //FastLED.setExclusiveDriver("SPI");
+    fl::ChannelOptions opts;
+    opts.mCorrection = TypicalLEDStrip;
+    auto timing = fl::makeTimingConfig<fl::TIMING_WS2812_800KHZ>();
+    fl::ClocklessChipset chipset(DATA_PIN, timing);
+    fl::ChannelConfig config(chipset, fl::span<CRGB>(leds, NUM_LEDS), COLOR_ORDER, opts);
+    config.setScreenMap(screenMap);
+    FastLED.add(config);
     FastLED.setBrightness(BRIGHTNESS);
 
     // Group UI elements
@@ -169,6 +172,7 @@ void setup() {
 }
 
 void loop() {
+    FL_WARN("Loop");
     // Decay time-warp back to normal
     noiseTimeMultiplier *= 0.95f;
     if (noiseTimeMultiplier < 1.01f)
@@ -190,5 +194,3 @@ void loop() {
     fxEngine.draw(millis(), leds);
     FastLED.show();
 }
-
-#endif // SKETCH_HAS_LOTS_OF_MEMORY
