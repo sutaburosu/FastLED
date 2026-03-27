@@ -567,7 +567,7 @@ class FL_ALIGN vector : public vector_basic {
 
     // ======= ASSIGNMENT =======
 
-    vector &operator=(const vector &other) {
+    vector &operator=(const vector &other) FL_NOEXCEPT {
         if (this != &other) {
             copy_from(other);
         }
@@ -892,7 +892,7 @@ class FL_ALIGN VectorN : public vector<T> {
         }
     }
 
-    VectorN& operator=(const VectorN& other) {
+    VectorN& operator=(const VectorN& other) FL_NOEXCEPT {
         if (this != &other) {
             this->copy_from(other);
         }
@@ -914,7 +914,7 @@ class FL_ALIGN VectorN : public vector<T> {
 template <typename T>
 class vector_psram : public vector<T> {
   public:
-    vector_psram()
+    vector_psram() FL_NOEXCEPT
         : vector<T>(psram_memory_resource()) {}
 
     vector_psram(fl::size count, const T& value = T())
@@ -938,7 +938,7 @@ class vector_psram : public vector<T> {
         }
     }
 
-    vector_psram(const vector_psram& other)
+    vector_psram(const vector_psram& other) FL_NOEXCEPT
         : vector<T>(psram_memory_resource()) {
         this->copy_from(other);
     }
@@ -948,7 +948,7 @@ class vector_psram : public vector<T> {
         this->move_from(other);
     }
 
-    vector_psram& operator=(const vector_psram& other) {
+    vector_psram& operator=(const vector_psram& other) FL_NOEXCEPT {
         if (this != &other) {
             this->copy_from(other);
         }

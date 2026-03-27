@@ -80,7 +80,7 @@ class vector_basic {
     void swap_impl(vector_basic& other);
 
     // ======= DESTRUCTOR =======
-    ~vector_basic();
+    ~vector_basic() FL_NOEXCEPT;
 
   protected:
     // ======= CONSTRUCTION (only callable by vector<T>) =======
@@ -111,10 +111,10 @@ class vector_basic {
     }
 
     // Deleted copy/move — vector<T> handles these
-    vector_basic(const vector_basic&) = delete;
-    vector_basic(vector_basic&&) = delete;
-    vector_basic& operator=(const vector_basic&) = delete;
-    vector_basic& operator=(vector_basic&&) = delete;
+    vector_basic(const vector_basic&) FL_NOEXCEPT = delete;
+    vector_basic(vector_basic&&) FL_NOEXCEPT = delete;
+    vector_basic& operator=(const vector_basic&) FL_NOEXCEPT = delete;
+    vector_basic& operator=(vector_basic&&) FL_NOEXCEPT = delete;
 
     // ======= HELPERS FOR DERIVED CLASSES =======
 

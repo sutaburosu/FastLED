@@ -65,7 +65,7 @@ struct allocator_traits {
 // Interface class for malloc/free test hooks
 class MallocFreeHook {
 public:
-    virtual ~MallocFreeHook() = default;
+    virtual ~MallocFreeHook() FL_NOEXCEPT = default;
     virtual void onMalloc(void* ptr, fl::size size) = 0;
     virtual void onFree(void* ptr) = 0;
 };

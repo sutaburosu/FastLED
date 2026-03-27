@@ -36,7 +36,7 @@ struct ControlBlockBase {
         : shared_count(track ? 1 : NO_TRACKING_VALUE), weak_count(1) {}
     // Destructor defined out-of-line in shared_ptr.cpp.hpp to anchor vtable
     // to a single translation unit, preventing ODR violations when using shared libraries.
-    virtual ~ControlBlockBase();
+    virtual ~ControlBlockBase() FL_NOEXCEPT;
     virtual void destroy_object() = 0;
     virtual void destroy_control_block() = 0;
     

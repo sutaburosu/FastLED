@@ -6,6 +6,7 @@
 #include "fl/stl/iterator.h"
 #include "fl/stl/memory_resource.h"
 #include "fl/stl/new.h"  // IWYU pragma: keep
+#include "fl/stl/noexcept.h"
 
 namespace fl {
 
@@ -264,7 +265,7 @@ public:
     typedef fl::reverse_iterator<const_iterator> const_reverse_iterator;
 
     // Constructors
-    deque() : mData(nullptr), mCapacity(0), mSize(0), mFront(0) {}
+    deque() FL_NOEXCEPT : mData(nullptr), mCapacity(0), mSize(0), mFront(0) {}
 
     explicit deque(memory_resource* resource) : mData(nullptr), mCapacity(0), mSize(0), mFront(0), mResource(resource) {}
 
@@ -272,11 +273,11 @@ public:
         resize(count, value);
     }
 
-    deque(const deque& other) : deque() {
+    deque(const deque& other) FL_NOEXCEPT : deque() {
         *this = other;
     }
 
-    deque(deque&& other) : deque() {
+    deque(deque&& other) FL_NOEXCEPT : deque() {
         *this = fl::move(other);
     }
 
@@ -287,7 +288,7 @@ public:
     }
 
     // Destructor
-    ~deque() {
+    ~deque() FL_NOEXCEPT {
         clear();
         if (mData) {
             mResource->deallocate(mData, mCapacity * sizeof(T));
@@ -295,7 +296,7 @@ public:
     }
 
     // Assignment operators
-    deque& operator=(const deque& other) {
+    deque& operator=(const deque& other) FL_NOEXCEPT {
         if (this != &other) {
             clear();
             for (fl::size i = 0; i < other.size(); ++i) {
@@ -305,7 +306,7 @@ public:
         return *this;
     }
 
-    deque& operator=(deque&& other) {
+    deque& operator=(deque&& other) FL_NOEXCEPT {
         if (this != &other) {
             clear();
             if (mData) {
