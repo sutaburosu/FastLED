@@ -99,6 +99,14 @@ class Canvas {
                                              DrawMode mode = DrawMode::DRAW_MODE_BLEND) {
         mImpl.drawStrokeLine(color, x0, y0, x1, y1, thickness, cap, mode);
     }
+
+    template<typename Coord>
+    FASTLED_FORCE_INLINE void drawTriangle(const RGB_T& color, Coord x0, Coord y0, Coord x1, Coord y1,
+                                           Coord x2, Coord y2,
+                                           DrawMode mode = DrawMode::DRAW_MODE_BLEND,
+                                           fl::u8 edgeAA = 0x7) {
+        mImpl.drawTriangle(color, x0, y0, x1, y1, x2, y2, mode, edgeAA);
+    }
 };
 
 /// @brief Convenience alias for CRGB canvas — use fl::CanvasRGB for no-template syntax.
@@ -113,6 +121,7 @@ class CanvasRGB : protected Canvas<CRGB> {
     using Canvas<CRGB>::drawDisc;
     using Canvas<CRGB>::drawRing;
     using Canvas<CRGB>::drawStrokeLine;
+    using Canvas<CRGB>::drawTriangle;
 };
 
 }  // namespace fl

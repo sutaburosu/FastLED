@@ -102,6 +102,24 @@ canvas.drawStrokeLine(CRGB::Green, 2.0f, 8.0f, 14.0f, 8.0f, 3.0f,
 | `ROUND` | Semicircle caps extending past each endpoint |
 | `SQUARE` | Rectangle caps extending half-thickness past each endpoint |
 
+### drawTriangle — filled triangle
+
+```cpp
+canvas.drawTriangle(color, x0, y0, x1, y1, x2, y2);
+```
+
+Solid filled triangle with antialiased edges. Vertices can be in any
+order — they are sorted internally. Interior pixels get full color;
+edge pixels get sub-pixel blending for smooth boundaries.
+
+```cpp
+// right triangle
+canvas.drawTriangle(CRGB::Red, 2.0f, 2.0f, 2.0f, 12.0f, 12.0f, 12.0f);
+
+// equilateral-ish triangle centered on canvas
+canvas.drawTriangle(CRGB::Green, 8.0f, 1.0f, 1.0f, 14.0f, 15.0f, 14.0f);
+```
+
 ---
 
 ## 3. Working with the Canvas

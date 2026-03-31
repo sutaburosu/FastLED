@@ -45,6 +45,12 @@ template<typename PixelT, typename Coord>
 void drawStrokeLine(Canvas<PixelT>& canvas, const PixelT& color, Coord x0, Coord y0, Coord x1, Coord y1,
                     Coord thickness, LineCap cap, fl::DrawMode mode = fl::DrawMode::DRAW_MODE_BLEND);
 
+template<typename PixelT, typename Coord>
+void drawTriangle(Canvas<PixelT>& canvas, const PixelT& color,
+                  Coord x0, Coord y0, Coord x1, Coord y1, Coord x2, Coord y2,
+                  fl::DrawMode mode = fl::DrawMode::DRAW_MODE_BLEND,
+                  fl::u8 edgeAA = 0x7);
+
 /// @brief Simple rectangular canvas for graphics operations
 /// Combines a pixel buffer with dimensions for cache-optimal drawing.
 template<typename RGB_T>
@@ -105,6 +111,13 @@ struct Canvas {
     inline void drawStrokeLine(const RGB_T& color, Coord x0, Coord y0, Coord x1, Coord y1, Coord thickness,
                                LineCap cap = LineCap::FLAT, fl::DrawMode mode = fl::DrawMode::DRAW_MODE_BLEND) {
         gfx::drawStrokeLine(*this, color, x0, y0, x1, y1, thickness, cap, mode);
+    }
+
+    template<typename Coord>
+    inline void drawTriangle(const RGB_T& color, Coord x0, Coord y0, Coord x1, Coord y1, Coord x2, Coord y2,
+                             fl::DrawMode mode = fl::DrawMode::DRAW_MODE_BLEND,
+                             fl::u8 edgeAA = 0x7) {
+        gfx::drawTriangle(*this, color, x0, y0, x1, y1, x2, y2, mode, edgeAA);
     }
 };
 

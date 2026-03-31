@@ -129,6 +129,21 @@ inline void addPixelToBuffer(PixelT* pixels, int width, int height,
     }
 }
 
+/// True alpha blend: dst = color * alpha/255 + dst * (255-alpha)/255.
+/// Used for AA edge pixels so edges blend smoothly with the background
+/// and adjacent triangles sharing an edge combine coverage correctly.
+template<typename PixelT>
+inline void alphaBlendPixel(PixelT* pixels, int width, int height,
+                            int x, int y, const PixelT& color, fl::u8 alpha) {
+    if (x >= 0 && x < width && y >= 0 && y < height) {
+        PixelT& dst = pixels[y * width + x];
+        fl::u8 inv = 255 - alpha;
+        dst.r = static_cast<uint8_t>((color.r * alpha + dst.r * inv + 127) / 255);
+        dst.g = static_cast<uint8_t>((color.g * alpha + dst.g * inv + 127) / 255);
+        dst.b = static_cast<uint8_t>((color.b * alpha + dst.b * inv + 127) / 255);
+    }
+}
+
 namespace detail {
 
 // void_t for C++11 SFINAE (detects member existence)
@@ -512,6 +527,11 @@ void drawStrokeLine(Canvas<PixelT>& canvas, const PixelT& color,
                     Coord x0, Coord y0, Coord x1, Coord y1, Coord thickness,
                     LineCap cap, fl::DrawMode mode);
 
+template<typename PixelT, typename Coord>
+void drawTriangle(Canvas<PixelT>& canvas, const PixelT& color,
+                  Coord x0, Coord y0, Coord x1, Coord y1, Coord x2, Coord y2,
+                  fl::DrawMode mode, fl::u8 edgeAA);
+
 /// ============================================================================
 /// LEGACY RASTERTARGET API (Deprecated - for backward compatibility)
 /// ============================================================================
@@ -636,6 +656,12 @@ template<typename PixelT, typename Coord, bool Overwrite>
 inline void drawStrokeLineCore(Canvas<PixelT>& canvas, const PixelT& color,
                                Coord x0, Coord y0, Coord x1, Coord y1,
                                Coord thickness, LineCap cap);
+
+template<typename PixelT, typename Coord, bool Overwrite>
+inline void drawTriangleCore(Canvas<PixelT>& canvas, const PixelT& color,
+                             Coord x0, Coord y0, Coord x1, Coord y1,
+                             Coord x2, Coord y2,
+                             fl::u8 edgeAA = 0x7);
 
 }  // namespace detail
 
@@ -900,6 +926,258 @@ inline void drawStrokeLine(Canvas<PixelT>& canvas, const PixelT& color,
         detail::drawStrokeLineCore<PixelT, Coord, true>(canvas, color, x0, y0, x1, y1, thickness, cap);
     else
         detail::drawStrokeLineCore<PixelT, Coord, false>(canvas, color, x0, y0, x1, y1, thickness, cap);
+}
+
+// ---------------------------------------------------------------------------
+// drawTriangleCore: Scanline filled triangle with Wu-style antialiased edges.
+// Vertices are sorted by Y, the triangle is split at the middle vertex into
+// a flat-bottom and flat-top half. For each scanline, left/right edge X
+// positions are interpolated in Q8.8 fixed-point (same representation as
+// drawLine). Edge pixels get sub-pixel AA; interior pixels get full color.
+//
+// Steep edges (|dy| >= |dx|) get AA from the scanline left/right fractional X.
+// Shallow edges (|dx| > |dy|) additionally get a Wu-style column walk that
+// applies top/bottom AA — mirroring the steep/shallow swap in drawLine.
+// ---------------------------------------------------------------------------
+
+// Helper: Wu-style AA walk along a shallow triangle edge (|dx| > |dy|).
+// Steps column-by-column from (ex0,ey0) to (ex1,ey1) in Q8.8, plotting
+// two vertically adjacent pixels per column with coverage weighting.
+// Only plots pixels that are OUTSIDE the scanline-filled interior (determined
+// by the Y range [scanline_y_start..scanline_y_end] of the triangle).
+template<typename PixelT, bool Overwrite>
+inline void drawShallowEdgeAA(PixelT* pixels, int width, int height,
+                               const PixelT& color,
+                               fl::i32 ex0, fl::i32 ey0,
+                               fl::i32 ex1, fl::i32 ey1,
+                               int scanline_y_start, int scanline_y_end) {
+    // Ensure we walk left-to-right
+    if (ex0 > ex1) { fl::swap(ex0, ex1); fl::swap(ey0, ey1); }
+
+    fl::i32 dx8 = ex1 - ex0;
+    fl::i32 dy8 = ey1 - ey0;
+    if (dx8 <= 0) return;
+
+    // Gradient: dy per 1-pixel X step, in Q8.8
+    fl::i32 gradient = (dy8 << 8) / dx8;
+
+    // Walk columns from first to last pixel
+    int x_start = (ex0 + 255) >> 8;
+    int x_end   = (ex1) >> 8;
+
+    // Initial Y at x_start (pixel center)
+    fl::i32 intery = ey0 + (((static_cast<fl::i32>(x_start) << 8) + 128 - ex0) * gradient >> 8);
+
+    for (int x = x_start; x <= x_end; ++x) {
+        if (x >= 0 && x < width) {
+            int iy = intery >> 8;
+            fl::u8 frac = static_cast<fl::u8>(intery & 0xFF);
+
+            // Top AA pixel (iy): coverage = 255 - frac
+            // In overwrite (alpha-blend) mode, always draw — alpha blending
+            // handles overlap with interior correctly. In additive mode,
+            // skip interior rows to avoid double-adding.
+            bool iy_outside = (iy < scanline_y_start || iy > scanline_y_end);
+            if (iy >= 0 && iy < height && (Overwrite || iy_outside)) {
+                fl::u8 alpha = 255 - frac;
+                if (alpha > 0) {
+                    if (Overwrite) alphaBlendPixel(pixels, width, height, x, iy, color, alpha);
+                    else { PixelT c = color; c.nscale8(alpha); pixels[iy * width + x] += c; }
+                }
+            }
+            // Bottom AA pixel (iy+1): coverage = frac
+            int iy1 = iy + 1;
+            bool iy1_outside = (iy1 < scanline_y_start || iy1 > scanline_y_end);
+            if (iy1 >= 0 && iy1 < height && frac > 0 && (Overwrite || iy1_outside)) {
+                if (Overwrite) alphaBlendPixel(pixels, width, height, x, iy1, color, frac);
+                else { PixelT c = color; c.nscale8(frac); pixels[iy1 * width + x] += c; }
+            }
+        }
+        intery += gradient;
+    }
+}
+
+template<typename PixelT, typename Coord, bool Overwrite>
+inline void detail::drawTriangleCore(Canvas<PixelT>& canvas, const PixelT& color,
+                                     Coord x0_c, Coord y0_c, Coord x1_c, Coord y1_c,
+                                     Coord x2_c, Coord y2_c,
+                                     fl::u8 edgeAA) {
+    PixelT* pixels = canvas.pixels;
+    int width = canvas.width;
+    int height = canvas.height;
+
+    // Convert to 8.8 fixed-point
+    fl::i32 ax = detail::toFixed8(x0_c), ay = detail::toFixed8(y0_c);
+    fl::i32 bx = detail::toFixed8(x1_c), by = detail::toFixed8(y1_c);
+    fl::i32 cx = detail::toFixed8(x2_c), cy = detail::toFixed8(y2_c);
+
+    // Track original vertex indices through sort for edgeAA mapping
+    // Edge 0: v0-v1, Edge 1: v1-v2, Edge 2: v2-v0
+    int vi_a = 0, vi_b = 1, vi_c = 2;
+
+    // Sort vertices by Y ascending (top to bottom)
+    if (ay > by) { fl::swap(ax, bx); fl::swap(ay, by); fl::swap(vi_a, vi_b); }
+    if (ay > cy) { fl::swap(ax, cx); fl::swap(ay, cy); fl::swap(vi_a, vi_c); }
+    if (by > cy) { fl::swap(bx, cx); fl::swap(by, cy); fl::swap(vi_b, vi_c); }
+    // Now: (ax,ay) = top, (bx,by) = mid, (cx,cy) = bottom
+
+    // Map sorted vertex pairs to original edge index via sum of original indices:
+    // {0,1}→sum=1→edge0, {1,2}→sum=3→edge1, {0,2}→sum=2→edge2
+    auto edgeIdx = [](int i, int j) -> int {
+        int s = i + j; return (s == 1) ? 0 : (s == 3) ? 1 : 2;
+    };
+    bool aa_top_mid = (edgeAA >> edgeIdx(vi_a, vi_b)) & 1;  // a→b
+    bool aa_mid_bot = (edgeAA >> edgeIdx(vi_b, vi_c)) & 1;  // b→c
+    bool aa_long    = (edgeAA >> edgeIdx(vi_a, vi_c)) & 1;  // a→c
+
+    fl::i32 dy_total = cy - ay;
+    if (dy_total <= 0) return;  // degenerate: zero-height triangle
+
+    // Edge spans
+    fl::i32 dy_top = by - ay;   // top → mid
+    fl::i32 dy_bot = cy - by;   // mid → bottom
+
+    // Gradient for long edge (top→bottom): dx per 1-pixel Y step, in Q8.8
+    fl::i32 grad_long = ((cx - ax) << 8) / dy_total;
+
+    // Precompute short-edge gradients
+    fl::i32 grad_top = (dy_top > 0) ? ((bx - ax) << 8) / dy_top : 0;
+    fl::i32 grad_bot = (dy_bot > 0) ? ((cx - bx) << 8) / dy_bot : 0;
+
+    // Scanline Y range
+    int y_start = (ay + 255) >> 8;
+    int y_end   = (cy - 1) >> 8;
+    if (y_start > y_end) return;
+
+    // Clamp to canvas
+    if (y_start < 0) y_start = 0;
+    if (y_end >= height) y_end = height - 1;
+
+    for (int y = y_start; y <= y_end; ++y) {
+        // Y position in Q8.8 (center of pixel row)
+        fl::i32 y8 = (static_cast<fl::i32>(y) << 8) + 128;
+
+        // Interpolate X on the long edge (top→bottom)
+        fl::i32 x_long = ax + (((y8 - ay) * grad_long) >> 8);
+
+        // Interpolate X on the short edge (top→mid or mid→bottom)
+        fl::i32 x_short;
+        bool is_top_half;
+        if (y8 < by) {
+            if (dy_top <= 0) continue;
+            x_short = ax + (((y8 - ay) * grad_top) >> 8);
+            is_top_half = true;
+        } else {
+            if (dy_bot <= 0) continue;
+            x_short = bx + (((y8 - by) * grad_bot) >> 8);
+            is_top_half = false;
+        }
+
+        // Determine per-edge AA flags for this scanline's left/right edges
+        bool aa_short = is_top_half ? aa_top_mid : aa_mid_bot;
+        bool aa_left_edge, aa_right_edge;
+
+        // Ensure left <= right
+        fl::i32 x_left, x_right;
+        if (x_long <= x_short) {
+            x_left = x_long;
+            x_right = x_short;
+            aa_left_edge = aa_long; aa_right_edge = aa_short;
+        } else {
+            x_left = x_short;
+            x_right = x_long;
+            aa_left_edge = aa_short; aa_right_edge = aa_long;
+        }
+
+        // Integer pixel range for the interior
+        int px_left  = (x_left + 255) >> 8;
+        int px_right = (x_right) >> 8;
+
+        // --- Left edge AA pixel ---
+        int px_aa_left = (x_left >> 8);
+        if (px_aa_left >= 0 && px_aa_left < width && y >= 0 && y < height) {
+            if (aa_left_edge) {
+                fl::u8 alpha = static_cast<fl::u8>(256 - (x_left & 0xFF));
+                if (alpha > 0 && alpha < 255) {
+                    if (Overwrite) alphaBlendPixel(pixels, width, height, px_aa_left, y, color, alpha);
+                    else { PixelT c = color; c.nscale8(alpha); pixels[y * width + px_aa_left] += c; }
+                } else if (alpha >= 255) {
+                    if (Overwrite) pixels[y * width + px_aa_left] = color;
+                    else pixels[y * width + px_aa_left] += color;
+                }
+            } else {
+                // No AA: fill boundary pixel at full coverage
+                if (Overwrite) pixels[y * width + px_aa_left] = color;
+                else pixels[y * width + px_aa_left] += color;
+            }
+        }
+
+        // --- Interior pixels at full brightness ---
+        int fill_left_x = px_left;
+        int fill_right_x = px_right - 1;
+        if (fill_left_x == px_aa_left) fill_left_x++;
+        if (fill_left_x < 0) fill_left_x = 0;
+        if (fill_right_x >= width) fill_right_x = width - 1;
+
+        if (y >= 0 && y < height) {
+            PixelT* row = &pixels[y * width];
+            for (int x = fill_left_x; x <= fill_right_x; ++x) {
+                if (Overwrite) row[x] = color;
+                else row[x] += color;
+            }
+        }
+
+        // --- Right edge AA pixel ---
+        if (px_right != px_aa_left && px_right >= 0 && px_right < width && y >= 0 && y < height) {
+            if (aa_right_edge) {
+                fl::u8 alpha = static_cast<fl::u8>(x_right & 0xFF);
+                if (alpha > 0 && alpha < 255) {
+                    if (Overwrite) alphaBlendPixel(pixels, width, height, px_right, y, color, alpha);
+                    else { PixelT c = color; c.nscale8(alpha); pixels[y * width + px_right] += c; }
+                } else if (alpha >= 255) {
+                    if (Overwrite) pixels[y * width + px_right] = color;
+                    else pixels[y * width + px_right] += color;
+                }
+            } else {
+                // No AA: fill boundary pixel at full coverage
+                if (Overwrite) pixels[y * width + px_right] = color;
+                else pixels[y * width + px_right] += color;
+            }
+        }
+    }
+
+    // --- Shallow-edge AA pass ---
+    // For edges where |dx| > |dy|, the scanline fill gives poor vertical AA.
+    // Walk those edges column-by-column with Wu-style top/bottom pixel blending.
+    // Pass the scanline fill Y range so the helper skips interior pixels.
+    struct Edge { fl::i32 ex0, ey0, ex1, ey1; bool aa; };
+    Edge edges[3] = {
+        { ax, ay, bx, by, aa_top_mid },   // top → mid
+        { bx, by, cx, cy, aa_mid_bot },   // mid → bottom
+        { ax, ay, cx, cy, aa_long },       // top → bottom (long edge)
+    };
+    for (int e = 0; e < 3; ++e) {
+        if (!edges[e].aa) continue;  // skip AA for disabled edges
+        fl::i32 edx = fl::abs(edges[e].ex1 - edges[e].ex0);
+        fl::i32 edy = fl::abs(edges[e].ey1 - edges[e].ey0);
+        if (edx > edy) {
+            drawShallowEdgeAA<PixelT, Overwrite>(
+                pixels, width, height, color,
+                edges[e].ex0, edges[e].ey0,
+                edges[e].ex1, edges[e].ey1,
+                y_start, y_end);
+        }
+    }
+}
+
+template<typename PixelT, typename Coord>
+inline void drawTriangle(Canvas<PixelT>& canvas, const PixelT& color,
+                         Coord x0, Coord y0, Coord x1, Coord y1, Coord x2, Coord y2,
+                         fl::DrawMode mode, fl::u8 edgeAA) {
+    if (mode == fl::DrawMode::DRAW_MODE_OVERWRITE)
+        detail::drawTriangleCore<PixelT, Coord, true>(canvas, color, x0, y0, x1, y1, x2, y2, edgeAA);
+    else
+        detail::drawTriangleCore<PixelT, Coord, false>(canvas, color, x0, y0, x1, y1, x2, y2, edgeAA);
 }
 
 }  // namespace gfx
