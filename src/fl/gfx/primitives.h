@@ -945,12 +945,26 @@ inline void drawStrokeLine(Canvas<PixelT>& canvas, const PixelT& color,
 // two vertically adjacent pixels per column with coverage weighting.
 // Only plots pixels that are OUTSIDE the scanline-filled interior (determined
 // by the Y range [scanline_y_start..scanline_y_end] of the triangle).
+inline fl::i32 interpolateEdgeAtY8(fl::i32 x0, fl::i32 y0,
+                                   fl::i32 x1, fl::i32 y1,
+                                   fl::i32 y8) {
+    fl::i32 dy8 = y1 - y0;
+    if (dy8 == 0) {
+        return x0;
+    }
+    fl::i64 dx8 = static_cast<fl::i64>(x1) - static_cast<fl::i64>(x0);
+    fl::i64 grad16 = (dx8 * 65536) / dy8;
+    fl::i64 delta_y8 = static_cast<fl::i64>(y8) - static_cast<fl::i64>(y0);
+    return static_cast<fl::i32>(static_cast<fl::i64>(x0) + ((delta_y8 * grad16) >> 16));
+}
+
 template<typename PixelT, bool Overwrite>
 inline void drawShallowEdgeAA(PixelT* pixels, int width, int height,
                                const PixelT& color,
                                fl::i32 ex0, fl::i32 ey0,
                                fl::i32 ex1, fl::i32 ey1,
-                               int scanline_y_start, int scanline_y_end) {
+                               int scanline_y_start, int scanline_y_end,
+                               bool interior_below) {
     // Ensure we walk left-to-right
     if (ex0 > ex1) { fl::swap(ex0, ex1); fl::swap(ey0, ey1); }
 
@@ -958,42 +972,43 @@ inline void drawShallowEdgeAA(PixelT* pixels, int width, int height,
     fl::i32 dy8 = ey1 - ey0;
     if (dx8 <= 0) return;
 
-    // Gradient: dy per 1-pixel X step, in Q8.8
-    fl::i32 gradient = (dy8 << 8) / dx8;
+    // Gradient: dy per 1-pixel X step, in Q16.16 to avoid visible stair-step
+    // quantization on long shallow edges.
+    fl::i64 gradient16 = (static_cast<fl::i64>(dy8) * 65536) / dx8;
 
     // Walk columns from first to last pixel
     int x_start = (ex0 + 255) >> 8;
     int x_end   = (ex1) >> 8;
 
     // Initial Y at x_start (pixel center)
-    fl::i32 intery = ey0 + (((static_cast<fl::i32>(x_start) << 8) + 128 - ex0) * gradient >> 8);
+    fl::i64 intery16 = (static_cast<fl::i64>(ey0) * 256)
+                     + ((((static_cast<fl::i64>(x_start) * 256) + 128 - ex0) * gradient16) >> 8);
 
     for (int x = x_start; x <= x_end; ++x) {
         if (x >= 0 && x < width) {
-            int iy = intery >> 8;
-            fl::u8 frac = static_cast<fl::u8>(intery & 0xFF);
+            int iy = static_cast<int>(intery16 >> 16);
+            fl::u8 frac = static_cast<fl::u8>((intery16 >> 8) & 0xFF);
 
-            // Top AA pixel (iy): coverage = 255 - frac
-            // In overwrite (alpha-blend) mode, always draw — alpha blending
-            // handles overlap with interior correctly. In additive mode,
-            // skip interior rows to avoid double-adding.
+            // For a filled triangle, only the pixel the edge crosses
+            // through (iy) needs AA.  The other pixel (iy+1) is either
+            // fully interior (handled by scanline fill) or fully
+            // exterior (zero coverage).  Coverage depends on which
+            // side of the edge is the triangle interior:
+            //   interior_below:  coverage of iy = 255-frac  (inside below edge)
+            //   interior_above:  coverage of iy = frac      (inside above edge)
+            fl::u8 alpha = interior_below ? static_cast<fl::u8>(255 - frac)
+                                          : frac;
+
+            // Only draw when the pixel is outside the scanline fill
+            // range.  Interior boundary pixels keep their scanline
+            // fill value (sub-pixel error, but avoids colour bleed).
             bool iy_outside = (iy < scanline_y_start || iy > scanline_y_end);
-            if (iy >= 0 && iy < height && (Overwrite || iy_outside)) {
-                fl::u8 alpha = 255 - frac;
-                if (alpha > 0) {
-                    if (Overwrite) alphaBlendPixel(pixels, width, height, x, iy, color, alpha);
-                    else { PixelT c = color; c.nscale8(alpha); pixels[iy * width + x] += c; }
-                }
-            }
-            // Bottom AA pixel (iy+1): coverage = frac
-            int iy1 = iy + 1;
-            bool iy1_outside = (iy1 < scanline_y_start || iy1 > scanline_y_end);
-            if (iy1 >= 0 && iy1 < height && frac > 0 && (Overwrite || iy1_outside)) {
-                if (Overwrite) alphaBlendPixel(pixels, width, height, x, iy1, color, frac);
-                else { PixelT c = color; c.nscale8(frac); pixels[iy1 * width + x] += c; }
+            if (iy >= 0 && iy < height && alpha > 0 && iy_outside) {
+                if (Overwrite) alphaBlendPixel(pixels, width, height, x, iy, color, alpha);
+                else { PixelT c = color; c.nscale8(alpha); pixels[iy * width + x] += c; }
             }
         }
-        intery += gradient;
+        intery16 += gradient16;
     }
 }
 
@@ -1037,13 +1052,6 @@ inline void detail::drawTriangleCore(Canvas<PixelT>& canvas, const PixelT& color
     fl::i32 dy_top = by - ay;   // top → mid
     fl::i32 dy_bot = cy - by;   // mid → bottom
 
-    // Gradient for long edge (top→bottom): dx per 1-pixel Y step, in Q8.8
-    fl::i32 grad_long = ((cx - ax) << 8) / dy_total;
-
-    // Precompute short-edge gradients
-    fl::i32 grad_top = (dy_top > 0) ? ((bx - ax) << 8) / dy_top : 0;
-    fl::i32 grad_bot = (dy_bot > 0) ? ((cx - bx) << 8) / dy_bot : 0;
-
     // Scanline Y range
     int y_start = (ay + 255) >> 8;
     int y_end   = (cy - 1) >> 8;
@@ -1058,18 +1066,18 @@ inline void detail::drawTriangleCore(Canvas<PixelT>& canvas, const PixelT& color
         fl::i32 y8 = (static_cast<fl::i32>(y) << 8) + 128;
 
         // Interpolate X on the long edge (top→bottom)
-        fl::i32 x_long = ax + (((y8 - ay) * grad_long) >> 8);
+        fl::i32 x_long = interpolateEdgeAtY8(ax, ay, cx, cy, y8);
 
         // Interpolate X on the short edge (top→mid or mid→bottom)
         fl::i32 x_short;
         bool is_top_half;
         if (y8 < by) {
             if (dy_top <= 0) continue;
-            x_short = ax + (((y8 - ay) * grad_top) >> 8);
+            x_short = interpolateEdgeAtY8(ax, ay, bx, by, y8);
             is_top_half = true;
         } else {
             if (dy_bot <= 0) continue;
-            x_short = bx + (((y8 - by) * grad_bot) >> 8);
+            x_short = interpolateEdgeAtY8(bx, by, cx, cy, y8);
             is_top_half = false;
         }
 
@@ -1092,6 +1100,23 @@ inline void detail::drawTriangleCore(Canvas<PixelT>& canvas, const PixelT& color
         // Integer pixel range for the interior
         int px_left  = (x_left + 255) >> 8;
         int px_right = (x_right) >> 8;
+
+        // Guard degenerate sub-pixel-thin scanlines
+        if (px_right < px_left) {
+            // The span is thinner than one pixel. Emit a single
+            // blended pixel if both edges land in the same column.
+            int col = x_left >> 8;
+            if (col >= 0 && col < width && y >= 0 && y < height) {
+                // Coverage = span width as fraction of a pixel
+                int span = x_right - x_left;
+                if (span > 0) {
+                    fl::u8 alpha = static_cast<fl::u8>(span > 255 ? 255 : span);
+                    if (Overwrite) alphaBlendPixel(pixels, width, height, col, y, color, alpha);
+                    else { PixelT c = color; c.nscale8(alpha); pixels[y * width + col] += c; }
+                }
+            }
+            continue;
+        }
 
         // --- Left edge AA pixel ---
         int px_aa_left = (x_left >> 8);
@@ -1148,13 +1173,22 @@ inline void detail::drawTriangleCore(Canvas<PixelT>& canvas, const PixelT& color
 
     // --- Shallow-edge AA pass ---
     // For edges where |dx| > |dy|, the scanline fill gives poor vertical AA.
-    // Walk those edges column-by-column with Wu-style top/bottom pixel blending.
-    // Pass the scanline fill Y range so the helper skips interior pixels.
-    struct Edge { fl::i32 ex0, ey0, ex1, ey1; bool aa; };
+    // Walk those edges column-by-column with single-pixel boundary AA.
+    // interior_below tells the helper which side of the edge is inside:
+    //   A→B (top→mid):  opposite vertex C is below → true
+    //   B→C (mid→bot):  opposite vertex A is above → false
+    //   A→C (long edge): check which side B falls on
+    bool long_interior_below = true;
+    if (cx != ax) {
+        fl::i64 cross = static_cast<fl::i64>(cx - ax) * static_cast<fl::i64>(by - ay)
+                      - static_cast<fl::i64>(cy - ay) * static_cast<fl::i64>(bx - ax);
+        long_interior_below = (cx > ax) ? (cross > 0) : (cross < 0);
+    }
+    struct Edge { fl::i32 ex0, ey0, ex1, ey1; bool aa; bool interior_below; };
     Edge edges[3] = {
-        { ax, ay, bx, by, aa_top_mid },   // top → mid
-        { bx, by, cx, cy, aa_mid_bot },   // mid → bottom
-        { ax, ay, cx, cy, aa_long },       // top → bottom (long edge)
+        { ax, ay, bx, by, aa_top_mid, true },              // top → mid
+        { bx, by, cx, cy, aa_mid_bot, false },             // mid → bottom
+        { ax, ay, cx, cy, aa_long, long_interior_below },  // long edge
     };
     for (int e = 0; e < 3; ++e) {
         if (!edges[e].aa) continue;  // skip AA for disabled edges
@@ -1165,7 +1199,8 @@ inline void detail::drawTriangleCore(Canvas<PixelT>& canvas, const PixelT& color
                 pixels, width, height, color,
                 edges[e].ex0, edges[e].ey0,
                 edges[e].ex1, edges[e].ey1,
-                y_start, y_end);
+                y_start, y_end,
+                edges[e].interior_below);
         }
     }
 }

@@ -116,6 +116,59 @@ FL_TEST_CASE("drawTriangle antialiasing") {
         FL_CHECK(partial > 0);  // Should have some AA pixels
         FL_CHECK(full_bright > 0);  // Should also have interior pixels
     }
+
+    FL_SUBCASE("very short triangles stay within their local span") {
+        CRGB buffer[256] = {};
+        fl::CanvasRGB canvas(buffer, 16, 16);
+        canvas.drawTriangle(CRGB(255, 0, 0), 2.1f, 7.10f, 13.4f, 8.05f, 4.8f, 8.60f);
+
+        int non_zero = 0;
+        for (int y = 0; y < 16; ++y) {
+            int row_count = 0;
+            for (int x = 0; x < 16; ++x) {
+                if (buffer[y * 16 + x].r == 0) {
+                    continue;
+                }
+                ++non_zero;
+                ++row_count;
+                FL_CHECK(y >= 6);
+                FL_CHECK(y <= 9);
+                FL_CHECK(x >= 1);
+                FL_CHECK(x <= 14);
+            }
+            FL_CHECK(row_count <= 13);
+        }
+        FL_CHECK(non_zero > 0);
+    }
+
+    FL_SUBCASE("shallow edges do not leave isolated far-right pixels") {
+        CRGB buffer[256] = {};
+        fl::CanvasRGB canvas(buffer, 16, 16);
+        canvas.drawTriangle(CRGB(255, 0, 0), 1.2f, 4.2f, 14.1f, 5.4f, 4.4f, 13.7f);
+
+        int non_empty_rows = 0;
+        for (int y = 0; y < 16; ++y) {
+            int first = -1;
+            int last = -1;
+            for (int x = 0; x < 16; ++x) {
+                if (buffer[y * 16 + x].r == 0) {
+                    continue;
+                }
+                if (first < 0) {
+                    first = x;
+                }
+                last = x;
+            }
+            if (first < 0) {
+                continue;
+            }
+            ++non_empty_rows;
+            for (int x = first; x <= last; ++x) {
+                FL_CHECK(buffer[y * 16 + x].r > 0);
+            }
+        }
+        FL_CHECK(non_empty_rows > 0);
+    }
 }
 
 FL_TEST_CASE("drawTriangle overwrite mode") {
