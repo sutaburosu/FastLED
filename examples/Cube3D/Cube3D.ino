@@ -209,6 +209,7 @@ void loop() {
             uint8_t a = FACE_TRIS[tri_idx][0];
             uint8_t b = FACE_TRIS[tri_idx][1];
             uint8_t c = FACE_TRIS[tri_idx][2];
+
             canvas.drawTriangle(color,
                                 screen_x[a], screen_y[a],
                                 screen_x[b], screen_y[b],

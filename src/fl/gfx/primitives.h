@@ -943,8 +943,9 @@ inline void drawStrokeLine(Canvas<PixelT>& canvas, const PixelT& color,
 // Helper: Wu-style AA walk along a shallow triangle edge (|dx| > |dy|).
 // Steps column-by-column from (ex0,ey0) to (ex1,ey1) in Q8.8, plotting
 // two vertically adjacent pixels per column with coverage weighting.
-// Only plots pixels that are OUTSIDE the scanline-filled interior (determined
-// by the Y range [scanline_y_start..scanline_y_end] of the triangle).
+// In overwrite mode, pixels can be blended directly (interior-overwrite is
+// identity for same-color blend), so AA is applied for all columns. In
+// additive mode, plotting is limited to outside rows to avoid double-add.
 inline fl::i32 interpolateEdgeAtY8(fl::i32 x0, fl::i32 y0,
                                    fl::i32 x1, fl::i32 y1,
                                    fl::i32 y8) {
@@ -984,10 +985,53 @@ inline void drawShallowEdgeAA(PixelT* pixels, int width, int height,
     fl::i64 intery16 = (static_cast<fl::i64>(ey0) * 256)
                      + ((((static_cast<fl::i64>(x_start) * 256) + 128 - ex0) * gradient16) >> 8);
 
+    // Keep overwrite AA tightly near the scanline-filled band.
+    const int aa_min_y = scanline_y_start - 1;
+    const int aa_max_y = scanline_y_end + 1;
+
     for (int x = x_start; x <= x_end; ++x) {
         if (x >= 0 && x < width) {
-            int iy = static_cast<int>(intery16 >> 16);
-            fl::u8 frac = static_cast<fl::u8>((intery16 >> 8) & 0xFF);
+            // Apply horizontal endpoint coverage so first/last columns
+            // contribute proportionally to actual edge overlap.
+            int xcov8 = 256;
+            if (x_start == x_end) {
+                xcov8 = ex1 - ex0;
+            } else if (x == x_start) {
+                xcov8 = ((x_start << 8) + 256) - ex0;
+            } else if (x == x_end) {
+                xcov8 = ex1 - (x_end << 8);
+            }
+            if (xcov8 < 0) xcov8 = 0;
+            if (xcov8 > 256) xcov8 = 256;
+
+            // Skip endpoint columns that barely enter the pixel (<50% width).
+            // Adjacent edges share the same vertex column and both drawing
+            // there produces combined coverage that leaks outside the triangle.
+            if (xcov8 > 0 && xcov8 < 96 && (x == x_start || x == x_end)) {
+                intery16 += gradient16;
+                continue;
+            }
+
+            fl::i64 sample_y16 = intery16;
+            if (xcov8 < 256 && (x == x_start || x == x_end)) {
+                fl::i32 sample_x8 = (static_cast<fl::i32>(x) << 8) + 128;
+                if (x == x_start) {
+                    sample_x8 = ex0 + (xcov8 >> 1);
+                } else {
+                    sample_x8 = ex1 - (xcov8 >> 1);
+                }
+                fl::i64 dx_sample8 = static_cast<fl::i64>(sample_x8)
+                                   - static_cast<fl::i64>((static_cast<fl::i32>(x) << 8) + 128);
+                sample_y16 += (dx_sample8 * gradient16) >> 8;
+            }
+
+            int iy = static_cast<int>(sample_y16 >> 16);
+            fl::u8 frac = static_cast<fl::u8>((sample_y16 >> 8) & 0xFF);
+
+            if (iy < aa_min_y || iy > aa_max_y) {
+                intery16 += gradient16;
+                continue;
+            }
 
             // For a filled triangle, only the pixel the edge crosses
             // through (iy) needs AA.  The other pixel (iy+1) is either
@@ -998,12 +1042,17 @@ inline void drawShallowEdgeAA(PixelT* pixels, int width, int height,
             //   interior_above:  coverage of iy = frac      (inside above edge)
             fl::u8 alpha = interior_below ? static_cast<fl::u8>(255 - frac)
                                           : frac;
+            if (xcov8 < 256) {
+                alpha = static_cast<fl::u8>((static_cast<int>(alpha) * xcov8) >> 8);
+            }
 
-            // Only draw when the pixel is outside the scanline fill
-            // range.  Interior boundary pixels keep their scanline
-            // fill value (sub-pixel error, but avoids colour bleed).
+            // In overwrite mode, draw for all columns to preserve smooth
+            // shallow edges; same-color blend over interior is effectively
+            // a no-op. In additive mode, restrict to outside rows to avoid
+            // double-adding the interior.
             bool iy_outside = (iy < scanline_y_start || iy > scanline_y_end);
-            if (iy >= 0 && iy < height && alpha > 0 && iy_outside) {
+            bool allow_overwrite = Overwrite && (!iy_outside || alpha < 255);
+            if (iy >= 0 && iy < height && alpha > 0 && (allow_overwrite || iy_outside)) {
                 if (Overwrite) alphaBlendPixel(pixels, width, height, x, iy, color, alpha);
                 else { PixelT c = color; c.nscale8(alpha); pixels[iy * width + x] += c; }
             }
@@ -1053,8 +1102,14 @@ inline void detail::drawTriangleCore(Canvas<PixelT>& canvas, const PixelT& color
     fl::i32 dy_bot = cy - by;   // mid → bottom
 
     // Scanline Y range
-    int y_start = (ay + 255) >> 8;
-    int y_end   = (cy - 1) >> 8;
+    // Include rows whose pixel centre (y + 0.5) is at or below the top
+    // vertex and above the bottom vertex.
+    int y_start = (ay + 127) >> 8;
+    // Only include rows whose pixel centre (y + 0.5 = y + 128/256) lies at or
+    // above the bottom vertex.  Using (cy-1)>>8 can include a row whose centre
+    // is past cy, causing interpolateEdgeAtY8 to extrapolate and fill pixels
+    // outside the triangle.
+    int y_end   = (cy - 128) >> 8;
     if (y_start > y_end) return;
 
     // Clamp to canvas
@@ -1122,11 +1177,14 @@ inline void detail::drawTriangleCore(Canvas<PixelT>& canvas, const PixelT& color
         int px_aa_left = (x_left >> 8);
         if (px_aa_left >= 0 && px_aa_left < width && y >= 0 && y < height) {
             if (aa_left_edge) {
-                fl::u8 alpha = static_cast<fl::u8>(256 - (x_left & 0xFF));
-                if (alpha > 0 && alpha < 255) {
+                // 256 - frac gives range 1..256; clamp to 255 to avoid u8 overflow
+                // (when frac==0 the edge is exactly on a boundary → full coverage)
+                int alpha_i = 256 - (x_left & 0xFF);
+                fl::u8 alpha = static_cast<fl::u8>(alpha_i > 255 ? 255 : alpha_i);
+                if (alpha < 255) {
                     if (Overwrite) alphaBlendPixel(pixels, width, height, px_aa_left, y, color, alpha);
                     else { PixelT c = color; c.nscale8(alpha); pixels[y * width + px_aa_left] += c; }
-                } else if (alpha >= 255) {
+                } else {
                     if (Overwrite) pixels[y * width + px_aa_left] = color;
                     else pixels[y * width + px_aa_left] += color;
                 }
@@ -1177,13 +1235,17 @@ inline void detail::drawTriangleCore(Canvas<PixelT>& canvas, const PixelT& color
     // interior_below tells the helper which side of the edge is inside:
     //   A→B (top→mid):  opposite vertex C is below → true
     //   B→C (mid→bot):  opposite vertex A is above → false
-    //   A→C (long edge): check which side B falls on
-    bool long_interior_below = true;
+    //   A→C (long edge): compare B.y against long-edge Y at B.x.
+    // This is more robust than sign heuristics and costs one interpolation.
+    fl::i32 y_on_long_at_bx = ay;
     if (cx != ax) {
-        fl::i64 cross = static_cast<fl::i64>(cx - ax) * static_cast<fl::i64>(by - ay)
-                      - static_cast<fl::i64>(cy - ay) * static_cast<fl::i64>(bx - ax);
-        long_interior_below = (cx > ax) ? (cross > 0) : (cross < 0);
+        fl::i64 dy8 = static_cast<fl::i64>(cy) - static_cast<fl::i64>(ay);
+        fl::i64 delta_x8 = static_cast<fl::i64>(bx) - static_cast<fl::i64>(ax);
+        fl::i64 dx8 = static_cast<fl::i64>(cx) - static_cast<fl::i64>(ax);
+        y_on_long_at_bx = static_cast<fl::i32>(
+            static_cast<fl::i64>(ay) + ((delta_x8 * dy8) / dx8));
     }
+    bool long_interior_below = (by > y_on_long_at_bx);
     struct Edge { fl::i32 ex0, ey0, ex1, ey1; bool aa; bool interior_below; };
     Edge edges[3] = {
         { ax, ay, bx, by, aa_top_mid, true },              // top → mid
