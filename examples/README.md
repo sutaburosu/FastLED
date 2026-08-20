@@ -128,6 +128,7 @@ This list highlights commonly used examples. It is not exhaustive—browse the f
 - `Downscale/` — render high-res, resample to panel resolution
 - `Animartrix/` — animated matrix patterns and helpers
 - `SmartMatrix/` — SmartMatrix integration sketch
+- `Fireworks3D/` — 3D fireworks (roman candles + catherine wheel) perspective-projected onto a 128x64 matrix
 
 ### FX engine and higher-level utilities
 
