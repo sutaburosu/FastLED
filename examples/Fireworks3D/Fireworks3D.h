@@ -4,8 +4,8 @@
 /// @brief A small 3D fireworks scene rendered with the fl::gfx primitives.
 ///
 /// The scene is simulated in a world coordinate system (y up, units ~ metres)
-/// with a fixed axis-aligned perspective camera, then projected onto a 128x64
-/// matrix:
+/// with a perspective camera that gently orbits the scene, then projected
+/// onto a 128x64 matrix:
 ///
 ///   - RomanCandle — a rocket that ascends trailing sparks, then bursts into
 ///     a spherical shell of gravity-bound sparks plus a brief flash.
@@ -35,13 +35,24 @@ static constexpr float kGravity = 1.4f;      // world units / s^2
 static constexpr float kDrag = 0.55f;        // 1/s exponential velocity damping
 static constexpr float kTrailFade = 44;      // fadeToBlackBy amount per frame
 
-// Camera: kCamHeight above ground, kCamZ behind the scene plane, looking
-// along +z. kFocal is the focal length in px at depth 1, i.e. a point at
-// depth d renders at kFocal / d px per world unit.
+// Camera: kCamHeight above ground, kOrbitRadius behind the scene centre,
+// looking at the target point. kFocal is the focal length in px at depth 1,
+// i.e. a point at depth d renders at kFocal / d px per world unit. The
+// camera swings gently in yaw (see kOrbitAmplitude / kOrbitPeriod) so the
+// parallax between the foreground and background objects sells the depth.
 static constexpr float kCamHeight = 1.5f;
-static constexpr float kCamZ = -20.0f;
+static constexpr float kOrbitRadius = 20.0f;
 static constexpr float kFocal = 150.0f;
 static constexpr float kNear = 1.0f;
+
+// Look-at target: mid-height of the burst zone, mid-depth of the scene.
+static constexpr float kTargetY = 2.4f;
+static constexpr float kTargetZ = 2.0f;
+
+// Gentle orbit: a sinusoidal yaw sweep of +/- kOrbitAmplitude radians over
+// one full period.
+static constexpr float kOrbitAmplitude = 0.12f;  // ~7 degrees
+static constexpr float kOrbitPeriod = 24.0f;     // seconds per full sway
 
 // Particles store their radius in "px at kRefDepth"; it scales with depth.
 static constexpr float kRefDepth = 20.0f;
@@ -59,19 +70,41 @@ inline float jitter(float amount) FL_NO_EXCEPT {
 
 // ---- Camera ----------------------------------------------------------------
 
+inline vec3f cross(const vec3f &a, const vec3f &b) FL_NO_EXCEPT {
+    return vec3f(a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z,
+                 a.x * b.y - a.y * b.x);
+}
+
+inline vec3f normalize(const vec3f &v) FL_NO_EXCEPT {
+    const float len = fl::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+    return v / len;
+}
+
 struct Camera {
-    vec3f pos;
+    vec3f target;  // look-at point
     float focal;
+    float yaw;     // orbit angle in radians, 0 = straight on
 
     // Projects a world point to screen coords. Fails for points behind the
     // near plane. `scale` is px per world unit at the point's depth.
+    //
+    // The camera sits kOrbitRadius behind the target at kCamHeight and looks
+    // at the target; yaw swings it side to side along the orbit.
     bool project(const vec3f &p, float &sx, float &sy, float &scale) const FL_NO_EXCEPT {
-        const float dz = p.z - pos.z;
-        if (dz < kNear)
+        const vec3f cpos(target.x + kOrbitRadius * fl::sinf(yaw), kCamHeight,
+                         target.z - kOrbitRadius * fl::cosf(yaw));
+        const vec3f f = normalize(target - cpos);  // forward
+        const vec3f r = normalize(cross(vec3f(0.0f, 1.0f, 0.0f), f));
+        const vec3f u = cross(f, r);               // true up
+        const vec3f d = p - cpos;
+        const float rz = d.x * f.x + d.y * f.y + d.z * f.z;
+        if (rz < kNear)
             return false;
-        scale = focal / dz;
-        sx = 0.5f * kWidth + (p.x - pos.x) * scale;
-        sy = 0.5f * kHeight - (p.y - pos.y) * scale;  // world y is up, screen y down
+        scale = focal / rz;
+        const float rx = d.x * r.x + d.y * r.y + d.z * r.z;
+        const float ry = d.x * u.x + d.y * u.y + d.z * u.z;
+        sx = 0.5f * kWidth + rx * scale;
+        sy = 0.5f * kHeight - ry * scale;  // world y is up, screen y down
         return true;
     }
 };
@@ -406,9 +439,10 @@ class CatherineWheel {
 class Scene {
   public:
     void reset() FL_NO_EXCEPT {
-        mCam = Camera{vec3f(0.0f, kCamHeight, kCamZ), kFocal};
+        mCam = Camera{vec3f(0.0f, kTargetY, kTargetZ), kFocal, 0.0f};
         mPool.clear();
         mFlash.t = 0.0f;
+        mTime = 0.0f;
         mCandles[0].reset(-6.5f, 2.0f, 0.6f, mCam);
         mCandles[1].reset(-1.0f, 0.0f, 1.8f, mCam);
         mCandles[2].reset(4.5f, 3.0f, 3.0f, mCam);
@@ -416,6 +450,11 @@ class Scene {
     }
 
     void update(float dt) FL_NO_EXCEPT {
+        mTime += dt;
+        // Gentle sinusoidal orbit: the parallax between the foreground and
+        // background launchers is what sells the 3D depth.
+        mCam.yaw = kOrbitAmplitude *
+                   fl::sinf(6.2831853f * (mTime / kOrbitPeriod));
         for (RomanCandle &candle : mCandles)
             candle.update(dt, mPool, mFlash);
         mWheel.update(dt, mPool);
@@ -498,6 +537,7 @@ class Scene {
     FlashState mFlash;
     RomanCandle mCandles[3];
     CatherineWheel mWheel;
+    float mTime = 0.0f;
 };
 
 }  // namespace fireworks
