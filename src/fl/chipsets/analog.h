@@ -49,6 +49,15 @@ class AnalogRGBController : public CPixelLEDController<RGB> {
 
 }  // namespace fl
 
+// The ESP32 Arduino core (esp32-hal-gpio.h) defines ANALOG as a pin-mode
+// macro, which would replace the class name below. Undef it (do not restore)
+// so the chipset template stays usable in sketches on that platform; the
+// pin-mode value is not used by FastLED or by core headers after user
+// includes.
+#ifdef ANALOG
+#undef ANALOG
+#endif
+
 /// FastLED chipset-style wrapper for three-pin PWM RGB output.
 /// @see fl::AnalogRGBController
 template <fl::u8 RED_PIN, fl::u8 GREEN_PIN, fl::u8 BLUE_PIN>
