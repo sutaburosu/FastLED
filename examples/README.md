@@ -129,6 +129,7 @@ This list highlights commonly used examples. It is not exhaustive—browse the f
 - `Animartrix/` — animated matrix patterns and helpers
 - `SmartMatrix/` — SmartMatrix integration sketch
 - `Fireworks3D/` — 3D fireworks (roman candles + catherine wheel) perspective-projected onto a 128x64 matrix
+- `Pyrotechny/` — 3D pyrotechnic scene (coloured fountains + rocket-driven catherine wheel) with a shared trail-graded particle system on a 128x64 matrix
 
 ### FX engine and higher-level utilities
 
