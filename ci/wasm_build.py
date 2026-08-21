@@ -328,7 +328,7 @@ def _compute_src_file_list_hash() -> str:
     src_path = PROJECT_ROOT / "src"
     try:
         st = src_path.stat()
-        top_count = sum(1 for _ in src_path.iterdir())
+        top_count = sum(1 for _ in os.scandir(src_path))
     except OSError:
         st = None  # type: ignore[assignment]
         top_count = -1

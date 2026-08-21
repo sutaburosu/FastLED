@@ -42,11 +42,11 @@ class TestSrcFileListHashMemoization(unittest.TestCase):
         """Deterministic check that the memo works: wrap os.scandir with a
         call counter and verify the warm call skips the recursive walk.
 
-        Both cold and warm calls invoke os.scandir once (via iterdir() for
-        top_count). The cold call additionally drives the recursive _scan
+        Both cold and warm calls invoke os.scandir once (for the top_count
+        probe). The cold call additionally drives the recursive _scan
         which walks every src/ subdirectory — many extra scandir calls. The
         warm call must short-circuit and add no further calls beyond the
-        single iterdir."""
+        single top_count probe."""
         real_scandir = os.scandir
         call_count = [0]
 
