@@ -195,7 +195,15 @@ class ParticlePool {
     Particle *alloc() FL_NO_EXCEPT {
         if (mCount >= kMaxParticles)
             return nullptr;
-        return &mParts[mCount++];
+        // The slot may still hold a dead particle's trail state. Reset it so
+        // the new spark starts with an empty history — otherwise the
+        // renderer draws lines from the new position to the previous
+        // occupant's trail points (stray lines across the screen).
+        Particle &p = mParts[mCount++];
+        p.histTimer = 0.0f;
+        p.histIdx = 0;
+        p.histN = 0;
+        return &p;
     }
 
     int count() const FL_NO_EXCEPT { return mCount; }
