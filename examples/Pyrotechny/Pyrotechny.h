@@ -46,8 +46,9 @@ static constexpr float kTrailFade = 40;      // fadeToBlackBy amount per frame
 // Camera: kCamHeight above ground, kOrbitRadius behind the scene centre,
 // looking at the target point. kFocal is the focal length in px at depth 1,
 // i.e. a point at depth d renders at kFocal / d px per world unit. The
-// camera swings gently in yaw (see kOrbitAmplitude / kOrbitPeriod) so the
-// parallax between the foreground and background objects sells the depth.
+// camera slowly rotates a full revolution around the scene (see
+// kOrbitPeriod) so the parallax between the foreground and background
+// objects sells the depth.
 static constexpr float kCamHeight = 1.5f;
 static constexpr float kOrbitRadius = 20.0f;
 static constexpr float kFocal = 150.0f;
@@ -57,10 +58,9 @@ static constexpr float kNear = 1.0f;
 static constexpr float kTargetY = 2.0f;
 static constexpr float kTargetZ = 2.0f;
 
-// Gentle orbit: a sinusoidal yaw sweep of +/- kOrbitAmplitude radians over
-// one full period.
-static constexpr float kOrbitAmplitude = 0.12f;  // ~7 degrees
-static constexpr float kOrbitPeriod = 24.0f;     // seconds per full sway
+// Slow continuous orbit: the camera makes one full revolution around the
+// scene centre every kOrbitPeriod seconds.
+static constexpr float kOrbitPeriod = 60.0f;  // seconds per revolution
 
 // Particles store their radius in "px at kRefDepth"; it scales with depth.
 static constexpr float kRefDepth = 20.0f;
@@ -129,7 +129,7 @@ struct Camera {
     // near plane. `scale` is px per world unit at the point's depth.
     //
     // The camera sits kOrbitRadius behind the target at kCamHeight and looks
-    // at the target; yaw swings it side to side along the orbit.
+    // at the target; yaw rotates it around the orbit.
     bool project(const vec3f &p, float &sx, float &sy, float &scale) const FL_NO_EXCEPT {
         const vec3f cpos(target.x + kOrbitRadius * fl::sinf(yaw), kCamHeight,
                          target.z - kOrbitRadius * fl::cosf(yaw));
@@ -472,14 +472,12 @@ class CatherineWheel : public Emitter {
         const float ca = fl::cosf(a);
         p->pos = vec3f(mCenter.x + mRadius * ca, mCenter.y + mRadius * sa,
                        mCenter.z);
-        // Ejection: the nozzle's own rim speed plus the rocket exhaust,
-        // along the direction of rotation, with a slight outward peel so the
-        // spiral peels away from the rim. The rim speed term is what makes
-        // the sparks fly off faster as the wheel spins faster.
+        // Ejection: strictly tangent to the rim, in the direction of
+        // rotation — the nozzle's own rim speed plus the rocket exhaust.
+        // The rim speed term is what makes the sparks fly off faster as the
+        // wheel spins faster.
         const float vTang = mOmega * mRadius + kExhaust * randomFloat(0.85f, 1.15f);
-        const float vRad = randomFloat(0.1f, 0.4f);
-        p->vel = vec3f(-sa * vTang + ca * vRad, ca * vTang + sa * vRad,
-                       jitter(0.3f));
+        p->vel = vec3f(-sa * vTang, ca * vTang, 0.0f);
         p->hue = 24.0f;
         p->sat = 70.0f;  // whitish-gold, like real incandescent stars
         p->size = randomFloat(0.8f, 1.4f);
@@ -509,10 +507,9 @@ class Scene {
 
     void update(float dt) FL_NO_EXCEPT {
         mTime += dt;
-        // Gentle sinusoidal orbit: the parallax between the foreground and
-        // background emitters is what sells the 3D depth.
-        mCam.yaw = kOrbitAmplitude *
-                   fl::sinf(6.2831853f * (mTime / kOrbitPeriod));
+        // Slow continuous orbit around the scene: the parallax between the
+        // foreground and background emitters is what sells the 3D depth.
+        mCam.yaw = 6.2831853f * (mTime / kOrbitPeriod);
         for (Fountain &fountain : mFountains)
             fountain.update(dt, mPool);
         mWheel.update(dt, mPool);
