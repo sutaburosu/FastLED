@@ -271,6 +271,18 @@ struct RingCtx {
     PixelT color;
 };
 
+/// Triangle context: bundles per-triangle scanline state (8.8 edge x
+/// accumulators for both active edges) into a struct passed by reference.
+/// This reduces function-call overhead on register-poor architectures
+/// (AVR: 7 params → 1 pointer), matching the struct-based approach used
+/// in drawDisc/drawRing.
+template<typename PixelT>
+struct TriCtx {
+    fl::i32 width;
+    fl::i32 x8L, dxL, x8R, dxR;
+    PixelT color;
+};
+
 /// Render one scanline of a disc using incremental d².
 /// Templated on Overwrite for compile-time dispatch (no per-pixel branch).
 /// Uses (n+1)² = n² + 2n + 1 identity — zero multiplies in the inner loop.
@@ -371,6 +383,41 @@ inline void renderRingRow(PixelT* buf, int w, int py,
         if (Overwrite) *ptr = c; else *ptr += c;
         d2 += xd; xd += 131072; ++ptr; ++px;
     }
+}
+
+/// Render one scanline of a triangle between two 8.8 edge x positions.
+/// Weight table: single column → (Rfrac - Lfrac); left → (255 - Lfrac);
+/// interior → full; right → Rfrac. Every write goes through
+/// addPixelToBuffer (bounds check + blend/overwrite dispatch).
+/// Templated on Overwrite for compile-time dispatch (no per-pixel branch).
+template<typename PixelT, bool Overwrite>
+inline void renderTriangleRow(PixelT* buf, int w, int height, int py,
+                              fl::i32 xL_edge8, fl::i32 xR_edge8,
+                              const TriCtx<PixelT>& f) {
+    fl::i32 xL8 = (xL_edge8 < xR_edge8) ? xL_edge8 : xR_edge8;
+    fl::i32 xR8 = (xL_edge8 < xR_edge8) ? xR_edge8 : xL_edge8;
+    int xLi = static_cast<int>(xL8 >> 8);
+    fl::i32 Lfrac = xL8 - (fl::i32(xLi) << 8);  // 0..255 even for negative xL8
+    int xRi = static_cast<int>(xR8 >> 8);
+    fl::i32 Rfrac = xR8 - (fl::i32(xRi) << 8);  // 0..255 even for negative xR8
+    if (xLi > xRi) return;
+    if (xLi == xRi) {
+        fl::u8 cw = static_cast<fl::u8>(Rfrac - Lfrac);
+        if (cw > 0) {
+            PixelT c = f.color; c.nscale8(cw);
+            addPixelToBuffer<PixelT, Overwrite>(buf, w, height, xLi, py, c);
+        }
+        return;
+    }
+    // Left AA edge
+    PixelT c = f.color; c.nscale8(static_cast<fl::u8>(255 - Lfrac));
+    addPixelToBuffer<PixelT, Overwrite>(buf, w, height, xLi, py, c);
+    // Full-brightness interior
+    for (int x = xLi + 1; x < xRi; ++x)
+        addPixelToBuffer<PixelT, Overwrite>(buf, w, height, x, py, f.color);
+    // Right AA edge
+    c = f.color; c.nscale8(static_cast<fl::u8>(Rfrac));
+    addPixelToBuffer<PixelT, Overwrite>(buf, w, height, xRi, py, c);
 }
 
 /// Stroke line context: bundles per-line constants into a struct passed by
