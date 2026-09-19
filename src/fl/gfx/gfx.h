@@ -82,6 +82,13 @@ class Canvas {
     }
 
     template<typename Coord>
+    FASTLED_FORCE_INLINE void drawTriangle(const RGB_T& color, Coord x0, Coord y0, Coord x1, Coord y1,
+                                           Coord x2, Coord y2,
+                                           DrawMode mode = DrawMode::DRAW_MODE_BLEND) {
+        mImpl.drawTriangle(color, x0, y0, x1, y1, x2, y2, mode);
+    }
+
+    template<typename Coord>
     FASTLED_FORCE_INLINE void drawDisc(const RGB_T& color, Coord cx, Coord cy, Coord r,
                                        DrawMode mode = DrawMode::DRAW_MODE_BLEND) {
         mImpl.drawDisc(color, cx, cy, r, mode);
@@ -110,6 +117,7 @@ class CanvasRGB : protected Canvas<CRGB> {
     using Canvas<CRGB>::has;
     using Canvas<CRGB>::blurGaussian;
     using Canvas<CRGB>::drawLine;
+    using Canvas<CRGB>::drawTriangle;
     using Canvas<CRGB>::drawDisc;
     using Canvas<CRGB>::drawRing;
     using Canvas<CRGB>::drawStrokeLine;

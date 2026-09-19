@@ -49,6 +49,10 @@ void drawLine(Canvas<PixelT>& canvas, const PixelT& color, Coord x0, Coord y0, C
               fl::DrawMode mode = fl::DrawMode::DRAW_MODE_BLEND) FL_NO_EXCEPT;
 
 template<typename PixelT, typename Coord>
+void drawTriangle(Canvas<PixelT>& canvas, const PixelT& color, Coord x0, Coord y0, Coord x1, Coord y1,
+                  Coord x2, Coord y2, fl::DrawMode mode = fl::DrawMode::DRAW_MODE_BLEND) FL_NO_EXCEPT;
+
+template<typename PixelT, typename Coord>
 void drawDisc(Canvas<PixelT>& canvas, const PixelT& color, Coord cx, Coord cy, Coord r,
               fl::DrawMode mode = fl::DrawMode::DRAW_MODE_BLEND) FL_NO_EXCEPT;
 
@@ -102,6 +106,13 @@ struct Canvas {
     inline void drawLine(const RGB_T& color, Coord x0, Coord y0, Coord x1, Coord y1,
                          fl::DrawMode mode = fl::DrawMode::DRAW_MODE_BLEND) FL_NO_EXCEPT {
         gfx::drawLine(*this, color, x0, y0, x1, y1, mode);
+    }
+
+    template<typename Coord>
+    inline void drawTriangle(const RGB_T& color, Coord x0, Coord y0, Coord x1, Coord y1,
+                             Coord x2, Coord y2,
+                             fl::DrawMode mode = fl::DrawMode::DRAW_MODE_BLEND) FL_NO_EXCEPT {
+        gfx::drawTriangle(*this, color, x0, y0, x1, y1, x2, y2, mode);
     }
 
     template<typename Coord>
