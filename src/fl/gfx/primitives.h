@@ -559,6 +559,11 @@ void drawStrokeLine(Canvas<PixelT>& canvas, const PixelT& color,
                     Coord x0, Coord y0, Coord x1, Coord y1, Coord thickness,
                     LineCap cap, fl::DrawMode mode);
 
+template<typename PixelT, typename Coord>
+void drawTriangle(Canvas<PixelT>& canvas, const PixelT& color,
+                  Coord x0, Coord y0, Coord x1, Coord y1,
+                  Coord x2, Coord y2, fl::DrawMode mode);
+
 /// ============================================================================
 /// LEGACY RASTERTARGET API (Deprecated - for backward compatibility)
 /// ============================================================================
@@ -684,6 +689,11 @@ inline void drawStrokeLineCore(Canvas<PixelT>& canvas, const PixelT& color,
                                Coord x0, Coord y0, Coord x1, Coord y1,
                                Coord thickness, LineCap cap);
 
+template<typename PixelT, typename Coord, bool Overwrite>
+inline void drawTriangleCore(Canvas<PixelT>& canvas, const PixelT& color,
+                             Coord x0, Coord y0, Coord x1, Coord y1,
+                             Coord x2, Coord y2);
+
 }  // namespace detail
 
 template<typename PixelT, typename Coord>
@@ -694,6 +704,17 @@ inline void drawLine(Canvas<PixelT>& canvas, const PixelT& color,
         detail::drawLineCore<PixelT, Coord, true>(canvas, color, x0, y0, x1, y1);
     else
         detail::drawLineCore<PixelT, Coord, false>(canvas, color, x0, y0, x1, y1);
+}
+
+template<typename PixelT, typename Coord>
+inline void drawTriangle(Canvas<PixelT>& canvas, const PixelT& color,
+                         Coord x0, Coord y0, Coord x1, Coord y1,
+                         Coord x2, Coord y2,
+                         fl::DrawMode mode) {
+    if (mode == fl::DrawMode::DRAW_MODE_OVERWRITE)
+        detail::drawTriangleCore<PixelT, Coord, true>(canvas, color, x0, y0, x1, y1, x2, y2);
+    else
+        detail::drawTriangleCore<PixelT, Coord, false>(canvas, color, x0, y0, x1, y1, x2, y2);
 }
 
 // ---------------------------------------------------------------------------
@@ -936,6 +957,88 @@ inline void detail::drawStrokeLineCore(Canvas<PixelT>& canvas, const PixelT& col
         }
         cross_row_q -= sc.dx_q;
         dot_row_q += sc.dy_q;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// drawTriangleCore: Templated on Overwrite for compile-time dispatch.
+// Half-open flat-top scanline fill; 8.8 fixed-point, no float in the loop.
+// ---------------------------------------------------------------------------
+template<typename PixelT, typename Coord, bool Overwrite>
+inline void detail::drawTriangleCore(Canvas<PixelT>& canvas, const PixelT& color,
+                                     Coord x0, Coord y0, Coord x1, Coord y1,
+                                     Coord x2, Coord y2) {
+    PixelT* pixels = canvas.pixels;
+    int width = canvas.width;
+    int height = canvas.height;
+
+    fl::i32 x0_8 = detail::toFixed8(x0), y0_8 = detail::toFixed8(y0);
+    fl::i32 x1_8 = detail::toFixed8(x1), y1_8 = detail::toFixed8(y1);
+    fl::i32 x2_8 = detail::toFixed8(x2), y2_8 = detail::toFixed8(y2);
+
+    // Degenerate guard: collinear / zero-area triangles write nothing
+    fl::i32 cross = (x1_8 - x0_8) * (y2_8 - y0_8) - (x2_8 - x0_8) * (y1_8 - y0_8);
+    if (cross == 0) return;
+
+    // Sort vertices by y (P0=top, P1=mid, P2=bot); winding is irrelevant
+    fl::i32 vx[3] = {x0_8, x1_8, x2_8};
+    fl::i32 vy[3] = {y0_8, y1_8, y2_8};
+    {
+        fl::i32 t;
+        if (vy[0] > vy[1]) { t = vx[0]; vx[0] = vx[1]; vx[1] = t; t = vy[0]; vy[0] = vy[1]; vy[1] = t; }
+        if (vy[1] > vy[2]) { t = vx[1]; vx[1] = vx[2]; vx[2] = t; t = vy[1]; vy[1] = vy[2]; vy[2] = t; }
+        if (vy[0] > vy[1]) { t = vx[0]; vx[0] = vx[1]; vx[1] = t; t = vy[0]; vy[0] = vy[1]; vy[1] = t; }
+    }
+
+    // Row range: floor of the sorted top/bottom y (>>8), clipped to canvas
+    int ymin = static_cast<int>(vy[0] >> 8);
+    int ymax = static_cast<int>(vy[2] >> 8);
+    if (ymin < 0) ymin = 0;
+    if (ymax >= height) ymax = height - 1;
+    if (ymin > ymax) return;
+
+    // Half-open flat-top split: the middle vertex's row belongs to the LOWER
+    // half only, so every row is written exactly once (no blend double-add).
+    int mid_row = static_cast<int>(vy[1] >> 8);
+
+    detail::TriCtx<PixelT> f;
+    f.width = width;
+    f.color = color;
+
+    // Upper half: edges P0→P1 and P0→P2, rows [ymin .. mid_row-1]
+    if (ymin < mid_row) {
+        fl::i32 dyA = vy[1] - vy[0], dyB = vy[2] - vy[0];
+        fl::i32 dxA = vx[1] - vx[0], dxB = vx[2] - vx[0];
+        // Edge x at row center (y + 0.5) * 256; one division per edge,
+        // guarded against dy == 0 (horizontal edge degenerates to a point)
+        fl::i32 yc8 = (static_cast<fl::i32>(ymin) << 8) + 128;
+        fl::i32 xA = (dyA != 0) ? (vx[0] + dxA * (yc8 - vy[0]) / dyA) : vx[0];
+        fl::i32 xB = (dyB != 0) ? (vx[0] + dxB * (yc8 - vy[0]) / dyB) : vx[0];
+        fl::i32 stepA = (dyA != 0) ? (dxA * 256 / dyA) : 0;
+        fl::i32 stepB = (dyB != 0) ? (dxB * 256 / dyB) : 0;
+        for (int y = ymin; y < mid_row; ++y) {
+            f.x8L = xA; f.dxL = stepA;
+            f.x8R = xB; f.dxR = stepB;
+            detail::renderTriangleRow<PixelT, Overwrite>(pixels, width, height, y, xA, xB, f);
+            xA += stepA; xB += stepB;
+        }
+    }
+
+    // Lower half: edges P1→P2 and P0→P2, rows [mid_row .. ymax]
+    if (mid_row <= ymax) {
+        fl::i32 dyA = vy[2] - vy[1], dyB = vy[2] - vy[0];
+        fl::i32 dxA = vx[2] - vx[1], dxB = vx[2] - vx[0];
+        fl::i32 yc8 = (static_cast<fl::i32>(mid_row) << 8) + 128;  // (y + 0.5) * 256
+        fl::i32 xA = (dyA != 0) ? (vx[1] + dxA * (yc8 - vy[1]) / dyA) : vx[1];
+        fl::i32 xB = (dyB != 0) ? (vx[0] + dxB * (yc8 - vy[0]) / dyB) : vx[0];
+        fl::i32 stepA = (dyA != 0) ? (dxA * 256 / dyA) : 0;
+        fl::i32 stepB = (dyB != 0) ? (dxB * 256 / dyB) : 0;
+        for (int y = mid_row; y <= ymax; ++y) {
+            f.x8L = xA; f.dxL = stepA;
+            f.x8R = xB; f.dxR = stepB;
+            detail::renderTriangleRow<PixelT, Overwrite>(pixels, width, height, y, xA, xB, f);
+            xA += stepA; xB += stepB;
+        }
     }
 }
 
