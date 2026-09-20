@@ -188,7 +188,7 @@ FL_TEST_CASE("drawTriangle coord types") {
 FL_TEST_CASE("drawTriangle pixel-exact energy") {
     FL_SUBCASE("total energy (pinned in T6)") {
         // Three reference triangles; energy = sum(p.r + p.g + p.b) as u32.
-        // Exact values are pinned in a follow-up commit (T6).
+        // Pinned values are a pixel-exact regression gate.
         CRGB bufA[256] = {};
         fl::CanvasRGB cA(bufA, 16, 16);
         cA.drawTriangle(CRGB(200, 100, 50), 2, 2, 13, 2, 2, 13);
@@ -208,11 +208,12 @@ FL_TEST_CASE("drawTriangle pixel-exact energy") {
         }
         for (int i = 0; i < 1024; ++i) eC += bufC[i].r + bufC[i].g + bufC[i].b;
 
-        // Print energies for baseline capture (T6 pins the exact values)
+        // Print energies for baseline reference
         fl::printf("  tri energy Ta: %u, Tb: %u, Tc: %u\n", eA, eB, eC);
-        FL_CHECK(eA > 0);
-        FL_CHECK(eB > 0);
-        FL_CHECK(eC > 0);
+        // Exact energy values (pixel-exact regression gate)
+        FL_CHECK_EQ(eA, 21350u);
+        FL_CHECK_EQ(eB, 10519u);
+        FL_CHECK_EQ(eC, 35081u);
     }
 }
 
