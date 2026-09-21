@@ -27,6 +27,7 @@ import hashlib
 import json
 from dataclasses import dataclass
 from pathlib import Path
+from typing import cast
 
 from typeguard import typechecked
 
@@ -169,15 +170,22 @@ def admit(artifact: Artifact) -> Admission | Refusal:
 
     channel_names: list[str] = []
     photometric = payload.get("photometric")
+    photometric_map: dict[str, object] | None = (
+        cast(dict[str, object], photometric) if isinstance(photometric, dict) else None
+    )
     channels_field = (
-        photometric.get("channels") if isinstance(photometric, dict) else None
+        photometric_map.get("channels") if photometric_map is not None else None
     )
     if not isinstance(channels_field, list):
         reasons.append("photometric.channels is absent or not a list")
         channels_field = []
     for entry in channels_field:
-        if isinstance(entry, dict) and isinstance(entry.get("name"), str):
-            channel_names.append(entry["name"])
+        if not isinstance(entry, dict):
+            continue
+        row = cast(dict[str, object], entry)
+        name = row.get("name")
+        if isinstance(name, str):
+            channel_names.append(name)
 
     if topology:
         required = TOPOLOGY_CHANNELS[topology]
@@ -192,8 +200,9 @@ def admit(artifact: Artifact) -> Admission | Refusal:
     for entry in channels_field:
         if not isinstance(entry, dict):
             continue
-        name = entry.get("name")
-        missing = _missing_optical_fields(entry)
+        row = cast(dict[str, object], entry)
+        name = row.get("name")
+        missing = _missing_optical_fields(row)
         if missing:
             reasons.append(f"channel {name!r} lacks {', '.join(missing)}")
 
@@ -226,7 +235,8 @@ def _missing_optical_fields(channel: dict[str, object]) -> tuple[str, ...]:
 def _is_finite_observation(value: object) -> bool:
     if not isinstance(value, dict):
         return False
-    number = value.get("value")
+    mapping = cast(dict[str, object], value)
+    number = mapping.get("value")
     if isinstance(number, bool) or not isinstance(number, (int, float)):
         return False
     return number == number and number not in (float("inf"), float("-inf"))
@@ -236,8 +246,9 @@ def _is_finite_observation(value: object) -> bool:
 def _is_finite_xy(value: object) -> bool:
     if not isinstance(value, dict):
         return False
+    mapping = cast(dict[str, object], value)
     for axis in ("x", "y"):
-        number = value.get(axis)
+        number = mapping.get(axis)
         if isinstance(number, bool) or not isinstance(number, (int, float)):
             return False
         if number != number or number in (float("inf"), float("-inf")):
@@ -333,17 +344,22 @@ def _render_profile(admission: Admission) -> list[str]:
     payload = admission.artifact.payload
     photometric = payload.get("photometric")
     assert isinstance(photometric, dict)
-    entries = photometric.get("channels")
+    photometric_map = cast(dict[str, object], photometric)
+    entries = photometric_map.get("channels")
     assert isinstance(entries, list)
     by_name: dict[str, dict[str, object]] = {}
     for entry in entries:
         assert isinstance(entry, dict)
-        by_name[str(entry["name"])] = entry
+        row = cast(dict[str, object], entry)
+        by_name[str(row["name"])] = row
 
     chip = payload.get("chip_encoding")
     depth = 8
-    if isinstance(chip, dict) and isinstance(chip.get("native_code_depth"), int):
-        depth = int(chip["native_code_depth"])
+    if isinstance(chip, dict):
+        chip_map = cast(dict[str, object], chip)
+        code_depth = chip_map.get("native_code_depth")
+        if isinstance(code_depth, int):
+            depth = int(code_depth)
 
     symbol = symbol_name(admission.artifact.profile_id)
     lines: list[str] = []
@@ -357,22 +373,25 @@ def _render_profile(admission: Admission) -> list[str]:
     for name in ("red", "green", "blue"):
         chromaticity = by_name[name]["chromaticity"]
         assert isinstance(chromaticity, dict)
-        lines.append(
-            f"    Chromaticity({float(chromaticity['x']):.6f}f, "
-            f"{float(chromaticity['y']):.6f}f),"
-        )
+        chromaticity_map = cast(dict[str, object], chromaticity)
+        chroma_x = cast(float, chromaticity_map["x"])
+        chroma_y = cast(float, chromaticity_map["y"])
+        lines.append(f"    Chromaticity({chroma_x:.6f}f, {chroma_y:.6f}f),")
     values: list[str] = []
     for name in ("red", "green", "blue"):
         relative = by_name[name]["relative_y"]
         assert isinstance(relative, dict)
-        values.append(f"{float(relative['value']):.6f}f")
+        relative_map = cast(dict[str, object], relative)
+        relative_value = cast(float, relative_map["value"])
+        values.append(f"{relative_value:.6f}f")
     lines.append(f"    {', '.join(values)},")
     provenance = payload.get("provenance")
     kind = "unknown"
     report = "unknown"
     if isinstance(provenance, dict):
-        kind = str(provenance.get("kind", "unknown"))
-        report = str(provenance.get("report_id", "unknown"))
+        provenance_map = cast(dict[str, object], provenance)
+        kind = str(provenance_map.get("kind", "unknown"))
+        report = str(provenance_map.get("report_id", "unknown"))
     lines.append(f'    "{kind}", "{report}");')
     lines.append(f"// native code depth: {depth}")
     lines.append(

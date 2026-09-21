@@ -252,7 +252,7 @@ def run_banned_build_tools_lint(root: Path = PROJECT_ROOT) -> bool:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser = argparse.ArgumentParser(description=(__doc__ or "").splitlines()[0])
     parser.add_argument("--root", type=Path, default=PROJECT_ROOT)
     args = parser.parse_args(argv)
     return 0 if run_banned_build_tools_lint(args.root) else 1

@@ -12,7 +12,7 @@ import platform as platform_mod
 import tempfile
 import time
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from colorama import Fore, Style
 from running_process import PIPE, CompletedProcess, RunningProcess, TimeoutExpired
@@ -515,16 +515,17 @@ def _describe_failed_client_tests(data: dict[str, Any]) -> str:
             # failed" -- the same silent skip this helper exists to remove.
             failures.append(f"result[{index}] is not an object: {entry!r}")
             continue
-        if entry.get("passed") is True:
+        row = cast(dict[str, object], entry)
+        if row.get("passed") is True:
             continue
-        name = entry.get("test", "<unnamed test>")
-        why = entry.get("error", "no error reported")
+        name = row.get("test", "<unnamed test>")
+        why = row.get("error", "no error reported")
         # status_line is the field that distinguishes "answered wrongly" from
         # "did not answer", so it is worth naming even when empty.
         detail = (
-            f"status_line={entry.get('status_line')!r} "
-            f"body_read={entry.get('body_read')} "
-            f"content_length={entry.get('content_length')}"
+            f"status_line={row.get('status_line')!r} "
+            f"body_read={row.get('body_read')} "
+            f"content_length={row.get('content_length')}"
         )
         failures.append(f"{name}: {why} ({detail})")
     if not failures:
