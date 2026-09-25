@@ -385,6 +385,16 @@ inline void renderRingRow(PixelT* buf, int w, int py,
     }
 }
 
+/// Floor division by 256 for 8.8 fixed-point: for positive v, v>>8 is floor;
+/// for negative v, C++ right-shift truncates toward zero so we adjust.
+namespace trianglerow_detail {
+    inline int floorDiv8(fl::i32 v) {
+        if (v >= 0) return v >> 8;
+        if (v == INT32_MIN) return -8388608;
+        return -((-v + 255) >> 8);
+    }
+}
+
 /// Render one scanline of a triangle between two 8.8 edge x positions.
 /// Weight table: single column → (Rfrac - Lfrac); left → (255 - Lfrac);
 /// interior → full; right → Rfrac. Every write goes through
@@ -396,10 +406,10 @@ inline void renderTriangleRow(PixelT* buf, int w, int height, int py,
                               const TriCtx<PixelT>& f) {
     fl::i32 xL8 = (xL_edge8 < xR_edge8) ? xL_edge8 : xR_edge8;
     fl::i32 xR8 = (xL_edge8 < xR_edge8) ? xR_edge8 : xL_edge8;
-    int xLi = static_cast<int>(xL8 >> 8);
-    fl::i32 Lfrac = xL8 - (fl::i32(xLi) << 8);  // 0..255 even for negative xL8
-    int xRi = static_cast<int>(xR8 >> 8);
-    fl::i32 Rfrac = xR8 - (fl::i32(xRi) << 8);  // 0..255 even for negative xR8
+    int xLi = trianglerow_detail::floorDiv8(xL8);
+    fl::i32 Lfrac = xL8 - (fl::i32(xLi) << 8);
+    int xRi = trianglerow_detail::floorDiv8(xR8);
+    fl::i32 Rfrac = xR8 - (fl::i32(xRi) << 8);
     if (xLi > xRi) return;
     if (xLi == xRi) {
         fl::u8 cw = static_cast<fl::u8>(Rfrac - Lfrac);

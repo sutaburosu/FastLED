@@ -21,7 +21,7 @@ inline char lumChar(int v) {
 
 inline float edgeDist(float px, float py, float ax, float ay, float bx, float by) {
     float dx = bx - ax, dy = by - ay;
-    float len = sqrtf(dx * dx + dy * dy);
+    float len = fl::sqrtf(dx * dx + dy * dy);
     return (dx * (py - ay) - dy * (px - ax)) / len;
 }
 
