@@ -7,3 +7,4 @@
 #include "tests/fl/gfx/draw_ring.hpp"
 #include "tests/fl/gfx/draw_thick_line.hpp"
 #include "tests/fl/gfx/perf_primitives.hpp"
+#include "tests/fl/gfx/draw_triangle_debug.hpp"

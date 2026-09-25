@@ -470,6 +470,7 @@ const TEST_PATH_EXCLUDED_FILES: &[&str] = &[
     "draw_disc_16.hpp",
     "draw_triangle.hpp",
     "draw_triangle_16.hpp",
+    "draw_triangle_debug.hpp",
     "perf_primitives.hpp",
     "gain.hpp",
     "test_helpers.hpp",
