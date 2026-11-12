@@ -111,16 +111,16 @@ class Canvas {
         mImpl.drawStrokeLine(color, x0, y0, x1, y1, thickness, cap, mode);
     }
 
-    template<typename Coord>
+    template<typename Coord, int MAXN = 32, int CHUNK = 64>
     FASTLED_FORCE_INLINE void drawPolygon(const RGB_T& color, fl::span<const PolyPoint<Coord>> pts,
                                           DrawMode mode = DrawMode::DRAW_MODE_BLEND) FL_NO_EXCEPT {
-        mImpl.drawPolygon(color, pts, mode);
+        mImpl.template drawPolygon<Coord, MAXN, CHUNK>(color, pts, mode);
     }
 
-    template<typename Coord, int N>
+    template<typename Coord, int N, int MAXN = 32, int CHUNK = 64>
     FASTLED_FORCE_INLINE void drawPolygon(const RGB_T& color, const PolyPoint<Coord> (&pts)[N],
                                           DrawMode mode = DrawMode::DRAW_MODE_BLEND) FL_NO_EXCEPT {
-        mImpl.drawPolygon(color, pts, mode);
+        mImpl.template drawPolygon<Coord, N, MAXN, CHUNK>(color, pts, mode);
     }
 };
 

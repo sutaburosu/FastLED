@@ -68,14 +68,14 @@ template<typename PixelT, typename Coord>
 void drawStrokeLine(Canvas<PixelT>& canvas, const PixelT& color, Coord x0, Coord y0, Coord x1, Coord y1,
                     Coord thickness, LineCap cap, fl::DrawMode mode = fl::DrawMode::DRAW_MODE_BLEND) FL_NO_EXCEPT;
 
-template<typename PixelT, typename Coord>
+template<typename PixelT, typename Coord, int MAXN = 32, int CHUNK = 64>
 void drawPolygon(Canvas<PixelT>& canvas, const PixelT& color,
                  fl::span<const PolyPoint<Coord>> pts,
                  fl::DrawMode mode = fl::DrawMode::DRAW_MODE_BLEND) FL_NO_EXCEPT;
 
 // Array overload: lets Coord be deduced from a C array (span is a
 // converting constructor, so it cannot participate in deduction).
-template<typename PixelT, typename Coord, int N>
+template<typename PixelT, typename Coord, int N, int MAXN = 32, int CHUNK = 64>
 void drawPolygon(Canvas<PixelT>& canvas, const PixelT& color,
                  const PolyPoint<Coord> (&pts)[N],
                  fl::DrawMode mode = fl::DrawMode::DRAW_MODE_BLEND) FL_NO_EXCEPT;
@@ -142,16 +142,16 @@ struct Canvas {
         gfx::drawStrokeLine(*this, color, x0, y0, x1, y1, thickness, cap, mode);
     }
 
-    template<typename Coord>
+    template<typename Coord, int MAXN = 32, int CHUNK = 64>
     inline void drawPolygon(const RGB_T& color, fl::span<const PolyPoint<Coord>> pts,
                             fl::DrawMode mode = fl::DrawMode::DRAW_MODE_BLEND) FL_NO_EXCEPT {
-        gfx::drawPolygon(*this, color, pts, mode);
+        gfx::drawPolygon<RGB_T, Coord, MAXN, CHUNK>(*this, color, pts, mode);
     }
 
-    template<typename Coord, int N>
+    template<typename Coord, int N, int MAXN = 32, int CHUNK = 64>
     inline void drawPolygon(const RGB_T& color, const PolyPoint<Coord> (&pts)[N],
                             fl::DrawMode mode = fl::DrawMode::DRAW_MODE_BLEND) FL_NO_EXCEPT {
-        gfx::drawPolygon(*this, color, pts, mode);
+        gfx::drawPolygon<RGB_T, Coord, N, MAXN, CHUNK>(*this, color, pts, mode);
     }
 };
 
