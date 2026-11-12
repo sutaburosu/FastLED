@@ -18,6 +18,14 @@ namespace gfx {
 /// @brief Line cap styles for stroke operations
 enum class LineCap { FLAT, ROUND, SQUARE };
 
+/// @brief Polygon vertex (x, y coordinate pair) for drawPolygon
+/// C++11 aggregate: PolyPoint<float> p{3.5f, 2.0f};
+template<typename Coord>
+struct PolyPoint {
+    Coord x;
+    Coord y;
+};
+
 // Forward declarations
 template<typename RGB_T> struct Canvas;
 template<typename RGB_T> struct CanvasMapped;
@@ -59,6 +67,18 @@ void drawRing(Canvas<PixelT>& canvas, const PixelT& color, Coord cx, Coord cy, C
 template<typename PixelT, typename Coord>
 void drawStrokeLine(Canvas<PixelT>& canvas, const PixelT& color, Coord x0, Coord y0, Coord x1, Coord y1,
                     Coord thickness, LineCap cap, fl::DrawMode mode = fl::DrawMode::DRAW_MODE_BLEND) FL_NO_EXCEPT;
+
+template<typename PixelT, typename Coord>
+void drawPolygon(Canvas<PixelT>& canvas, const PixelT& color,
+                 fl::span<const PolyPoint<Coord>> pts,
+                 fl::DrawMode mode = fl::DrawMode::DRAW_MODE_BLEND) FL_NO_EXCEPT;
+
+// Array overload: lets Coord be deduced from a C array (span is a
+// converting constructor, so it cannot participate in deduction).
+template<typename PixelT, typename Coord, int N>
+void drawPolygon(Canvas<PixelT>& canvas, const PixelT& color,
+                 const PolyPoint<Coord> (&pts)[N],
+                 fl::DrawMode mode = fl::DrawMode::DRAW_MODE_BLEND) FL_NO_EXCEPT;
 
 /// @brief Simple rectangular canvas for graphics operations
 /// Combines a pixel buffer with dimensions for cache-optimal drawing.
@@ -120,6 +140,18 @@ struct Canvas {
     inline void drawStrokeLine(const RGB_T& color, Coord x0, Coord y0, Coord x1, Coord y1, Coord thickness,
                                LineCap cap = LineCap::FLAT, fl::DrawMode mode = fl::DrawMode::DRAW_MODE_BLEND) FL_NO_EXCEPT {
         gfx::drawStrokeLine(*this, color, x0, y0, x1, y1, thickness, cap, mode);
+    }
+
+    template<typename Coord>
+    inline void drawPolygon(const RGB_T& color, fl::span<const PolyPoint<Coord>> pts,
+                            fl::DrawMode mode = fl::DrawMode::DRAW_MODE_BLEND) FL_NO_EXCEPT {
+        gfx::drawPolygon(*this, color, pts, mode);
+    }
+
+    template<typename Coord, int N>
+    inline void drawPolygon(const RGB_T& color, const PolyPoint<Coord> (&pts)[N],
+                            fl::DrawMode mode = fl::DrawMode::DRAW_MODE_BLEND) FL_NO_EXCEPT {
+        gfx::drawPolygon(*this, color, pts, mode);
     }
 };
 
