@@ -90,6 +90,16 @@ template <u8 PIN, u32 MASK, typename PDOR, typename PSOR, typename PCOR, typenam
 constexpr bool isDueHardwarePin(const _DUEPIN<PIN, MASK, PDOR, PSOR, PCOR, PDDR>*) { return true; }
 constexpr bool isDueHardwarePin(const void*) { return false; }
 
+// FL_SAM_ENABLE_FAST_SOFTWARE_SPI: optimized bit-bang software SPI pin policy (default 0).
+// UNTESTED ON HARDWARE: no bench evidence exists for this platform yet.
+// Default 0 keeps the legacy bit-bang writer. Define it to 1 to enable the
+// optimized path at your own risk.
+// Set it as a build flag (-D / build_flags), not a #define in the sketch: the
+// value must match in every translation unit, including FastLED's own sources.
+#ifndef FL_SAM_ENABLE_FAST_SOFTWARE_SPI
+#define FL_SAM_ENABLE_FAST_SOFTWARE_SPI 0
+#endif
+#if FL_SAM_ENABLE_FAST_SOFTWARE_SPI
 /// Data updates use SODR/CODR, which are atomic and do not depend on OWSR, the gate
 /// on ODSR writes. Streaming stays off: its whole-port stores are unmeasured here
 /// and would overwrite concurrent changes to other pins.
@@ -113,6 +123,7 @@ template <u8 PIN> struct BitbangPin<FastPin<PIN>> : BitbangPinDefaults<FastPin<P
         BitbangPinDefaults<FastPin<PIN>>::template write<BIT>(value);
     }
 };
+#endif  // FL_SAM_ENABLE_FAST_SOFTWARE_SPI
 
 } // namespace fl
 

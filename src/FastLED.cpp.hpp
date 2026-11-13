@@ -850,6 +850,27 @@ fl::ChannelPtr CFastLED::add(const fl::ChannelConfig& config) FL_NO_EXCEPT {
             }
         }
     }
+    if (!served && bus == fl::Bus::AUTO && fl::DriverBindings::instance().empty()) {
+        // Legacy (3.10.9) compatibility: the sketch never opted into any
+        // driver, so bind the platform default driver for this chipset
+        // family, as 3.10.9's add(cfg) did. Only the default clockless and
+        // default SPI drivers are referenced here (not every driver), so
+        // explicit enable<Bus>() sketches keep most of the link-time saving.
+        // Platforms without a DefaultBus specialization bind nothing here.
+        const bool bound = spi
+            ? fl::detail::bindDefaultDriver<fl::SpiChipsetConfig>()
+            : fl::detail::bindDefaultDriver<fl::ClocklessChipset>();
+        if (bound) {
+            for (const fl::DriverInfo& info : manager.getDriverInfos()) {
+                auto driver = manager.findDriverByName(info.name);
+                if (driver && (spi ? driver->getCapabilities().supportsSpi
+                                   : driver->getCapabilities().supportsClockless)) {
+                    served = true;
+                    break;
+                }
+            }
+        }
+    }
     if (!served) {
         FL_WARN_EVERY(1000, "FastLED.add(cfg): no channel driver is enabled for bus '"
                       << fl::busName(bus) << "'. Call FastLED.enable<fl::Bus::"

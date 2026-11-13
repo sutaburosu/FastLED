@@ -57,6 +57,16 @@ template <u8 PIN, u32 BIT, u32 MASK, typename DR, typename SET, typename CLEAR, 
 constexpr bool isMxrtHardwarePin(const _ARMPIN<PIN, BIT, MASK, DR, SET, CLEAR, TOGGLE>*) { return true; }
 constexpr bool isMxrtHardwarePin(const void*) { return false; }
 
+// FL_TEENSY_ENABLE_FAST_SOFTWARE_SPI: optimized bit-bang software SPI pin policy (default 0).
+// UNTESTED ON HARDWARE: no bench evidence exists for this platform yet.
+// Default 0 keeps the legacy bit-bang writer. Define it to 1 to enable the
+// optimized path at your own risk.
+// Set it as a build flag (-D / build_flags), not a #define in the sketch: the
+// value must match in every translation unit, including FastLED's own sources.
+#ifndef FL_TEENSY_ENABLE_FAST_SOFTWARE_SPI
+#define FL_TEENSY_ENABLE_FAST_SOFTWARE_SPI 0
+#endif
+#if FL_TEENSY_ENABLE_FAST_SOFTWARE_SPI
 /// Exclusive same-port bulk writes stream through the full output latch; all
 /// other data updates use the write-one set/clear aliases. kMinWriteCycles stays
 /// zero because Teensy 4 SPI rates are in Hz, not the cycles it would be compared to.
@@ -68,6 +78,7 @@ template <u8 PIN> struct BitbangPin<FastPin<PIN>> : BitbangPinDefaults<FastPin<P
 		writeBitSetClear<BIT>(value, FastPin<PIN>::mask(), FastPin<PIN>::sport(), FastPin<PIN>::cport());
 	}
 };
+#endif  // FL_TEENSY_ENABLE_FAST_SOFTWARE_SPI
 
 
 #define _R(T) struct __gen_struct_ ## T

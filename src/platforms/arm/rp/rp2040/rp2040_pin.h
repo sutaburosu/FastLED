@@ -56,11 +56,23 @@ template <uint PIN, u32 MASK>
 constexpr bool isRp2040HardwarePin(const _RP2040PIN<PIN, MASK>*) { return true; }
 constexpr bool isRp2040HardwarePin(const void*) { return false; }
 
-/// Data updates use gpio_set/gpio_clr without a data branch. Both cores may write
-/// GPIO, so led_sysdefs defines FAST_SPI_INTERRUPTS_WRITE_PINS and the writer stays
-/// atomic by default; the two-store stream is reachable only for a build that
-/// removes that define and owns all of SIO. kMinWriteCycles stays at its default:
-/// no SIO write latency has been measured here, so existing padding is kept.
+// FL_RP_ENABLE_FAST_SOFTWARE_SPI: optimized bit-bang software SPI pin policy (default 0).
+// UNTESTED ON HARDWARE: no bench evidence exists for this platform yet.
+// Default 0 keeps the legacy bit-bang writer. Define it to 1 to enable the
+// optimized path at your own risk.
+// Set it as a build flag (-D / build_flags), not a #define in the sketch: the
+// value must match in every translation unit, including FastLED's own sources.
+#ifndef FL_RP_ENABLE_FAST_SOFTWARE_SPI
+#define FL_RP_ENABLE_FAST_SOFTWARE_SPI 0
+#endif
+#if FL_RP_ENABLE_FAST_SOFTWARE_SPI
+/// Opt-in optimized policy; off by default, when pins use BitbangPinDefaults
+/// (legacy hi()/lo() writes). When enabled, data updates use gpio_set/gpio_clr
+/// without a data branch. Both cores may write GPIO, so led_sysdefs defines
+/// FAST_SPI_INTERRUPTS_WRITE_PINS and the writer keeps per-pin stores; the
+/// two-store stream is reachable only for a build that removes that define and
+/// owns all of SIO. kMinWriteCycles stays at its default: no SIO write latency
+/// has been measured here, so existing padding is kept.
 template <u8 PIN> struct BitbangPin<FastPin<PIN>> : BitbangPinDefaults<FastPin<PIN>> {
   static constexpr bool kAtomicWrite = isRp2040HardwarePin(static_cast<const FastPin<PIN>*>(nullptr));
   static constexpr bool kTwoWriteStream = kAtomicWrite;
@@ -80,6 +92,7 @@ template <u8 PIN> struct BitbangPin<FastPin<PIN>> : BitbangPinDefaults<FastPin<P
     BitbangPinDefaults<FastPin<PIN>>::template write<BIT>(value);
   }
 };
+#endif  // FL_RP_ENABLE_FAST_SOFTWARE_SPI
 
 } // namespace fl
 FL_DISABLE_WARNING_POP
