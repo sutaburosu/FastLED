@@ -15,25 +15,29 @@
 //                   (must draw nothing over a dim base)
 //   6. Diamond    - vertices exactly on row centers (y = k + 0.5 px),
 //                   breathing scale
-// Also prints a 20x20 brightness preview (2 hex digits per pixel) over
-// Serial at each scene change.
+// With POLYSHOW_SERIAL=1 (off by default) it also prints a 20x20
+// brightness preview (2 hex digits per pixel) over Serial at each scene
+// change.
 //
 // Integer-only: s16x16 Q16.16 coordinates, no floats. The drawPolygon tier
 // (MAXN=4, CHUNK=1) keeps the working set small, but the 400-LED x 3-byte
-// array plus statics and stack needs ~3.3 KB SRAM, so sub-4 KB boards are
+// array plus statics and stack needs ~2.1 KB SRAM, so sub-4 KB boards are
 // excluded (@filter).
-// Budget measured on the built Arduino Mega 2560 firmware (avr-gcc 7.3 -Os;
-// runtime depths from a cycle-accurate AVR trace of the ELF covering all
-// six scenes):
+// Budget measured on the built Arduino Mega 2560 firmware with the serial
+// output off (avr-gcc 7.3 -Os; runtime depths from a cycle-accurate AVR
+// trace of the ELF covering all six scenes):
 //
-//   flash:        25,214 B / 248 KB (9.9%)
-//   static RAM:   1,805 B (.data 300 + .bss 1,505, ends 0x80090D)
-//   max stack:    753 B (the drawPolygon<,4,1> -> 64-bit libgcc chain is
-//                 734 B; the extra 19 B is a timer0/UART ISR landing
-//                 inside a 64-bit division)
-//   worst-case RAM: 2,558 B of 8 KB (32%)
-//   frame rate:   ~4.5 FPS (bowtie, densest fill) to ~73 FPS (the
+//   flash:        23,480 B / 248 KB (9.2%)
+//   static RAM:   1,384 B (.data 36 + .bss 1,348, ends 0x800768)
+//   max stack:    740 B (the drawPolygon<,4,1> -> 64-bit libgcc chain is
+//                 728 B; the extra 12 B is a timer0 ISR landing inside a
+//                 64-bit division)
+//   worst-case RAM: 2,124 B of 8 KB (26%)
+//   frame rate:   ~5 FPS (bowtie, densest fill) to ~75 FPS (the
 //                 degenerate no-op scene)
+// POLYSHOW_SERIAL=1 adds 1,734 B of flash and 421 B of static RAM (the
+// HardwareSerial code and its ring buffers), pushing the worst case to
+// 2,558 B.
 
 // @filter
 // require:
@@ -47,9 +51,12 @@
 //   - board: attiny1616
 //   - board: leonardo
 // @end-filter
-// The 1200 B LED/canvas buffer plus the ~1.8 KB of statics and ~750 B of
-// stack needs ~3.3 KB SRAM, so boards with sub-4 KB SRAM are excluded
-// (the 2.5 KB ATmega32u4 "leonardo" included).
+// The 1,200 B LED/canvas buffer plus ~1.4 KB of statics and ~740 B of
+// stack need ~2.1 KB SRAM worst case, so the 1 KB (atmega8a) and 2 KB
+// (nano, uno, ...) boards are excluded. The 2.5 KB ATmega32u4 "leonardo"
+// would fit the default build with ~430 B to spare, but is excluded too:
+// the margin is thin, and the POLYSHOW_SERIAL=1 build (2,558 B) does not
+// fit it at all.
 
 #include <Arduino.h>
 #include <FastLED.h>
@@ -64,6 +71,14 @@
 #define NUM_LEDS (20 * 20)
 #ifndef PIN_DATA
 #define PIN_DATA 3
+#endif
+
+// Serial output: the startup banner plus the 20x20 brightness preview at
+// every scene change. Off by default — the LED show itself needs no
+// Serial, and compiling it out removes the HardwareSerial code path and
+// its ring buffers. Build with -DPOLYSHOW_SERIAL=1 to re-enable.
+#ifndef POLYSHOW_SERIAL
+#define POLYSHOW_SERIAL 0
 #endif
 
 CRGB leds[NUM_LEDS];
@@ -203,7 +218,7 @@ static void transPts(PP* p, int n, fl::i32 dx, fl::i32 dy) {
 
 // Advance the spin in fixed 20 ms sub-steps so the angular speed is
 // independent of the render frame rate (on a 2560 the full canvas frames
-// at roughly 5-21 FPS depending on the scene; see the budget note above).
+// at roughly 5-22 FPS depending on the scene; see the budget note above).
 static unsigned long sRotAcc = 0;
 static void spin(PP* p, int n, unsigned long t, fl::i32 cosD, fl::i32 sinD) {
     while (sRotAcc < t) {
@@ -270,6 +285,7 @@ static void renderScene(int scene, unsigned long t) {
     }
 }
 
+#if POLYSHOW_SERIAL
 static const char* sceneName(int scene) {
     switch (scene) {
         case 0: return "bowtie (rotating, even-odd)";
@@ -300,15 +316,20 @@ static void printPreview(int scene) {
     }
     Serial.println(F("---"));
 }
+#endif
 
 static int lastScene = -1;
 
 void setup() {
+#if POLYSHOW_SERIAL
     Serial.begin(115200);
+#endif
     FastLED.addLeds<NEOPIXEL, PIN_DATA>(leds, NUM_LEDS);
     FastLED.setBrightness(255);
-    delay(500);
+#if POLYSHOW_SERIAL
+    delay(500);  // let a serial monitor attach before the show starts
     Serial.println(F("PolyShow: animated drawPolygon edge cases, 20x20"));
+#endif
 }
 
 void loop() {
@@ -320,6 +341,8 @@ void loop() {
         sRotAcc = 0;
     }
     renderScene(scene, t % kSceneMs);
+#if POLYSHOW_SERIAL
     if (newScene) printPreview(scene);
+#endif
     FastLED.show();
 }
