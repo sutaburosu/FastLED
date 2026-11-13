@@ -15,21 +15,24 @@
 // Also prints a 16x8 brightness preview (2 hex digits per pixel) over Serial.
 //
 // Integer-only: s16x16 Q16.16 coordinates, no floats. The drawPolygon tier
-// (MAXN=4, CHUNK=1) keeps the working set small enough for ATmega328P:
+// (MAXN=4, CHUNK=1) keeps the working set small enough for ATmega328P
+// (2 KB SRAM). Budget measured on the built firmware (avr-gcc 7.3 -Os;
+// runtime depths from a cycle-accurate AVR trace of the ELF):
 //
-//   static image        943 B    (leds 384 + scene tables staged from flash)
-//   stack available     849 B    (SP starts at 0x800, bss ends at 0x4AF)
-//   deepest draw chain  ~635 B   (main 3 + drawPts 5 + drawPolygonCore
-//                                 504 + polyLineT28 90 + 64-bit multiply
-//                                 helpers 12 + Timer0 ISR 17, all measured
-//                                 from the firmware ELF prologues)
-//   headroom            ~215 B
-// The 16x8 canvas is the largest that keeps this budget: a 16x16 canvas
-// (768 B) would leave ~465 B of stack against the 504 B drawPolygonCore
-// frame alone. The vertex tables live in flash (PROGMEM) and are staged
-// through a 32 B RAM buffer; raising TIER_MAXN or the canvas size erases
-// the headroom. Re-verify with `bash bloat nano --example PolyShow`
-// before either.
+//   static image        943 B    (.data 274 + .bss 669, ends 0x4AF; 384 B
+//                                 is the 16x8 LED array, vertex tables live
+//                                 in flash and stage through a 32 B buffer)
+//   stack available     1104 B   (SP resets to 0x8FF; 0x8FD at main entry)
+//   deepest draw chain  668 B    (drawPolygonCore 316 B prologue frame plus
+//                                 in-body scanline workspace, polyLineT28
+//                                 64-bit helpers, UART TX ISR preempting at
+//                                 the deepest point; min SP 0x661)
+//   headroom            434 B    (min SP 0x661 vs static end 0x4AF)
+// A 16x16 canvas (768 B LEDs) would add 384 B of static image, leaving
+// ~720 B of stack: the 668 B draw chain still fits, but with only ~50 B of
+// headroom. Raising TIER_MAXN or the canvas size erases that margin;
+// re-verify the budget (avr-size/avr-nm on the firmware ELF plus an AVR
+// runtime trace) before either.
 
 // @filter: (memory is low)
 // The 384 B LED/canvas buffer plus the drawPolygon<,4,1> working set and
