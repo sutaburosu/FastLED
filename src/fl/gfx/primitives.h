@@ -524,6 +524,26 @@ inline fl::i32 polyLineT28(fl::i32 B, fl::i32 D, fl::i64 u,
     if (dhi == 1)
         return ((mlo >> 63) != 0 && (mlo << 1) >= dlo) ? 1 : 0;
     {
+        // Fast path: for den < 2^63 the committed 94-iteration
+        // shift-subtract is an EXACT long division. Its 64-bit remainder
+        // state s satisfies s < den at the start of every step, so with
+        // den < 2^63 the update s <- 2s + bit never reaches 2^64 — the
+        // latent 128-bit carry drop can't fire, and the loop computes
+        // q = floor(M/den), r = M mod den (M read up to bit 93). If
+        // mhi == 0 the numerator is < 2^64, so the committed q
+        // accumulation (at most 64 steps) cannot wrap its u64 either.
+        // The whole loop then reduces to one exact 64/64 division plus
+        // the same round-half-up and physical clamp. On AVR the division
+        // lowers to __udivdi3 (already linked for the sort keys).
+        // dlo != 0 keeps this total for degenerate direct calls (the
+        // committed loop never divided; drawPolygon always feeds den > 0).
+        if (dlo != 0 && mhi == 0 && dlo < (fl::u64)1 << 63) {
+            fl::u64 q = mlo / dlo;
+            const fl::u64 r = mlo - q * dlo;  // mlo % dlo, one division
+            if ((r >> 63) != 0 || (r << 1) >= dlo) ++q;
+            if (q > (fl::u64)kPolyOne) q = (fl::u64)kPolyOne;
+            return (fl::i32)q;
+        }
         fl::u32 m3 = (fl::u32)(mhi >> 32), m2 = (fl::u32)mhi;
         fl::u32 m1 = (fl::u32)(mlo >> 32), m0 = (fl::u32)mlo;
         const int top = polyTopBit128(m3, m2, m1, m0);
@@ -554,24 +574,43 @@ inline fl::i32 polyLineT28(fl::i32 B, fl::i32 D, fl::i64 u,
             }
             m3 = n3; m2 = n2; m1 = n1; m0 = n0;
         }
-        fl::u64 w1 = ((fl::u64)m3 << 32) | m2;
-        fl::u64 w0 = ((fl::u64)m1 << 32) | m0;
-        fl::u64 s = 0;  // buggy-loop remainder (rh is always 0 in this case)
-        fl::u64 q = 0;  // (q<<1)|ge each step; u64 keeps exactly the i<64 bits
+        // The committed loop, expressed in 32-bit lanes: each lane op is
+        // the corresponding half of the u64 op it replaces (same carries,
+        // same mod-2^64 wraps of the remainder and quotient states), but
+        // avr-gcc inlines 32-bit shifts, compares and subtracts instead
+        // of emitting __lshrdi3/__ashldi3/__cmpdi2/__subdi3 helper calls
+        // per iteration — the dominant cost of this loop on AVR.
+        const fl::u32 d1 = (fl::u32)(dlo >> 32), d0 = (fl::u32)dlo;
+        fl::u32 s1 = 0, s0 = 0;  // buggy-loop remainder (high, low)
+        fl::u32 q1 = 0, q0 = 0;  // (q<<1)|ge each step; keeps the <64 bits
         for (int i = t; i >= 0; --i) {
-            const fl::u64 bit = w1 >> 63;
-            w1 = (w1 << 1) | (w0 >> 63);
-            w0 = w0 << 1;
-            s = (s << 1) | bit;
-            if (s >= dlo) {
-                s -= dlo;
-                q = (q << 1) | 1u;
-            } else {
-                q = q << 1;
+            const fl::u32 bit = m3 >> 31;
+            m3 = (m3 << 1) | (m2 >> 31);
+            m2 = (m2 << 1) | (m1 >> 31);
+            m1 = (m1 << 1) | (m0 >> 31);
+            m0 = m0 << 1;
+            const fl::u32 sh = s1 << 1, sl = s0 << 1;
+            s1 = sh | (s0 >> 31);
+            s0 = sl | bit;
+            const fl::u32 ge = (s1 > d1) || (s1 == d1 && s0 >= d0);
+            if (ge) {
+                const fl::u32 sb = s0 - d0;
+                s1 -= d1 + (fl::u32)(sb > s0);
+                s0 = sb;
             }
+            const fl::u32 qh = q1 << 1, ql = q0 << 1;
+            q1 = qh | (q0 >> 31);
+            q0 = ql | ge;
         }
-        // Round half-up: if 2r >= den, q++ (r = (0, s)).
-        if ((s >> 63) != 0 || (s << 1) >= dlo) ++q;
+        // Round half-up: if 2r >= den, q++ (r = (s1, s0)). The carry into
+        // r1 comes out of s0's MSB; s1's MSB is the 2r overflow bit.
+        const fl::u32 r1 = (s1 << 1) | (s0 >> 31), r0 = s0 << 1;
+        if ((s1 >> 31) != 0 || r1 > d1 || (r1 == d1 && r0 >= d0)) {
+            const fl::u32 qb = q0 + 1;
+            q1 += (fl::u32)(qb < q0);  // carry: q0 wrapped past 0xFFFFFFFF
+            q0 = qb;
+        }
+        fl::u64 q = ((fl::u64)q1 << 32) | q0;
         if (q > (fl::u64)kPolyOne) q = (fl::u64)kPolyOne;  // physical bound
         return (fl::i32)q;
     }
@@ -1407,39 +1446,66 @@ inline void detail::drawPolygonCore(Canvas<PixelT>& canvas, const PixelT& color,
         // Per-row column extents of each active edge (x is at the row
         // center): the line stays within x +/- hw over the row, so px
         // outside [lx0, lx1] is a full/zero shortcut for polyLineT28.
-        // floor(v / 65536) == v >> 16 — shifts, not divisions.
+        // floor(v / 65536) == v >> 16 — shifts, not divisions. The loop
+        // also yields the row extent actually touched (xmin/xmax): a span
+        // pair's range is [min(L.lx0, R.lx0), max(L.lx1, R.lx1)] — it
+        // can reach BETWEEN two off-canvas edges (e.g. a polygon covering
+        // the whole canvas), so the bounds are the min lx0 / max lx1 over
+        // ALL row-active edges, clamped once. Pairs partition the edges
+        // (odd count: the unpaired last edge only widens the range), so
+        // this superset can only add no-op chunks that the fill loop
+        // skips; the exact-x ordering of polySortBand only affects span
+        // pairing.
+        fl::i32 minLx0 = 0, maxLx1 = 0;
+        int nactive = 0;
         for (int e = 0; e < nedges; ++e) {
             const PolyEdge& ed = edges[e];
             if (py < ed.py0 || py > ed.py1) continue;
             lx0a[e] = static_cast<fl::i32>(detail::floorDiv16I64(ed.x - ed.hw));
             lx1a[e] = static_cast<fl::i32>(detail::floorDiv16I64(ed.x + ed.hw));
+            if (nactive++ == 0) { minLx0 = lx0a[e]; maxLx1 = lx1a[e]; }
+            else {
+                if (lx0a[e] < minLx0) minLx0 = lx0a[e];
+                if (lx1a[e] > maxLx1) maxLx1 = lx1a[e];
+            }
+        }
+        int xmin = minLx0, xmax = maxLx1;
+        if (nactive == 0) { xmin = width; xmax = -1; }
+        else {
+            if (xmin < 0) xmin = 0;
+            if (xmax >= width) xmax = width - 1;
         }
 
-        // Row extent actually touched (skip chunks outside it). Bands are
-        // processed inline — the active set is constant per band and the
-        // exact-x ordering (polySortBand) only affects span pairing.
-        int xmin = width, xmax = -1;
-        for (int k = 0; k + 1 < nev; ++k) {
-            const fl::i32 a = ev[k], b = ev[k + 1];
-            if (a >= b) continue;
-            int nc = 0;
-            for (int e = 0; e < nedges; ++e) {
-                const PolyEdge& ed = edges[e];
-                if (py >= ed.py0 && py <= ed.py1 &&
-                    ed.ytop < yc + b && ed.ybot > yc + a)
-                    idx[nc++] = (fl::u8)e;
-            }
-            if (nc < 2) continue;
-            polySortBand(idx, keys, edges, nc, a + b);
-            for (int p = 0; p + 1 < nc; p += 2) {
-                const int i0 = idx[p], i1 = idx[p + 1];
-                int pl = (lx0a[i0] < lx0a[i1]) ? lx0a[i0] : lx0a[i1];
-                if (pl < 0) pl = 0;
-                int ph = (lx1a[i0] > lx1a[i1]) ? lx1a[i0] : lx1a[i1];
-                if (ph >= width) ph = width - 1;
-                if (pl > ph) continue;
-                if (pl < xmin) xmin = pl;
-                if (ph > xmax) xmax = ph;
+        // Per-band active-edge list and its midpoint order (polySortBand)
+        // depend only on the row and the band bounds a, b — never on the
+        // column chunk. Compute them once per row (bidx/bnc/bfull) and
+        // reuse for every chunk: the committed code rebuilt and re-sorted
+        // each band for every chunk (one i64 sort key per active edge per
+        // chunk — pure redundancy for CHUNK == 1, where there is one chunk
+        // per pixel column). Rows whose extent is empty (off-canvas
+        // polygon) skip the prepass entirely: nothing would be filled.
+        fl::u8 bidx[MAXN + 1][MAXN];
+        fl::u8 bnc[MAXN + 1];
+        fl::i32 bfull[MAXN + 1];
+        if (xmin <= xmax) {
+            for (int k = 0; k + 1 < nev; ++k) {
+                const fl::i32 a = ev[k], b = ev[k + 1];
+                int nc = 0;
+                if (a < b) {
+                    for (int e = 0; e < nedges; ++e) {
+                        const PolyEdge& ed = edges[e];
+                        if (py >= ed.py0 && py <= ed.py1 &&
+                            ed.ytop < yc + b && ed.ybot > yc + a)
+                            idx[nc++] = (fl::u8)e;
+                    }
+                    if (nc >= 2) polySortBand(idx, keys, edges, nc, a + b);
+                    // Full-pixel coverage over this band: (b - a) *
+                    // kPolyOne >> 16 == (b - a) << 12 exactly (0 < b - a
+                    // < 2^16: both bounds lie inside the row).
+                    bfull[k] = (b - a) << 12;
+                }
+                bnc[k] = (fl::u8)nc;
+                for (int e = 0; e < nc; ++e) bidx[k][e] = idx[e];
             }
         }
 
@@ -1449,25 +1515,16 @@ inline void detail::drawPolygonCore(Canvas<PixelT>& canvas, const PixelT& color,
             for (int i = 0; i < CHUNK; ++i) accb[i] = 0;
             const int ce = (cs + CHUNK <= xmax + 1) ? cs + CHUNK : xmax + 1;
             for (int k = 0; k + 1 < nev; ++k) {
-                const fl::i32 a = ev[k], b = ev[k + 1];
-                if (a >= b) continue;
-                int nc = 0;
-                for (int e = 0; e < nedges; ++e) {
-                    const PolyEdge& ed = edges[e];
-                    if (py >= ed.py0 && py <= ed.py1 &&
-                        ed.ytop < yc + b && ed.ybot > yc + a)
-                        idx[nc++] = (fl::u8)e;
-                }
+                const int nc = bnc[k];
                 if (nc < 2) continue;
-                polySortBand(idx, keys, edges, nc, a + b);
-                // Full-pixel coverage over this band = the band height
-                const fl::i64 full =
-                    (static_cast<fl::i64>(b - a) * kPolyOne) >> 16;
+                const fl::i32 a = ev[k], b = ev[k + 1];
+                // Full-pixel coverage over this band (row prepass).
+                const fl::i64 full = (fl::i64)bfull[k];
                 for (int p = 0; p + 1 < nc; p += 2) {
-                    const PolyEdge& L = edges[idx[p]];
-                    const PolyEdge& R = edges[idx[p + 1]];
-                    const fl::i32 Ll0 = lx0a[idx[p]], Ll1 = lx1a[idx[p]];
-                    const fl::i32 Rl0 = lx0a[idx[p + 1]], Rl1 = lx1a[idx[p + 1]];
+                    const PolyEdge& L = edges[bidx[k][p]];
+                    const PolyEdge& R = edges[bidx[k][p + 1]];
+                    const fl::i32 Ll0 = lx0a[bidx[k][p]], Ll1 = lx1a[bidx[k][p]];
+                    const fl::i32 Rl0 = lx0a[bidx[k][p + 1]], Rl1 = lx1a[bidx[k][p + 1]];
                     int pl = (Ll0 < Rl0) ? Ll0 : Rl0;
                     if (pl < cs) pl = cs;
                     int ph = (Ll1 > Rl1) ? Ll1 : Rl1;

@@ -23,14 +23,15 @@
 //                                 is the 16x8 LED array, vertex tables live
 //                                 in flash and stage through a 32 B buffer)
 //   stack available     1104 B   (SP resets to 0x8FF; 0x8FD at main entry)
-//   deepest draw chain  668 B    (drawPolygonCore 316 B prologue frame plus
-//                                 in-body scanline workspace, polyLineT28
-//                                 64-bit helpers, UART TX ISR preempting at
-//                                 the deepest point; min SP 0x661)
-//   headroom            434 B    (min SP 0x661 vs static end 0x4AF)
+//   deepest draw chain  735 B    (drawPolygonCore 564 B frame [18 pushed
+//                                 registers + 0x222 scanline workspace
+//                                 incl. per-row band tables], polyLineT28
+//                                 64-bit helpers, UART TX ISR preempting
+//                                 at the deepest point; min SP 0x61e)
+//   headroom            367 B    (min SP 0x61e vs static end 0x4AF)
 // A 16x16 canvas (768 B LEDs) would add 384 B of static image, leaving
-// ~720 B of stack: the 668 B draw chain still fits, but with only ~50 B of
-// headroom. Raising TIER_MAXN or the canvas size erases that margin;
+// only 720 B of stack: the 735 B draw chain no longer fits. Raising
+// TIER_MAXN or the canvas size erases even the remaining margin;
 // re-verify the budget (avr-size/avr-nm on the firmware ELF plus an AVR
 // runtime trace) before either.
 
