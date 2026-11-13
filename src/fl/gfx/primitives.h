@@ -49,7 +49,9 @@ inline fl::u8 coordToU8<int>(int alpha) FL_NO_EXCEPT {
 template<>
 inline fl::u8 coordToU8<fl::s16x16>(fl::s16x16 alpha) FL_NO_EXCEPT {
     constexpr fl::s16x16 c255 = fl::s16x16::from_raw(255 * fl::s16x16::SCALE);
-    constexpr fl::s16x16 half = fl::s16x16::from_raw(1 << 15);
+    // 1L: the shift must be at least as wide as the result (32768 overflows
+    // a 16-bit int; `1 << 15` is UB on AVR, where int is 16-bit).
+    constexpr fl::s16x16 half = fl::s16x16::from_raw(1L << 15);
     return (fl::u8)fl::clamp((alpha * c255 + half).to_int(), (fl::i32)0, (fl::i32)255);
 }
 
@@ -248,7 +250,10 @@ inline fl::i32 toQ16<fl::s16x16>(fl::s16x16 val) FL_NO_EXCEPT {
 
 /// Maximum |vertex coordinate| accepted by drawPolygon, in Q16.16 units.
 /// 8191 px keeps all Q16.16 values and edge deltas in i32 with headroom.
-static const fl::i32 kPolyQ16Max = 8191 << 16;
+// 8191L: shifting a 16-bit int by its own width is UB (AVR int is 16-bit),
+// where the constant silently collapses to 0 and every vertex clamps to the
+// origin.
+static const fl::i32 kPolyQ16Max = 8191L << 16;
 
 /// Convert any Coord type to Q16.16, clamped to ±8191 px.
 /// Out-of-range inputs (e.g. 1e6 px floats) saturate instead of overflowing
@@ -341,7 +346,9 @@ struct PolyEdge {
 };
 
 /// Full-pixel coverage in T units (see polyLineT28).
-static const fl::i32 kPolyOne = 1 << 28;
+// 1L: `1 << 28` is UB with a 16-bit int (AVR); GCC 7.3 evaluates it to 0,
+// which silently collapses all polygon coverage to zero (nothing renders).
+static const fl::i32 kPolyOne = 1L << 28;
 
 /// Multiply two unsigned values < 2^48, returning the 128-bit product as a
 /// (hi, lo) u64 pair. 32-bit lanes — no __int128 (MSVC host portability).
