@@ -26,6 +26,16 @@ struct PolyPoint {
     Coord y;
 };
 
+/// @brief Fill backend for drawPolygon
+/// Both backends use the even-odd rule and the same row/vertex
+/// conventions; they differ in the per-pixel coverage model:
+///  - Exact: exact per-pixel sub-pixel area integration (256 alpha
+///    levels). The default; byte-stable across builds.
+///  - ABuffer: 8x4 subpixel A-buffer sampling (32 alpha levels, 32-bit
+///    masks, no division in the scan loops, shallow stack). Faster on
+///    dense fills and low-memory targets; see fl/gfx/poly_abuffer.h.
+enum class PolyFill { Exact, ABuffer };
+
 // Forward declarations
 template<typename RGB_T> struct Canvas;
 template<typename RGB_T> struct CanvasMapped;
@@ -68,14 +78,19 @@ template<typename PixelT, typename Coord>
 void drawStrokeLine(Canvas<PixelT>& canvas, const PixelT& color, Coord x0, Coord y0, Coord x1, Coord y1,
                     Coord thickness, LineCap cap, fl::DrawMode mode = fl::DrawMode::DRAW_MODE_BLEND) FL_NO_EXCEPT;
 
-template<typename PixelT, typename Coord, int MAXN = 32, int CHUNK = 64>
+/// Fill selects the polygon backend (PolyFill::Exact by default;
+/// PolyFill::ABuffer for the faster 8x4 A-buffer kernel, which ignores
+/// CHUNK).
+template<typename PixelT, typename Coord, int MAXN = 32, int CHUNK = 64,
+         PolyFill Fill = PolyFill::Exact>
 void drawPolygon(Canvas<PixelT>& canvas, const PixelT& color,
                  fl::span<const PolyPoint<Coord>> pts,
                  fl::DrawMode mode = fl::DrawMode::DRAW_MODE_BLEND) FL_NO_EXCEPT;
 
 // Array overload: lets Coord be deduced from a C array (span is a
 // converting constructor, so it cannot participate in deduction).
-template<typename PixelT, typename Coord, int N, int MAXN = 32, int CHUNK = 64>
+template<typename PixelT, typename Coord, int N, int MAXN = 32, int CHUNK = 64,
+         PolyFill Fill = PolyFill::Exact>
 void drawPolygon(Canvas<PixelT>& canvas, const PixelT& color,
                  const PolyPoint<Coord> (&pts)[N],
                  fl::DrawMode mode = fl::DrawMode::DRAW_MODE_BLEND) FL_NO_EXCEPT;
@@ -142,16 +157,18 @@ struct Canvas {
         gfx::drawStrokeLine(*this, color, x0, y0, x1, y1, thickness, cap, mode);
     }
 
-    template<typename Coord, int MAXN = 32, int CHUNK = 64>
+    template<typename Coord, int MAXN = 32, int CHUNK = 64,
+             PolyFill Fill = PolyFill::Exact>
     inline void drawPolygon(const RGB_T& color, fl::span<const PolyPoint<Coord>> pts,
                             fl::DrawMode mode = fl::DrawMode::DRAW_MODE_BLEND) FL_NO_EXCEPT {
-        gfx::drawPolygon<RGB_T, Coord, MAXN, CHUNK>(*this, color, pts, mode);
+        gfx::drawPolygon<RGB_T, Coord, MAXN, CHUNK, Fill>(*this, color, pts, mode);
     }
 
-    template<typename Coord, int N, int MAXN = 32, int CHUNK = 64>
+    template<typename Coord, int N, int MAXN = 32, int CHUNK = 64,
+             PolyFill Fill = PolyFill::Exact>
     inline void drawPolygon(const RGB_T& color, const PolyPoint<Coord> (&pts)[N],
                             fl::DrawMode mode = fl::DrawMode::DRAW_MODE_BLEND) FL_NO_EXCEPT {
-        gfx::drawPolygon<RGB_T, Coord, N, MAXN, CHUNK>(*this, color, pts, mode);
+        gfx::drawPolygon<RGB_T, Coord, N, MAXN, CHUNK, Fill>(*this, color, pts, mode);
     }
 };
 

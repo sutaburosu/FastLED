@@ -1,0 +1,402 @@
+#pragma once
+
+/// @file fl/gfx/poly_abuffer.h
+/// @brief A-buffer 8x4 antialiased polygon fill (fast, low-stack backend)
+///
+/// Alternate fill backend for drawPolygon (see fl::gfx::PolyFill::ABuffer).
+///
+/// # Algorithm
+///
+/// Based on the A-buffer scanline approach described at
+/// https://aykevl.nl/2024/02/tinygl-polygon/ (TinyGL, aykevl), which in turn
+/// follows the A-buffer algorithm (Grossetete, 1991). Each pixel carries a
+/// 32-bit mask — an 8 x 4 grid of subpixels — and the alpha channel is the
+/// popcount of the mask (32 distinct levels, br = min(255, popcount * 8)).
+///
+/// Every non-horizontal polygon edge is treated as a trapezoid: the edge
+/// itself plus the horizontal region to its right. XOR-ing the trapezoid
+/// masks of all edges reproduces the polygon under the even-odd rule (the
+/// same rule the exact backend, drawPolygonCore, uses). Scanlines are
+/// rendered left to right; when an edge crosses a pixel its per-sub-row
+/// mask is XOR-ed into the running mask, and between pixels the mask is
+/// "extended" with `mask = (mask & 0x01010101) * 255` — two operations that
+/// turn a set rightmost subpixel of each row into a full row for the next
+/// pixel (the trapezoid continues to the right).
+///
+/// # Integer model
+///
+/// Integer-only (repository convention): coordinates in Q16.16, sub-rows
+/// in .2 (4 per pixel). Per edge, once at setup:
+///   xinc = floor(65536 * B / dy)          (one i64 division, i64 result)
+/// Per scanline, per active edge: x0 += xinc (i64 add, no libgcc).
+/// Per sub-row: X_r = X_0 + r * q + corr[r] (shifts/adds + a 2-bit table,
+/// no per-sub-row multiply). The per-pixel work is shifts, XORs and a
+/// popcount — **no division anywhere in the scan loops**, which is what
+/// keeps the kernel off the deep 64-bit libgcc chain the exact backend
+/// needs for its per-pixel area integration.
+///
+/// # Deviations from the Go reference (documented)
+///
+/// 1. **No static edge ordering.** The reference advances edgeStart/
+///    edgeEnd monotonically through a pre-sorted edge list, which requires
+///    the edges' x-order to be constant across all scanlines. That holds
+///    for the parallelogram (line) shapes TinyGL builds, but breaks for
+///    self-intersecting polygons: once two edges' x-order flips (the
+///    crossing point), the scan starts at the wrong edge and the part of
+///    the polygon on the far side is never painted. This kernel instead
+///    collects every crossing of every active edge up front (per scanline,
+///    in O(nedges) work) and jumps directly between crossing pixels —
+///    correct for arbitrary (even self-intersecting) polygons at
+///    negligible cost for the small vertex counts this library targets.
+/// 2. **i64 edge state.** The reference uses int32 for xinc/xstart and
+///    int32-wrapping products in `sublineY * xinc / 4`; that wraps for
+///    steep or long edges (even on small canvases with sub-pixel-dy
+///    edges). This kernel uses i64 (exact across the ±8191 px domain).
+/// 3. **Off-canvas-left edges.** The reference's x-loop starts at the
+///    first edge's xleft and rebuilds mask state from there; polygons that
+///    extend past the left canvas edge need that state reconstructed.
+///    This kernel seeds the row mask with the parity of edges already left
+///    of the canvas (X_r < 0) so fully clipped polygons fill correctly.
+/// 4. **Floor (not truncate) division.** The reference's integer divisions
+///    truncate toward zero (Go semantics); this kernel floors (repository
+///    convention). At most a 1/8-px (one subpixel) AA difference.
+/// 5. **Full pixels saturate at 255.** A mask with all 32 bits set yields
+///    br = 255 (the reference's popcount << 3 would wrap to 0 there; its
+///    full-span fast path is what actually keeps that case from shipping).
+///
+/// Sampling geometry (kept faithful to the reference): sub-row r samples
+/// the half-open band [y + r/4, y + (r+1)/4) and sub-column c counts as
+/// covered when its RIGHT edge x + (c+1)/8 lies strictly to the right of
+/// the edge crossing (a sample exactly on the edge is outside).
+
+#include "fl/stl/noexcept.h"
+#include "fl/stl/int.h"
+#include "fl/math/fixed_point/s16x16.h"
+#include "fl/gfx/canvas.h"
+#include "fastled_progmem.h"
+
+namespace fl {
+namespace gfx {
+namespace detail {
+
+/// Floor-divide a by positive b (rounds toward -inf). (Self-contained
+/// copy of the primitives.h helper: this header is included from the top
+/// of that file, before its own detail helpers are declared.)
+inline fl::i64 polyABFloorDivI64(fl::i64 a, fl::i64 b) FL_NO_EXCEPT {
+    fl::i64 q = a / b;
+    if ((a % b) < 0) --q;
+    return q;
+}
+
+/// Maximum |vertex coordinate| accepted, in Q16.16 units (8191 px keeps
+/// all values and edge deltas in i32 with headroom — same bound as the
+/// exact kernel).
+static const fl::i32 polyABQ16Max = 8191L << 16;
+
+/// Convert any Coord type to Q16.16, clamped to ±8191 px (float/double
+/// inputs saturate instead of overflowing the i32 result).
+/// Convert any Coord type to Q16.16, clamped to ±8191 px (float/double
+/// inputs saturate instead of overflowing the i32 result). Self-contained
+/// mirror of the exact kernel's helpers: this header is included at the
+/// top of primitives.h, before those are declared.
+template<typename Coord>
+inline fl::i32 polyABToQ16(Coord val) FL_NO_EXCEPT {
+    const fl::i64 q = static_cast<fl::i64>(val.to_float() * 65536.0f);
+    if (q > polyABQ16Max) return polyABQ16Max;
+    if (q < -static_cast<fl::i64>(polyABQ16Max)) return -static_cast<fl::i64>(polyABQ16Max);
+    return static_cast<fl::i32>(q);
+}
+
+template<>
+inline fl::i32 polyABToQ16<float>(float val) FL_NO_EXCEPT {
+    if (val > 8191.0f) return polyABQ16Max;
+    if (val < -8191.0f) return -polyABQ16Max;
+    return static_cast<fl::i32>(val * 65536.0f);
+}
+
+template<>
+inline fl::i32 polyABToQ16<double>(double val) FL_NO_EXCEPT {
+    if (val > 8191.0) return polyABQ16Max;
+    if (val < -8191.0) return -polyABQ16Max;
+    return static_cast<fl::i32>(val * 65536.0);
+}
+
+template<>
+inline fl::i32 polyABToQ16<int>(int val) FL_NO_EXCEPT {
+    if (val > 8191) return polyABQ16Max;
+    if (val < -8191) return -polyABQ16Max;
+    return static_cast<fl::i32>(val) << 16;
+}
+
+template<>
+inline fl::i32 polyABToQ16<fl::s16x16>(fl::s16x16 val) FL_NO_EXCEPT {
+    return val.raw();
+}
+
+/// Popcount of a byte. AVR: 256 B PROGMEM LUT (4 lookups per u32); the
+/// blog's memory budget explicitly allows small LUTs. Host: builtin.
+inline fl::u8 polyABPop8(fl::u8 v) FL_NO_EXCEPT {
+#if defined(__AVR__)
+    static const fl::u8 kPop8[256] FL_PROGMEM = {
+        0,1,1,2,1,2,2,3,1,2,2,3,2,3,3,4,
+        1,2,2,3,2,3,3,4,2,3,3,4,3,4,4,5,
+        1,2,2,3,2,3,3,4,2,3,3,4,3,4,4,5,
+        2,3,3,4,3,4,4,5,3,4,4,5,4,5,5,6,
+        1,2,2,3,2,3,3,4,2,3,3,4,3,4,4,5,
+        2,3,3,4,3,4,4,5,2,3,3,4,3,4,4,5,
+        2,3,3,4,3,4,4,5,3,4,4,5,4,5,5,6,
+        3,4,4,5,4,5,5,6,4,5,5,6,5,6,6,7,
+        1,2,2,3,2,3,3,4,2,3,3,4,3,4,4,5,
+        2,3,3,4,3,4,4,5,2,3,3,4,3,4,4,5,
+        2,3,3,4,3,4,4,5,3,4,4,5,4,5,5,6,
+        3,4,4,5,4,5,5,6,4,5,5,6,5,6,6,7,
+        2,3,3,4,3,4,4,5,3,4,4,5,4,5,5,6,
+        3,4,4,5,4,5,5,6,4,5,5,6,5,6,6,7,
+        3,4,4,5,4,5,5,6,4,5,5,6,5,6,6,7,
+        4,5,5,6,5,6,6,7,5,6,6,7,6,7,7,8
+    };
+    return (fl::u8)FL_PGM_READ_BYTE_NEAR(&kPop8[v]);
+#elif defined(__GNUC__) || defined(__clang__)
+    return (fl::u8)__builtin_popcount((unsigned)v);
+#else
+    v = v - ((v >> 1) & 0x55u);
+    v = (v & 0x33u) + ((v >> 2) & 0x33u);
+    return (fl::u8)((v + (v >> 4)) & 0x0Fu);
+#endif
+}
+
+inline fl::u8 polyABPopcount32(fl::u32 v) FL_NO_EXCEPT {
+    return (fl::u8)(polyABPop8((fl::u8)(v & 0xFFu))
+                   + polyABPop8((fl::u8)((v >> 8) & 0xFFu))
+                   + polyABPop8((fl::u8)((v >> 16) & 0xFFu))
+                   + polyABPop8((fl::u8)(v >> 24)));
+}
+
+/// Alpha (0..255) for an 8x4 mask: 8 per subpixel, saturating at 255
+/// (32 subpixels would otherwise wrap a u8).
+inline fl::u8 polyABAlpha(fl::u32 mask) FL_NO_EXCEPT {
+    const fl::u8 p = polyABPopcount32(mask);
+    const fl::u8 br = (fl::u8)(p * 8u);
+    return (p >= 32u) ? 255u : br;
+}
+
+/// Per-edge scanline state.
+///
+/// x0 is the Q16.16 crossing of sub-row 0 of the CURRENT scanline and
+/// advances exactly per scanline (x0 += xinc). Sub-row r's crossing is
+/// X_r = x0 + r*q + corr[r]:
+///   q    = xinc >> 2                 (integer part of the per-sub-row step)
+///   corr = floor((R0 + r*m)/4),      (floor((k0+r)*xinc/4) - k0*xinc/4
+///          R0 = (k0*xinc) & 3,       - floor(k0*xinc/4), see setup)
+///          m  = xinc & 3
+/// R0 is invariant across scanlines because k0 advances by exactly 4
+/// (one pixel) per scanline. ytop/ybot bound the in-range sub-rows in .2
+/// (4 per pixel, half-open [ytop, ybot)); py0/py1 are the canvas rows
+/// they span (identical row convention to the exact kernel).
+struct AbEdge {
+    fl::i64 x0;      // sub-row-0 crossing, Q16.16, current scanline
+    fl::i64 xinc;    // per-scanline step, Q16.16: floor(65536 * B / dy)
+    fl::i64 q;       // xinc >> 2
+    fl::u8  corr[4]; // per-sub-row correction, 0..2
+    fl::i32 ytop;    // first in-range sub-row, .2
+    fl::i32 ybot;    // one past last in-range sub-row, .2
+    int py0;         // first active canvas row
+    int py1;         // last active canvas row
+};
+
+/// Fill a run of [x0, x1) pixels of row py with `color` at alpha br.
+/// The caller guarantees br > 0.
+template<typename PixelT>
+inline void polyABFillRun(PixelT* pixels, int py, int width,
+                                 int x0, int x1, const PixelT& color,
+                                 fl::u8 br, bool overwrite) FL_NO_EXCEPT {
+    if (x1 <= x0) return;
+    PixelT c = (br >= 255u) ? color : color;
+    if (br < 255u) c.nscale8(br);
+    PixelT* row = pixels + py * width + x0;
+    if (overwrite) {
+        for (int i = 0; i < x1 - x0; ++i) row[i] = c;
+    } else {
+        for (int i = 0; i < x1 - x0; ++i) row[i] += c;
+    }
+}
+
+/// A-buffer 8x4 antialiased polygon fill (see file header).
+/// MAXN caps the vertex count (vertices beyond it are ignored, polygon
+/// closes from #MAXN-1 back to #0 — same as the exact kernel). There is
+/// no accumulator to size: the working set is the per-edge state plus
+/// one u32 mask, so the stack stays shallow regardless of canvas size.
+template<typename PixelT, typename Coord, bool Overwrite, int MAXN>
+inline void drawPolygonABufferCore(Canvas<PixelT>& canvas, const PixelT& color,
+                                   fl::span<const PolyPoint<Coord>> pts) FL_NO_EXCEPT {
+    const int n = static_cast<int>(pts.size());
+    if (n < 3) return;
+    PixelT* pixels = canvas.pixels;
+    int width = canvas.width;
+    int height = canvas.height;
+    if (width <= 0 || height <= 0) return;
+
+    const int nv = (n < MAXN) ? n : MAXN;
+
+    // Convert vertices to Q16.16 (clamped to ±8191 px — i32-safe)
+    fl::i32 vx[MAXN];
+    fl::i32 vy[MAXN];
+    for (int i = 0; i < nv; ++i) {
+        vx[i] = polyABToQ16(pts[i].x);
+        vy[i] = polyABToQ16(pts[i].y);
+    }
+
+    // Build per-edge scanline state. One i64 floor division per edge is
+    // the only division in this function (it sets xinc exactly).
+    AbEdge edges[MAXN];
+    int nedges = 0;
+    int ymin = height, ymax = -1;
+    for (int i = 0; i < nv; ++i) {
+        const int j = (i + 1 == nv) ? 0 : (i + 1);
+        const fl::i32 dy = vy[j] - vy[i];
+        if (dy == 0) continue;  // horizontal edge: no trapezoid (even-odd convention)
+        // Orient edge top-to-bottom: B measured from the top vertex
+        fl::i32 ytop_q, xtop, B;
+        if (dy > 0) { ytop_q = vy[i]; xtop = vx[i]; B = vx[j] - vx[i]; }
+        else        { ytop_q = vy[j]; xtop = vx[j]; B = vx[i] - vx[j]; }
+        const fl::i32 dy2 = (dy > 0) ? dy : -dy;  // span height, > 0
+        const fl::i32 ybot_q = ytop_q + dy2;
+
+        // Active pixel rows: same floor/ceil row rule as the exact kernel
+        // (the row containing ytop through the row containing ybot - 1)
+        int py0 = ytop_q >> 16;
+        int py1 = (ybot_q - 1) >> 16;
+        if (py0 < 0) py0 = 0;
+        if (py1 >= height) py1 = height - 1;
+        if (py0 > py1) continue;  // edge off-canvas vertically
+
+        AbEdge& e = edges[nedges++];
+        e.py0 = py0;
+        e.py1 = py1;
+        // In-range sub-rows, .2 (4 per px), half-open: floor/ceil so the
+        // sub-rows exactly tile [ytop_q, ybot_q)
+        e.ytop = ytop_q >> 14;
+        e.ybot = (ybot_q + 16383) >> 14;
+        // i64 step: |65536 * B| < 2^47, dy >= 1 -> exact floor, no wrap
+        e.xinc = polyABFloorDivI64((fl::i64)65536L * (fl::i64)B, (fl::i64)dy2);
+        e.q = e.xinc >> 2;
+
+        const fl::i32 m = (fl::i32)(e.xinc & 3);           // in [0, 4)
+        const fl::i32 k0 = 4 * py0 - (int)e.ytop;          // sub-rows from edge top to sub-row 0 of py0 (in [-3, ~4*height])
+        e.x0 = (fl::i64)xtop + (fl::i64)k0 * e.q
+             + ((((fl::i64)k0) * (fl::i64)m) >> 2);       // floor(k0*xinc/4)
+        // corr[r] = floor((R0 + r*m)/4) with R0 = (k0*xinc) & 3: exact
+        // per-sub-row correction for the fractional part of xinc/4
+        const fl::i32 R0 = (fl::i32)(((fl::i64)k0 * e.xinc) & 3);
+        e.corr[0] = 0;
+        e.corr[1] = (fl::u8)((R0 + m) >> 2);
+        e.corr[2] = (fl::u8)((R0 + 2 * m) >> 2);
+        e.corr[3] = (fl::u8)((R0 + 3 * m) >> 2);
+
+        if (e.py0 < ymin) ymin = e.py0;
+        if (e.py1 > ymax) ymax = e.py1;
+    }
+    if (nedges == 0) return;
+
+    // Per-row scratch: crossing events, packed (pixel << 5) | (row << 3) |
+    // bitOffset. A sub-row crosses at most ONE pixel (its crossing X is
+    // fixed for the scanline), so a row has at most 4*nedges events.
+    fl::i32 cp[4 * MAXN];
+
+    for (int py = ymin; py <= ymax; ++py) {
+        fl::u32 mask = 0;   // the running 8x4 mask (per row: 0x00 or 0xFF)
+        int ncp = 0;
+
+        for (int e = 0; e < nedges; ++e) {
+            AbEdge& ed = edges[e];
+            if (py < ed.py0 || py > ed.py1) continue;
+            if (py > ed.py0) ed.x0 += ed.xinc;
+            // In-range sub-rows: ytop <= 4*py + r < ybot, r in [0, 4)
+            int rlo = (int)ed.ytop - 4 * py;  // in [-3, 3] for active edges
+            if (rlo < 0) rlo = 0;
+            if (rlo > 3) rlo = 3;
+            int rhi = (int)ed.ybot - 1 - 4 * py;  // in [-3, 3]
+            if (rhi < 0) rhi = 0;
+            if (rhi > 3) rhi = 3;
+            if (rlo > rhi) continue;
+            // Sub-row crossings, incremental (no multiply): X_{r+1} =
+            // X_r + q + (corr[r+1] - corr[r]), the difference in {0, 1}
+            fl::i64 X = ed.x0;
+            for (int r = 0; r <= rhi; ++r) {
+                if (r > 0) X += ed.q + (fl::i64)((fl::i32)(ed.corr[r] - ed.corr[r - 1]));
+                if (r < rlo) continue;
+                if (X < 0) {
+                    // Edge already left of the canvas: full-row
+                    // contribution — seed the parity, never crosses again
+                    mask ^= (fl::u32)0xFFu << (8 * r);
+                } else {
+                    const fl::i32 p = (fl::i32)(X >> 16);  // pixel crossed
+                    if (p < width) {
+                        const fl::u32 bo = (fl::u32)((X - ((fl::i64)p << 16)) >> 13);  // in [0, 8)
+                        cp[ncp] = (p << 5) | (r << 3) | (fl::i32)bo;
+                        ++ncp;
+                    }
+                }
+            }
+        }
+
+        if (ncp == 0) {
+            // No crossings this row: uniform mask over the whole row
+            if (mask != 0)
+                polyABFillRun(pixels, py, width, 0, width, color,
+                              polyABAlpha(mask), Overwrite);
+            continue;
+        }
+
+        // Sort events by pixel (packed key is pixel-major); insertion sort
+        for (int a = 1; a < ncp; ++a) {
+            const fl::i32 v = cp[a];
+            int b = a - 1;
+            while (b >= 0 && cp[b] > v) { cp[b + 1] = cp[b]; --b; }
+            cp[b + 1] = v;
+        }
+
+        // Walk the row: the mask (per row 0x00/0xFF after each extend) is
+        // constant between crossing pixels, so whole runs are painted in
+        // one go and only crossing pixels pay for the popcount.
+        int x = 0;
+        for (int k = 0; k < ncp; ) {
+            const int p = cp[k] >> 5;
+            if (p > x) {
+                if (mask != 0)
+                    polyABFillRun(pixels, py, width, x, p, color,
+                                  polyABAlpha(mask), Overwrite);
+                x = p;
+            }
+            // Fold every event at p (XOR is commutative — no edge order
+            // is needed, self-intersecting polygons included)
+            fl::u32 rowxor = 0;
+            while (k < ncp && (cp[k] >> 5) == p) {
+                rowxor ^= (fl::u32)((1u << (8 - (cp[k] & 7u))) - 1u)
+                        << (8 * ((cp[k] >> 3) & 3u));
+                ++k;
+            }
+            mask ^= rowxor;
+            if (mask != 0) {
+                const fl::u8 br = polyABAlpha(mask);
+                PixelT c = (br >= 255u) ? color : color;
+                if (br < 255u) c.nscale8(br);
+                PixelT& px = pixels[py * width + p];
+                if (Overwrite) px = c; else px += c;
+            }
+            // Extend to the next pixel: a set rightmost subpixel of a row
+            // (bit 0) means the trapezoid continues past the pixel, so the
+            // whole row starts full. (mask & 0x01010101) * 255 ==
+            // (b << 8) - b per row — shifts and a subtract, no multiply.
+            mask = (mask & 0x01010101u) * 255u;
+            x = p + 1;
+        }
+        if (x < width && mask != 0)
+            polyABFillRun(pixels, py, width, x, width, color,
+                          polyABAlpha(mask), Overwrite);
+    }
+}
+
+}  // namespace detail
+}  // namespace gfx
+}  // namespace fl

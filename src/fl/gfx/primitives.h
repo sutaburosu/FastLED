@@ -4,6 +4,7 @@
 
 #include "fl/gfx/canvas.h"  // IWYU pragma: keep
 #include "fl/gfx/draw_mode.h"
+#include "fl/gfx/poly_abuffer.h"  // IWYU pragma: keep
 #include "fl/math/distance_lut.h"  // IWYU pragma: keep
 #include "fl/math/integer_math.h"  // IWYU pragma: keep
 #include "fl/math/fixed_point/s16x16.h"
@@ -1584,21 +1585,29 @@ inline void detail::drawPolygonCore(Canvas<PixelT>& canvas, const PixelT& color,
 /// accumulator width in px (64 by default; must be a power of two).
 /// Smaller tiers shrink the stack for low-memory targets — the rendered
 /// pixels are identical.
-template<typename PixelT, typename Coord, int MAXN, int CHUNK>
+///
+/// Fill selects the backend: PolyFill::Exact (default, exact per-pixel
+/// area) or PolyFill::ABuffer (8x4 A-buffer sampling; CHUNK is ignored).
+template<typename PixelT, typename Coord, int MAXN, int CHUNK, PolyFill Fill>
 inline void drawPolygon(Canvas<PixelT>& canvas, const PixelT& color,
                         fl::span<const PolyPoint<Coord>> pts,
                         fl::DrawMode mode) FL_NO_EXCEPT {
-    if (mode == fl::DrawMode::DRAW_MODE_OVERWRITE)
+    if (Fill == PolyFill::ABuffer) {
+        if (mode == fl::DrawMode::DRAW_MODE_OVERWRITE)
+            detail::drawPolygonABufferCore<PixelT, Coord, true, MAXN>(canvas, color, pts);
+        else
+            detail::drawPolygonABufferCore<PixelT, Coord, false, MAXN>(canvas, color, pts);
+    } else if (mode == fl::DrawMode::DRAW_MODE_OVERWRITE)
         detail::drawPolygonCore<PixelT, Coord, true, MAXN, CHUNK>(canvas, color, pts);
     else
         detail::drawPolygonCore<PixelT, Coord, false, MAXN, CHUNK>(canvas, color, pts);
 }
 
-template<typename PixelT, typename Coord, int N, int MAXN, int CHUNK>
+template<typename PixelT, typename Coord, int N, int MAXN, int CHUNK, PolyFill Fill>
 inline void drawPolygon(Canvas<PixelT>& canvas, const PixelT& color,
                         const PolyPoint<Coord> (&pts)[N],
                         fl::DrawMode mode) FL_NO_EXCEPT {
-    drawPolygon<PixelT, Coord, MAXN, CHUNK>(
+    drawPolygon<PixelT, Coord, MAXN, CHUNK, Fill>(
         canvas, color, fl::span<const PolyPoint<Coord>>(pts, N), mode);
 }
 
