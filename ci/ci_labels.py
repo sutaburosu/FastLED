@@ -151,7 +151,9 @@ def select(event_name: str, event: dict, labels: dict[str, list[str]]) -> Select
     return Selection("selected" if requested else "minimal", sha, requested)
 
 
-def gate(board: str, labels: dict[str, list[str]], *, reserves_runner: bool = False) -> str:
+def gate(
+    board: str, labels: dict[str, list[str]], *, reserves_runner: bool = False
+) -> str:
     family = None
     if board.startswith("ci-test:"):
         family, board = board.split("|", 1)
@@ -171,7 +173,8 @@ def gate(board: str, labels: dict[str, list[str]], *, reserves_runner: bool = Fa
     ]
     event_condition = (
         "!cancelled() && (github.event_name == 'workflow_dispatch' ||"
-        if reserves_runner else "github.event_name == 'workflow_dispatch' ||"
+        if reserves_runner
+        else "github.event_name == 'workflow_dispatch' ||"
     )
     return (
         MARKER
@@ -268,7 +271,9 @@ def rendered(path: Path, entries: dict[str, str], labels: dict[str, list[str]]) 
         if isinstance(dependencies, str):
             dependencies = [dependencies]
         reserves_runner = "reserve-runner" in dependencies
-        lines[insert:insert] = gate(board, labels, reserves_runner=reserves_runner).splitlines(keepends=True)
+        lines[insert:insert] = gate(
+            board, labels, reserves_runner=reserves_runner
+        ).splitlines(keepends=True)
         source = "".join(lines)
     return source
 
