@@ -84,6 +84,11 @@
 /// crossing). Mask rows extend with `(mask & 0x01010101) * 255`. Alpha is
 /// `popcount(mask) * 8` (max 248; the all-32 case is the full-span fast
 /// path).
+///
+/// NOTE: the product ABuffer (src/fl/gfx/poly_abuffer.h) samples each
+/// subpixel's CENTER (its documented deviation #7); this port keeps the
+/// reference's top-right corner geometry as-is, so the two backends
+/// differ by up to one subpixel along edges.
 
 #include "fl/stl/noexcept.h"
 #include "fl/stl/int.h"

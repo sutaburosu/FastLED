@@ -32,11 +32,11 @@ namespace detail {
 /// Bresenham-style remainder recurrence: x += step; t += rem; if (t >= dy)
 /// { t -= dy; x += 1; } where step = floor(65536 * B / dy) and rem =
 /// 65536 * B - step * dy with rem in [0, dy). Single-row edges (dy < 65536)
-/// keep step = rem = t = 0: their span can still cross a row boundary (two
-/// active rows), and the committed behavior is that x stays at the py0-row
-/// value on the second row -- the kernel then integrates the infinite line
-/// through that (stale) center crossing, and the extent below must box THAT
-/// line, not the segment's endpoints.
+/// carry the same step/rem/t as multi-row edges: their span can still cross
+/// a row boundary (two active rows), and the carry advances x to the exact
+/// py0+1 row-center crossing, so the kernel integrates the TRUE line on
+/// the second row (not the infinite line through the stale py0 anchor,
+/// which was shifted by 65536 * B / dy -- one full row of slope).
 /// hw = ceil(32768 * |B| / dy) is the line's x half-span over a full row
 /// (|x(tau) - x| <= hw for |tau| <= 32768), so the per-row extent
 /// lx0 = (x - hw) >> 16, lx1 = (x + hw) >> 16 is division-free (shifts) and
@@ -51,8 +51,8 @@ namespace detail {
 /// occupies (py0..py1, including the partial row containing each endpoint).
 struct PolyEdge {
     fl::i64 x;      // crossing x at current row center, Q16.16
-    fl::i64 step;   // per-row increment, Q16.16 (0 for single-row edges)
-    fl::i32 rem;    // 65536*B - step*dy, in [0, dy) (0 for single-row)
+    fl::i64 step;   // per-row increment, Q16.16
+    fl::i32 rem;    // 65536*B - step*dy, in [0, dy)
     fl::i32 t;      // running remainder accumulator
     fl::i32 dy;     // span height, Q16.16 (> 0)
     fl::i32 B;      // dx in the top-to-bottom direction, Q16.16 (signed)
@@ -69,19 +69,20 @@ struct PolyEdge {
 /// advances exactly per scanline (x0 += xinc). Sub-row r's crossing is
 /// X_r = x0 + r*q + corr[r]:
 ///   q    = xinc >> 2                 (integer part of the per-sub-row step)
-///   corr = floor((n0 + r*16384*m)/65536),
-///          n0 = (off*xinc) & 65535,  (off = 65536*py0 - ytop_q, the
-///          m  = xinc & 3             vertex's offset from py0's top)
-/// n0 is invariant across scanlines because off advances by exactly 65536
-/// (one pixel) per scanline. X_r is the edge's line at sub-row r's TOP
-/// grid line, measured exactly from the top vertex in Q16, so a vertex
-/// mid-sub-row introduces no quantization shift. ytop/ybot bound the
-/// in-range sub-rows in .2 (4 per pixel, half-open [ytop, ybot)): a
-/// sub-row is in range when its TOP grid line lies in the edge's
-/// [ytop_q, ybot_q) span (the segment reaches the sub-row's top), so a
-/// vertex shared by two edges (on the grid or mid-sub-row) never makes a
-/// sub-row claimed twice. py0/py1 are the canvas rows they span
-/// (identical row convention to the exact kernel).
+///   corr = floor((n0c + r*16384*m)/65536),
+///          n0c = ((off*xinc) & 65535 + 32768*(q&1) + 8192*m) & 65535,
+///          m   = xinc & 3            (off = 65536*py0 - ytop_q, the
+///                                     vertex's offset from py0's top)
+/// n0c is invariant across scanlines because off advances by exactly 65536
+/// (one pixel) per scanline. X_r is the edge's line at sub-row r's CENTER
+/// (top grid line + 8192), measured exactly from the top vertex in Q16, so
+/// a vertex mid-sub-row introduces no quantization shift. ytop/ybot bound
+/// the in-range sub-rows in .2 (4 per pixel, half-open [ytop, ybot)): a
+/// sub-row is in range when the segment covers its CENTER line
+/// (ytop_q <= s*16384 + 8192 < ybot_q), so a vertex shared by two edges
+/// (on the grid, mid-sub-row, or on a center line) never makes a sub-row
+/// claimed twice. py0/py1 are the canvas rows they span (identical row
+/// convention to the exact kernel).
 struct AbEdge {
     fl::i64 x0;      // sub-row-0 crossing, Q16.16, current scanline
     fl::i64 xinc;    // per-scanline step, Q16.16: floor(65536 * B / dy)

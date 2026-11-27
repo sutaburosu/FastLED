@@ -14,11 +14,11 @@
 //
 // polyABuffer (fl::gfx::PolyFill::ABuffer) is validated against a
 // bit-exact integer oracle that re-derives the kernel's sampling model
-// independently (quantized edge steps, half-open sub-rows, right-edge
-// sub-column samples). The oracle is intentionally a *different* code
-// path: per-sample floor divisions in i64 (the kernel uses an incremental
-// step with no division in the scan), so agreement proves the
-// decomposition is exact.
+// independently (sub-row-center activity, subpixel center samples). The
+// oracle is intentionally a *different* code path: one floor division per
+// (edge, sub-row) pair (the kernel uses an incremental step with no
+// division in the scan) and a per-sample parity (the kernel uses mask
+// events), so agreement proves the decomposition is exact.
 //
 // The TinyGL reference port (poly_tinygl_ref.h) is exercised for
 // structural parity and its documented limitations.
@@ -46,52 +46,58 @@ inline long long polyABTestFloorDiv64(long long a, long long b) {
 }
 
 struct PolyABTestEdge {  // oriented top->bottom, Q16.16
-    long long t1, t2;
-    long long x1;
+    long long ytop, ybot;
+    long long xtop;
     long long B;
 };
 
-/// Coverage alpha (0..255, 8 per subpixel) for pixel (cx, cy):
-/// sub-row s in [ceil(4*t1), ceil(4*t2)) — i.e. the sub-row's TOP grid
-/// line lies in the edge's [t1, t2) span (the segment reaches the
-/// sub-row's top), so a vertex shared by two edges (on the grid or
-/// mid-sub-row) never makes a sub-row claimed twice. The crossing X is
-/// the edge's line at the sub-row's top grid line:
-/// X = x1 + floor((s*16384 - t1)*xinc/65536), xinc = floor(65536*B/dy);
-/// a sample at sub-column c counts when its right edge (c+1)/8 is
-/// strictly right of X.
+/// Coverage alpha (0..255, 8 per subpixel) for pixel (cx, cy): the 32
+/// subpixel SAMPLES are the subpixel CENTERS — sub-column c at
+/// cx + (c+0.5)/8, sub-row r at cy + (r+0.5)/4 — and a sample counts as
+/// covered when it lies strictly to the right of the edge's crossing, the
+/// edge's line at the sub-row's CENTER (a sample exactly on the edge is
+/// outside): X = xtop + floor((sc - ytop) * xinc / 65536), sc =
+/// s*16384 + 8192, xinc = floor(65536*B/dy). A sub-row belongs to the edge
+/// when the segment covers its center line, ytop <= sc < ybot (half-open
+/// at ybot), so a vertex shared by two edges (on the grid, mid-sub-row, or
+/// exactly on a center line) never makes a sub-row claimed twice.
+///
+/// Deliberately a different code path from the kernel: one floor division
+/// per (edge, sub-row) pair instead of the kernel's incremental
+/// x0 += xinc / q + corr[r] advance, and a per-sample parity instead of
+/// the kernel's mask events. (sc - ytop) lies in [0, dy), so the product
+/// is bounded by 65536*|B| < 2^47 — no i64 overflow.
 int polyABTestOracleCov(const long long* px, const long long* py, int n,
                         int cx, int cy) {
     PolyABTestEdge e[16];
     int m = 0;
     for (int i = 0, j = n - 1; i < n; j = i++) {
-        long long t1 = py[j], t2 = py[i];
+        long long y1 = py[j], y2 = py[i];
         long long x1 = px[j], x2 = px[i];
-        if (t1 > t2) {
-            long long t = t1; t1 = t2; t2 = t;
+        if (y1 > y2) {
+            long long t = y1; y1 = y2; y2 = t;
             long long u = x1; x1 = x2; x2 = u;
         }
-        if (t1 == t2) continue;  // horizontal: no trapezoid
-        e[m].t1 = t1; e[m].t2 = t2; e[m].x1 = x1; e[m].B = x2 - x1;
+        if (y1 == y2) continue;  // horizontal: no trapezoid
+        e[m].ytop = y1; e[m].ybot = y2; e[m].xtop = x1; e[m].B = x2 - x1;
         ++m;
     }
     int count = 0;
     for (int r = 0; r < 4; ++r) {
-        const int s = cy * 4 + r;
+        const long long s = (long long)cy * 4 + r;
+        const long long sc = s * 16384LL + 8192LL;  // sub-row center, Q16
         for (int c = 0; c < 8; ++c) {
+            const long long q = (long long)cx * 65536LL
+                + (long long)c * 8192LL + 4096LL;  // sample center, Q16
             int inside = 0;
             for (int k = 0; k < m; ++k) {
-                const int st1 = (int)((e[k].t1 + 16383) >> 14);
-                const int st2 = (int)((e[k].t2 + 16383) >> 14);
-                if (s < st1 || s >= st2) continue;
+                if (sc < e[k].ytop || sc >= e[k].ybot) continue;
+                const long long dy = e[k].ybot - e[k].ytop;
                 const long long xinc =
-                    polyABTestFloorDiv64(65536LL * e[k].B, e[k].t2 - e[k].t1);
-                const long long X =
-                    e[k].x1
-                    + polyABTestFloorDiv64(((long long)s * 16384LL - e[k].t1) * xinc,
-                                           65536);
-                if (8192LL * (c + 1) > (X - ((long long)cx << 16)))
-                    inside ^= 1;
+                    polyABTestFloorDiv64(65536LL * e[k].B, dy);
+                const long long X = e[k].xtop
+                    + polyABTestFloorDiv64((sc - e[k].ytop) * xinc, 65536LL);
+                if (X < q) inside ^= 1;
             }
             if (inside) ++count;
         }
@@ -111,14 +117,11 @@ static const long long kPolyABQ = 65536LL;
 const PolyABTestScene kPolyABScenes[] = {
     { "triangle", { 213011, 966656, 557056 }, { 163840, 737280, 835584 }, 3, 20, 20, 80 },
     { "bowtie",   { 163840, 1146880, 163840, 1146880 }, { 393216, 917504, 917504, 393216 }, 4, 20, 20, 80 },
-    // 0.7px-tall band tilted 0.6px over 17.2px. Placed so each sloped edge
-    // lies within a single canvas row: the exact backend anchors a
-    // <1px-tall edge's crossing at its FIRST row's center and reuses that
-    // (stale) anchor on any second row, shifting the integrated line by a
-    // full row of slope (see PolyEdge in src/fl/gfx/primitives.h) — keeping
-    // the edges single-row makes the exact side exact here, so this scene
-    // gates ABuffer against true area. sliver_straddle (below) pins the
-    // stale-anchor regime itself.
+    // 0.7px-tall band tilted 0.6px over 17.2px, each sloped edge inside a
+    // single canvas row (a <1px-tall edge anchored at its first row's
+    // center crossing; see PolyEdge in src/fl/gfx/primitives.h). Gates the
+    // 8x4 samples against the exact per-pixel area of a near-horizontal
+    // band — the regime where sampling-geometry bias shows up.
     { "sliver",   { 78643, 1205862, 1205862, 78643 }, { 678297, 717619, 763494, 724172 }, 4, 20, 20, 80 },
     { "diamond",  { 655360, 1196032, 655360, 114688 }, { 32768, 655360, 1277952, 655360 }, 4, 20, 20, 80 },
     { "offleft",  { -262144, 786432, -131072 }, { 131072, 917504, 1048576 }, 3, 20, 20, 80 },
@@ -131,15 +134,21 @@ const PolyABTestScene kPolyABScenes[] = {
     // for the sub-row occupancy / DDA-seed fix).
     { "bowtie_r1", { 183328, 1127392, 146752, 1163968 }, { 359566, 951154, 882574, 428146 }, 4, 20, 20, 80 },
     { "bowtie_r2", { 205115, 1105604, 132142, 1178577 }, { 327357, 983362, 846537, 464182 }, 4, 20, 20, 80 },
-    // The sliver band with its sloped edges straddling row boundaries. On
-    // the second row of each <1px-tall edge the exact backend integrates
-    // the edge's line shifted by a full row of slope (here ~29px, off
-    // canvas), so it under-renders the band by up to ~0.5px^2 per pixel;
-    // the ABuffer's reference-faithful sub-row-top sampling is closer to
-    // the geometric truth there. The gate bounds the ABuffer's divergence
-    // from that (defective) exact output, not from truth — hence the wider
-    // limit.
-    { "sliver_straddle", { 78643, 1205862, 1205862, 78643 }, { 635699, 675021, 720896, 681574 }, 4, 20, 20, 120 },
+    // The sliver band with its sloped edges straddling row boundaries: the
+    // regime where the exact backend's per-row carry (a <1px-tall edge
+    // anchored at its first row's center, advanced by a full row of slope
+    // on the second) and the ABuffer's 4 sub-row samples per row disagree
+    // most, since each backend places the band on a different set of
+    // sample lines. Both are unbiased now, so the gate stays at the common
+    // per-scene limit (it was widened when the exact side re-integrated a
+    // stale anchor on the second row).
+    { "sliver_straddle", { 78643, 1205862, 1205862, 78643 }, { 635699, 675021, 720896, 681574 }, 4, 20, 20, 80 },
+    // 0.5px-tall near-horizontal band: the top edge (dy ~ 0.17 px) crosses
+    // the row 9/10 boundary at x = 8.95 — the user's spill case. The band
+    // is convex, so it doubles as the no-spill scene (see the dedicated
+    // test below): any pixel with zero true area keeps all 32 sample
+    // centers outside and must render exactly 0.
+    { "band",     { 131072, 786432, 786432, 131072 }, { 647806, 658669, 691571, 681574 }, 4, 20, 20, 80 },
 };
 
 void polyABTestRenderABuffer(CRGB* buf, const PolyABTestScene& s,
@@ -342,6 +351,92 @@ FL_TEST_CASE("drawPolygon ABuffer: quality vs Exact backend") {
         }
     }
     (void)worstMax; (void)worstMean;
+}
+
+FL_TEST_CASE("drawPolygon ABuffer: near-horizontal edge keeps zero-area pixels zero") {
+    // The "band" scene: a 0.5px-tall near-horizontal band whose top edge
+    // (dy ~ 0.17 px) crosses the row 9/10 boundary at x = 8.95 — the
+    // user's spill case. The band is convex, so a pixel with zero true
+    // area has all 32 subpixel sample centers outside it and the
+    // coverage is EXACTLY zero. Two past bugs spilled here: the original
+    // top-right corner sampling lit ~13/255 at (0..1, 10), two pixels
+    // past the band's left end; and the center-sampling port processed a
+    // sub-row the edge's segment didn't cover (rhi32 < 0 clamped to 0),
+    // drawing a 32-64 run at (16..19, 10) from the edge's extrapolated
+    // line. Pixels the band actually covers stay within one sample line
+    // (4 subpixels) of the analytic area: the 8x4 grid's quantization,
+    // not a bias.
+    const PolyABTestScene& sc = kPolyABScenes[11];  // band
+    FL_CHECK_EQ((int)sc.n, 4);
+    CRGB buffer[28 * 28];
+    polyABTestRenderABuffer(buffer, sc, fl::DrawMode::DRAW_MODE_OVERWRITE);
+    // Q16-exact vertex values (float64), so the areas match the kernel's
+    // integer input. The two sloped edges as functions of x; the vertical
+    // ends cap the x range.
+    const double vx[4] = {2.0, 12.0, 12.0, 2.0};
+    const double vy[4] = {647806.0 / 65536.0, 658669.0 / 65536.0,
+                          691571.0 / 65536.0, 681574.0 / 65536.0};
+    auto ytop = [&](double x) {
+        return vy[0] + (x - vx[0]) * (vy[1] - vy[0]) / (vx[1] - vx[0]); };
+    auto ybot = [&](double x) {
+        return vy[3] + (x - vx[3]) * (vy[2] - vy[3]) / (vx[2] - vx[3]); };
+    // Separating-axis test, pixel square (box) vs the convex band: zero
+    // true area iff some axis separates or merely touches (the band's
+    // vertical ends sit exactly on x = 2 and x = 12).
+    auto zeroArea = [&](int px, int py) {
+        const double bx0 = (double)px, bx1 = (double)px + 1.0;
+        const double by0 = (double)py, by1 = (double)py + 1.0;
+        const double ax[4][2] = {
+            {1.0, 0.0}, {0.0, 1.0},
+            {vy[1] - vy[0], -(vx[1] - vx[0])},  // top edge normal
+            {vy[2] - vy[3], -(vx[2] - vx[3])},  // bottom edge normal
+        };
+        for (int e = 0; e < 4; ++e) {
+            const double ux = ax[e][0], uy = ax[e][1];
+            const double blo = (ux >= 0 ? bx0 : bx1) * ux
+                + (uy >= 0 ? by0 : by1) * uy;
+            const double bhi = (ux >= 0 ? bx1 : bx0) * ux
+                + (uy >= 0 ? by1 : by0) * uy;
+            double qlo = 1e300, qhi = -1e300;
+            for (int i = 0; i < 4; ++i) {
+                const double d = vx[i] * ux + vy[i] * uy;
+                if (d < qlo) qlo = d;
+                if (d > qhi) qhi = d;
+            }
+            if (qhi <= blo || bhi <= qlo) return true;
+        }
+        return false;
+    };
+    int zeroSpill = 0, maxQuant = 0;
+    for (int py = 0; py < sc.h; ++py)
+        for (int px = 0; px < sc.w; ++px) {
+            const int alpha = (int)buffer[py * sc.w + px].r;
+            if (zeroArea(px, py)) {
+                if (alpha != 0) ++zeroSpill;
+                continue;
+            }
+            // Analytic area, 4096 slices (error ~1e-5 px^2).
+            double a = 0;
+            const double x0 = px > 2.0 ? (double)px : 2.0;
+            const double x1 = px + 1.0 < 12.0 ? (double)px + 1.0 : 12.0;
+            if (x1 > x0) {
+                for (int s = 0; s < 4096; ++s) {
+                    const double x = x0 + (x1 - x0) * ((double)s + 0.5) / 4096.0;
+                    const double hi = ybot(x) < (double)py + 1.0
+                        ? ybot(x) : (double)py + 1.0;
+                    const double lo = ytop(x) > (double)py ? ytop(x) : (double)py;
+                    if (hi > lo) a += (hi - lo) * (x1 - x0) / 4096.0;
+                }
+            }
+            const int sub = alpha >= 255 ? 32 : alpha / 8;
+            const int want = (int)(32.0 * a);
+            const int d = sub > want ? sub - want : want - sub;
+            if (d > maxQuant) maxQuant = d;
+        }
+    fl::printf("  band: %d zero-area pixels painted, max deviation %d subpixels\n",
+               zeroSpill, maxQuant);
+    FL_CHECK_EQ(zeroSpill, 0);
+    FL_CHECK_LE(maxQuant, 4);  // one sample line of the 8x4 grid
 }
 
 FL_TEST_CASE("drawPolygon ABuffer: TinyGL-ref reference parity") {
@@ -626,11 +721,12 @@ int polyScKernelFrame(int s, fl::u32 t, PolyScPt* p) {
     return sc.n;
 }
 
-/// True when the frame has a sloped edge less than 1 px tall. Both
-/// reference comparisons below are ill-conditioned there: the Exact backend
-/// reuses a stale crossing anchor on the second row such an edge straddles
-/// (see sliver_straddle above and PolyEdge in src/fl/gfx/primitives.h), and
-/// the TinyGL reference quantizes the edge to whole .2 sub-scanlines.
+/// True when the frame has a sloped edge less than 1 px tall. The two
+/// coverage models are ill-conditioned there: the Exact backend samples
+/// the edge once per row (row center) while the ABuffer's 8x4 grid samples
+/// it at four sub-row centers per row, so a sub-pixel-tall band can land
+/// on different sample lines per backend, and the TinyGL reference
+/// quantizes the edge to whole .2 sub-scanlines.
 bool polyScHasThinEdge(const PolyScPt* p, int n) {
     for (int i = 0, j = n - 1; i < n; j = i++) {
         fl::i32 dy = p[i].y.raw() - p[j].y.raw();
@@ -968,12 +1064,12 @@ FL_TEST_CASE("drawPolygon scenes: kernel scene hashes are pinned") {
     // One hash per (scene, kernel) over all sample times.
     static const fl::u32 kWant[kPolyScNumKernelScenes][3] = {
         // Exact, ABuffer, TinyGL-ref
-        {0x551419c6u, 0x997a15bbu, 0x240953d6u},  // bowtie
-        {0x22b823b1u, 0xb3e4e3f5u, 0x76946385u},  // subpixel
-        {0xfe2e97cdu, 0x55c89912u, 0x55c89912u},  // clamp
-        {0x1bfa3bf9u, 0xb01f1885u, 0xaf87cc55u},  // sliver
+        {0x551419c6u, 0x4d69eb87u, 0x240953d6u},  // bowtie
+        {0x80123074u, 0xd42bfa71u, 0x76946385u},  // subpixel
+        {0xfe2e97cdu, 0x1cfd85b2u, 0x55c89912u},  // clamp
+        {0x3866d05d, 0xf57a2185u, 0xaf87cc55u},  // sliver
         {0x2f20a585u, 0x2f20a585u, 0x2f20a585u},  // degenerate
-        {0x31dbaa45u, 0x3a1656ddu, 0x5eddeb45u},  // diamond
+        {0x31dbaa45, 0xee973d45u, 0x5eddeb45u},  // diamond
     };
     for (int s = 0; s < kPolyScNumKernelScenes; ++s)
         for (int k = 0; k < 3; ++k) {
@@ -1006,7 +1102,14 @@ FL_TEST_CASE("drawPolygon scenes: showcase frames agree across Exact and ABuffer
                 fl::printf("  %s %dx%d t=%u: energy exact %ld abuffer %ld\n",
                            kPolyScShowScenes[s].name, w, h, (unsigned)t, ee, ea);
                 FL_CHECK_GT(ee, 0);  // every showcase frame draws something
-                FL_CHECK_LE(d * 100, ee * kPolyScShowScenes[s].energyTolPct);
+                // The 16x8 canvas is half as tall: the boundary-pixel
+                // fraction grows (and the OVERWRITE layers keep only the
+                // top shape's edge coverage), so the same model difference
+                // is a larger share of the smaller total energy — allow 5
+                // extra percentage points there.
+                const int tol = kPolyScShowScenes[s].energyTolPct
+                    + (h == 8 ? 5 : 0);
+                FL_CHECK_LE(d * 100, ee * tol);
             }
     }
 }
@@ -1029,17 +1132,17 @@ FL_TEST_CASE("drawPolygon scenes: showcase hashes are pinned") {
     static const fl::u32 kWant[2][kPolyScNumShowScenes][2] = {
         {
             // 16x16: Exact, ABuffer
-            {0xcb0bfb0fu, 0xc5766872u},  // pinwheel
-            {0x779e1d81u, 0x8484f188u},  // layers
-            {0x9d771341u, 0x9e0961c8u},  // knot
-            {0xe907650bu, 0x16e68874u},  // blob
+            {0xd08140aeu, 0xd5bf6e3u},  // pinwheel
+            {0xd52c2ebeu, 0xcef82ab8u},  // layers
+            {0x9d771341u, 0x29ba060bu},  // knot
+            {0xe0f8ebe7u, 0x6cdf03fdu},  // blob
         },
         {
             // 16x8 (non-square)
-            {0x1f8fab18u, 0x4b020489u},  // pinwheel
-            {0x515bd9acu, 0x68184506u},  // layers
-            {0xe155d34eu, 0x2c867decu},  // knot
-            {0x16f909a3u, 0x3981582au},  // blob
+            {0x1f8fab18u, 0x2784d310u},  // pinwheel
+            {0xdd219b60u, 0xab5c79ddu},  // layers
+            {0xe155d34eu, 0x82a47b6du},  // knot
+            {0xa06eaffu, 0x92592189u},  // blob
         },
     };
     for (int sz = 0; sz < 2; ++sz) {

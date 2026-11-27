@@ -81,14 +81,14 @@ const Scene kScenes[kSceneCount] FL_PROGMEM = {
 // Golden hashes: {Exact, ABuffer} per scene. Host output, pinned by
 // tests/unit/fl/gfx/draw_polygon.hpp.
 const fl::u32 kGolden[kSceneCount][2] FL_PROGMEM = {
-    {0xA8F35217UL, 0x20F530D5UL},  // 0
-    {0x9ADBBC51UL, 0xC5631142UL},  // 1
-    {0xE4055809UL, 0xCF52A925UL},  // 2
-    {0x4369434FUL, 0x2E945579UL},  // 3
-    {0xD5167763UL, 0x7E3AAB3FUL},  // 4
-    {0xD344BF25UL, 0x2AB93628UL},  // 5
+    {0xA8F35217UL, 0x1FFF0FA8UL},  // 0
+    {0x9ADBBC51UL, 0x0D890BB4UL},  // 1
+    {0xE4055809UL, 0x63B56B73UL},  // 2
+    {0x4369434FUL, 0x4B89071DUL},  // 3
+    {0xD5167763UL, 0xD4127E30UL},  // 4
+    {0xD344BF25UL, 0x494DD0B7UL},  // 5
     {0x3D73C605UL, 0x3D73C605UL},  // 6
-    {0xB2B131CAUL, 0x5C4D9FC2UL},  // 7
+    {0xA950191BUL, 0x206B7FC5UL},  // 7
 };
 
 inline fl::u32 goldenHash(int scene, bool abuffer) {
