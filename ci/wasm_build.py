@@ -893,9 +893,9 @@ def create_wrapper(example_name: str, sketch_cache_dir: Path) -> Path:
     wrapper_path = sketch_cache_dir / f"{sketch_name}_wrapper.cpp"
     lines = [
         f"// Auto-generated wrapper for {sketch_name}.ino",
-        "// C++20 header unit import — ~2x faster than PCH for sketch compilation.",
-        '// The .ino\'s #include "FastLED.h" is a harmless no-op after this import.',
-        'import "wasm_pch.h";',
+        "// Traditional PCH inclusion (compatible with all emcc versions).",
+        '// The .ino\'s #include "FastLED.h" is a harmless no-op after this include.',
+        '#include "wasm_pch.h"',
         f'#include "{ino_file.as_posix()}"',
     ]
     for cpp in extra_cpps:
@@ -919,14 +919,18 @@ def build_sketch_pch(
     verbose: bool = False,
 ) -> Path | None:
     """
-    Build a C++20 header unit (.pcm) from wasm_pch.h for sketch compilation.
+    Build a C++20 header unit (.pcm) from wasm_pch.h for the codegen companion.
 
     Uses -fmodules-codegen to pre-compile inline function bodies into a companion
-    object file. This reduces sketch backend work by ~63% (509 → 187 codegen
-    functions for Blink) while keeping header unit import fast (~6ms vs 34ms PCH).
+    object file. The companion object is added to libfastled.a so the linker picks
+    up symbols naturally — no changes needed to link commands.
 
-    The companion object is added to libfastled.a so the linker picks up symbols
-    naturally — no changes needed to link commands.
+    Note: the sketch no longer imports this BMI. It #includes wasm_pch.h as a
+    traditional header (compatible with all emcc versions). Passing the BMI to the
+    sketch TU via -fmodule-file while the wrapper textually #includes the same
+    header makes the BMI's declarations "not visible" to the TU and breaks
+    compilation on emcc 4.0.x. The BMI is built here purely to produce the
+    codegen companion object.
 
     Args:
         lib_was_rebuilt: If True, library sources changed — invalidate header unit
@@ -1224,19 +1228,14 @@ def compile_sketch(
         f"-I{example_dir}",
     ]
 
-    # Header unit usage: use the .pcm BMI built by build_sketch_pch()
-    sketch_pcm_path = build_dir / "wasm_pch.h.pcm"
-    pch_args = []
-    if sketch_pcm_path.exists():
-        pch_args = [
-            f"-fmodule-file={sketch_pcm_path}",
-        ]
-
+    # The wrapper #includes wasm_pch.h as a traditional header — no
+    # -fmodule-file here. Pairing the prebuilt BMI with a textual #include
+    # of the same header makes the BMI's declarations "not visible" to the
+    # TU (clang resolves the include against the module and then suppresses
+    # the text), which breaks compilation on emcc 4.0.x. The BMI built by
+    # build_sketch_pch() is still used for the codegen companion object.
     emcc_args = (
-        ["-c", str(wrapper_path), "-o", str(object_path)]
-        + sketch_flags
-        + includes
-        + pch_args
+        ["-c", str(wrapper_path), "-o", str(object_path)] + sketch_flags + includes
     )
 
     print(f"[WASM] Compiling sketch: {wrapper_path.name}")
