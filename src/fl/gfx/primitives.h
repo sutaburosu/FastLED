@@ -1570,8 +1570,10 @@ inline void detail::drawPolygonCore(Canvas<PixelT>& canvas, const PixelT& color,
 /// identical for polygons with at most MAXN vertices. If the side-stack
 /// arena is exhausted at run time the call draws nothing.
 ///
-/// Fill selects the backend: PolyFill::Exact (default, exact per-pixel
-/// area) or PolyFill::ABuffer (8x4 A-buffer sampling; CHUNK is ignored).
+/// Fill selects the backend: PolyFill::Exact (exact per-pixel area) or
+/// PolyFill::ABuffer (8x4 A-buffer sampling; CHUNK is ignored). The
+/// default (FL_GFX_POLYGON_DEFAULT_FILL in fl/gfx/canvas.h) is Exact on
+/// large-tier platforms and ABuffer on the constrained small tier.
 template<typename PixelT, typename Coord, int MAXN, int CHUNK, PolyFill Fill>
 inline void drawPolygon(Canvas<PixelT>& canvas, const PixelT& color,
                         fl::span<const PolyPoint<Coord>> pts,

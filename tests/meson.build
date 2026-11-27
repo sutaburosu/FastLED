@@ -253,6 +253,25 @@ color_profile_tiny_runtime = executable('color_profile_tiny_runtime',
 )
 test('color_profile_tiny_runtime', color_profile_tiny_runtime)
 
+# Constrained-tier default-fill probe: forces FL_PLATFORM_HAS_SMALL_STACK=1
+# (constrained polygon tier: MAXN 8 / CHUNK 16) and compile-asserts that the
+# default drawPolygon fill follows the tier to ABuffer. Links the host-tier
+# library (the kernel is header-inline and no gfx body branches on the
+# flag, so the tier macros change only default arguments, not any linked
+# symbol's body) but never the shared PCH.
+canvas_small_tier = executable('canvas_small_tier',
+  'unit/fl/gfx/canvas_small_tier.cpp',
+  cpp_args: test_abs_include_args + unit_test_compile_args + [
+    '-DFL_PLATFORM_HAS_SMALL_STACK=1',
+  ],
+  link_args: unit_test_link_args,
+  link_with: [fastled_lib],
+  implicit_include_directories: false,
+  build_by_default: false,
+  install: false
+)
+test('canvas_small_tier', canvas_small_tier)
+
 # Isolated whole-library worker-default variant: every translation unit uses
 # the same flags, without the ordinary library or its PCH in this process.
 engine_worker_default_args = [

@@ -32,10 +32,12 @@ struct PolyPoint {
 /// Both backends use the even-odd rule and the same row/vertex
 /// conventions; they differ in the per-pixel coverage model:
 ///  - Exact: exact per-pixel sub-pixel area integration (256 alpha
-///    levels). The default; byte-stable across builds.
+///    levels). Byte-stable across builds. Default on large-tier
+///    platforms (FL_GFX_POLYGON_DEFAULT_FILL).
 ///  - ABuffer: 8x4 subpixel A-buffer sampling (32 alpha levels, 32-bit
-///    masks, no division in the scan loops, small working set). Faster on
-///    dense fills and low-memory targets; see fl/gfx/poly_abuffer.h.
+///    masks, no division in the scan loops, small working set). ~10x
+///    faster on the constrained tier; the default there
+///    (FL_GFX_POLYGON_DEFAULT_FILL). See fl/gfx/poly_abuffer.h.
 enum class PolyFill { Exact, ABuffer };
 
 /// @brief Default drawPolygon tier (MAXN vertex cap, CHUNK accumulator px)
@@ -100,6 +102,25 @@ enum class PolyFill { Exact, ABuffer };
 #endif
 #endif
 
+/// Default drawPolygon fill backend, following the tier above.
+///
+/// The small tier is what stack-constrained platforms (AVR, Teensy LC,
+/// LPC804/11xx, nRF51, STM32G0/F1 low-density) are stuck with, and there
+/// the Exact kernel is ~10x slower than ABuffer (measured on the Uno,
+/// avr8js, pinned tier 8/16, 16x8 canvas: 9.4-21.9x across the regression
+/// scenes), so those platforms default to the division-free ABuffer kernel.
+/// The output difference is confined to antialiased edges: ABuffer uses an
+/// 8x4 subpixel sample grid (32 alpha levels) where Exact integrates the
+/// exact per-pixel area (256 levels). Large-tier platforms (big stack or a
+/// scratch arena; host, ESP32, Teensy 3.x and up, ESP8266) keep the exact
+/// default. Pass PolyFill explicitly, or override the tier macros
+/// build-wide, to change either default (the fill follows the tier).
+#if FL_GFX_POLYGON_LARGE_TIER_DEFAULT
+#define FL_GFX_POLYGON_DEFAULT_FILL fl::gfx::PolyFill::Exact
+#else
+#define FL_GFX_POLYGON_DEFAULT_FILL fl::gfx::PolyFill::ABuffer
+#endif
+
 // Forward declarations
 template<typename RGB_T> struct Canvas;
 template<typename RGB_T> struct CanvasMapped;
@@ -142,12 +163,13 @@ template<typename PixelT, typename Coord>
 void drawStrokeLine(Canvas<PixelT>& canvas, const PixelT& color, Coord x0, Coord y0, Coord x1, Coord y1,
                     Coord thickness, LineCap cap, fl::DrawMode mode = fl::DrawMode::DRAW_MODE_BLEND) FL_NO_EXCEPT;
 
-/// Fill selects the polygon backend (PolyFill::Exact by default;
-/// PolyFill::ABuffer for the faster 8x4 A-buffer kernel, which ignores
-/// CHUNK).
+/// Fill selects the polygon backend (FL_GFX_POLYGON_DEFAULT_FILL by
+/// default — Exact on large-tier platforms, ABuffer on the constrained
+/// small tier; PolyFill::ABuffer is the faster 8x4 A-buffer kernel,
+/// which ignores CHUNK).
 template<typename PixelT, typename Coord, int MAXN = FL_GFX_POLYGON_DEFAULT_MAXN,
          int CHUNK = FL_GFX_POLYGON_DEFAULT_CHUNK,
-         PolyFill Fill = PolyFill::Exact>
+         PolyFill Fill = FL_GFX_POLYGON_DEFAULT_FILL>
 void drawPolygon(Canvas<PixelT>& canvas, const PixelT& color,
                  fl::span<const PolyPoint<Coord>> pts,
                  fl::DrawMode mode = fl::DrawMode::DRAW_MODE_BLEND) FL_NO_EXCEPT;
@@ -156,7 +178,7 @@ void drawPolygon(Canvas<PixelT>& canvas, const PixelT& color,
 // converting constructor, so it cannot participate in deduction).
 template<typename PixelT, typename Coord, int N, int MAXN = FL_GFX_POLYGON_DEFAULT_MAXN,
          int CHUNK = FL_GFX_POLYGON_DEFAULT_CHUNK,
-         PolyFill Fill = PolyFill::Exact>
+         PolyFill Fill = FL_GFX_POLYGON_DEFAULT_FILL>
 void drawPolygon(Canvas<PixelT>& canvas, const PixelT& color,
                  const PolyPoint<Coord> (&pts)[N],
                  fl::DrawMode mode = fl::DrawMode::DRAW_MODE_BLEND) FL_NO_EXCEPT;
@@ -225,7 +247,7 @@ struct Canvas {
 
     template<typename Coord, int MAXN = FL_GFX_POLYGON_DEFAULT_MAXN,
              int CHUNK = FL_GFX_POLYGON_DEFAULT_CHUNK,
-             PolyFill Fill = PolyFill::Exact>
+             PolyFill Fill = FL_GFX_POLYGON_DEFAULT_FILL>
     inline void drawPolygon(const RGB_T& color, fl::span<const PolyPoint<Coord>> pts,
                             fl::DrawMode mode = fl::DrawMode::DRAW_MODE_BLEND) FL_NO_EXCEPT {
         gfx::drawPolygon<RGB_T, Coord, MAXN, CHUNK, Fill>(*this, color, pts, mode);
@@ -233,7 +255,7 @@ struct Canvas {
 
     template<typename Coord, int N, int MAXN = FL_GFX_POLYGON_DEFAULT_MAXN,
              int CHUNK = FL_GFX_POLYGON_DEFAULT_CHUNK,
-             PolyFill Fill = PolyFill::Exact>
+             PolyFill Fill = FL_GFX_POLYGON_DEFAULT_FILL>
     inline void drawPolygon(const RGB_T& color, const PolyPoint<Coord> (&pts)[N],
                             fl::DrawMode mode = fl::DrawMode::DRAW_MODE_BLEND) FL_NO_EXCEPT {
         gfx::drawPolygon<RGB_T, Coord, N, MAXN, CHUNK, Fill>(*this, color, pts, mode);

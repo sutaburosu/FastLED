@@ -11,9 +11,13 @@
 // Several cases below call drawPolygon with the default tier on polygons of
 // more than 8 vertices; the host is not an FL_PLATFORM_HAS_SMALL_STACK
 // target, so that default must stay 32 (small-stack targets default to 8,
-// see fl/gfx/canvas.h).
+// see fl/gfx/canvas.h). The host is also large-tier (no scratch arena), so
+// the default fill must stay Exact; the small-tier mirror of both asserts
+// lives in canvas_small_tier.cpp.
 FL_STATIC_ASSERT(FL_GFX_POLYGON_DEFAULT_MAXN == 32,
                  "host drawPolygon default MAXN must stay 32");
+FL_STATIC_ASSERT(FL_GFX_POLYGON_DEFAULT_FILL == fl::gfx::PolyFill::Exact,
+                 "host drawPolygon default fill must stay Exact");
 
 // ============================================================================
 // drawPolygon test helpers (test-only; the double-precision reference math
@@ -1140,6 +1144,27 @@ FL_TEST_CASE("drawPolygon AVR scene hashes match the host golden table (#5324)")
             FL_CHECK_EQ(h, polygon_hashes::goldenHash(scene, abuffer));
         }
     }
+}
+
+FL_TEST_CASE("drawPolygon default fill follows the tier (host: Exact)") {
+    // Runtime half of the default-fill tier split: with the default template
+    // arguments the render must be byte-identical to explicit Exact at the
+    // default tier (the host is always large-tier, so FL_GFX_POLYGON_DEFAULT_FILL
+    // is Exact — pinned by the static assert above). Fractional vertices so
+    // the AA fringe actually exercises the backend choice.
+    const int W = 16, H = 8;
+    CRGB a[W * H], b[W * H];
+    fl::CanvasRGB ca(a, W, H), cb(b, W, H);
+    fl::PolyPoint<fl::s16x16> pts[5];
+    for (int i = 0; i < 5; ++i)
+        pts[i] = {fl::s16x16::from_raw(kPentQ16[2 * i]),
+                  fl::s16x16::from_raw(kPentQ16[2 * i + 1])};
+    ca.drawPolygon(CRGB(200, 100, 50), pts, fl::DrawMode::DRAW_MODE_BLEND);
+    cb.drawPolygon<fl::s16x16, FL_GFX_POLYGON_DEFAULT_MAXN,
+                   FL_GFX_POLYGON_DEFAULT_CHUNK, fl::gfx::PolyFill::Exact>(
+        CRGB(200, 100, 50), pts, fl::DrawMode::DRAW_MODE_BLEND);
+    for (int i = 0; i < W * H; ++i)
+        FL_CHECK(a[i] == b[i]);
 }
 
 FL_TEST_CASE("Graphics performance - drawPolygon") {

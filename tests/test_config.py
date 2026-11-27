@@ -58,6 +58,9 @@ EXCLUDED_TEST_FILES: set[Path] = {
     UNIT_DIR / "fl" / "channels" / "color_profile_tiny_layout.cpp",
     UNIT_DIR / "fl" / "channels" / "color_profile_tiny_runtime.cpp",
     UNIT_DIR / "fl" / "channels" / "engine_worker_defaults.cpp",
+    # Constrained-tier default-fill probe (forces FL_PLATFORM_HAS_SMALL_STACK);
+    # registered directly in Meson with its own -D override.
+    UNIT_DIR / "fl" / "gfx" / "canvas_small_tier.cpp",
 }
 
 # Directories inside a tier to exclude from recursive test discovery.
