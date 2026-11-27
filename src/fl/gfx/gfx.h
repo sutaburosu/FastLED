@@ -113,7 +113,7 @@ class Canvas {
 
     template<typename Coord, int MAXN = FL_GFX_POLYGON_DEFAULT_MAXN,
              int CHUNK = FL_GFX_POLYGON_DEFAULT_CHUNK,
-             gfx::PolyFill Fill = gfx::PolyFill::Exact>
+             gfx::PolyFill Fill = FL_GFX_POLYGON_DEFAULT_FILL>
     FASTLED_FORCE_INLINE void drawPolygon(const RGB_T& color, fl::span<const PolyPoint<Coord>> pts,
                                           DrawMode mode = DrawMode::DRAW_MODE_BLEND) FL_NO_EXCEPT {
         mImpl.template drawPolygon<Coord, MAXN, CHUNK, Fill>(color, pts, mode);
@@ -121,7 +121,7 @@ class Canvas {
 
     template<typename Coord, int N, int MAXN = FL_GFX_POLYGON_DEFAULT_MAXN,
              int CHUNK = FL_GFX_POLYGON_DEFAULT_CHUNK,
-             gfx::PolyFill Fill = gfx::PolyFill::Exact>
+             gfx::PolyFill Fill = FL_GFX_POLYGON_DEFAULT_FILL>
     FASTLED_FORCE_INLINE void drawPolygon(const RGB_T& color, const PolyPoint<Coord> (&pts)[N],
                                           DrawMode mode = DrawMode::DRAW_MODE_BLEND) FL_NO_EXCEPT {
         mImpl.template drawPolygon<Coord, N, MAXN, CHUNK, Fill>(color, pts, mode);

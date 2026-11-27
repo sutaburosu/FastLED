@@ -1370,9 +1370,9 @@ inline void detail::drawPolygonCore(Canvas<PixelT>& canvas, const PixelT& color,
         const fl::i64 q = detail::floorDivI64(prod, dy2);
         ed.x = xtop + q;
         // 65536*B = s*dy2 + rem, rem in [0, dy2). s is the per-row x
-        // advance (used by the carry on multi-row edges only) and, with
-        // rem, yields the row's x half-span hw = ceil(32768*|B|/dy2)
-        // without a second division:
+        // advance (used by the carry on every active edge) and, with rem,
+        // yields the row's x half-span hw = ceil(32768*|B|/dy2) without a
+        // second division:
         //   B >= 0: 2*hw*dy2 = s*dy2 + rem ->
         //           hw = (s>>1) + (s&1) + (s even && rem > 0)
         //   B <  0: -s = ceil(65536*|B|/dy2) -> hw = ceil(-s/2)
@@ -1382,19 +1382,18 @@ inline void detail::drawPolygonCore(Canvas<PixelT>& canvas, const PixelT& color,
         ed.hw = (B >= 0)
             ? ((s >> 1) + (s & 1) + ((s & 1) == 0 && rem > 0 ? 1 : 0))
             : (((-s) >> 1) + ((-s) & 1));
-        if (dy2 >= 65536) {
-            ed.step = s;
-            ed.rem = rem;
-            ed.t = static_cast<fl::i32>(prod - q * dy2);  // in [0, dy2)
-        } else {
-            // Span < 1 px: may still span two canvas rows (a row-boundary
-            // crossing), but the carry stays a no-op (step = rem = t = 0):
-            // x keeps its py0-row value and the per-row extent (x +/- hw)
-            // boxes the line the kernel integrates — see PolyEdge.
-            ed.step = 0;
-            ed.rem = 0;
-            ed.t = 0;
-        }
+        // Per-row carry state for EVERY edge, single-row edges included:
+        // a span < 1 px can still cross a row boundary (two active rows),
+        // and the carry must advance x to the exact py0+1 row-center
+        // crossing, xtop + floor((w0 + 65536) * B / dy2). Leaving
+        // step = rem = t = 0 there (the pre-fix committed behavior) made
+        // the kernel integrate the infinite line through the STALE py0-row
+        // anchor on the second row — shifted by 65536*B/dy2, one full row
+        // of slope: a horizontal band of wrong fill outside the polygon
+        // for near-horizontal edges.
+        ed.step = s;
+        ed.rem = rem;
+        ed.t = static_cast<fl::i32>(prod - q * dy2);  // in [0, dy2)
         if (ed.py0 < ymin) ymin = ed.py0;
         if (ed.py1 > ymax) ymax = ed.py1;
     }
@@ -1571,8 +1570,10 @@ inline void detail::drawPolygonCore(Canvas<PixelT>& canvas, const PixelT& color,
 /// identical for polygons with at most MAXN vertices. If the side-stack
 /// arena is exhausted at run time the call draws nothing.
 ///
-/// Fill selects the backend: PolyFill::Exact (default, exact per-pixel
-/// area) or PolyFill::ABuffer (8x4 A-buffer sampling; CHUNK is ignored).
+/// Fill selects the backend: PolyFill::Exact (exact per-pixel area) or
+/// PolyFill::ABuffer (8x4 A-buffer sampling; CHUNK is ignored). The
+/// default (FL_GFX_POLYGON_DEFAULT_FILL in fl/gfx/canvas.h) is Exact on
+/// large-tier platforms and ABuffer on the constrained small tier.
 template<typename PixelT, typename Coord, int MAXN, int CHUNK, PolyFill Fill>
 inline void drawPolygon(Canvas<PixelT>& canvas, const PixelT& color,
                         fl::span<const PolyPoint<Coord>> pts,

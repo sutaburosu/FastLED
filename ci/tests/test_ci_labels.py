@@ -155,12 +155,18 @@ def test_unknown_ci_platforms_label_fails() -> None:
 
 
 @pytest.mark.parametrize("needs", ["reserve-runner", "[reserve-runner]"])
-def test_reserved_board_runs_when_its_selector_is_skipped(tmp_path: Path, needs: str) -> None:
+def test_reserved_board_runs_when_its_selector_is_skipped(
+    tmp_path: Path, needs: str
+) -> None:
     filename = "build_esp32c6.yml"
     source = (ROOT / ".github" / "workflows" / filename).read_text(encoding="utf-8")
     path = tmp_path / filename
-    path.write_text(source.replace("needs: reserve-runner", f"needs: {needs}"), encoding="utf-8")
+    path.write_text(
+        source.replace("needs: reserve-runner", f"needs: {needs}"), encoding="utf-8"
+    )
 
-    rendered_workflow = yaml.load(rendered(path, JOBS[filename], LABELS), Loader=yaml.BaseLoader)
+    rendered_workflow = yaml.load(
+        rendered(path, JOBS[filename], LABELS), Loader=yaml.BaseLoader
+    )
 
     assert rendered_workflow["jobs"]["build"]["if"].startswith("!cancelled() &&")

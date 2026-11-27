@@ -11,9 +11,13 @@
 // Several cases below call drawPolygon with the default tier on polygons of
 // more than 8 vertices; the host is not an FL_PLATFORM_HAS_SMALL_STACK
 // target, so that default must stay 32 (small-stack targets default to 8,
-// see fl/gfx/canvas.h).
+// see fl/gfx/canvas.h). The host is also large-tier (no scratch arena), so
+// the default fill must stay Exact; the small-tier mirror of both asserts
+// lives in canvas_small_tier.cpp.
 FL_STATIC_ASSERT(FL_GFX_POLYGON_DEFAULT_MAXN == 32,
                  "host drawPolygon default MAXN must stay 32");
+FL_STATIC_ASSERT(FL_GFX_POLYGON_DEFAULT_FILL == fl::gfx::PolyFill::Exact,
+                 "host drawPolygon default fill must stay Exact");
 
 // ============================================================================
 // drawPolygon test helpers (test-only; the double-precision reference math
@@ -1060,16 +1064,19 @@ FL_TEST_CASE("drawPolygon row extents: column bounds clamp to [-1, width]") {
 }
 
 FL_TEST_CASE("drawPolygon steep sub-pixel edge crossing a row boundary") {
-    // Regression for the per-row extent of single-row edges (dy < 65536).
-    // The 16-vertex shape below has a steep edge (dy = 63904) spanning rows
-    // 13..14: v6 (478682, 890361) -> v5 (-385625, 954265). The committed
-    // carry is a no-op on such edges, so on row 14 the kernel integrates
-    // the infinite line through the row-13 center crossing (x = 554760
-    // Q16 ~= 8.47 px) — far outside the segment's own endpoint span. The
-    // per-row extent must box THAT line (x +/- hw with hw =
-    // ceil(32768*|B|/dy) = 443190, giving [1, 15]); a narrower
-    // endpoint-span box hits the full/zero shortcut and erases the
-    // committed decaying ramp in row 14, px 8..14.
+    // Regression for the per-row carry of single-row edges (dy < 65536)
+    // that cross a row boundary. The 16-vertex shape below has a steep
+    // edge (dy = 63904) spanning rows 13..14: v6 (478682, 890361) ->
+    // v5 (-385625, 954265). The row-13 center crossing is at x = 554760
+    // Q16 (~8.47 px); the carry must advance it by the full row of slope
+    // (step = floor(65536*B/dy)) to the row-14 center crossing at
+    // x = -331618 Q16 (~-5.06 px, off-canvas-left), and the per-row
+    // extent boxes THAT line (x +/- hw with hw = ceil(32768*|B|/dy) =
+    // 443190, columns [-12, 1] clamped to [-1, 1]). The pre-fix kernel
+    // left step = rem = t = 0 on such edges and re-integrated the row-13
+    // anchor on row 14 (x = 554760): row 14 then carried a decaying ramp
+    // at px 8..15 that no edge of the polygon touches — pinned here as
+    // zero, with the true off-canvas crossing's corner fill at px 0..5.
     const int W = 16, H = 16;
     static const fl::i32 kVx[16] = {
         20529, 917504, 310316, 276136, 943055, -385625, 478682, 262144,
@@ -1108,8 +1115,8 @@ FL_TEST_CASE("drawPolygon steep sub-pixel edge crossing a row boundary") {
         0, 0, 0, 0, 0, 0, 0, 0,
         255, 254, 240, 221, 179, 119, 145, 10,
         0, 0, 0, 0, 0, 0, 0, 0,
-        143, 143, 143, 143, 108, 137, 143, 142,
-        127, 108, 89, 70, 51, 33, 14, 0,
+        23, 5, 0, 0, 37, 6, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0,
     };
@@ -1137,6 +1144,27 @@ FL_TEST_CASE("drawPolygon AVR scene hashes match the host golden table (#5324)")
             FL_CHECK_EQ(h, polygon_hashes::goldenHash(scene, abuffer));
         }
     }
+}
+
+FL_TEST_CASE("drawPolygon default fill follows the tier (host: Exact)") {
+    // Runtime half of the default-fill tier split: with the default template
+    // arguments the render must be byte-identical to explicit Exact at the
+    // default tier (the host is always large-tier, so FL_GFX_POLYGON_DEFAULT_FILL
+    // is Exact — pinned by the static assert above). Fractional vertices so
+    // the AA fringe actually exercises the backend choice.
+    const int W = 16, H = 8;
+    CRGB a[W * H], b[W * H];
+    fl::CanvasRGB ca(a, W, H), cb(b, W, H);
+    fl::PolyPoint<fl::s16x16> pts[5];
+    for (int i = 0; i < 5; ++i)
+        pts[i] = {fl::s16x16::from_raw(kPentQ16[2 * i]),
+                  fl::s16x16::from_raw(kPentQ16[2 * i + 1])};
+    ca.drawPolygon(CRGB(200, 100, 50), pts, fl::DrawMode::DRAW_MODE_BLEND);
+    cb.drawPolygon<fl::s16x16, FL_GFX_POLYGON_DEFAULT_MAXN,
+                   FL_GFX_POLYGON_DEFAULT_CHUNK, fl::gfx::PolyFill::Exact>(
+        CRGB(200, 100, 50), pts, fl::DrawMode::DRAW_MODE_BLEND);
+    for (int i = 0; i < W * H; ++i)
+        FL_CHECK(a[i] == b[i]);
 }
 
 FL_TEST_CASE("Graphics performance - drawPolygon") {

@@ -4,14 +4,16 @@
 //
 // Draws filled, antialiased polygons straight into the LED array through a
 // fl::CanvasRGB view (no copy). Wire a WIDTH x HEIGHT WS2812 matrix in
-// row-major order to PIN_DATA. Four 5 s scenes, each showing one part of
-// the drawPolygon API:
+// row-major order to PIN_DATA. The web preview gets a ScreenMap for that
+// same grid (DOT_DIAMETER keeps the preview pixels small). Four 5 s scenes,
+// each showing one part of the drawPolygon API:
 //
 //   1. Pinwheel - s16x16 (Q16.16) vertices, ABuffer fill, additive blend:
 //                 six overlapping blades sum toward white in the middle
-//   2. Star     - float vertices, Exact fill (the default) and the even-odd
-//                 rule: a self-intersecting pentagram leaves its center
-//                 pentagon empty
+//   2. Star     - Q16.16 vertices, fill selected by the GFX_TYPE macro
+//                 (Exact or ABuffer) and the even-odd rule: a
+//                 self-intersecting pentagram leaves its center pentagon
+//                 empty
 //   3. Layers   - DRAW_MODE_OVERWRITE: three rotating squares drawn back
 //                 to front, each hiding the ones below
 //   4. Knot     - two 14-vertex self-intersecting Lissajous curves, more
@@ -62,21 +64,34 @@
 // Exact, can overflow too. Check your sketch's free stack before choosing a
 // backend (see fl/gfx/canvas.h).
 
+//#define GFX_TYPE ABuffer
+#define GFX_TYPE Exact
+
 #include <Arduino.h>
 #include <FastLED.h>
 #include <fl/gfx/gfx.h>
-#include <fl/math/math.h>  // fl::sinf / fl::cosf for the float scene
+#include <fl/math/math.h>       // fl::sinf / fl::cosf for the float scene
+#include <fl/math/screenmap.h>  // fl::ScreenMap for the web preview
+#include <fl/math/xymap.h>      // fl::XYMap for the web preview
 
 #ifndef WIDTH
-#define WIDTH 16
+#define WIDTH 32
 #endif
 #ifndef HEIGHT
-#define HEIGHT 16
+#define HEIGHT 32
 #endif
 #define NUM_LEDS (WIDTH * HEIGHT)
 
 #ifndef PIN_DATA
 #define PIN_DATA FL_PIN_CLOCKLESS_1
+#endif
+
+// Web preview dot size, in pixels of the LED grid: 0.5 draws each LED as a
+// small circle (a quarter-grid radius) with visible gaps between neighbours.
+// Override with -DDOT_DIAMETER=... (a negative value falls back to the
+// preview's default full-pixel dots).
+#ifndef DOT_DIAMETER
+#define DOT_DIAMETER 0.15f
 #endif
 
 CRGB leds[NUM_LEDS];
@@ -98,6 +113,16 @@ static const fl::i32 kR = (WIDTH < HEIGHT ? WIDTH : HEIGHT) * kOne / 2;
 
 static fl::i32 mulQ16(fl::i32 a, fl::i32 b) {
     return (fl::i32)(((fl::i64)a * b) >> 16);
+}
+
+// float -> Q16.16: the same clamp/truncation the drawPolygon kernels apply
+// to float coords (polyABClampPx in fl/gfx/poly_abuffer.h), so a scene that
+// converts here renders identically to the float-coord call.
+static Fix toFix(float v) {
+    if (!(v == v)) return Fix::from_raw(0);           // NaN
+    if (v > 8191.0f) return Fix::from_raw(8191L << 16);
+    if (v < -8191.0f) return Fix::from_raw(-(8191L << 16));
+    return Fix::from_raw((fl::i32)(v * 65536.0f));
 }
 
 // Angle in [0, 2*pi) for time t (ms) and a period in ms.
@@ -138,25 +163,28 @@ static void scenePinwheel(unsigned long t) {
             polar(kCX, kCY, back, a + 58982L),  // swept 0.9 rad back
         };
         canvas.drawPolygon<Fix, 3, FL_GFX_POLYGON_DEFAULT_CHUNK,
-                           fl::gfx::PolyFill::ABuffer>(
+                           fl::gfx::PolyFill::GFX_TYPE>(
             CHSV((fl::u8)(hue + 42 * k), 200, 240), blade,
             fl::DrawMode::DRAW_MODE_BLEND);
     }
 }
 
-// ---- 2. Star: float, Exact (default), even-odd -------------------------------
+// ---- 2. Star: Q16.16 (from float trig), GFX_TYPE fill, even-odd -------------
 // Joining every second corner of a pentagon gives a pentagram whose edges
 // cross. Under the even-odd rule a point is inside when a ray from it
 // crosses an odd number of edges; the center pentagon crosses an even
 // number, so it stays empty. A small counter-rotating star sits in it.
 static void drawStar(float cx, float cy, float r, float spin, const CRGB& color) {
-    fl::PolyPoint<float> star[5];
+    FixPt star[5];
     for (int i = 0; i < 5; ++i) {
         const float a = spin + (float)i * (2.0f * 6.2831853f / 5.0f);
-        star[i].x = cx + r * fl::cosf(a);
-        star[i].y = cy + r * fl::sinf(a);
+        star[i].x = toFix(cx + r * fl::cosf(a));
+        star[i].y = toFix(cy + r * fl::sinf(a));
     }
-    canvas.drawPolygon(color, star);  // Exact fill, default MAXN, additive
+    canvas.drawPolygon<Fix, 5, FL_GFX_POLYGON_DEFAULT_CHUNK,
+                           fl::gfx::PolyFill::GFX_TYPE>(
+            color, star,
+            fl::DrawMode::DRAW_MODE_OVERWRITE);
 }
 
 static void sceneStar(unsigned long t) {
@@ -180,7 +208,11 @@ static void sceneLayers(unsigned long t) {
         if (layer & 1) a = -a;  // the middle square turns the other way
         FixPt square[4];
         for (int j = 0; j < 4; ++j) square[j] = polar(kCX, kCY, r, a + j * (kTwoPi / 4));
-        canvas.drawPolygon(kColors[layer], square, fl::DrawMode::DRAW_MODE_OVERWRITE);
+//        canvas.drawPolygon(kColors[layer], square, fl::DrawMode::DRAW_MODE_OVERWRITE);
+        canvas.drawPolygon<Fix, 4, FL_GFX_POLYGON_DEFAULT_CHUNK,
+                           fl::gfx::PolyFill::GFX_TYPE>(
+            kColors[layer], square,
+            fl::DrawMode::DRAW_MODE_OVERWRITE);
     }
 }
 
@@ -206,7 +238,7 @@ static void sceneKnot(unsigned long t) {
             knot[i].y = Fix::from_raw(kCY + mulQ16(ry, sy));
         }
         canvas.drawPolygon<Fix, kKnotN, FL_GFX_POLYGON_DEFAULT_CHUNK,
-                           fl::gfx::PolyFill::ABuffer>(
+                           fl::gfx::PolyFill::GFX_TYPE>(
             CHSV((fl::u8)(160 + 90 * pass), 190, 255), knot,
             fl::DrawMode::DRAW_MODE_BLEND);
     }
@@ -220,13 +252,20 @@ static const int kNumScenes = (int)(sizeof(kScenes) / sizeof(kScenes[0]));
 static const unsigned long kSceneMs = 5000;
 
 void setup() {
-    FastLED.addLeds<NEOPIXEL, PIN_DATA>(leds, NUM_LEDS);
-    FastLED.setBrightness(64);
+    // The strip is wired row-major (index = y * WIDTH + x), so the preview
+    // grid is the non-serpentine rectangular XYMap of the same shape.
+    // DOT_DIAMETER keeps the preview pixels small. Note: toScreenMap() sizes
+    // the map with a u16, so keep WIDTH * HEIGHT below 65536.
+    fl::XYMap xyMap(WIDTH, HEIGHT, /*is_serpentine=*/false);
+    fl::ScreenMap screenmap = xyMap.toScreenMap();
+    screenmap.setDiameter(DOT_DIAMETER);
+    FastLED.addLeds<NEOPIXEL, PIN_DATA>(leds, NUM_LEDS).setScreenMap(screenmap);
+    FastLED.setBrightness(255);
 }
 
 void loop() {
     const unsigned long t = millis();
     fill_solid(leds, NUM_LEDS, CRGB::Black);
-    kScenes[(t / kSceneMs) % kNumScenes](t);
+    kScenes[(t / kSceneMs / 8) % kNumScenes](t);
     FastLED.show();
 }

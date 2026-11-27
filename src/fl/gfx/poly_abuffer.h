@@ -26,17 +26,17 @@
 /// # Integer model
 ///
 /// Integer-only (repository convention): coordinates in Q16.16, sub-rows
-/// in .2 (4 per pixel). A sub-row is active for an edge when its TOP
-/// grid line lies within the edge's [ytop_q, ybot_q) span — the edge's
-/// segment reaches the sub-row's top. On the grid, a vertex shared by
-/// two edges belongs to exactly one of them; mid-sub-row, the vertex's
-/// sub-row belongs to the edge that ends there (its partner starts at
-/// the next sub-row), so no sub-row is claimed twice and the per-sub-row
-/// even-odd crossing set stays consistent. The edge's crossing of a
-/// sub-row is its line's x at the sub-row's top grid line, measured
-/// exactly from the top vertex in Q16 (never snapped to the sub-row
-/// grid), so a vertex mid-sub-row introduces no quantization shift. Per
-/// edge, once at setup:
+/// in .2 (4 per pixel). A sub-row is active for an edge when the edge's
+/// segment covers the sub-row's CENTER line (its top grid line + 8192
+/// Q16), i.e. ytop_q <= s*16384 + 8192 < ybot_q. A vertex shared by two
+/// edges (on the grid, mid-sub-row, or exactly on a center line) is
+/// covered by exactly one of the two half-open spans, so no sub-row is
+/// claimed twice and the per-sub-row even-odd crossing set stays
+/// consistent (mid-sub-row, the vertex's sub-row belongs to the edge
+/// active at its center). The edge's crossing of a sub-row is its line's
+/// x at the sub-row's CENTER, measured exactly from the top vertex in
+/// Q16 (never snapped to the sub-row grid), so a vertex mid-sub-row
+/// introduces no quantization shift. Per edge, once at setup:
 ///   xinc = floor(65536 * B / dy)          (one i64 division, i64 result)
 /// Per scanline, per active edge: x0 += xinc (i64 add, no libgcc).
 /// Per sub-row: X_r = X_0 + r * q + corr[r] (shifts/adds + a 2-bit table,
@@ -76,19 +76,29 @@
 /// 6. **Off-grid vertices.** The reference's shapes (line parallelograms)
 ///    have every vertex on the sub-row grid by construction, so its
 ///    half-open [ytop, ybottom) edge ranges never claim one sub-row
-///    twice. Arbitrary Q16 vertices can sit mid-sub-row, where the naive
-///    floor/ceil ranges make both edges sharing the vertex claim its
-///    sub-row — three crossings on one sub-row, and the even-odd rule
-///    fills a spurious tail to the canvas edge. This kernel instead
-///    activates a sub-row only when the edge's segment reaches its TOP
-///    grid line (ceil/ceil ranges, see the integer model above), which
-///    assigns the vertex's sub-row to exactly one of its edges.
+///    twice. Arbitrary Q16 vertices can sit mid-sub-row (or on a center
+///    line), where naive half-open ranges make both edges sharing the
+///    vertex claim a sub-row — three crossings on one sub-row, and the
+///    even-odd rule fills a spurious tail to the canvas edge. This
+///    kernel instead activates a sub-row only when the edge's segment
+///    covers its CENTER line (see the integer model above), which
+///    assigns every sub-row to exactly one of its edges.
+/// 7. **Center-sample geometry.** The reference samples each subpixel at
+///    its top-right corner (the sub-row's top grid line, the sub-column's
+///    right edge). This kernel samples at the subpixel CENTER (see the
+///    sampling geometry below): an unbiased 8x4 sample that halves the
+///    worst-case edge band versus the exact-area backend (1/8 row / 1/16
+///    px instead of 1/4 row / 1/8 px) and removes the one-sided outward
+///    bias the corner sample has along near-horizontal/near-vertical
+///    edges.
 ///
-/// Sampling geometry (kept faithful to the reference): sub-row r covers
-/// the half-open band [y + r/4, y + (r+1)/4) and sub-column c counts as
-/// covered when its RIGHT edge x + (c+1)/8 lies strictly to the right of
-/// the edge crossing (the edge's line at the sub-row's top grid line,
-/// see the integer model above; a sample exactly on the edge is outside).
+/// Sampling geometry (deviation #7): sub-row r covers the half-open band
+/// [y + r/4, y + (r+1)/4) and sub-column c the half-open band
+/// [x + c/8, x + (c+1)/8); the sample is the subpixel CENTER
+/// (x + (c+0.5)/8, y + (r+0.5)/4), and a subpixel counts as covered when
+/// its center lies strictly to the right of the edge crossing (the
+/// edge's line at the sub-row's center, see the integer model above; a
+/// sample exactly on the edge is outside).
 
 #include "fl/stl/noexcept.h"
 #include "fl/stl/static_assert.h"
@@ -304,39 +314,43 @@ inline void drawPolygonABufferCore(Canvas<PixelT>& canvas, const PixelT& color,
         e.py0 = py0;
         e.py1 = py1;
         // In-range sub-rows, .2 (4 per px), half-open [ytop, ybot): a
-        // sub-row is in range when its TOP grid line (s*16384 Q16) lies in
-        // the edge's [ytop_q, ybot_q) span — the segment reaches the
-        // sub-row's top. On the grid, a vertex shared by two edges
-        // belongs to exactly one of them; mid-sub-row, the vertex's
-        // sub-row belongs to the edge that ENDS there (its partner starts
-        // at the next sub-row), so no sub-row is claimed twice and the
-        // per-sub-row even-odd crossing set stays consistent.
-        e.ytop = (ytop_q + 16383) >> 14;
-        e.ybot = (ybot_q + 16383) >> 14;
+        // sub-row is in range when the segment covers its CENTER line
+        // (s*16384 + 8192 Q16), i.e. ytop_q <= s*16384 + 8192 < ybot_q.
+        // A vertex shared by two edges (on the grid, mid-sub-row, or on a
+        // center line) is covered by exactly one of the two half-open
+        // spans, so no sub-row is claimed twice and the per-sub-row
+        // even-odd crossing set stays consistent (mid-sub-row, the
+        // vertex's sub-row belongs to the edge active at its center).
+        e.ytop = (ytop_q + 8191) >> 14;
+        e.ybot = (ybot_q + 8191) >> 14;
         // i64 step: |65536 * B| < 2^47, dy >= 1 -> exact floor, no wrap
         e.xinc = polyABFloorDivI64((fl::i64)65536L * (fl::i64)B, (fl::i64)dy2);
         e.q = e.xinc >> 2;
 
-        // x0: the edge's line at the TOP grid line of py0's sub-row 0,
-        // measured exactly from the top vertex in Q16: off = 65536*py0 -
-        // ytop_q, so a vertex mid-sub-row introduces no quantization
-        // shift. Every in-range sub-row's top lies within the segment
-        // (see [ytop, ybot) above), so the line value there is valid for
-        // either xinc sign — no clamping needed. off*xinc stays in i64
-        // (same bound as the vertex-snapped seed this replaces).
+        // x0: the edge's line at the CENTER of py0's sub-row 0 (8192 Q16
+        // below the row-top grid line), measured exactly from the top
+        // vertex: off = 65536*py0 - ytop_q, so a vertex mid-sub-row
+        // introduces no quantization shift. Every in-range sub-row's
+        // center lies within the segment (see [ytop, ybot) above), so
+        // the line value there is valid for either xinc sign — no
+        // clamping needed. (off + 8192)*xinc stays in i64 (same bound as
+        // off*xinc).
         const fl::i64 off = ((fl::i64)py0 << 16) - (fl::i64)ytop_q;
-        e.x0 = (fl::i64)xtop + polyABFloorDivI64(off * e.xinc, 65536L);
-        // corr[r] = floor((n0 + r*16384*m)/65536), n0 = (off*xinc) mod
-        // 65536 in [0, 65536): the exact per-sub-row correction for the
-        // fractional part of xinc/4. X_r = xtop + floor((off + r*16384)
-        // * xinc / 65536) holds exactly, and the row advance (x0 +=
-        // xinc) is exact because off gains a multiple of 65536 per row.
+        e.x0 = (fl::i64)xtop + polyABFloorDivI64((off + 8192) * e.xinc, 65536L);
+        // corr[r] = floor((n0c + r*16384*m)/65536), n0c = (off + 8192)
+        // * xinc mod 65536 in [0, 65536): the exact per-sub-row
+        // correction for the fractional part of xinc/4 at the sub-row
+        // CENTER. X_r = xtop + floor((off + r*16384 + 8192) * xinc /
+        // 65536) holds exactly, and the row advance (x0 += xinc) is
+        // exact because off gains a multiple of 65536 per row.
         const fl::i32 m = (fl::i32)(e.xinc & 3);           // in [0, 4)
         const fl::i64 n0 = ((off & 65535L) * (e.xinc & 65535L)) & 65535L;
+        const fl::i64 n0c = (n0 + 32768L * (fl::i64)(e.q & 1)
+                             + 8192L * (fl::i64)m) & 65535L;
         e.corr[0] = 0;
-        e.corr[1] = (fl::u8)((n0 + 16384L * (fl::i64)m) >> 16);
-        e.corr[2] = (fl::u8)((n0 + 2L * 16384L * (fl::i64)m) >> 16);
-        e.corr[3] = (fl::u8)((n0 + 3L * 16384L * (fl::i64)m) >> 16);
+        e.corr[1] = (fl::u8)((n0c + 16384L * (fl::i64)m) >> 16);
+        e.corr[2] = (fl::u8)((n0c + 2L * 16384L * (fl::i64)m) >> 16);
+        e.corr[3] = (fl::u8)((n0c + 3L * 16384L * (fl::i64)m) >> 16);
 
         if (e.py0 < ymin) ymin = e.py0;
         if (e.py1 > ymax) ymax = e.py1;
@@ -359,8 +373,13 @@ inline void drawPolygonABufferCore(Canvas<PixelT>& canvas, const PixelT& color,
             fl::i32 rlo32 = ed.ytop - sub;  // <= 4; 4 only at py0
             // (vertex below the row's top) -> skipped via rlo > rhi
             if (rlo32 < 0) rlo32 = 0;
+            // rhi32 == -1: the edge's last in-range sub-row lies above
+            // this row (its segment ends before the row's first sub-row
+            // CENTER) -> skipped via rlo > rhi. No lower clamp: clamping
+            // to 0 re-processes sub-row 0 from the edge's EXTRAPOLATED
+            // line (x0 advanced past the segment's endpoint), spilling a
+            // phantom run to the right of a near-horizontal edge.
             fl::i32 rhi32 = ed.ybot - 1 - sub;
-            if (rhi32 < 0) rhi32 = 0;
             if (rhi32 > 3) rhi32 = 3;
             if (rlo32 > rhi32) continue;
             const int rlo = (int)rlo32, rhi = (int)rhi32;
@@ -371,15 +390,30 @@ inline void drawPolygonABufferCore(Canvas<PixelT>& canvas, const PixelT& color,
                 if (r > 0) X += ed.q + (fl::i64)((fl::i32)(ed.corr[r] - ed.corr[r - 1]));
                 if (r < rlo) continue;
                 if (X < 0) {
-                    // Edge already left of the canvas: full-row
+                    // Edge already left of the canvas: full-sub-row
                     // contribution — seed the parity, never crosses again
                     mask ^= (fl::u32)0xFFu << (8 * r);
                 } else {
                     const fl::i32 p = (fl::i32)(X >> 16);  // pixel crossed
                     if (p < width) {
-                        const fl::u32 bo = (fl::u32)((X - ((fl::i64)p << 16)) >> 13);  // in [0, 8)
-                        cp[ncp] = (p << 5) | (r << 3) | (fl::i32)bo;
-                        ++ncp;
+                        // Sub-column center sample: sub-column c is
+                        // covered iff its center (c + 0.5, in 1/8-px
+                        // units) lies strictly right of the crossing at
+                        // g/8192, g = X - p*65536 in [0, 65536). Covered
+                        // count = 8 - bo': bo' = 0 for g < 4096, else
+                        // round-half-up(g/8192) = (g + 4096) >> 13, in
+                        // [1, 8]. bo' == 8: no sample in p, but the whole
+                        // sub-row is inside from p + 1 — emit the event
+                        // there (dropped, the extend below would never
+                        // start the run).
+                        const fl::i64 g = X - ((fl::i64)p << 16);
+                        int pe = p;
+                        fl::u32 bo = (g < 4096) ? 0u : (fl::u32)((g + 4096) >> 13);
+                        if (bo == 8u) { pe = p + 1; bo = 0u; }
+                        if (pe < width) {
+                            cp[ncp] = (pe << 5) | (r << 3) | (fl::i32)bo;
+                            ++ncp;
+                        }
                     }
                 }
             }

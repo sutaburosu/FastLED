@@ -161,10 +161,12 @@ canvas.drawPolygon(CRGB::Yellow, tri);
 - Degenerate input (duplicate or collinear vertices, fully off-canvas
   polygons) is safe — it just draws nothing.
 - **Fill backend** — the fourth template argument picks it:
-  `fl::gfx::PolyFill::Exact` (the default; exact per-pixel area, 256
-  levels) or `fl::gfx::PolyFill::ABuffer` (8x4 subpixel samples, 32
-  levels; faster on dense fills, smaller working set, ignores CHUNK):
+  `fl::gfx::PolyFill::Exact` (exact per-pixel area, 256 levels) or
+  `fl::gfx::PolyFill::ABuffer` (8x4 subpixel samples, 32 levels; faster
+  on dense fills, smaller working set, ignores CHUNK):
   `canvas.drawPolygon<fl::s16x16, 8, 16, fl::gfx::PolyFill::ABuffer>(color, span)`.
+  The default is `FL_GFX_POLYGON_DEFAULT_FILL`: Exact on large-tier
+  platforms, ABuffer on the constrained small tier (AVR, Teensy LC, ...).
 
 See `examples/Polygon/Polygon.ino` for both backends, float and `s16x16`
 vertices, even-odd self-intersection, additive vs overwrite drawing and an
